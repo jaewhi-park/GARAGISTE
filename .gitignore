@@ -1,0 +1,12 @@
+# Local state created when running Claude Code / opencode inside this repo
+# (the template folders claude/.claude/ and opencode/ are tracked; only root-level local files are ignored)
+/.claude/settings.local.json
+/.claude/worktrees/
+/.claude/agent-memory-local/
+/.opencode/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.bak
+*.swp
