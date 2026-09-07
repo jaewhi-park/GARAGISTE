@@ -97,6 +97,20 @@ if (Test-Path $Jsonc) {
   elseif ($d.permission -is [pscustomobject]) {
     foreach ($p in $s.permission.PSObject.Properties) { if (-not $d.permission.PSObject.Properties[$p.Name]) { Set-Prop $d.permission $p.Name $p.Value } }
   }
+  if ($s.PSObject.Properties['agent']) {
+    if (-not $d.PSObject.Properties['agent']) { Set-Prop $d 'agent' $s.agent }
+    elseif ($d.agent -is [pscustomobject]) {
+      foreach ($a in $s.agent.PSObject.Properties) {
+        if (-not $d.agent.PSObject.Properties[$a.Name]) { Set-Prop $d.agent $a.Name $a.Value; continue }
+        $cur = $d.agent.($a.Name); if ($cur -isnot [pscustomobject]) { continue }
+        foreach ($k in $a.Value.PSObject.Properties) {
+          if ($k.Name -eq 'permission' -and $cur.PSObject.Properties['permission'] -and $cur.permission -is [pscustomobject]) {
+            foreach ($p in $k.Value.PSObject.Properties) { if (-not $cur.permission.PSObject.Properties[$p.Name]) { Set-Prop $cur.permission $p.Name $p.Value } }
+          } elseif (-not $cur.PSObject.Properties[$k.Name]) { Set-Prop $cur $k.Name $k.Value }
+        }
+      }
+    }
+  }
   if ($Model) { Set-Prop $d 'model' $Model }
   New-Item -ItemType Directory -Force -Path (Split-Path $Cfg) | Out-Null
   [IO.File]::WriteAllText($Cfg, ($d | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))  # no BOM

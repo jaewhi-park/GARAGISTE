@@ -27,6 +27,8 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 | Resuming a session | `/resume` | If board and repo disagree, side with the repo |
 | Retrospective | `/retro <subject>` | Approve only one-line rules backed by an incident; reject the rest |
 | Team check | `/roster` | Confirm model and permission assignments |
+| Wrong language | `/lang <code>` | Asked once at the start of `/kickoff` or `/assess`; change any time |
+| Missing role | `/recruit <gap>` | Only for a new permission boundary or a separate judge; a missing skill is not a role. Model comes from the roster, no extra /hire |
 
 ## 1. Install and first run
 
@@ -62,7 +64,7 @@ Check: the planner can write inside docs/ but not outside (the edit path matcher
 When `/kickoff` or `/assess` finishes, the lead runs `/hire`. It confirms available models (`opencode models`), asks you for a budget tier (unlimited / high = Max 20x / medium = Max 5x / low = Pro), the project's character and parallel plans, and proposes a role × model table with reasons. You approve it or change a line or two. Principle: the strongest model where judgment happens (planner, critic, reviewer), the fastest model for the verifier, the implementer by budget. On approval a script changes only the `model:` lines and an "Operating profile" is left in AGENTS.md. Takes effect from the next session. Re-run `/hire` when the budget changes; `/roster` shows the current assignment. The installer's `-Budget` profiles distribute mechanically without judgment, for non-interactive use.
 
 ### Language
-Agent prompts are English. Responses, questions and documents follow the `## Language` line in AGENTS.md (asked during `/kickoff`); when unset, agents mirror the language you write in.
+Agent prompts are English. Responses, questions and documents follow the `## Language` line in AGENTS.md. `/kickoff` and `/assess` ask for it first when it is not set; `/lang <code>` changes it any time (a script rewrites only that section). When unset, agents mirror the language of your latest message, but an English command template can still tip the lead into English: if that happens, run `/lang`.
 
 ## 2. Situations
 

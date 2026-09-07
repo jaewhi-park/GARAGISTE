@@ -1,6 +1,6 @@
 # garagiste/claude — GARAGISTE — Claude Code 판
 
-> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff` 헌장 질문에 포함). 비어 있으면 당신이 쓰는 언어를 따릅니다.
+> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff`·`/assess` 시작 시 한 번 묻고, `/lang <code>`로 언제든 변경). 비어 있으면 당신이 쓰는 언어를 따릅니다.
 
 
 사람용 사용법은 **GUIDE.md**(설치·상황별 역할), 산출물 지도는 docs/README.md. 이 파일은 설정 레퍼런스다.
@@ -33,6 +33,8 @@
 | 경영 | `/retro <대상>` | CLAUDE.md 규칙 / 스킬 / 훅 갱신 |
 | 인수인계 | `/handoff` / `/resume` | docs/STATUS.md |
 | 팀 관리 | `/roster` | 에이전트별 모델·effort 표, 변경 방법 |
+| 언어 | `/lang [code]` | 스크립트로 CLAUDE.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
+| 채용 | `/recruit <gap>` | 권한 프리셋과 형제 역할의 모델·effort로 새 역할 생성(승인 후 스크립트) |
 
 ## 팀 (.claude/agents/)
 | 에이전트 | 역할 | 도구 | 특이사항 |

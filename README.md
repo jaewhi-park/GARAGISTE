@@ -24,7 +24,7 @@ garagiste/
   opencode/                    # opencode flavor (agents · commands · skills · plugins installed as .opencode/, plus GUIDE.md)
   claude/                      # Claude Code flavor (agents · skills · hooks installed as .claude/, plus GUIDE.md)
 ```
-Each flavor's `GUIDE.md` is the human manual (install, what to do in each situation, checklists); its `README.md` is the configuration reference. Agent prompts are English; agents respond in the language set under `## Language` in the project's rules file (AGENTS.md / CLAUDE.md), or in the CEO's language when unset.
+Each flavor's `GUIDE.md` is the human manual (install, what to do in each situation, checklists); its `README.md` is the configuration reference. Agent prompts are English; agents respond in the language set under `## Language` in the project's rules file (AGENTS.md / CLAUDE.md), asked once at the start of `/kickoff` or `/assess` and changed any time with `/lang <code>`; when unset they mirror the CEO's language.
 
 ## Six principles
 1. Separate judgment from execution — the implementer does not grade its own work, the reviewer does not fix, the lead does not write code.

@@ -6,6 +6,7 @@ disable-model-invocation: true
 ---
 Start a new project. Initial requirements: $ARGUMENTS
 
+0. If CLAUDE.md has no "## Language" section, first ask the CEO the working language with AskUserQuestion (options: ko / en / other; default: the language of the CEO's message), run `node .claude/scripts/set-language.mjs --file CLAUDE.md <code>`, and continue in that language. Skip when it is already set.
 1. Load the `charter` skill and ask the CEO its question list with AskUserQuestion (split into several calls if the tool limits questions per call). Hand the answers to team-planner to write docs/CHARTER.md.
 2. Ask team-planner for 2–3 stack/architecture alternatives with a recommendation. After team-critic review and CEO confirmation, have it recorded as docs/adr/0001-*.md.
 3. Have team-implementer create the project skeleton (minimal structure where build, tests and lint pass empty) and confirm with team-verifier.

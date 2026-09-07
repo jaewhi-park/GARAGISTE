@@ -13,6 +13,7 @@ If the code is the product, this directory is the company. Agents forget when a 
 | METRICS.md | Governance — one line per plan | /ship | every ship (/retro reads it) |
 | prs/NNNN-*.md | PR description when there is no remote | /ship (local mode) | every local-mode ship |
 | releases/<ver>.md | Operations — release notes | /release | every release |
+| roles/team-*.md | Role prompt of a recruited agent (permissions come from the preset) | /recruit | when the CEO approves a new role |
 | ASSESSMENT.md, REBUILD_PLAN.md, PARITY.md | Legacy only | /assess | rebuild projects |
 
 CHARTER.md and STATUS.md are injected into every session (via `instructions` in opencode.json). STATUS.md differs per worktree, so add it to .gitignore when running parallel sessions.

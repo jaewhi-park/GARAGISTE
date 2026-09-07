@@ -4,6 +4,7 @@ agent: team-lead
 ---
 Assess an existing codebase and set a rebuild/modernization strategy. Target and context: $ARGUMENTS
 
+0. If AGENTS.md has no "## Language" section, first ask the CEO the working language with the question tool (options: ko / en / other; default: the language of the CEO's message), run `node .opencode/scripts/set-language.mjs <code>`, and continue in that language. Skip when it is already set.
 1. Load the `legacy-assessment` skill. Send explore out per area in parallel to gather the inventory, and have team-planner compile docs/ASSESSMENT.md.
 2. Report unknowns and "current behaviour that looks like a bug" to the CEO and get a preserve/fix policy per item.
 3. Following the `parity-harness` skill, have team-implementer build the characterization-test / golden-output harness and confirm with team-verifier. No rebuild step starts without the harness.

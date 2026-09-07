@@ -39,9 +39,9 @@ for (const s of opt.set) { const m = /^([\w-]+)=([^:]+)(?::(\w+))?$/.exec(s); if
 function resolve(role) {
   if (overrides[role]) return overrides[role];
   if (budget === "inherit") return [null, null];
-  if (flavor === "claude") { const p = CLAUDE[budget]; if (!p) bad(); return p[role] ?? [null, null]; }
+  if (flavor === "claude") { const p = CLAUDE[budget]; if (!p) bad(); return p[role]; } // undefined: not in the profile (recruited role) → kept as is
   const p = OPENCODE[budget]; if (!p) bad();
-  const slot = p[role]; if (!slot) return [null, null];
+  const slot = p[role]; if (!slot) return undefined;
   const id = slot === "strong" ? opt.strong : opt.fast;
   if (!id) { console.error(`--budget ${budget} requires --strong and --fast model IDs (run: opencode models).`); process.exit(1); }
   return [id, null];
@@ -62,7 +62,9 @@ function rewrite(file, model, effort) {
 const rows = [];
 for (const f of readdirSync(dest).filter((n) => n.startsWith("team-") && n.endsWith(".md"))) {
   const role = basename(f, ".md").replace(/^team-/, "");
-  const [model, effort] = resolve(role);
+  const resolved = resolve(role);
+  if (!resolved) { rows.push([basename(f, ".md"), "(kept: not in profile)", ""]); continue; }
+  const [model, effort] = resolved;
   const r = rewrite(join(dest, f), model, effort);
   if (r) rows.push([basename(f, ".md"), ...r]);
 }

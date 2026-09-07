@@ -1,6 +1,6 @@
 # GARAGISTE
 
-> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff` 헌장 질문에 포함). 비어 있으면 당신이 쓰는 언어를 따릅니다.
+> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff`·`/assess` 시작 시 한 번 묻고, `/lang <code>`로 언제든 변경). 비어 있으면 당신이 쓰는 언어를 따릅니다.
 
 
 > 나도 그들처럼 차고에서 시작하고 싶었지만, 우리 집엔 차고가 없다. 그래서 설정 파일 한 폴더로 차고를 지었다.

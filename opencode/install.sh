@@ -87,7 +87,7 @@ fi
 
 [ -f "$DEST/../docs/README.md" ] || { run mkdir -p "$(dirname "$DEST")/docs"; run cp "$SRC/docs/README.md" "$(dirname "$DEST")/docs/README.md"; }
 
-# 3. Merge opencode.json (keep existing provider/model, union instructions, permission defaults only when absent)
+# 3. Merge opencode.json (keep existing provider/model, union instructions, permission and agent entries only when absent)
 if [ -f "${CFG%.json}.jsonc" ]; then
   echo "! ${CFG%.json}.jsonc exists; skipping automatic merge. Merge the following by hand:"
   cat "$SRC/opencode.json"
@@ -106,6 +106,19 @@ if isinstance(perm, dict):
     for k, v in s["permission"].items(): perm.setdefault(k, v)
 elif perm is None:
     d["permission"] = s["permission"]
+ag = d.get("agent")
+if ag is None:
+    d["agent"] = s.get("agent", {})
+elif isinstance(ag, dict):
+    for name, cfg in s.get("agent", {}).items():
+        cur = ag.setdefault(name, {})
+        if not isinstance(cur, dict): continue
+        for k, v in cfg.items():
+            if k == "permission" and isinstance(cur.get("permission"), dict):
+                for pk, pv in v.items(): cur["permission"].setdefault(pk, pv)
+            else:
+                cur.setdefault(k, v)
+
 if model: d["model"] = model
 dst.parent.mkdir(parents=True, exist_ok=True)
 dst.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
