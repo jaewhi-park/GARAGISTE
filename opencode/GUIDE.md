@@ -58,7 +58,7 @@ Three install targets. Give the flavor (opencode) to the entry point at the repo
 **Not a git repository**: the team relies on branches, commits and worktrees. The installer offers `git init` (default branch main); accept it.
 
 First run: run `opencode` in the repo → Tab to select `team-lead` → `/kickoff` for a new project, `/assess` for legacy, `/resume` to continue.
-Check: the planner can write inside docs/ but not outside (the edit path matcher has varied across versions), and the plugin blocks `git push --force`.
+Check: the planner can write inside docs/ but not outside (edit patterns are repo-relative: `docs/*`, never `**/docs/**`), and the plugin blocks `git push --force`.
 
 ### Models and budget — `/hire`
 When `/kickoff` or `/assess` finishes, the lead runs `/hire`. It confirms available models (`opencode models`), asks you for a budget tier (unlimited / high = Max 20x / medium = Max 5x / low = Pro), the project's character and parallel plans, and proposes a role × model table with reasons. You approve it or change a line or two. Principle: the strongest model where judgment happens (planner, critic, reviewer), the fastest model for the verifier, the implementer by budget. On approval a script changes only the `model:` lines and an "Operating profile" is left in AGENTS.md. Takes effect from the next session. Re-run `/hire` when the budget changes; `/roster` shows the current assignment. The installer's `-Budget` profiles distribute mechanically without judgment, for non-interactive use.
