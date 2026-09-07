@@ -19,7 +19,7 @@ if ($Global) {
   Write-Host "→ Global install: $Dest"
   if (-not $DryRun) {
     foreach ($d in "agents","skills","hooks") { $to = Join-Path $Dest $d; New-Item -ItemType Directory -Force -Path $to | Out-Null; Copy-Item (Join-Path $Src ".claude\$d\*") $to -Recurse -Force }
-    New-Item -ItemType Directory -Force -Path (Join-Path $Dest "scripts") | Out-Null; Copy-Item (Join-Path $Src "scripts\apply-models.mjs") (Join-Path $Dest "scripts\apply-models.mjs") -Force
+    New-Item -ItemType Directory -Force -Path (Join-Path $Dest "scripts") | Out-Null; foreach ($f in "apply-models.mjs","set-language.mjs","new-agent.mjs") { Copy-Item (Join-Path $Src "scripts\$f") (Join-Path $Dest "scripts\$f") -Force }
     $DestFwd = $Dest -replace '\\','/'
     $s = Get-Content (Join-Path $Src ".claude\settings.json") -Raw | ConvertFrom-Json
     foreach ($ev in $s.hooks.PSObject.Properties) { foreach ($e in $ev.Value) { foreach ($h in $e.hooks) { $h.command = $h.command.Replace("node .claude/hooks/", "node `"$DestFwd/hooks/") + '"' } } }  # quoted: $HOME may contain spaces
@@ -84,7 +84,7 @@ foreach ($d in "agents","skills","hooks") {
   New-Item -ItemType Directory -Force -Path $to | Out-Null
   Copy-Item (Join-Path $Src ".claude\$d\*") $to -Recurse -Force
 }
-if (-not $DryRun) { New-Item -ItemType Directory -Force -Path (Join-Path $Dest "scripts") | Out-Null; Copy-Item (Join-Path $Src "scripts\apply-models.mjs") (Join-Path $Dest "scripts\apply-models.mjs") -Force }
+if (-not $DryRun) { New-Item -ItemType Directory -Force -Path (Join-Path $Dest "scripts") | Out-Null; foreach ($f in "apply-models.mjs","set-language.mjs","new-agent.mjs") { Copy-Item (Join-Path $Src "scripts\$f") (Join-Path $Dest "scripts\$f") -Force } }
 $DocsReadme = Join-Path $Root "docs\README.md"
 if (-not (Test-Path $DocsReadme) -and -not $DryRun) {
   New-Item -ItemType Directory -Force -Path (Join-Path $Root "docs") | Out-Null

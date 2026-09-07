@@ -6,7 +6,10 @@
       "Bash(git diff:*)",
       "Bash(git log:*)",
       "Bash(git show:*)",
-      "Bash(git branch:*)"
+      "Bash(git branch:*)",
+      "Bash(node .claude/scripts/apply-models.mjs:*)",
+      "Bash(node .claude/scripts/set-language.mjs:*)",
+      "Bash(node .claude/scripts/new-agent.mjs:*)"
     ],
     "deny": [
       "Read(./.env)",

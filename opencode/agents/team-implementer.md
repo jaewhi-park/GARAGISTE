@@ -14,7 +14,6 @@ permission:
   task:
     "*": deny
     "explore": allow
-    "scout": allow
 ---
 You are a senior engineer. Implement exactly the one step you were given.
 Write reports and documents in the language given under "## Language" in AGENTS.md (or the CEO's language if absent).

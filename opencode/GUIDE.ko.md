@@ -1,6 +1,6 @@
 # GARAGISTE 사용 가이드 — opencode 판
 
-> 영어 정본: [GUIDE.md](GUIDE.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff` 헌장 질문에 포함). 비어 있으면 당신이 쓰는 언어를 따릅니다.
+> 영어 정본: [GUIDE.md](GUIDE.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff`·`/assess` 시작 시 한 번 묻고, `/lang <code>`로 언제든 변경). 비어 있으면 당신이 쓰는 언어를 따릅니다.
 
 
 이 문서는 사람(당신)을 위한 것이다. 팀이 무엇을 하는지가 아니라 **당신이 언제 무엇을 해야 하는지**만 적는다.
@@ -30,6 +30,8 @@
 | 회고 | `/retro <대상>` | 규칙 한 줄만 승인, 나머지는 거절 |
 | 채용 | `/hire` | 예산 티어·성격 질문에 답하고 배정표 승인 (kickoff/assess 직후) |
 | 팀 점검 | `/roster` | 모델·권한 배정 확인 |
+| 언어가 틀릴 때 | `/lang <code>` | `/kickoff`·`/assess` 시작 시 한 번 묻고, 언제든 변경 |
+| 역할이 비어 있을 때 | `/recruit <gap>` | 새 권한 경계나 별도 판단자가 필요할 때만. 지식 부족은 스킬로. 모델은 로스터에서 가져오므로 /hire 재실행 불필요 |
 
 ## 1. 설치와 첫 실행
 
@@ -69,7 +71,7 @@
 **git 저장소가 아닌 폴더**: 팀은 브랜치·커밋·worktree 를 전제로 한다. 설치 스크립트가 `git init`(기본 브랜치 main)을 제안하니 수락하면 된다.
 
 첫 실행: 레포에서 `opencode` → Tab 으로 `team-lead` 선택 → 신규면 `/kickoff`, 레거시면 `/assess`, 이어하기면 `/resume`.
-확인할 것: planner가 docs/ 밖을 못 쓰고 docs/ 안은 쓰는지(edit 패턴 매처가 버전에 따라 달랐다), 훅이 `git push --force`를 막는지.
+확인할 것: planner가 docs/ 밖을 못 쓰고 docs/ 안은 쓰는지(edit 패턴은 루트 기준 상대 경로: `docs/*`, `**/docs/**`는 안 됨), 훅이 `git push --force`를 막는지.
 
 ### 모델·예산 — `/hire`
 `/kickoff` 또는 `/assess` 가 끝나면 lead 가 `/hire` 를 제안한다. lead 가 사용 가능한 모델을 확인하고 당신에게 예산 티어(unlimited / high=Max 20x / medium=Max 5x / low=Pro), 프로젝트 성격, 병렬 계획을 묻고 역할 × 모델 표를 이유와 함께 내놓는다. 당신은 표를 승인하거나 한두 줄 바꾼다. 원칙: 판단하는 자리(planner·critic·reviewer)에 강한 모델, verifier 는 가장 빠른 모델, implementer 는 예산에 따라. 승인하면 스크립트가 model 줄만 바꾸고 AGENTS.md 에 "운영 프로필"이 남는다. 새 세션부터 반영. 예산이 바뀌면 `/hire` 를 다시 하고, 현재 배정은 `/roster` 로 본다. 설치 스크립트의 `--budget` 은 판단 없이 기계적으로 배분하는 비대화형 경로다.

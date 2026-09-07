@@ -25,6 +25,8 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 | Governance | `/retro <subject>` | CLAUDE.md rules / skills / hooks updated |
 | Handoff | `/handoff` / `/resume` | docs/STATUS.md |
 | Team | `/hire` / `/roster` | per-role model and effort assignment; roster table |
+| Language | `/lang [code]` | rewrites the `## Language` section of CLAUDE.md via script, effective immediately |
+| Recruiting | `/recruit <gap>` | new role from a permission preset, model and effort copied from the sibling role; created by script on approval |
 
 ## Team (.claude/agents/)
 | Agent | Role | Tools | Notes |

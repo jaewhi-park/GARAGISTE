@@ -1,6 +1,6 @@
 # GARAGISTE — opencode 판
 
-> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff` 헌장 질문에 포함). 비어 있으면 당신이 쓰는 언어를 따릅니다.
+> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff`·`/assess` 시작 시 한 번 묻고, `/lang <code>`로 언제든 변경). 비어 있으면 당신이 쓰는 언어를 따릅니다.
 
 
 사람용 사용법은 **GUIDE.md**(설치·상황별 역할), 산출물 지도는 docs/README.md. 이 파일은 설정 레퍼런스다.
@@ -17,7 +17,7 @@
 .\install.ps1 opencode -Project <레포 경로>       # Windows PowerShell
 ```
 스크립트가 하는 일: 기존 `~/.config/opencode/` 백업 → agents/commands/skills/plugins 복사(같은 이름만 덮어씀)
-→ `opencode.json` 병합(instructions 합집합, permission 기본값은 없는 키만 추가). provider·model은 건드리지 않는다 —
+→ `opencode.json` 병합(instructions 합집합, permission·agent 항목은 없는 키만 추가). provider·model은 건드리지 않는다 —
 템플릿은 model을 지정하지 않으므로 기존 opencode 설정의 provider/model을 그대로 상속한다. 바꾸고 싶을 때만 `--model`/`-Model`.
 `--project`/`-Project`를 주면 글로벌 대신 현재 레포의 `.opencode/`와 루트 `opencode.json`에 설치한다.
 `--dry-run`/`-DryRun`으로 먼저 확인할 수 있다. 기존 설정이 `.jsonc`면 병합을 건너뛰고 수동 안내를 출력한다.
@@ -38,6 +38,8 @@
 | `/backlog [아이디어]` | PM: 스펙 있는 백로그 항목·우선순위 (docs/BACKLOG.md, 선택적 GitHub Issues) |
 | `/release [버전]` | 운영: 버전·CHANGELOG·릴리즈 노트, 태그 명령 제시 |
 | `/roster` | 에이전트별 모델·권한 표와 변경 방법 |
+| `/lang [code]` | 작업 언어 설정: 스크립트로 AGENTS.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
+| `/recruit <gap>` | 새 역할 제안(프리셋 권한, 모델은 로스터의 형제 역할에서 복사); CEO 승인 후 스크립트가 생성 |
 | `/policy [값]` | 머지 정책의 현재 자동 판정과 근거 확인, 필요 시 override |
 | `/spawn <계획들>` | 병렬: 계획별 worktree·브랜치 생성, 새 세션 명령 제시 |
 | `/integrate [브랜치들]` | 머지 큐: 브랜치별 리뷰 → 머지 → 충돌 해소 → verifier, 직렬 |
@@ -53,7 +55,7 @@
 | team-implementer | subagent(hidden) | 구현·테스트·커밋, /ship 에서 push·PR | force push, main push, 질문 |
 | team-reviewer | subagent | 렌즈별 리뷰 (git diff) | 수정 |
 | team-verifier | subagent | 테스트·lint·빌드 실행 | 수정, 위임 |
-| explore / scout | 내장 | 코드베이스·의존성 조사 | 수정 |
+| explore | 내장 | 코드베이스·의존성 조사 (bash는 opencode.json의 읽기 전용 allowlist로 제한) | 수정, allowlist 밖 명령 |
 
 ## 에이전트 간 계약
 - 모든 subagent는 고정된 보고 형식으로 lead에 답한다 (verifier: PASS/FAIL, reviewer/critic: 마지막 줄 APPROVE/REVISE).
@@ -99,8 +101,8 @@
 - 각 에이전트의 `temperature`/`steps`는 역할 기준 초기값이다. 모델에 맞게 조정.
 
 ## 알려진 주의점
-- edit 권한의 경로 패턴 매처는 버전에 따라 거동이 달랐다. 첫 사용 시 planner가 docs/ 밖은 못 쓰고
-  docs/ 안은 쓸 수 있는지 한 번 확인할 것.
+- edit 권한 패턴은 저장소 루트 기준 상대 경로(`docs/plans/x.md`, `AGENTS.md`)와 비교되고 `*`는 단순 `.*`다. `**/docs/**`가 아니라 `docs/*`로 쓸 것: `**/` 형태는 앞에 `/`를 요구해서 아무것도 매칭되지 않는다. 첫 사용 시 planner가 docs/ 밖은 못 쓰고 docs/ 안은 쓸 수 있는지 한 번 확인할 것.
+- 내장 explore 에이전트는 bash를 가지며 전역 `ask`를 상속하므로 조사 중 `ls`, `git rev-parse` 하나하나에 프롬프트가 떴다. `opencode.json`의 `agent.explore.permission.bash`에 읽기 전용 allowlist를 두어 그 밖의 명령은 프롬프트 없이 거부되고 explore는 grep/glob/read로 대신한다. 스택에 맞게 목록을 늘릴 것.
 - 스킬은 에이전트가 자발적으로 로드하지 않을 수 있어 커맨드에서 이름을 명시해 로드시킨다.
 - 헤드리스 실행(`opencode run`)에서는 permission 프롬프트가 뜰 수 없다. 팀 에이전트는 모두 명시적
   allow/deny로 되어 있으나, 내장 build/plan은 글로벌 기본값(ask)을 따른다.

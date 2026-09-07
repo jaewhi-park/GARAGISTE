@@ -11,7 +11,7 @@ From the repository root: `./install.sh opencode [-Project <path>|.] [-Global]` 
 ./install.sh opencode -Project <repo path>        # macOS / Linux / WSL
 .\install.ps1 opencode -Project <repo path>       # Windows PowerShell
 ```
-What the script does: back up existing config (project mode: to a temp dir) → copy team files (overwrites same-named files only) → merge `opencode.json` (union of `instructions`, permission defaults only for missing keys). It never touches provider or model — the template specifies no model, so the existing opencode provider/model is inherited. `--model` only if you want to override. `-DryRun` previews. If the existing config is `.jsonc`, the merge is skipped with manual instructions.
+What the script does: back up existing config (project mode: to a temp dir) → copy team files (overwrites same-named files only) → merge `opencode.json` (union of `instructions`, `permission` and `agent` entries only for missing keys). It never touches provider or model — the template specifies no model, so the existing opencode provider/model is inherited. `--model` only if you want to override. `-DryRun` previews. If the existing config is `.jsonc`, the merge is skipped with manual instructions.
 
 Precedence: when both global and project define an agent or command of the same name, the project wins.
 
@@ -32,6 +32,8 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/policy [value]` | Show the current merge-policy verdict and reason; optionally override |
 | `/hire [note]` | Assign models per role from available models, budget and project character (CEO approves) |
 | `/roster` | Table of agents, models and permissions, plus how to change them |
+| `/lang [code]` | Set the working language: rewrites the `## Language` section of AGENTS.md via script, effective immediately |
+| `/recruit <gap>` | Propose a new role (preset permissions, model taken from the sibling role in the roster); created by script on CEO approval |
 | `/spawn <plans>` | Parallel: create a worktree and branch per plan, print the new-session command |
 | `/integrate [branches]` | Merge queue: per-branch review → merge → conflict resolution → verifier, serially |
 | `/retro <subject>` | Feed failures back into AGENTS.md rules, skills or guardrails |
@@ -47,7 +49,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | team-implementer | subagent (hidden) | implement, test, commit; push and open PR in /ship | force push, push to main, ask the CEO |
 | team-reviewer | subagent | per-lens review (git diff) | edit |
 | team-verifier | subagent | run tests, lint, build | edit, delegate |
-| explore / scout | built-in | codebase and dependency research | edit |
+| explore | built-in | codebase and dependency research (bash limited to a read-only allowlist via opencode.json) | edit, anything not on the allowlist |
 
 ## Contracts between agents
 - Every subagent reports in a fixed format (verifier: PASS/FAIL; reviewer/critic: last line APPROVE/REVISE).
@@ -86,6 +88,7 @@ Change: re-run `./install.sh opencode -Budget <tier> -Strong <id> -Fast <id>`, p
 - `temperature` and `steps` per agent are role-based starting values.
 
 ## Known caveats
-- The edit-permission path matcher has behaved differently across versions. On first use, check that the planner can write inside docs/ but not outside.
+- Edit-permission patterns are matched against the path relative to the repo root (`docs/plans/x.md`, `AGENTS.md`) and `*` is a plain `.*`. Write `docs/*`, never `**/docs/**`: the `**/` form demands a leading slash and matches nothing. On first use, check that the planner can write inside docs/ but not outside.
+- The built-in explore agent has bash and would inherit the global `ask`, so every `ls` or `git rev-parse` during research prompted. `opencode.json` gives it a read-only allowlist under `agent.explore.permission.bash`; anything else is denied without a prompt and explore falls back to grep/glob/read. Extend the list for your stack.
 - Agents may not load skills on their own, so commands name the skills to load explicitly.
 - In headless runs (`opencode run`) permission prompts cannot appear. Team agents use explicit allow/deny; the built-in build/plan agents follow the global default (ask).

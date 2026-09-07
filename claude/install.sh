@@ -31,7 +31,7 @@ if [ "$MODE" = global ]; then
   echo "→ Global install: $DEST"
   for d in agents skills hooks scripts; do run mkdir -p "$DEST/$d"; done
   for d in agents skills hooks; do run cp -R "$SRC/.claude/$d/." "$DEST/$d/"; done
-  run cp "$SRC/scripts/apply-models.mjs" "$DEST/scripts/apply-models.mjs"
+  for f in apply-models.mjs set-language.mjs new-agent.mjs; do run cp "$SRC/scripts/$f" "$DEST/scripts/$f"; done
   if [ "$DRY" = 0 ]; then
 python3 - "$CFG" "$SRC/.claude/settings.json" "$DEST" << 'PY'
 import json, sys, pathlib
@@ -91,7 +91,7 @@ if [ "$INPLACE" = 0 ]; then
     run mkdir -p "$ROOT/.claude/$d"; run cp -R "$SRC/.claude/$d/." "$ROOT/.claude/$d/"
   done
 fi
-run mkdir -p "$ROOT/.claude/scripts"; run cp "$SRC/scripts/apply-models.mjs" "$ROOT/.claude/scripts/apply-models.mjs"
+run mkdir -p "$ROOT/.claude/scripts"; for f in apply-models.mjs set-language.mjs new-agent.mjs; do run cp "$SRC/scripts/$f" "$ROOT/.claude/scripts/$f"; done
 run mkdir -p "$ROOT/docs"
 [ -f "$ROOT/docs/README.md" ] || run cp "$SRC/docs/README.md" "$ROOT/docs/README.md"
 

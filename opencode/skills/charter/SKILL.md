@@ -14,7 +14,6 @@ The charter is the company's constitution. Every backlog item, plan and review i
 5. Quality bar: expected test level, performance targets, supported platforms, how it will be operated
 6. Existing assets: code, libraries, infrastructure to reuse
 7. Areas the CEO wants to decide personally (added to the default escalation criteria)
-8. Working language for responses and documents (e.g. ko, en)
 
 ## Template — docs/CHARTER.md
 ````

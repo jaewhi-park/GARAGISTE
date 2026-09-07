@@ -18,7 +18,7 @@ AGENTS.md is injected into every session. It must be short and true.
 One-line summary (details: docs/CHARTER.md · legacy: docs/ASSESSMENT.md, docs/REBUILD_PLAN.md)
 
 ## Language
-- <ko | en | ...>  (responses, questions and documents; agents mirror the CEO's language when unset)
+- <ko | en | ...>  (responses, questions and documents; set with /lang; agents mirror the CEO's language when unset)
 
 ## Commands
 - setup:
