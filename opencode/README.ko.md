@@ -17,7 +17,7 @@
 .\install.ps1 opencode -Project <레포 경로>       # Windows PowerShell
 ```
 스크립트가 하는 일: 기존 `~/.config/opencode/` 백업 → agents/commands/skills/plugins 복사(같은 이름만 덮어씀)
-→ `opencode.json` 병합(instructions 합집합, permission·agent 항목은 없는 키만 추가). provider·model은 건드리지 않는다 —
+→ `opencode.json` 병합(instructions 합집합, permission·agent 항목은 없는 키만 추가, subagent_depth는 없을 때만 설정). provider·model은 건드리지 않는다 —
 템플릿은 model을 지정하지 않으므로 기존 opencode 설정의 provider/model을 그대로 상속한다. 바꾸고 싶을 때만 `--model`/`-Model`.
 `--project`/`-Project`를 주면 글로벌 대신 현재 레포의 `.opencode/`와 루트 `opencode.json`에 설치한다.
 `--dry-run`/`-DryRun`으로 먼저 확인할 수 있다. 기존 설정이 `.jsonc`면 병합을 건너뛰고 수동 안내를 출력한다.
@@ -96,7 +96,7 @@
 - `agents/team-verifier.md` — bash allow-list를 실제 스택에 맞게 줄인다.
 - `agents/team-lead.md` — 에스컬레이션 기준. 헌장의 "에스컬레이션 추가 항목"이 여기에 더해진다.
 - `plugins/guardrails.ts` — 차단 명령 정규식.
-- `opencode.json` — `instructions`로 docs/CHARTER*.md, docs/STATUS*.md를 매 세션 자동 주입한다. model 미지정 = 상속.
+- `opencode.json` — `instructions`로 docs/CHARTER*.md, docs/STATUS*.md를 매 세션 자동 주입한다. model 미지정 = 상속. `subagent_depth: 2`는 team-planner/implementer/reviewer/critic(모두 subagent)이 각자 explore를 부를 수 있게 하는 값 — opencode 기본값 1이면 이 호출이 조용히 막힌다.
 - 역할별로 다른 모델을 쓰고 싶으면 해당 `agents/*.md` frontmatter에 `model: provider/id`만 추가한다. subagent는 미지정 시 호출한 primary의 모델을 따른다.
 - 각 에이전트의 `temperature`/`steps`는 역할 기준 초기값이다. 모델에 맞게 조정.
 

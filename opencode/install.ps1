@@ -58,8 +58,10 @@ foreach ($d in "agents","commands","skills","plugins","scripts") {
   Copy-Item (Join-Path $Src "$d\*") $to -Recurse -Force
 }
 
-$DocsReadme = Join-Path (Split-Path $Dest) "docs\README.md"
-if (-not (Test-Path $DocsReadme) -and -not $DryRun) { New-Item -ItemType Directory -Force -Path (Split-Path $DocsReadme) | Out-Null; Copy-Item (Join-Path $Src "docs\README.md") $DocsReadme }
+if (-not $Global) {
+  $DocsReadme = Join-Path (Split-Path $Dest) "docs\README.md"
+  if (-not (Test-Path $DocsReadme) -and -not $DryRun) { New-Item -ItemType Directory -Force -Path (Split-Path $DocsReadme) | Out-Null; Copy-Item (Join-Path $Src "docs\README.md") $DocsReadme }
+}
 
 # 2.5 Per-role model assignment
 if ($Budget -ne "inherit" -or $Set.Count -gt 0) {
@@ -90,6 +92,7 @@ if (Test-Path $Jsonc) {
     if ($obj.PSObject.Properties[$name]) { $obj.$name = $value } else { $obj | Add-Member -NotePropertyName $name -NotePropertyValue $value }
   }
   if (-not $d.PSObject.Properties['$schema']) { Set-Prop $d '$schema' $s.'$schema' }
+  if ($s.PSObject.Properties['subagent_depth'] -and -not $d.PSObject.Properties['subagent_depth']) { Set-Prop $d 'subagent_depth' $s.subagent_depth }
   $ins = @(); if ($d.PSObject.Properties['instructions']) { $ins += $d.instructions }
   foreach ($i in $s.instructions) { if ($ins -notcontains $i) { $ins += $i } }
   Set-Prop $d 'instructions' $ins

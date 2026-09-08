@@ -85,7 +85,9 @@ if [ "$BUDGET" != inherit ] || [ ${#SETS[@]} -gt 0 ]; then
   fi
 fi
 
-[ -f "$DEST/../docs/README.md" ] || { run mkdir -p "$(dirname "$DEST")/docs"; run cp "$SRC/docs/README.md" "$(dirname "$DEST")/docs/README.md"; }
+if [ "$MODE" = project ]; then
+  [ -f "$DEST/../docs/README.md" ] || { run mkdir -p "$(dirname "$DEST")/docs"; run cp "$SRC/docs/README.md" "$(dirname "$DEST")/docs/README.md"; }
+fi
 
 # 3. Merge opencode.json (keep existing provider/model, union instructions, permission and agent entries only when absent)
 if [ -f "${CFG%.json}.jsonc" ]; then
@@ -100,6 +102,7 @@ dst, src, model = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv
 d = json.loads(dst.read_text()) if dst.exists() else {}
 s = json.loads(src.read_text())
 d.setdefault("$schema", s["$schema"])
+if "subagent_depth" in s: d.setdefault("subagent_depth", s["subagent_depth"])
 d["instructions"] = list(dict.fromkeys(list(d.get("instructions", [])) + s["instructions"]))
 perm = d.get("permission")
 if isinstance(perm, dict):

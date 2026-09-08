@@ -2,7 +2,7 @@
 description: Integrate finished branches into main one at a time — per-branch 4-lens review → merge → conflicts resolved by the implementer → verifier PASS → next (merge queue)
 agent: team-lead
 ---
-Integrate branches: $ARGUMENTS (if empty, the completed entries of the "Parallel in progress" list in docs/STATUS.md, in order)
+Integrate branches: $ARGUMENTS (opencode has no way to mark a spawned branch "done" from this session — if empty, list the "Parallel in progress" section of docs/STATUS.md and ask the CEO which branches are ready)
 
 0. Confirm the current branch is main (or the agreed integration branch). If you are on a plan/* branch, stop and ask the CEO.
 

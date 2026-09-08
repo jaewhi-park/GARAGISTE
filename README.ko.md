@@ -7,7 +7,7 @@
 
 차고는 설정 파일 한 폴더, 엔진은 기성품 LLM, 공장은 없다. 그래도 계획·구현·검증·리뷰·출하를 도는 작은 소프트웨어 회사 하나가 돌아간다.
 
-GARAGISTE 는 **opencode** 와 **Claude Code** 양쪽에서 똑같이 동작하는 자율 개발 팀 템플릿이다. 에이전트 6개(lead · planner · critic · implementer · reviewer · verifier), 회사의 운영 루프를 담은 커맨드(`/kickoff` `/plan` `/run` `/review` `/ship` `/release` `/retro` `/handoff` `/resume` …), 저장소 상태에서 추론되는 머지 정책, 세션을 넘어 이어지는 상태판, 그리고 **사람이 무엇을 해야 하는지** 적은 가이드로 되어 있다.
+GARAGISTE 는 **opencode** 와 **Claude Code** 양쪽에서 거의 똑같이 동작하는 자율 개발 팀 템플릿이다. 핵심 에이전트 6개(lead · planner · critic · implementer · reviewer · verifier) — Claude Code 는 병렬 구현용(`/parallel`) team-builder 를 하나 더 둔다 — 회사의 운영 루프를 담은 커맨드(`/kickoff` `/plan` `/run` `/review` `/ship` `/release` `/retro` `/handoff` `/resume` …), 저장소 상태에서 추론되는 머지 정책, 세션을 넘어 이어지는 상태판, 그리고 **사람이 무엇을 해야 하는지** 적은 가이드로 되어 있다.
 
 ## 설치
 ```
@@ -16,7 +16,7 @@ GARAGISTE 는 **opencode** 와 **Claude Code** 양쪽에서 똑같이 동작하�
 .\install.ps1 claude  -Project <레포 경로>      # Windows PowerShell
 ```
 `-Project` 를 생략하면 현재 경로, `-Global` 이면 전역. 옵션은 두 판이 같고 `--project`/`-Project` 두 표기를 모두 받는다.
-설치 후 첫 세션에서 신규 프로젝트는 `/kickoff`, 레거시는 `/assess`, 그 끝에 `/hire` 가 역할별 모델을 배정한다.
+설치 후 첫 세션에서 신규 프로젝트는 `/kickoff`, 레거시는 `/assess`, 그다음 `/hire` 로 역할별 모델을 배정한다.
 
 ## 구조
 ```

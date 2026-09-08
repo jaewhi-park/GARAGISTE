@@ -11,7 +11,7 @@ From the repository root: `./install.sh opencode [-Project <path>|.] [-Global]` 
 ./install.sh opencode -Project <repo path>        # macOS / Linux / WSL
 .\install.ps1 opencode -Project <repo path>       # Windows PowerShell
 ```
-What the script does: back up existing config (project mode: to a temp dir) → copy team files (overwrites same-named files only) → merge `opencode.json` (union of `instructions`, `permission` and `agent` entries only for missing keys). It never touches provider or model — the template specifies no model, so the existing opencode provider/model is inherited. `--model` only if you want to override. `-DryRun` previews. If the existing config is `.jsonc`, the merge is skipped with manual instructions.
+What the script does: back up existing config (project mode: to a temp dir) → copy team files (overwrites same-named files only) → merge `opencode.json` (union of `instructions`, `permission` and `agent` entries only for missing keys; `subagent_depth` set only if absent). It never touches provider or model — the template specifies no model, so the existing opencode provider/model is inherited. `--model` only if you want to override. `-DryRun` previews. If the existing config is `.jsonc`, the merge is skipped with manual instructions.
 
 Precedence: when both global and project define an agent or command of the same name, the project wins.
 
@@ -83,7 +83,7 @@ Change: re-run `./install.sh opencode -Budget <tier> -Strong <id> -Fast <id>`, p
 - `agents/team-verifier.md` — trim the bash allow-list to your stack.
 - `agents/team-lead.md` — escalation criteria (the charter's "Additional escalation items" are added).
 - `plugins/guardrails.ts` — blocked-command patterns.
-- `opencode.json` — `instructions` auto-injects docs/CHARTER*.md and docs/STATUS*.md every session. No model = inherit.
+- `opencode.json` — `instructions` auto-injects docs/CHARTER*.md and docs/STATUS*.md every session. No model = inherit. `subagent_depth: 2` lets team-planner/implementer/reviewer/critic (subagents) each call the explore subagent themselves — opencode's default of 1 would block that and fail the call silently.
 - Per-role models: add `model: provider/id` to the agent frontmatter (or use /hire). Subagents without a model follow the invoking primary agent.
 - `temperature` and `steps` per agent are role-based starting values.
 
