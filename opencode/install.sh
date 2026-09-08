@@ -100,6 +100,7 @@ dst, src, model = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv
 d = json.loads(dst.read_text()) if dst.exists() else {}
 s = json.loads(src.read_text())
 d.setdefault("$schema", s["$schema"])
+if "subagent_depth" in s: d.setdefault("subagent_depth", s["subagent_depth"])
 d["instructions"] = list(dict.fromkeys(list(d.get("instructions", [])) + s["instructions"]))
 perm = d.get("permission")
 if isinstance(perm, dict):

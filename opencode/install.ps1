@@ -90,6 +90,7 @@ if (Test-Path $Jsonc) {
     if ($obj.PSObject.Properties[$name]) { $obj.$name = $value } else { $obj | Add-Member -NotePropertyName $name -NotePropertyValue $value }
   }
   if (-not $d.PSObject.Properties['$schema']) { Set-Prop $d '$schema' $s.'$schema' }
+  if ($s.PSObject.Properties['subagent_depth'] -and -not $d.PSObject.Properties['subagent_depth']) { Set-Prop $d 'subagent_depth' $s.subagent_depth }
   $ins = @(); if ($d.PSObject.Properties['instructions']) { $ins += $d.instructions }
   foreach ($i in $s.instructions) { if ($ins -notcontains $i) { $ins += $i } }
   Set-Prop $d 'instructions' $ins
