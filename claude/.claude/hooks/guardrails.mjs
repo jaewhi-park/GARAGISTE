@@ -24,8 +24,15 @@ if (tool === "Bash") {
     process.stderr.write(`[guardrail] blocked command: ${cmd}\n`);
     process.exit(2);
   }
-  // Push policy: feature-branch pushes allowed; force push and direct push to main/master blocked (merge via PR only)
+  // Push policy: feature-branch pushes allowed; force push and direct push to main/master blocked (merge via PR only).
+  // team-lead never pushes anything at all (tags included) -- ship/integrate/release delegate pushes to
+  // team-implementer or present the command for the CEO to run themselves, mirroring the opencode flavor's
+  // team-lead, which has no git-push permission at all.
   if (/\bgit\s+push\b/.test(cmd)) {
+    if (input.agent_type === "team-lead") {
+      process.stderr.write(`[guardrail] blocked push (team-lead never pushes -- delegate to team-implementer, or present the command for the CEO to run): ${cmd}\n`);
+      process.exit(2);
+    }
     const force = /(--force\b|--force-with-lease\b|\s-f\b|\s\+\S)/.test(cmd);
     const toMain = /(\s|:)(main|master)(\s|$)/.test(cmd);
     let onMain = false;
