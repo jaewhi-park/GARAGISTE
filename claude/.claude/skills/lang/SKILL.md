@@ -2,6 +2,7 @@
 name: lang
 description: Set the team's working language — writes the "## Language" section of CLAUDE.md via script and switches responses immediately. Use when the team answers in the wrong language or you want to change it
 argument-hint: "[ko|en|...]"
+disable-model-invocation: true
 ---
 Set the team's working language. Requested: $ARGUMENTS
 
