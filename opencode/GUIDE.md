@@ -226,7 +226,7 @@ Before merging a PR:
 ## 5. Where tokens leak and how to stop it
 - Repeatedly checking subagent status: forbidden by the lead's rules (synchronous calls, wait for completion). If you still see it, it is a `/retro` subject.
 - Progress narration ("I will now…"): forbidden by rule. Results and decisions only.
-- Auto-injected documents growing: CHARTER 60 lines, STATUS 30 lines. The planner splits them when exceeded; the hook truncates at 120 lines.
+- Auto-injected documents growing: CHARTER 60 lines, STATUS 30 lines. The planner splits them when exceeded — there is no hard cap in opencode (unlike the Claude Code flavor's session-start hook), so a file that grows past this stays uncapped and is injected in full every session.
 - Critic and 4 lenses on small plans: under 3 steps and risk:low, the critic is skipped and review uses 2 lenses. Adjust via the operating profile (/hire).
 - On your side: do not re-ask the same question every session — record decisions in docs/DECISIONS.md and let the lead follow them. One plan per session. When the context gets heavy, `/handoff` and start fresh.
 
