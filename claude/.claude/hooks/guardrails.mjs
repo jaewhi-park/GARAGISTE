@@ -13,6 +13,17 @@ const BLOCKED_COMMANDS = [
 const SECRET_PATHS =
   /(^|[\\/])(\.env(\.(?!example$)[^/\\]*)?|[^/\\]*\.(pem|key|p12|pfx)|id_(rsa|ed25519)[^/\\]*)$/i;
 
+// team-verifier is CI: it may only run build/test/lint tools, never anything else. Deny-by-default,
+// mirroring the opencode flavor's team-verifier permission block exactly (same tool list).
+const VERIFIER_ALLOWED_COMMANDS = [
+  /^make\s/, /^npm\s/, /^pnpm\s/, /^yarn\s/, /^bun\s/, /^npx\s/,
+  /^pytest\b/, /^uv\s+run\b/, /^poetry\s+run\b/,
+  /^python\s+-m\s/, /^python3\s+-m\s/,
+  /^ruff\b/, /^mypy\b/, /^pyright\b/,
+  /^mvn\s/, /^gradle\b/, /gradlew/,
+  /^go\s/, /^cargo\s/, /^dotnet\s/,
+];
+
 let input = {};
 try { input = JSON.parse(readFileSync(0, "utf8")); } catch { process.exit(0); }
 const tool = input.tool_name ?? "";
@@ -20,6 +31,10 @@ const ti = input.tool_input ?? {};
 
 if (tool === "Bash") {
   const cmd = String(ti.command ?? "");
+  if (input.agent_type === "team-verifier" && !VERIFIER_ALLOWED_COMMANDS.some((re) => re.test(cmd.trim()))) {
+    process.stderr.write(`[guardrail] blocked command (team-verifier only runs build/test/lint tools from CLAUDE.md's Commands section): ${cmd}\n`);
+    process.exit(2);
+  }
   if (BLOCKED_COMMANDS.some((re) => re.test(cmd))) {
     process.stderr.write(`[guardrail] blocked command: ${cmd}\n`);
     process.exit(2);
