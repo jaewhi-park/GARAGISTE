@@ -85,7 +85,9 @@ if [ "$BUDGET" != inherit ] || [ ${#SETS[@]} -gt 0 ]; then
   fi
 fi
 
-[ -f "$DEST/../docs/README.md" ] || { run mkdir -p "$(dirname "$DEST")/docs"; run cp "$SRC/docs/README.md" "$(dirname "$DEST")/docs/README.md"; }
+if [ "$MODE" = project ]; then
+  [ -f "$DEST/../docs/README.md" ] || { run mkdir -p "$(dirname "$DEST")/docs"; run cp "$SRC/docs/README.md" "$(dirname "$DEST")/docs/README.md"; }
+fi
 
 # 3. Merge opencode.json (keep existing provider/model, union instructions, permission and agent entries only when absent)
 if [ -f "${CFG%.json}.jsonc" ]; then

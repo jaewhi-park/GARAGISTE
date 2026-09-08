@@ -4,7 +4,7 @@
 
 The garage is one folder of config files, the engine is an off-the-shelf LLM, and there is no factory. What you get is a small software company that runs plan → implement → verify → review → ship — and a guide for what the human is supposed to do.
 
-GARAGISTE is an autonomous development team template that works identically in **opencode** and **Claude Code**: six agents (lead · planner · critic · implementer · reviewer · verifier), commands that encode a company's operating loops (`/kickoff` `/plan` `/run` `/review` `/ship` `/release` `/retro` `/handoff` `/resume` …), a merge policy inferred from repository state, a status board that survives sessions, and a human-facing guide.
+GARAGISTE is an autonomous development team template that works nearly identically in **opencode** and **Claude Code**: six core agents (lead · planner · critic · implementer · reviewer · verifier) — Claude Code adds a seventh, team-builder, for in-session parallel implementation (`/parallel`) — commands that encode a company's operating loops (`/kickoff` `/plan` `/run` `/review` `/ship` `/release` `/retro` `/handoff` `/resume` …), a merge policy inferred from repository state, a status board that survives sessions, and a human-facing guide.
 
 한국어 문서: [README.ko.md](README.ko.md) · [opencode/GUIDE.ko.md](opencode/GUIDE.ko.md) · [claude/GUIDE.ko.md](claude/GUIDE.ko.md)
 
@@ -15,7 +15,7 @@ GARAGISTE is an autonomous development team template that works identically in *
 .\install.ps1 claude  -Project <repo path>      # Windows PowerShell
 ```
 Omit `-Project` for the current directory, use `-Global` for a global install. Options are identical across flavors; both `--project` and `-Project` spellings work.
-In the first session, start a new project with `/kickoff` or a legacy codebase with `/assess`; each ends by running `/hire`, which assigns models per role.
+In the first session, start a new project with `/kickoff` or a legacy codebase with `/assess`; each is followed by `/hire`, which assigns models per role.
 
 ## Layout
 ```

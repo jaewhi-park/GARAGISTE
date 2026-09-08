@@ -58,8 +58,10 @@ foreach ($d in "agents","commands","skills","plugins","scripts") {
   Copy-Item (Join-Path $Src "$d\*") $to -Recurse -Force
 }
 
-$DocsReadme = Join-Path (Split-Path $Dest) "docs\README.md"
-if (-not (Test-Path $DocsReadme) -and -not $DryRun) { New-Item -ItemType Directory -Force -Path (Split-Path $DocsReadme) | Out-Null; Copy-Item (Join-Path $Src "docs\README.md") $DocsReadme }
+if (-not $Global) {
+  $DocsReadme = Join-Path (Split-Path $Dest) "docs\README.md"
+  if (-not (Test-Path $DocsReadme) -and -not $DryRun) { New-Item -ItemType Directory -Force -Path (Split-Path $DocsReadme) | Out-Null; Copy-Item (Join-Path $Src "docs\README.md") $DocsReadme }
+}
 
 # 2.5 Per-role model assignment
 if ($Budget -ne "inherit" -or $Set.Count -gt 0) {

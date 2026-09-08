@@ -61,7 +61,7 @@ First run: run `opencode` in the repo → Tab to select `team-lead` → `/kickof
 Check: the planner can write inside docs/ but not outside (edit patterns are repo-relative: `docs/*`, never `**/docs/**`), and the plugin blocks `git push --force`.
 
 ### Models and budget — `/hire`
-When `/kickoff` or `/assess` finishes, the lead runs `/hire`. It confirms available models (`opencode models`), asks you for a budget tier (unlimited / high = Max 20x / medium = Max 5x / low = Pro), the project's character and parallel plans, and proposes a role × model table with reasons. You approve it or change a line or two. Principle: the strongest model where judgment happens (planner, critic, reviewer), the fastest model for the verifier, the implementer by budget. On approval a script changes only the `model:` lines and an "Operating profile" is left in AGENTS.md. Takes effect from the next session. Re-run `/hire` when the budget changes; `/roster` shows the current assignment. The installer's `-Budget` profiles distribute mechanically without judgment, for non-interactive use.
+When `/kickoff` or `/assess` finishes, the lead suggests `/hire`. It confirms available models (`opencode models`), asks you for a budget tier (unlimited / high = Max 20x / medium = Max 5x / low = Pro), the project's character and parallel plans, and proposes a role × model table with reasons. You approve it or change a line or two. Principle: the strongest model where judgment happens (planner, critic, reviewer), the fastest model for the verifier, the implementer by budget. On approval a script changes only the `model:` lines and an "Operating profile" is left in AGENTS.md. Takes effect from the next session. Re-run `/hire` when the budget changes; `/roster` shows the current assignment. The installer's `-Budget` profiles distribute mechanically without judgment, for non-interactive use.
 
 ### Language
 Agent prompts are English. Responses, questions and documents follow the `## Language` line in AGENTS.md. `/kickoff` and `/assess` ask for it first when it is not set; `/lang <code>` changes it any time (a script rewrites only that section). When unset, agents mirror the language of your latest message, but an English command template can still tip the lead into English: if that happens, run `/lang`.
@@ -73,7 +73,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.1 Planning a new project
 - When: the repo is empty, or the idea precedes the code.
 - Command: `/kickoff <one or two sentences>`
-- Team: charter questions → docs/CHARTER.md → stack alternatives and ADR → empty skeleton (tests and lint pass) → AGENTS.md → walking-skeleton plan. Ends by running `/hire`.
+- Team: charter questions → docs/CHARTER.md → stack alternatives and ADR → empty skeleton (tests and lint pass) → AGENTS.md → walking-skeleton plan. Ends by suggesting `/hire`.
 - You: answer the eight questions. Do not wave through **three non-goals** and the **success metric** — the charter is the yardstick for every later verdict. Read the stack ADR's "why not the alternatives" and approve.
 - Approval criteria: is the success metric a measurable statement; did the verification commands actually pass on the skeleton (verifier report).
 - Common mistakes: putting a feature list in the charter (that is the backlog). Handing the stack decision to the team wholesale — it is the most expensive decision to reverse, so choose it yourself.
@@ -81,7 +81,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.2 Legacy takeover / rebuild planning
 - When: there is existing code to fix or replace.
 - Command: `/assess <path or description>`
-- Team: inventory (docs/ASSESSMENT.md) → unknowns reported → parity harness → strategy comparison (ADR, docs/REBUILD_PLAN.md) → AGENTS.md. Ends by running `/hire` (a rebuild weights critic and reviewer).
+- Team: inventory (docs/ASSESSMENT.md) → unknowns reported → parity harness → strategy comparison (ADR, docs/REBUILD_PLAN.md) → AGENTS.md. Ends by suggesting `/hire` (a rebuild weights critic and reviewer).
 - You: two decisions only. (1) preserve or fix each "current behaviour that looks like a bug" — item by item. (2) the strategy (strangler fig / module-by-module / full rewrite). The default is strangler fig; a full rewrite needs evidence from the team.
 - Approval criteria: does the parity harness PASS entirely against legacy? Without it, refuse to approve any rebuild step.
 - Common mistakes: "let's just rewrite it" without a harness. In legacy without a spec, the only spec is current behaviour.
@@ -190,7 +190,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: repeating the same prompt without a retro. Approving many rules and bloating AGENTS.md.
 
 ### 2.16 Hiring (model assignment)
-- When: right after `/kickoff` or `/assess` (the lead runs it), when the budget tier changes, when the team feels too slow or too expensive.
+- When: right after `/kickoff` or `/assess` (the lead suggests it), when the budget tier changes, when the team feels too slow or too expensive.
 - Command: `/hire [note]`
 - Team: lists models with `opencode models`; asks budget tier, project character, parallel plans and roles to emphasize in one go → proposes a role × model table with reasons → also proposes the operating profile (default lenses 2/4, parallelism, critic threshold) → on approval, changes only model lines via script and writes "## Operating profile" to AGENTS.md.
 - You: answer the questions. For models the lead does not know (in-house models), **you must say which is strongest and which is fastest** — the lead does not guess. Approve the table or change a line or two.
