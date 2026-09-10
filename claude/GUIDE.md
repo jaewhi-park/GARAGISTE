@@ -24,8 +24,8 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 | Troubleshooting | 3-strike rule, drop the session | When the team spins, stop rather than fix |
 | Merging | `/integrate` / `/policy` | Local integration is the team's; main merges follow the automatic verdict (local / manual / auto-low-risk) |
 | Shipping and releasing | `/ship` → `/release` | Read the PR's verification evidence; read the diff yourself if `risk:high` |
-| Ending a session | `/handoff` | Check that "first action next session" in the report is right |
-| Resuming a session | `/resume` | If board and repo disagree, side with the repo |
+| Ending a session | `/handoff` | Only when stopping mid-flight; check that "first action next session" in the report is right |
+| Resuming a session | `/resume` | Only when a board exists (the session start says so); if board and repo disagree, side with the repo |
 | Retrospective | `/retro <subject>` | Approve only one-line rules backed by an incident; reject the rest |
 | Team check | `/roster` | Confirm model and permission assignments |
 | Wrong language | `/lang <code>` | Asked once at the start of `/kickoff` or `/assess`; change any time |
@@ -42,7 +42,7 @@ Three install targets. Give the flavor (claude) to the entry point at the reposi
 ```
 `claude/install.sh` does the same without the flavor argument.
 - If the path is a subfolder of a repo, the script walks up to the git root and tells you. If it is not a git repository, it offers `git init`.
-- `-Global` → ~/.claude (every repo; no default agent is forced, start with `claude --agent team-lead`).
+- `-Global` → ~/.claude (every repo; no default agent is forced, start with `claude --agent team-lead`). A global install cannot touch a project's .gitignore: add `docs/STATUS.md` there yourself (the first milestone commit does it when you forget).
 
 **Windows execution policy**: if `.\install.ps1` is blocked with "cannot be loaded because running scripts is disabled", either
 - once: `powershell -ExecutionPolicy Bypass -File .\install.ps1 …`
@@ -74,7 +74,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.1 Planning a new project
 - When: the repo is empty, or the idea precedes the code.
 - Command: `/kickoff <one or two sentences>`
-- Team: charter questions → docs/CHARTER.md → stack ADR (critic-reviewed) → skeleton → CLAUDE.md, ADR decision, backlog and walking-skeleton plan in one pass → full verification → `/hire`. The first `/run` happens in a new session (model assignments load at session start).
+- Team: charter questions → docs/CHARTER.md → stack ADR (critic-reviewed) → skeleton → CLAUDE.md, ADR decision, backlog and walking-skeleton plan in one pass → full verification → docs commit → `/hire` (model assignment, committed). The session ends with the board written; the first `/run` happens in a new session (model assignments load at session start) — start it directly, no `/handoff`.
 - You: answer the seven questions. Do not wave through **three non-goals** and the **success metric** — the charter is the yardstick for every later verdict. Read the stack ADR's "why not the alternatives" and approve.
 - Approval criteria: is the success metric a measurable statement; did the verification commands actually pass on the skeleton (verifier report).
 - Common mistakes: putting a feature list in the charter (that is the backlog). Handing the stack decision to the team wholesale — it is the most expensive decision to reverse, so choose it yourself.
@@ -82,8 +82,8 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.2 Legacy takeover / rebuild planning
 - When: there is existing code to fix or replace.
 - Command: `/assess <path or description>`
-- Team: inventory (docs/ASSESSMENT.md) → unknowns reported, preserve/fix policy in one call → strategy and first seam (ADR, docs/REBUILD_PLAN.md, CLAUDE.md) → a plan for the first seam's parity harness → `/hire` (a rebuild weights critic and reviewer). The harness is built through `/run` as plan 0001 in a new session; every later rebuild step extends it to its seam first.
-- You: two decisions only. (1) preserve or fix each "current behaviour that looks like a bug" — one call with defaults: accept them or name the items to fix. (2) the strategy (strangler fig / module-by-module / full rewrite). The default is strangler fig; a full rewrite needs evidence from the team.
+- Team: inventory (docs/ASSESSMENT.md) → unknowns reported, preserve/fix policy in one call → strategy and first seam (ADR, docs/REBUILD_PLAN.md, CLAUDE.md) and a minimal charter (you confirm goal, non-goals and success metric together with the strategy) → a plan for the first seam's parity harness → docs commit → `/hire` (a rebuild weights critic and reviewer; committed). The session ends with the board written; the harness is built through `/run` as plan 0001 in a new session (model assignments load at session start) — start it directly, no `/handoff`. Every later rebuild step extends it to its seam first.
+- You: three decisions only. (1) preserve or fix each "current behaviour that looks like a bug" — one call with defaults: accept them or name the items to fix. (2) the strategy (strangler fig / module-by-module / full rewrite). The default is strangler fig; a full rewrite needs evidence from the team. (3) the three charter lines the team derived — edit them if they are wrong.
 - Approval criteria: does the parity harness PASS against legacy for the seam being rebuilt (docs/PARITY.md lists what it covers)? Without it, refuse to approve that step.
 - Common mistakes: "let's just rewrite it" without a harness. In legacy without a written spec (docs/specs/), the only spec is current behaviour.
 
@@ -103,19 +103,19 @@ Every entry has the same shape: when / command / what the team does / **what you
 
 ### 2.5 Single-track development (the default)
 - When: most work. One plan per session.
-- Command: `/plan <backlog item or feature>` → intake (one call) → approve → `/run <plan file>`. For step-by-step control use `/build` → `/review` → `/ship` instead. For a complex feature answer "yes, spec" at intake: 2–3 chat rounds → docs/specs/NNNN-<slug>.md → approve the spec → the plan.
-- Team: intake (one call: spec? / done when / not this time / fixed in advance — skipped when the request already says so, and for bug lines and re-plans; a backlog item skips all but the spec question, and only when it is size L or names a new page, screen, API or data model) → spec rounds if chosen (structure → detail → your corrections → approval; the planner writes docs/specs/NNNN-<slug>.md after every round) → plan (sections 1–2 are your answers or the spec verbatim) → critic review (3+ steps or high risk) → escalation questions → `/run`: branch → implement, verify and commit per step → review and fixes → ship and merge verdict. It stops only for escalation, a fix loop over 3 rounds, and merge approval.
+- Command: `/plan <backlog item or feature>` → intake (one call) → approve (the plan is committed on main at approval) → `/run <plan file>`. For step-by-step control use `/build` → `/review` → `/ship` instead. For a complex feature answer "yes, spec" at intake: 2–3 chat rounds → docs/specs/NNNN-<slug>.md → approve the spec → the plan.
+- Team: intake (one call: spec? / done when / not this time / fixed in advance — skipped when the request already says so, and for bug lines and re-plans; a backlog item skips all but the spec question, and only when it is size L or names a new page, screen, API or data model) → spec rounds if chosen (structure → detail → your corrections → approval; the planner writes docs/specs/NNNN-<slug>.md after every round) → plan (sections 1–2 are your answers or the spec verbatim) → critic review (3+ steps or high risk) → escalation questions → approval commit → `/run` (same session): branch → implement, verify and commit per step → review and fixes → ship and merge verdict. It stops only for escalation, a fix loop over 3 rounds, and merge approval.
 - You: answer the intake in your own words when the options do not fit; the planner writes it down. The spec rounds are the one place you talk at length: answer in your own words, give paths and links (design file, similar screen, external doc) rather than pasting documents, and read the draft file yourself before correcting. Then **actually read the plan.** Are the completion criteria verifiable statements; are logic steps within the step-size target (300 by default; a larger step states why); does it stay inside the non-goals? After approval, keep your hands off. Questions arrive in the form decision / options / recommendation / default — take the recommendation or say why not.
 - Approval criteria (plan): completion criteria · per-step verification command · rollback method — all three present.
-- Common mistakes: ordering big work in chat without a plan. Two plans in one session. Changing direction while the team is working (stop and re-plan instead). Answering the intake with "your call" on the one thing you care about — you will reject the plan for it at approval. Ordering a complex feature with a one-liner and no spec.
+- Common mistakes: ordering big work in chat without a plan. Two plans in one session. Changing direction while the team is working (stop and re-plan instead). Answering the intake with "your call" on the one thing you care about — you will reject the plan for it at approval. Ordering a complex feature with a one-liner and no spec. Splitting `/plan` and `/run` across sessions by habit — only after long spec rounds.
 - When a large diff is normal: scaffolding, generated code, lockfiles, bulk formatting/renames, deletions. If it is a separate commit labelled with its kind, the 300-line rule does not apply — but the review criteria differ: is it reproducible (regeneration diff zero), is logic mixed in, do build and tests pass. Do not read such commits line by line; check those three things.
 
 ### 2.6 Parallel development
 - When: two or more features that are independent at the file level, and sequential is too slow. **Do not use it in the first two weeks.**
-- Option 1 (session-level, most robust): one terminal per feature with `claude --worktree <feature>` → each session runs `/plan` → `/run`. You merge PRs in order and ask later branches to "rebase on main and re-verify".
+- Option 1 (session-level, most robust): one terminal per feature with `claude --worktree <feature>` → each session runs `/plan` → `/run`. You merge PRs in order and ask later branches to "rebase on main and re-verify". In a `claude --worktree` session `/plan` and `/run` stay on the worktree's branch.
 - Option 2 (in-session): in the main session, `/parallel <plan files>` → one team-builder per plan implements, self-verifies and commits in an isolated worktree → `/integrate` reviews, merges and verifies one branch at a time. Track progress in the "Awaiting integration" list in `docs/STATUS.md`.
 - Option 3 (agent teams, experimental): `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in `settings.json` → `env`. Only when modules are truly independent and teammates need to coordinate.
-- Precondition: `.claude/` must be committed or listed in `.worktreeinclude` so worktree sessions also have the team. Add `.env` to `.worktreeinclude` as well.
+- Precondition: `.claude/` must be committed or listed in `.worktreeinclude` so worktree sessions also have the team. Add `.env` to `.worktreeinclude` as well. Plans are committed at approval, which is what worktrees see.
 - You: check that the plans' "files touched" sets do not overlap, and decide the integration order (dependencies first). While it runs, answer each session's questions only.
 - Approval criteria: zero overlapping files. If they overlap, run sequentially.
 - Plans cut from one spec run in parallel only if the split proposal showed disjoint files and no depends-on; the spec's "done when" is checked as a whole after the last one ships.
@@ -166,20 +166,21 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: enabling auto-low-risk without branch protection. Waving through conflict-resolution diffs without review (a correctness re-review is configured, but check).
 
 ### 2.12 Shipping and releasing
-- `/ship`: full verification → docs and CHANGELOG → PR description → push → PR (or local merge). You read the PR's "verification evidence" and "risks and rollback". If either is empty, do not merge.
+- `/ship`: full verification → docs and CHANGELOG → PR description → push → PR (or local merge). You read the PR's "verification evidence" and "risks and rollback". If either is empty, do not merge. After the PR is opened the session is back on main; merge before the next `/plan` (the next session pulls the merge in).
 - `/release [version]`: version proposal → full verification → finalized CHANGELOG → docs/releases/<ver>.md → tag commands. You push the tag. If interfaces changed, a major/minor question arrives.
 - Common mistakes: release notes written from the team's view (what changed) — they must be the user's view (what is different, known issues, rollback).
 
 ### 2.13 Ending a session
-- When: a plan is finished, right after `/ship`, after two or more compactions, when the team spins, at the end of the day.
+- When: a session that stops mid-step, after two or more compactions, when the team spins, at the end of a day with work in flight — not after a finished `/ship` or `/plan` (board and commits are already in place).
 - Command: `/handoff [note]`
-- Team: `wip:` commit of uncommitted changes → docs/STATUS.md updated (including a spec in progress and its round) → report "finished / waiting / first action next session".
+- Team: an open spec round is checkpointed to the planner → docs/STATUS.md written (local, never committed; including a spec in progress and its round) → `wip:` commit of uncommitted code, `docs:` commit of uncommitted documents → report "finished / waiting / first action next session".
 - You: check that the **first next action** matches your view. If not, correct it right there (the team fixes STATUS). Answer waiting decisions now or at the start of the next session.
-- Common mistakes: closing the window without `/handoff` — uncommitted changes and reasoning are lost.
+- Common mistakes: closing the window mid-step without `/handoff` — uncommitted changes and reasoning are lost.
+- Upgrading a project that committed docs/STATUS.md under the old flow: re-run the installer (adds the .gitignore line); the next milestone commit removes the file from the repository.
 
 ### 2.14 Resuming in a new session
-- Command: new session → `/resume [note]`. Use `claude --continue` only for a short interruption. Long sessions stack summaries on summaries and degrade; the default is a fresh session.
-- Team: reconciles the status board (auto-injected), the plan and git → trusts the repo and fixes the board on disagreement → verifier first if the last result was FAIL → asks about waiting decisions → continues from the next action (for a stopped spec: `/plan docs/specs/NNNN-<slug>.md`).
+- Command: new session → `/resume [note]` when the session start shows a board; with only a charter, start with `/plan` (nothing is in progress). Use `claude --continue` only for a short interruption. Long sessions stack summaries on summaries and degrade; the default is a fresh session.
+- Team: reconciles the status board (auto-injected), the plan and git → trusts the repo and fixes the board on disagreement → syncs local main with origin (fast-forward, or a rebase of the local milestone commits after a squash merge) → treats a board whose PR is merged as done (deletes the branch, next: `/plan`) → verifier first if the last result was FAIL → asks about waiting decisions → continues from the next action (for a stopped spec: `/plan docs/specs/NNNN-<slug>.md`).
 - You: answer waiting decisions. If the report says board and repo disagree, the repo is right.
 - Rule: one session = one plan. Another plan means another session.
 - The planner and reviewer accumulate knowledge across sessions in `.claude/agent-memory/<name>/` via `memory: project` (architecture, recurring defects). Requires auto memory to be enabled.
@@ -202,7 +203,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 
 ## 3. Rhythm
 
-- Daily (1–2 hours): `/resume` → (one item from the backlog) answer the intake call (or the spec rounds), approve `/plan` → hands off during `/run` (answer gate questions only) → merge per verdict → `/handoff`.
+- Daily (1–2 hours): `/resume` → (one item from the backlog) answer the intake call (or the spec rounds), approve `/plan` → hands off during `/run` (answer gate questions only) → merge per verdict → (`/handoff` only if something is left mid-flight).
 - Weekly: `/backlog` for next week's top three, `/release`, skim docs/DECISIONS.md, `/retro` if needed.
 - First week: day 1 `/kickoff` (or `/assess`) plus a "verification command that runs in under a minute" → days 2–3 walking skeleton → days 4–5 two features through plan→run → one `/retro`. Parallelism from week two.
 - Three metrics: rework count / questions per session (the intake call and spec rounds are expected and not counted) / plan-approval→merge time. `/ship` appends one line per plan to docs/METRICS.md and `/retro` reads it. If they fall, the setup fits.
@@ -241,7 +242,7 @@ Before merging a PR:
 - Auto-injected documents growing: CHARTER 60 lines, STATUS 30 lines. The lead keeps STATUS within the cap; the planner splits CHARTER when exceeded; the hook truncates at 120 lines.
 - Critic and 4 lenses on small plans: under 3 logic steps and risk:low the critic is skipped; review uses 2 lenses below 600 logic lines and risk:low. Adjust via the operating profile (/hire).
 - Intake asks at most once per plan; if bug lines, re-plans or backlog items (beyond the one spec question for size L or a new page, screen, API or data model) still draw questions, it is a `/retro` subject.
-- Spec rounds are the exception to short chats: give paths and links, never paste documents (the planner reads them); the file is the memory, so `/handoff` after a long spec session and re-enter with `/plan docs/specs/NNNN-<slug>.md`.
+- Spec rounds are the exception to short chats: give paths and links, never paste documents (the planner reads them); the file is the memory, so after long spec rounds choose "approve, plan next session" (the spec is committed) and re-enter with `/plan docs/specs/NNNN-<slug>.md`.
 - On your side: do not re-ask the same question every session — record decisions in docs/DECISIONS.md and let the lead follow them. One plan per session. When the context gets heavy, `/handoff` and start fresh.
 
 ## 6. Do not

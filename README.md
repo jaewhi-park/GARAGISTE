@@ -29,7 +29,7 @@ Each flavor's `GUIDE.md` is the human manual (install, what to do in each situat
 ## Six principles
 1. Separate judgment from execution — the implementer does not grade its own work, the reviewer does not fix, the lead does not write code.
 2. Without a verification oracle the team is a plausible-code generator — the first task is a test suite that runs in under a minute.
-3. State lives in the repository, not the session — commits, plan files, `docs/STATUS.md`.
+3. State lives in the repository, not the session — commits and plan files; a local status board (`docs/STATUS.md`, git-ignored) only points at them.
 4. Gates are enforced by the repository, not the prompt — the merge policy is derived from remote, branch protection and auto-merge settings.
 5. Mechanical changes and logic changes never share a commit.
 6. Failures flow back into rules, skills and hooks through `/retro`. The repository remembers, not the human.

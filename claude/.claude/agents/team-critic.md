@@ -16,6 +16,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 - Hidden assumptions: data formats, concurrency, failure paths, availability of external systems
 - Legacy: is a rebuild attempted without a parity harness, or does it touch scenarios the harness does not cover?
 - Spec-backed plans (the Source line names a docs/specs/ file): does the plan widen the spec's Done-when or pull in a Not-this-time item (blocker)? If it covers only part of the spec, does the Source line say "part k of n", does section 1 hold only that part's Done-when subset, and is every other part either in BACKLOG or already listed as a plan in the spec's Status line (blocker if not)? Is every spec "undecided" item in section 6 with a default or explicitly out of scope? Does it contradict docs/PARITY.md without a DECISIONS.md entry?
+- Second round of a loop: you receive your prior findings; review only the sections that changed and list each prior finding as fixed | stands. A blocker only the CEO can settle: say so in the item — the lead escalates it instead of spending a round.
 
 - Reports use only the format below. No preamble, no narration, no apologies. Five lines max per item (except failure logs).
 ## Report format

@@ -10,4 +10,5 @@ Hire the team (assign a model per role). Note: $ARGUMENTS
 4. After CEO approval, apply:
    - Models: `node .opencode/scripts/apply-models.mjs --flavor opencode --dest .opencode/agents --budget inherit --set team-lead=<id> --set team-planner=<id> --set team-critic=<id> --set team-implementer=<id> --set team-reviewer=<id> --set team-verifier=<id>`. The script changes only `model:` lines. Never edit agent files directly.
    - Operating profile: `node .opencode/scripts/set-profile.mjs "budget tier: <tier>" "default review lenses: <2|4>" "parallelism: <none|session>" "critic minimum steps: <n>" "per-step verifier: <on|off>" "step-size target: <n>" "hired: <date> — <one-line reason>"`. The script rewrites only the "## Operating profile" section of AGENTS.md; no planner call.
-5. Show the result in /roster form and note that model assignments take effect from the next session.
+   - Commit: have team-implementer commit the files the scripts changed inside the repository (agent files under .opencode/, AGENTS.md), by path, as `chore(hire): <tier> — models and operating profile` on the current branch.
+5. Show the result in /roster form and note that model assignments take effect from the next session. If docs/STATUS.md lists `/hire` as its first next action, remove that line yourself so `/run …` comes first.

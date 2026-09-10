@@ -1,11 +1,11 @@
 ---
 name: handoff
-description: Wrap up a session — update the status board (docs/STATUS.md), commit WIP, list pending decisions. Use when ending a session or when repeated compaction has made the context heavy
+description: Wrap up a session that stops mid-flight — write the status board (docs/STATUS.md, local), commit WIP, list pending decisions. A finished /ship or /plan already leaves board and commits in place; use this when ending mid-step, after repeated compaction, or when the team spins
 argument-hint: "[note]"
 disable-model-invocation: true
 ---
 Wrap up the session. Note: $ARGUMENTS
 
-1. Check uncommitted changes with git status/diff. If any, have team-implementer make a `wip(<scope>): <state>` commit — even with failing tests, and describe the failure in the body.
-2. Update docs/STATUS.md yourself in the status-board format: plan and branch (or, while no plan exists yet, the spec in progress: path and round), step progress and last verifier result, open review findings, decisions waiting on the CEO, next three actions (for a spec that has no plan yet — interrupted, draft or approved — the first is `/plan docs/specs/NNNN-<slug>.md`).
+1. If a spec round is open and answers not yet handed to team-planner are in context, checkpoint them first — one team-planner call with every fragment verbatim, in order. Then update docs/STATUS.md yourself in the status-board format: plan and branch (or, while no plan exists yet, the spec in progress: path and round), step progress and last verifier result, open review findings, decisions waiting on the CEO, next three actions — the first is the command this session ended by suggesting, or `/run <plan path>` for a step in progress (build continues after the last recorded PASS), or `/plan docs/specs/NNNN-<slug>.md` for a spec that has no plan yet (interrupted, draft or approved). The board is local and never committed.
+2. Check uncommitted changes with git status/diff. If any, have team-implementer commit them by path: `wip(<scope>): <state>` when code is involved — even with failing tests, and describe the failure in the body; `docs(<scope>): <what>` when only docs-only files changed.
 3. Report to the CEO: what this session finished / decisions waiting / the first action of the next session. Start no new work afterwards.
