@@ -24,7 +24,7 @@
 ## CEO 콘솔 (스킬 = 슬래시 커맨드, CEO만 호출 가능)
 | 루프 | 커맨드 | 산출물 |
 |---|---|---|
-| 경영 | `/kickoff <아이디어>` / `/assess <대상>` | CHARTER, ADR, CLAUDE.md, (레거시) ASSESSMENT·PARITY·REBUILD_PLAN; 끝에 /hire |
+| 경영 | `/kickoff <아이디어>` / `/assess <대상>` | CHARTER, ADR, CLAUDE.md, (레거시) ASSESSMENT·REBUILD_PLAN·parity harness 계획; 끝에 /hire |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
 | 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`) | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md, 단계별 커밋 |
 | 병렬 | `/parallel <계획들>` → `/integrate` | worktree별 브랜치 → 직렬 머지 큐 |
@@ -77,7 +77,7 @@
 `git remote`가 비어 있으면 `/ship`은 push·PR 대신 docs/prs/NNNN-<slug>.md 에 PR 설명을 남기고, 머지 정책대로 로컬 main에 `git merge --no-ff` 한다(manual이면 CEO 승인 후). 게이트는 그대로다 — 계획 하나 = 브랜치 하나, verifier, 4렌즈 리뷰, 위험도, 머지 커밋 단위 롤백. `/release`는 승인 후 로컬 태그를 만든다. GitHub를 붙이면(`git remote add origin …`) 다음 `/ship`부터 자동으로 PR 흐름이 되고, main 보호 + auto-merge를 켜면 자동으로 auto-low-risk가 된다. 설정 파일을 고칠 일은 없다.
 
 ## 모델과 예산
-**권장 경로는 `/hire`** 다. lead 가 사용 가능한 모델을 확인하고(opencode: `opencode models`, Claude Code: 별칭), 예산 티어·프로젝트 성격·병렬 계획을 묻고, 역할 × 모델 표를 이유와 함께 제안한다. 승인하면 `scripts/apply-models.mjs`(model 줄만 바꾸는 스크립트)로 적용하고 CLAUDE.md 에 "운영 프로필"(기본 렌즈 수·병렬·critic 기준)을 남긴다. `/kickoff`·`/assess` 끝에 자동으로 제안된다. 아래 `--budget` 프로필은 비대화형·스크립트용이다. 설치할 때 `-Budget <티어>`를 주면 첫(kickoff/assess) 세션부터 verifier가 haiku로 돌고, `/hire`가 그 위에서 다듬는다.
+**권장 경로는 `/hire`** 다. lead 가 사용 가능한 모델을 확인하고(opencode: `opencode models`, Claude Code: 별칭), 예산 티어·프로젝트 성격·병렬 계획을 묻고, 역할 × 모델 표를 이유와 함께 제안한다. 승인하면 `scripts/apply-models.mjs`(model 줄만 바꾸는 스크립트)로 적용하고 CLAUDE.md 에 "운영 프로필"(기본 렌즈 수·병렬·critic 기준·단계별 verifier·단계 크기 목표)을 남긴다. `/kickoff`·`/assess` 끝에 자동으로 실행된다. 아래 `--budget` 프로필은 비대화형·스크립트용이다. 설치할 때 `-Budget <티어>`를 주면 첫(kickoff/assess) 세션부터 verifier가 haiku로 돌고, `/hire`가 그 위에서 다듬는다.
 
 기본은 `inherit`(model 줄 없음 → 세션 모델 상속). `--budget` 을 주면 역할별 모델 별칭(opus/sonnet/haiku)과 effort 를 기록한다. 별칭은 플랜이 제공하는 최신 모델로 풀리므로 "감지"는 필요 없고, 티어는 당신의 사용량 한도 선택이다: unlimited(API·사내) · high(Max 20x) · medium(Max 5x) · low(Pro). 플랜은 CLI 로 확인할 수 없어 사람이 지정한다.
 

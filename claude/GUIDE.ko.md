@@ -74,7 +74,7 @@
 확인할 것: SessionStart 직후 "GARAGISTE: docs/CHARTER.md 가 없다…" 안내가 보이는지(훅 동작), `/kickoff` 등이 슬래시 메뉴에 보이고 `charter`·`spec` 같은 지식 스킬은 안 보이는지.
 
 ### 모델·예산 — `/hire`
-`/kickoff` 또는 `/assess` 가 끝나면 lead 가 `/hire` 를 제안한다. lead 가 사용 가능한 모델을 확인하고 당신에게 예산 티어(unlimited / high=Max 20x / medium=Max 5x / low=Pro), 프로젝트 성격, 병렬 계획을 묻고 역할 × 모델 표를 이유와 함께 내놓는다. 당신은 표를 승인하거나 한두 줄 바꾼다. 원칙: 판단하는 자리(planner·critic·reviewer)에 강한 모델, verifier 는 가장 빠른 모델, implementer 는 예산에 따라. 승인하면 스크립트가 model 줄만 바꾸고 CLAUDE.md 에 "운영 프로필"이 남는다. 새 세션부터 반영. 설치할 때 `-Budget <티어>`를 주면 kickoff/assess 세션부터 verifier가 빠른 모델로 돌고, `/hire`가 그 위에서 다듬는다. 예산이 바뀌면 `/hire` 를 다시 하고, 현재 배정은 `/roster` 로 본다. 설치 스크립트의 `--budget` 은 판단 없이 기계적으로 배분하는 비대화형 경로다.
+`/kickoff` 또는 `/assess` 가 끝나면 lead 가 `/hire` 를 실행한다. lead 가 사용 가능한 모델을 확인하고 당신에게 예산 티어(unlimited / high=Max 20x / medium=Max 5x / low=Pro), 프로젝트 성격, 병렬 계획을 묻고 역할 × 모델 표를 이유와 함께 내놓는다. 당신은 표를 승인하거나 한두 줄 바꾼다. 원칙: 판단하는 자리(planner·critic·reviewer)에 강한 모델, verifier 는 가장 빠른 모델, implementer 는 예산에 따라. 승인하면 스크립트가 model 줄만 바꾸고 CLAUDE.md 에 "운영 프로필"이 남는다. 새 세션부터 반영. 설치할 때 `-Budget <티어>`를 주면 kickoff/assess 세션부터 verifier가 빠른 모델로 돌고, `/hire`가 그 위에서 다듬는다. 예산이 바뀌면 `/hire` 를 다시 하고, 현재 배정은 `/roster` 로 본다. 설치 스크립트의 `--budget` 은 판단 없이 기계적으로 배분하는 비대화형 경로다.
 
 ## 2. 상황별 가이드
 
@@ -91,7 +91,7 @@
 ### 2.2 레거시 인수 / 리빌드 기획
 - 언제: 기존 코드가 있고 고치거나 갈아엎어야 할 때.
 - 명령: `/assess <경로 또는 설명>`
-- 팀: 인벤토리(docs/ASSESSMENT.md) → 보존/수정 방침을 한 번에 → 전략과 첫 seam(ADR, docs/REBUILD_PLAN.md, CLAUDE.md) → 첫 seam의 parity harness 계획 → `/hire`(리빌드는 critic·reviewer 비중을 높인다). 하네스는 새 세션에서 계획 0001로 `/run`을 통해 만들고, 이후 리빌드 단계마다 자기 seam으로 먼저 확장한다.
+- 팀: 인벤토리(docs/ASSESSMENT.md) → 미지수 보고, 보존/수정 방침을 한 번에 → 전략과 첫 seam(ADR, docs/REBUILD_PLAN.md, CLAUDE.md) → 첫 seam의 parity harness 계획 → `/hire`(리빌드는 critic·reviewer 비중을 높인다). 하네스는 새 세션에서 계획 0001로 `/run`을 통해 만들고, 이후 리빌드 단계마다 그 단계의 seam까지 먼저 확장한다.
 - 당신: 두 가지 결정만 하면 된다. (1) "버그로 보이는 현재 동작"을 보존할지 수정할지 — 기본값이 채워진 질문 한 번: 기본값을 수락하거나 수정할 항목을 지목한다. (2) 전략(strangler fig / 모듈별 교체 / 전면 재작성). 기본값은 strangler fig이고, 전면 재작성은 팀이 근거를 대야 한다.
 - 승인 기준: 리빌드하려는 seam에 대해 parity harness가 레거시로 PASS인가(docs/PARITY.md에 범위가 적혀 있다). 이게 없으면 그 단계 승인을 거부한다.
 - 흔한 실수: 하네스 없이 "일단 새로 짜자". 문서화된 사양서(docs/specs/)가 없는 레거시에서 사양은 현재 동작뿐이다.
@@ -202,7 +202,7 @@
 - 흔한 실수: 회고 없이 같은 프롬프트를 반복하기. 규칙을 잔뜩 승인해 CLAUDE.md을 비대하게 만들기.
 
 ### 2.16 채용 (모델 배정)
-- 언제: `/kickoff`·`/assess` 직후(lead가 제안한다), 예산 티어가 바뀔 때, 팀이 너무 느리거나 비싸다고 느낄 때.
+- 언제: `/kickoff`·`/assess` 직후(lead가 실행한다), 예산 티어가 바뀔 때, 팀이 너무 느리거나 비싸다고 느낄 때.
 - 명령: `/hire [메모]`
 - 팀: 별칭 opus/sonnet/haiku(와 당신이 알려준 API 모델 ID)를 후보로 놓고, 예산 티어·프로젝트 성격·병렬 계획·강조할 역할을 한 번에 묻는다 → 역할 × 모델 표를 이유와 함께 제안 → 운영 프로필(기본 리뷰 렌즈 2/4, 병렬 허용, critic 최소 단계, 단계별 verifier, 단계 크기 목표)도 제안 → 승인 후 스크립트 하나가 model 줄만 바꾸고 다른 하나가 CLAUDE.md에 "운영 프로필" 절을 쓴다.
 - 당신: 질문에 답한다. 특히 사내 모델처럼 lead가 모르는 모델은 **어느 것이 가장 강하고 어느 것이 가장 빠른지** 당신이 알려줘야 한다(lead는 추측하지 않는다). 표는 승인하거나 한두 줄만 바꾼다.

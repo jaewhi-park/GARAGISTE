@@ -82,7 +82,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.2 Legacy takeover / rebuild planning
 - When: there is existing code to fix or replace.
 - Command: `/assess <path or description>`
-- Team: inventory (docs/ASSESSMENT.md) → preserve/fix policy in one call → strategy and first seam (ADR, docs/REBUILD_PLAN.md, CLAUDE.md) → a plan for the first seam's parity harness → `/hire` (a rebuild weights critic and reviewer). The harness is built through `/run` as plan 0001 in a new session; every later rebuild step extends it to its seam first.
+- Team: inventory (docs/ASSESSMENT.md) → unknowns reported, preserve/fix policy in one call → strategy and first seam (ADR, docs/REBUILD_PLAN.md, CLAUDE.md) → a plan for the first seam's parity harness → `/hire` (a rebuild weights critic and reviewer). The harness is built through `/run` as plan 0001 in a new session; every later rebuild step extends it to its seam first.
 - You: two decisions only. (1) preserve or fix each "current behaviour that looks like a bug" — one call with defaults: accept them or name the items to fix. (2) the strategy (strangler fig / module-by-module / full rewrite). The default is strangler fig; a full rewrite needs evidence from the team.
 - Approval criteria: does the parity harness PASS against legacy for the seam being rebuilt (docs/PARITY.md lists what it covers)? Without it, refuse to approve that step.
 - Common mistakes: "let's just rewrite it" without a harness. In legacy without a written spec (docs/specs/), the only spec is current behaviour.

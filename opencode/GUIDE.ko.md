@@ -92,7 +92,7 @@
 ### 2.2 레거시 인수 / 리빌드 기획
 - 언제: 기존 코드가 있고 고치거나 갈아엎어야 할 때.
 - 명령: `/assess <경로 또는 설명>`
-- 팀: 인벤토리(docs/ASSESSMENT.md) → 보존/수정 방침을 한 번에 → 전략과 첫 seam(ADR, docs/REBUILD_PLAN.md, AGENTS.md) → 첫 seam의 parity harness 계획 → `/hire`(리빌드는 critic·reviewer 비중을 높인다). 하네스는 새 세션에서 계획 0001로 `/run`을 통해 만들고, 이후 리빌드 단계마다 자기 seam으로 먼저 확장한다.
+- 팀: 인벤토리(docs/ASSESSMENT.md) → 미지수 보고, 보존/수정 방침을 한 번에 → 전략과 첫 seam(ADR, docs/REBUILD_PLAN.md, AGENTS.md) → 첫 seam의 parity harness 계획 → `/hire`(리빌드는 critic·reviewer 비중을 높인다). 하네스는 새 세션에서 계획 0001로 `/run`을 통해 만들고, 이후 리빌드 단계마다 그 단계의 seam까지 먼저 확장한다.
 - 당신: 두 가지 결정만 하면 된다. (1) "버그로 보이는 현재 동작"을 보존할지 수정할지 — 기본값이 채워진 질문 한 번: 기본값을 수락하거나 수정할 항목을 지목한다. (2) 전략(strangler fig / 모듈별 교체 / 전면 재작성). 기본값은 strangler fig이고, 전면 재작성은 팀이 근거를 대야 한다.
 - 승인 기준: 리빌드하려는 seam에 대해 parity harness가 레거시로 PASS인가(docs/PARITY.md에 범위가 적혀 있다). 이게 없으면 그 단계 승인을 거부한다.
 - 흔한 실수: 하네스 없이 "일단 새로 짜자". 문서화된 사양서(docs/specs/)가 없는 레거시에서 사양은 현재 동작뿐이다.

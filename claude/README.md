@@ -16,7 +16,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 ## CEO console (skills = slash commands)
 | Loop | Command | Artifact |
 |---|---|---|
-| Governance | `/kickoff <idea>` / `/assess <target>` | CHARTER, ADR, CLAUDE.md, (legacy) ASSESSMENT · PARITY · REBUILD_PLAN; ends with /hire |
+| Governance | `/kickoff <idea>` / `/assess <target>` | CHARTER, ADR, CLAUDE.md, (legacy) ASSESSMENT · REBUILD_PLAN · parity-harness plan; ends with /hire |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
 | Engineering | `/plan <item>` → `/run <plan>` (or `/build`) | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md, one commit per step |
 | Parallel | `/parallel <plans>` → `/integrate` | one branch per worktree → serial merge queue |
