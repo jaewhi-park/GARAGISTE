@@ -1,6 +1,6 @@
 ---
 name: spec
-description: Procedure, question rounds and template for a feature specification (docs/specs/NNNN-<slug>.md). Loaded by /plan step 0 when the CEO opts in; never for bugs, rebuild steps or re-plans.
+description: Procedure, question rounds and template for a feature specification (docs/specs/NNNN-<slug>.md). Loaded by /plan step 0a when the CEO opts in at intake or re-enters with a docs/specs file; never for bugs, rebuild steps or re-plans.
 user-invocable: false
 ---
 # spec
@@ -12,11 +12,11 @@ Offered at /plan step 0 (question 1). Warranted for a new page or screen, a new 
 Never for: bugs (the reproduction is the spec), docs/REBUILD_PLAN.md steps (docs/PARITY.md is the spec), re-plans.
 
 ## Rounds
-The intake answers (done when / not this time / fixed in advance) already seed the spec. The rounds are asked in plain chat — the one place open questions and long answers are allowed; AskUserQuestion is used only for the approval.
+The intake answers (done when / not this time / fixed in advance) — or, for a BACKLOG item, its completion criteria and dependencies — already seed the spec. The rounds are asked in plain chat — the one place open questions and long answers are allowed; AskUserQuestion is used only for the approval.
 1. Structure — one message, numbered: who uses it and when (trigger) / the core flow in 3–7 steps / why now (one line).
 2. Detail — only the slots still open after round 1: screens and states incl. empty and error (if UI) / data in and out and validation / interfaces touched — which, not their design (API, schema, file format, events) / quality stricter than the charter / reuse and references (existing screen, design file, similar feature, external doc — paths and links, never pasted).
-After each round: hand the answers verbatim to team-planner, which writes or updates the spec and, in the same call, docs/STATUS.md (`Spec: <path> · round <k> | correction <k> | draft | approved`; next action `/plan docs/specs/NNNN-<slug>.md`) and reports one line: `Spec: <path> · Status: <s> · Filled: <sections> · Open: <sections> · Undecided: <items>`. Compose the next round from that line only; never read the file yourself. If the round answers are no longer in context (compaction), have team-planner report the open slots.
-3. Correction — the CEO reads the draft file and corrects in plain chat; team-planner revises. Max 2 rounds; what is still disputed goes under Undecided.
+After each round: hand the answers verbatim to team-planner, which writes or updates the spec and, in the same call, docs/STATUS.md (`Spec: <path> · round <k> | correction <k> | draft | approved`; next action `/plan docs/specs/NNNN-<slug>.md`) and reports, as the Summary of its usual report, one line: `Spec: <path> · Status: <s> · Filled: <sections> · Open: <sections> · Undecided: <items>`. Compose the next round from the planner's report line only; never read the file yourself. If the round answers are no longer in context (compaction), have team-planner report the open slots.
+3. Correction — after round 2 name the file path and go straight to the approval question; on "correct" the CEO reads the draft file and corrects in plain chat, team-planner revises, and the approval question is asked again. Max 2 correction rounds; what is still disputed goes under Undecided.
 4. Approval — one AskUserQuestion: approve, plan now / approve, plan next session (suggest `/handoff` in a sentence) / correct / stop here (stays draft). On approval team-planner sets `Status: approved <date>` and writes `spec: docs/specs/NNNN-<slug>.md` into the source BACKLOG item, if any.
 
 ## Template — docs/specs/NNNN-<slug>.md
@@ -40,4 +40,4 @@ Source: BACKLOG item <title> | CEO request <date>
 ## Writing rules
 - Leave unanswered items as "undecided — <when>". Never fill them with guesses. A "your call" answer becomes "undecided — planner default: <x>; confirm at plan approval".
 - A hard-to-reverse choice surfaced in a round goes under Undecided as "decided in the plan's ADR", not into the spec.
-- Lifecycle: /plan (spec-backed) appends the plan path to Status; /ship marks it done when every Done-when item is covered by a shipped plan; /backlog sweeps approved specs' Not-this-time and uncovered Done-when for candidates.
+- Lifecycle: /plan (spec-backed) sets Status to `in progress — plans: …`, appending each later part's plan path; /ship marks it done when every Done-when item is covered by a shipped plan; /backlog sweeps specs that are approved, in progress or done for candidates.

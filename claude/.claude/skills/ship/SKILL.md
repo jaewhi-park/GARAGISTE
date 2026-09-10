@@ -8,7 +8,7 @@ This skill runs only when the CEO invoked it directly or when /run chains it via
 Ship. Target: $ARGUMENTS
 
 1. Run full verification with team-verifier (all commands in CLAUDE.md; include the parity harness for legacy). On FAIL, go back to the /build loop.
-2. Have team-implementer update CHANGELOG and user docs and tidy commits; have team-planner update ADRs, docs/DECISIONS.md and, if the plan references a spec, its Status line (done when every Done-when item is covered by a shipped plan; otherwise list what remains).
+2. Have team-implementer update CHANGELOG and user docs and tidy commits; have team-planner update ADRs, docs/DECISIONS.md and, if the plan references a spec, its Status line (`done` when every Done-when item is covered by a shipped plan — shipped plans are the `(spec NNNN)` lines in docs/METRICS.md; otherwise keep `in progress — plans: …` and append `remaining: <uncovered Done-when items>`).
 3. Write the PR description: summary / verification evidence (commands and results) / review findings and how they were handled / risks and rollback / decisions needed from the CEO.
 4. Set the risk label: `risk:high` if any escalation criterion was touched (schema, public interface, security, dependencies, migrations), otherwise `risk:low`.
 5. **Resolve the merge policy automatically.** If CLAUDE.md "## Merge policy" has an explicit value, use it (override); otherwise derive it from repository state:

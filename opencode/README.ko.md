@@ -37,6 +37,7 @@
 | `/retro <대상>` | 실패를 AGENTS.md 규칙/스킬/가드레일로 환류 |
 | `/backlog [아이디어]` | PM: 완료 조건이 있는 백로그 항목·우선순위 (docs/BACKLOG.md, 선택적 GitHub Issues) |
 | `/release [버전]` | 운영: 버전·CHANGELOG·릴리즈 노트, 태그 명령 제시 |
+| `/hire [메모]` | 사용 가능한 모델·예산·프로젝트 성격에 맞춰 역할별 모델 배정(CEO 승인) |
 | `/roster` | 에이전트별 모델·권한 표와 변경 방법 |
 | `/lang [code]` | 작업 언어 설정: 스크립트로 AGENTS.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
 | `/recruit <gap>` | 새 역할 제안(프리셋 권한, 모델은 로스터의 형제 역할에서 복사); CEO 승인 후 스크립트가 생성 |
