@@ -29,7 +29,7 @@ Write reports and documents in the language given under "## Language" in AGENTS.
 - Record architecture decisions as docs/adr/NNNN-<slug>.md (context / decision / alternatives / consequences).
 - Specs: docs/specs/NNNN-<slug>.md per the `spec` skill's template — read .opencode/skills/spec/SKILL.md (global install: ~/.config/opencode/skills/spec/SKILL.md) before writing. Spec = what and when done, in the CEO's words; ADR = why this design; plan = how. Never fill undecided items with guesses.
 - Keep docs/CHARTER.md under 60 lines and docs/STATUS.md under 30 lines — they are injected into every session. Move detail elsewhere and link it.
-- Keep steps small: a logic-change step targets a diff of 300 lines or less; split if larger.
+- Keep steps small: a logic-change step targets the step-size target in AGENTS.md's operating profile (default 300 changed lines = `git diff --stat` insertions + deletions, tests included, mechanical changes excluded). Split if larger, or state in the step why it cannot be split (an atomic refactor, a screen that must ship with its states) — never beyond 2× the target.
 - Mechanical changes (scaffolding, generated code, dependency/lockfile updates, bulk renames/formatting/moves, deletions) are exempt from the size limit but go in **separate steps and separate commits**. Label the step with its kind (scaffold | gen | mechanical | deps | delete) and the reproduction command if any. Never mix logic and mechanical changes in one step.
 - Every step states the command that proves it passed. A step that cannot be verified does not belong in a plan.
 - For a legacy rebuild, plan only within what the parity harness covers (if there is none, step 0 is building it).

@@ -1,14 +1,12 @@
 ---
-description: Legacy assessment — inventory, risks, parity harness, rebuild strategy (ADR). Rebuild only after the harness exists
+description: Legacy assessment — inventory, risks, rebuild strategy (ADR), parity harness plan for the first seam. Rebuild only after the harness exists
 agent: team-lead
 ---
 Assess an existing codebase and set a rebuild/modernization strategy. Target and context: $ARGUMENTS
 
 0. If AGENTS.md has no "## Language" section, first ask the CEO the working language with the question tool (options: ko / en / other; default: the language of the CEO's message), run `node .opencode/scripts/set-language.mjs <code>`, and continue in that language. Skip when it is already set.
-1. Load the `legacy-assessment` skill. Send explore out per area in parallel to gather the inventory, and have team-planner compile docs/ASSESSMENT.md.
-2. Report unknowns and "current behaviour that looks like a bug" to the CEO and get a preserve/fix policy per item.
-3. Following the `parity-harness` skill, have team-implementer build the characterization-test / golden-output harness and confirm with team-verifier. No rebuild step starts without the harness.
-4. Have team-planner compare strategies (strangler fig / module-by-module replacement / full rewrite) with a recommendation; after team-critic review and CEO confirmation, record an ADR and docs/REBUILD_PLAN.md.
-5. Have AGENTS.md written/updated per the `agents-md` skill (including the harness command).
-6. Propose the first rebuild step in plan-document form (do not invoke `/plan` via the Skill tool).
-7. Suggest `/hire` to the CEO in a sentence — a rebuild weights critic and reviewer heavily, so assign in that direction.
+1. Load the `legacy-assessment` skill. Send explore out per area in parallel to gather the inventory, and have team-planner compile docs/ASSESSMENT.md — pass the explore reports to it verbatim, do not re-summarize.
+2. Report unknowns in chat, then get the preserve/fix policy in one question-tool call (split only if the tool limits questions per call): the question names each "looks like a bug" item with the planner's default (preserve, per the `parity-harness` skill) and offers "accept all defaults" first and "decide per item" second (then one question per item in follow-up calls); items the planner flagged as charter-conflicting get their own question. The answers go to team-planner verbatim in step 3 and are logged in docs/DECISIONS.md there.
+3. Have team-planner compare strategies (strangler fig / module-by-module replacement / full rewrite) with a recommendation and the first seam to replace; have team-critic review it (on REVISE, findings verbatim to the planner, max 2 rounds) and ask the CEO to confirm. Then one team-planner call records the ADR, docs/REBUILD_PLAN.md (step 0 of every rebuild step: extend the parity harness to that step's seam) and AGENTS.md per the `agents-md` skill ("## Commands" = the build/test commands the inventory found, each flagged `unverified`).
+4. Have team-verifier run the Commands section. Then one team-planner call removes the `unverified` flag from what passed, drops what failed, and writes docs/plans/0001-parity-harness-<seam>.md — the harness for the first seam per the `parity-harness` skill, its runner registered under Commands (do not invoke `/plan`).
+5. Suggest `/hire` to the CEO in a sentence — a rebuild weights critic and reviewer heavily, so assign in that direction — and then a new session with `/run docs/plans/0001-parity-harness-<seam>.md` (model assignments load at session start). No rebuild step starts before that plan ships with the harness PASS against legacy.

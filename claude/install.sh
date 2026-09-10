@@ -31,7 +31,7 @@ if [ "$MODE" = global ]; then
   echo "→ Global install: $DEST"
   for d in agents skills hooks scripts; do run mkdir -p "$DEST/$d"; done
   for d in agents skills hooks; do run cp -R "$SRC/.claude/$d/." "$DEST/$d/"; done
-  for f in apply-models.mjs set-language.mjs new-agent.mjs; do run cp "$SRC/scripts/$f" "$DEST/scripts/$f"; done
+  for f in apply-models.mjs set-language.mjs new-agent.mjs set-profile.mjs; do run cp "$SRC/scripts/$f" "$DEST/scripts/$f"; done
   if [ "$DRY" = 0 ]; then
 python3 - "$CFG" "$SRC/.claude/settings.json" "$DEST" << 'PY'
 import json, sys, pathlib
@@ -91,7 +91,7 @@ if [ "$INPLACE" = 0 ]; then
     run mkdir -p "$ROOT/.claude/$d"; run cp -R "$SRC/.claude/$d/." "$ROOT/.claude/$d/"
   done
 fi
-run mkdir -p "$ROOT/.claude/scripts"; for f in apply-models.mjs set-language.mjs new-agent.mjs; do run cp "$SRC/scripts/$f" "$ROOT/.claude/scripts/$f"; done
+run mkdir -p "$ROOT/.claude/scripts"; for f in apply-models.mjs set-language.mjs new-agent.mjs set-profile.mjs; do run cp "$SRC/scripts/$f" "$ROOT/.claude/scripts/$f"; done
 run mkdir -p "$ROOT/docs"
 [ -f "$ROOT/docs/README.md" ] || run cp "$SRC/docs/README.md" "$ROOT/docs/README.md"
 
@@ -136,5 +136,5 @@ cat << 'MSG'
 Next steps:
   1. Run `claude` in the repo (settings.agent makes team-lead the main agent). Accept the folder-trust prompt so hooks are enabled.
   2. New project: /kickoff <idea>   Legacy: /assess <target>   Continue: /resume
-  3. Model assignment (hiring): /hire
+  3. Models: /hire at the end of kickoff/assess refines them; pass -Budget <tier> here so the first session already runs the verifier on the fast model
 MSG

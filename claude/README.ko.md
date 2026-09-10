@@ -32,15 +32,15 @@
 | 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
 | 경영 | `/retro <대상>` | CLAUDE.md 규칙 / 스킬 / 훅 갱신 |
 | 인수인계 | `/handoff` / `/resume` | docs/STATUS.md |
-| 팀 관리 | `/hire` / `/roster` | 역할별 모델·effort 배정; 로스터 표 |
+| 팀 관리 | `/hire` / `/roster` | 역할별 모델·effort 배정과 운영 프로필(둘 다 스크립트); 로스터 표 |
 | 언어 | `/lang [code]` | 스크립트로 CLAUDE.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
 | 채용 | `/recruit <gap>` | 권한 프리셋과 형제 역할의 모델·effort로 새 역할 생성(승인 후 스크립트) |
 
 ## 팀 (.claude/agents/)
 | 에이전트 | 역할 | 도구 | 특이사항 |
 |---|---|---|---|
-| team-lead | 테크리드/EM. 메인 세션 에이전트 | Agent(team-*, Explore), Read/Grep/Glob, Bash, AskUserQuestion | Edit/Write 없음. `settings.agent`로 기본 지정 |
-| team-planner | 아키텍트. 문서·계획·ADR·상태판 | Read/Grep/Glob, Edit/Write, Bash, Web* | `memory: project` — 아키텍처 지식 축적 |
+| team-lead | 테크리드/EM. 메인 세션 에이전트 | Agent(team-*, Explore), Read/Grep/Glob, Bash, Edit/Write, AskUserQuestion | Edit/Write는 docs/STATUS.md만(훅 강제). `settings.agent`로 기본 지정 |
+| team-planner | 아키텍트. 문서·계획·사양서·ADR | Read/Grep/Glob, Edit/Write, Bash, Web* | `memory: project` — 아키텍처 지식 축적 |
 | team-critic | 설계 리뷰(pre-mortem) | Read/Grep/Glob | 읽기 전용 |
 | team-implementer | 시니어 엔지니어 (메인 체크아웃, 순차) | Read/Grep/Glob, Edit/Write, Bash | 커밋함, /ship 에서 브랜치 push·PR 생성 |
 | team-builder | 시니어 엔지니어 (병렬용) | 동일 | `isolation: worktree` — 계획 하나를 자기 worktree에서 통째로 구현, 자체 검증 |
@@ -77,7 +77,7 @@
 `git remote`가 비어 있으면 `/ship`은 push·PR 대신 docs/prs/NNNN-<slug>.md 에 PR 설명을 남기고, 머지 정책대로 로컬 main에 `git merge --no-ff` 한다(manual이면 CEO 승인 후). 게이트는 그대로다 — 계획 하나 = 브랜치 하나, verifier, 4렌즈 리뷰, 위험도, 머지 커밋 단위 롤백. `/release`는 승인 후 로컬 태그를 만든다. GitHub를 붙이면(`git remote add origin …`) 다음 `/ship`부터 자동으로 PR 흐름이 되고, main 보호 + auto-merge를 켜면 자동으로 auto-low-risk가 된다. 설정 파일을 고칠 일은 없다.
 
 ## 모델과 예산
-**권장 경로는 `/hire`** 다. lead 가 사용 가능한 모델을 확인하고(opencode: `opencode models`, Claude Code: 별칭), 예산 티어·프로젝트 성격·병렬 계획을 묻고, 역할 × 모델 표를 이유와 함께 제안한다. 승인하면 `scripts/apply-models.mjs`(model 줄만 바꾸는 스크립트)로 적용하고 CLAUDE.md 에 "운영 프로필"(기본 렌즈 수·병렬·critic 기준)을 남긴다. `/kickoff`·`/assess` 끝에 자동으로 제안된다. 아래 `--budget` 프로필은 비대화형·스크립트용이다.
+**권장 경로는 `/hire`** 다. lead 가 사용 가능한 모델을 확인하고(opencode: `opencode models`, Claude Code: 별칭), 예산 티어·프로젝트 성격·병렬 계획을 묻고, 역할 × 모델 표를 이유와 함께 제안한다. 승인하면 `scripts/apply-models.mjs`(model 줄만 바꾸는 스크립트)로 적용하고 CLAUDE.md 에 "운영 프로필"(기본 렌즈 수·병렬·critic 기준)을 남긴다. `/kickoff`·`/assess` 끝에 자동으로 제안된다. 아래 `--budget` 프로필은 비대화형·스크립트용이다. 설치할 때 `-Budget <티어>`를 주면 첫(kickoff/assess) 세션부터 verifier가 haiku로 돌고, `/hire`가 그 위에서 다듬는다.
 
 기본은 `inherit`(model 줄 없음 → 세션 모델 상속). `--budget` 을 주면 역할별 모델 별칭(opus/sonnet/haiku)과 effort 를 기록한다. 별칭은 플랜이 제공하는 최신 모델로 풀리므로 "감지"는 필요 없고, 티어는 당신의 사용량 한도 선택이다: unlimited(API·사내) · high(Max 20x) · medium(Max 5x) · low(Pro). 플랜은 CLI 로 확인할 수 없어 사람이 지정한다.
 
@@ -99,7 +99,7 @@
 에이전트별 장기 기억은 `.claude/agent-memory/<name>/`에 쌓인다(planner·reviewer). auto memory가 꺼져 있으면 동작하지 않는다.
 
 ## opencode 버전과의 차이
-- 경로별 edit 권한이 없다. planner의 "docs만 수정"은 프롬프트 규칙이고, 리뷰어가 잡는다. 하드 차단이 필요하면 `.claude/hooks/guardrails.mjs`에 경로 규칙을 추가한다.
+- 경로별 edit 권한은 훅이 강제하는 곳에만 있다: team-lead는 docs/STATUS.md만 수정할 수 있다(`guardrails.mjs`). planner의 "docs만 수정"은 프롬프트 규칙이고 리뷰어가 잡는다. 하드 차단이 필요하면 같은 훅에 경로 규칙을 추가한다.
 - 비밀 파일 차단(`.env`, 키, 인증서)은 deny 규칙과 훅을 통해 파일 도구(Read/Edit/Write)에만 적용된다. Bash로는 여전히 `cat .env`가 가능하다. 비밀은 저장소 밖에 두고, 강제 차단이 필요하면 `guardrails.mjs`에 Bash 패턴을 추가한다.
 - `permissions.deny`는 세션 전체에 걸린다. force push와 main 직접 push를 deny와 훅으로 막고, 기능 브랜치 push는 허용한다.
 - 메인 세션 에이전트(`--agent`/`settings.agent`)의 `Agent(...)` 목록은 lead가 부를 수 있는 subagent 허용 목록이다. subagent 정의 안에서는 괄호 목록이 무시된다.

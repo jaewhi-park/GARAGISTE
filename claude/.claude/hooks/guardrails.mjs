@@ -5,6 +5,7 @@ import { execSync } from "node:child_process";
 
 const BLOCKED_COMMANDS = [
   /\bgit\s+(reset\s+--hard\b|clean\s+-\w*f\w*|checkout\s+--\s+\.(\s|$)|branch\s+(-D\b|-f\b|--force\b))/,
+  /\bgit\s+switch\b[^|;&]*(\s-[Cf]\b|--force(-create)?\b|--discard-changes\b)/,   // the lead creates plan branches itself; never force-switch
   /\brm\s+-[a-zA-Z]*[rR][a-zA-Z]*\s+(\/|~|\.\.)/i,
   /\bRemove-Item\b[^|;]*-Recurse/i,
   /\b(DROP|TRUNCATE)\s+(TABLE|DATABASE|SCHEMA)\b/i,
@@ -62,6 +63,11 @@ if (tool === "Bash") {
 }
 if (["Edit", "Write", "MultiEdit", "Read"].includes(tool)) {
   const p = String(ti.file_path ?? "");
+  // team-lead writes no code and no docs; its only editable file is the status board (mirrors opencode's `edit: docs/STATUS.md: allow`).
+  if (tool !== "Read" && input.agent_type === "team-lead" && !/(^|[\\/])docs[\\/]STATUS\.md$/.test(p)) {
+    process.stderr.write(`[guardrail] blocked edit (team-lead edits only docs/STATUS.md; code goes to team-implementer, docs to team-planner): ${p}\n`);
+    process.exit(2);
+  }
   if (SECRET_PATHS.test(p)) {
     process.stderr.write(`[guardrail] blocked secret path: ${p}\n`);
     process.exit(2);
