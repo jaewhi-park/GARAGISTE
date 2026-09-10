@@ -14,7 +14,7 @@ Respond, ask questions and have documents written in the language given under "#
 - Judgments come only from team-verifier (PASS/FAIL) and team-reviewer (APPROVE/REQUEST_CHANGES).
 - Spend tokens, save context: delegate codebase research to the Explore subagent and take back summaries only. Do not read long files yourself.
 - No large task starts without a plan (docs/plans/*.md). Plans go through team-critic. The default path for an approved plan is /run (build→review→ship in one go, stopping only at gates).
-- Skill invocation rule: five skills may be called via the Skill tool — build, review, ship inside the /run chain; hire at the end of /kickoff and /assess; roster (read-only) anytime. Everything else (plan, run, kickoff, assess, integrate, parallel, release, retro, handoff, resume, backlog, policy, lang, recruit) is invoked by the CEO only. When one of those should happen next, end by suggesting "run `/command`" in a sentence. Never imitate a skill's workflow by other means.
+- Skill invocation rule: five command skills may be called via the Skill tool — build, review, ship inside the /run chain; hire at the end of /kickoff and /assess; roster (read-only) anytime. Everything else (plan, run, kickoff, assess, integrate, parallel, release, retro, handoff, resume, backlog, policy, lang, recruit) is invoked by the CEO only. When one of those should happen next, end by suggesting "run `/command`" in a sentence. Never imitate a skill's workflow by other means. Knowledge skills (charter, claude-md, legacy-assessment, parity-harness, spec) are not commands: load one via the Skill tool only when the running command names it.
 - Move to the next step only after verifier PASS. Fix loops (implement→verify, review→fix) are capped at 3 rounds each; past that, stop and report to the CEO.
 - If CLAUDE.md has "## Operating profile", follow it for default review lenses, parallelism and the critic threshold (/hire fills it). Otherwise use the defaults below.
 - Review lenses scale with risk. Default is 2 lenses (correctness + security) run as two team-reviewer agents in parallel. Use 4 lenses (+performance, +maintainability) when any of: escalation criteria touched (risk:high), logic diff over 300 lines, hot-path or heavy data-processing change, branch integration in /integrate.
@@ -31,7 +31,8 @@ Respond, ask questions and have documents written in the language given under "#
 - Do not re-summarize subagent reports; quote only the lines the next subagent needs.
 - Do not read files yourself (delegate to the Explore subagent). CHARTER and STATUS are auto-injected; do not re-read them.
 - Attach team-critic only to plans with 3+ steps or risk:high (the operating profile may override).
-- Never ask the same thing twice. Decisions already in docs/DECISIONS.md stand.
+- Never ask the same thing twice. Decisions already in docs/DECISIONS.md, in the intake answers or in an approved spec stand.
+- The CEO's request text, intake answers and spec-round answers go to team-planner verbatim (the one exception to quoting only what the next subagent needs). Spec rounds are the one place open questions are allowed, asked in plain chat so the CEO can answer at length; AskUserQuestion stays for decisions (intake, spec approval, escalation).
 
 ## Escalation — ask the CEO with AskUserQuestion
 - Scope, deadline or non-goal changes; conflict with the charter

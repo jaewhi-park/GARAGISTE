@@ -1,12 +1,24 @@
 ---
 name: plan
-description: Plan a piece of work — planner writes → critic reviews → CEO approval requested
-argument-hint: "[work item or backlog entry]"
+description: Plan a piece of work — intake (one question call, optional spec rounds) → planner writes → critic reviews → CEO approval requested
+argument-hint: "[backlog item, bug: line, feature, or docs/specs file]"
 disable-model-invocation: true
 ---
 Plan the following work: $ARGUMENTS
 
-1. Have team-planner write docs/plans/NNNN-<slug>.md. Make it reference the charter, CLAUDE.md, BACKLOG and ASSESSMENT/REBUILD_PLAN when they exist.
-2. If the plan has 3+ steps or is risk:high, have team-critic review it (follow the operating profile's critic threshold if set); otherwise skip. On REVISE, pass the findings verbatim to the planner (max 2 rounds).
-3. If any item meets the escalation criteria, ask the CEO with AskUserQuestion. If a step needs a capability no role has (a permission boundary or a separate judge), say so and suggest `/recruit <gap>` in a sentence.
-4. Request approval with a summary (goal, step count, risks, expected diff). Once approved, do not call it via the Skill tool — suggest to the CEO in a sentence: "run `/run`". Never start /build or /run yourself.
+0. Intake — one AskUserQuestion call before delegating anything. Skip it when the request already carries a verifiable done-when:
+   - it quotes a docs/BACKLOG.md item by title or number (take the CEO's word that it exists; Grep only that item's lines for its size and `spec:` field — the one file read allowed here; the planner pulls its completion criteria). An item without a `spec:` link that is size L or names a new page, screen, API or data model still gets question (1) alone; an item with a `spec:` link draws nothing.
+   - it describes a defect with a reproduction rather than new behaviour (`bug:` / `버그:`)
+   - it names a docs/REBUILD_PLAN.md step (done-when is parity-harness PASS), re-plans an existing docs/plans/ file, or references a docs/specs/ file
+   - it states done-when and not-this-time itself, in the argument or earlier this session
+   Four questions; (1) has exactly its two options, (2)–(4) have two options drawn from the request and the auto-injected charter, recommendation first, plus "your call" (recorded as unverified with the planner's default) and "decide in the spec rounds" — four per question, the tool's limit; the CEO can always type their own answer. Do not call Explore for the intake.
+   (1) detailed spec? — no, plan from these answers (for a BACKLOG item: from its completion criteria; recommended for S/M) / yes, build docs/specs/NNNN-<slug>.md first (recommended for a new page, screen, API or data model, or more than a day of work)
+   (2) done when — verifiable completion criteria
+   (3) not this time — adjacent work left out
+   (4) fixed in advance — "nothing beyond the charter", or things to reuse or match (existing screen or component, library, design, deadline)
+   If (1) is no and (2) is "decide in the spec rounds", (1) becomes yes — say so in one sentence; done-when cannot be defaulted. The same answer on (3) or (4) with (1) no counts as "your call".
+0a. Spec — if (1) is yes, load the `spec` skill and follow its rounds (the answers to 2–4, or the BACKLOG item's completion criteria when only (1) was asked, seed the spec). On "approve, plan now" continue; on "approve, plan next session" or "stop here" suggest `/handoff` in a sentence and end. A docs/specs/ file passed as the argument re-enters here — load the `spec` skill and take the spec's state from the injected STATUS.md Spec line (else have team-planner report it): approved or in progress → no questions, go to step 1; round k or correction k (rounds interrupted, also after a compaction) → have team-planner report the open slots and continue from that round; draft (stopped after the rounds) → the approval question only.
+1. Have team-planner write docs/plans/NNNN-<slug>.md. Pass the request text and the intake answers verbatim under a "CEO requirements" heading, or the spec path (also the `spec:` path of a BACKLOG item that has one): they become the plan's Source line and sections 1–2 as given, and anything the planner adds beyond them is marked unverified with a default; for a spec-backed plan the planner also sets the spec's Status to `in progress — plans: <plan path>` (appending when plans are already listed). If a spec would need more than ~6 steps and BACKLOG does not already hold its parts, the planner first proposes a split (2–3 plans, each "part k of n of <spec>": goal / done-when subset / expected files / depends-on / size); ask the CEO which part to plan first and have the other parts recorded as BACKLOG items — recording only (title, value, completion criteria from the spec, size, dependencies, `spec:` link; priority "undecided — next /backlog"), no prioritizing — noted as /parallel candidates only if expected files are disjoint and depends-on is empty. When the spec is already split, the planner plans the part named in the request, else the next part whose depends-on are shipped. Make the plan reference the charter, CLAUDE.md, BACKLOG and ASSESSMENT/REBUILD_PLAN when they exist.
+2. If the plan has 3+ steps or is risk:high, have team-critic review it — pass the plan path and, when one exists, the spec path (from the argument, the BACKLOG item's `spec:` field or the planner's report; follow the operating profile's critic threshold if set); otherwise skip. On REVISE, pass the findings verbatim to the planner (max 2 rounds).
+3. If any item meets the escalation criteria and neither the intake answers nor the approved spec already decided it, ask the CEO with AskUserQuestion; decided items go in plan section 6 as "decided — per intake/spec", not re-asked. If a step needs a capability no role has (a permission boundary or a separate judge), say so and suggest `/recruit <gap>` in a sentence.
+4. Request approval with a summary (goal, step count, risks, expected diff, section 6 one line each). Once approved, do not call it via the Skill tool — suggest to the CEO in a sentence: "run `/run`". Never start /build or /run yourself.

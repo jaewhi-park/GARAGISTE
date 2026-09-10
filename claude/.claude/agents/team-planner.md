@@ -12,9 +12,10 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 
 ## Rules
 - Check agent memory first (architecture, past decisions, recurring mistakes). When done, leave a short note of anything new you learned.
-- Mark guesses as "unverified". Use Bash only for git log/diff.
+- Mark guesses as "unverified" and give each a default. Use Bash only for git log/diff.
 - When alternatives exist, compare 2–3 in a table and recommend one with reasons.
 - Record architecture decisions as docs/adr/NNNN-<slug>.md (context / decision / alternatives / consequences).
+- Specs: docs/specs/NNNN-<slug>.md per the `spec` skill's template — Read .claude/skills/spec/SKILL.md (global install: ~/.claude/skills/spec/SKILL.md) before writing. Spec = what and when done, in the CEO's words; ADR = why this design; plan = how. Never fill undecided items with guesses.
 - Keep docs/CHARTER.md under 60 lines and docs/STATUS.md under 30 lines — they are injected into every session. Move detail elsewhere and link it.
 - Keep steps small: a logic-change step targets a diff of 300 lines or less; split if larger.
 - Mechanical changes (scaffolding, generated code, dependency/lockfile updates, bulk renames/formatting/moves, deletions) are exempt from the size limit but go in **separate steps and separate commits**. Label the step with its kind (scaffold | gen | mechanical | deps | delete) and the reproduction command if any. Never mix logic and mechanical changes in one step.
@@ -22,12 +23,13 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 - For a legacy rebuild, plan only within what the parity harness covers (if there is none, step 0 is building it).
 
 ## Plan format — docs/plans/NNNN-<slug>.md
-1. Goal and completion criteria (verifiable statements)
-2. Non-goals
+Header line: `Source: CEO request [+ intake] <date> | BACKLOG item <title> | docs/specs/NNNN-<slug>.md (part k of n)` — a BACKLOG item with a `spec:` link is sourced from the spec, not the item
+1. Goal and completion criteria (verifiable statements, taken from the source as given; anything added is marked unverified with a default)
+2. Non-goals (the intake's or the spec's "not this time"; additions marked as such)
 3. Current state (findings, relevant files)
 4. Steps: number / files touched / tests / verification command / depends-on
 5. Risks, mitigations, rollback
-6. Questions needing a CEO decision
+6. Questions needing a CEO decision (one line each; items the CEO already decided at intake or in the spec: "decided — per intake/spec"; each spec "undecided" item is decided here with a default or moved to section 2)
 
 ## Status board format — docs/STATUS.md
 ```
@@ -35,6 +37,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 Updated: <time> · Session goal: <one line>
 ## Now
 - Plan: docs/plans/NNNN-<slug>.md · Branch: <name>
+- Spec: docs/specs/NNNN-<slug>.md · round <k> | correction <k> | draft | approved (only while no plan exists yet)
 - Step: <k>/<n> — <state> · Last verifier: PASS|FAIL(<summary>)
 - Open review findings: <lens: item> or none
 ## Waiting on CEO

@@ -22,8 +22,8 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 |---|---|
 | `/kickoff <idea>` | New project. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
 | `/assess <target>` | Legacy. Inventory → parity harness → rebuild strategy ADR → AGENTS.md → /hire |
-| `/backlog [idea]` | Product: spec-carrying backlog items with priority (docs/BACKLOG.md, optional GitHub Issues) |
-| `/plan <item>` | Planner writes → critic reviews (3+ steps or risk:high) → approval requested |
+| `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
+| `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes → critic reviews (3+ steps or risk:high) → approval requested |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |
 | `/build <plan>` | Step-by-step implementer → verifier loop |
 | `/review [base]` | Risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
@@ -53,7 +53,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 
 ## Contracts between agents
 - Every subagent reports in a fixed format (verifier: PASS/FAIL; reviewer/critic: last line APPROVE/REVISE).
-- Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered.
+- Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered — except the spec rounds of /plan, where open questions and free-text answers are allowed.
 - Fix loops are capped at 3 rounds; past that, stop and report.
 - Autonomous decisions go to docs/DECISIONS.md, architecture decisions to docs/adr/.
 
