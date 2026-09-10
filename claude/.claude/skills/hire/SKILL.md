@@ -3,7 +3,7 @@ name: hire
 description: Hiring — design per-role model assignments and an operating profile from available models, budget and project character; apply after CEO approval. Right after /kickoff or /assess, when the budget changes, or when the team is too slow or expensive
 argument-hint: "[note: budget, preferences]"
 ---
-This skill runs only when the CEO invoked it directly or as the last step of /kickoff or /assess via the Skill tool. Either way, assignments are applied only after CEO approval.
+This skill runs only when the CEO invoked it directly or from the closing step of /kickoff or /assess via the Skill tool. Either way, assignments are applied only after CEO approval.
 
 Hire the team (assign a model and effort per role). Note: $ARGUMENTS
 
@@ -13,4 +13,5 @@ Hire the team (assign a model and effort per role). Note: $ARGUMENTS
 4. After CEO approval, apply:
    - Models and effort: `node .claude/scripts/apply-models.mjs --flavor claude --dest .claude/agents --settings .claude/settings.json --budget inherit --set team-lead=<model>:<effort> --set team-planner=... --set team-critic=... --set team-implementer=... --set team-builder=... --set team-reviewer=... --set team-verifier=...`. The session (lead) model is written to settings.json from the team-lead value. The script changes only model/effort lines. Never edit agent files directly.
    - Operating profile: `node .claude/scripts/set-profile.mjs --file CLAUDE.md "budget tier: <tier>" "default review lenses: <2|4>" "parallelism: <none|session|parallel>" "critic minimum steps: <n>" "per-step verifier: <on|off>" "step-size target: <n>" "hired: <date> — <one-line reason>"`. The script rewrites only the "## Operating profile" section; no planner call.
+   - Commit: have team-implementer commit the files the scripts changed inside the repository (agent files under .claude/, .claude/settings.json, CLAUDE.md), by path, as `chore(hire): <tier> — models and operating profile` on the current branch.
 5. Show the result in /roster form and note that model assignments take effect from the next session.

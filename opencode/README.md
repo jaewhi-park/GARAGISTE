@@ -37,13 +37,13 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/spawn <plans>` | Parallel: create a worktree and branch per plan, print the new-session command |
 | `/integrate [branches]` | Merge queue: per-branch review → merge → conflict resolution → verifier, serially |
 | `/retro <subject>` | Feed failures back into AGENTS.md rules, skills or guardrails |
-| `/handoff [note]` | Wrap up: update STATUS.md, commit WIP, list pending decisions |
-| `/resume [note]` | First command of a new session: reconcile STATUS.md, plan and git, then continue |
+| `/handoff [note]` | Wrap up a session that stops mid-flight: write STATUS.md (local), commit WIP, list pending decisions |
+| `/resume [note]` | First command of a new session when a board exists: reconcile STATUS.md, plan and git, then continue |
 
 ## Team
 | Agent | mode | Can | Cannot |
 |---|---|---|---|
-| team-lead | primary | delegate, judge, ask the CEO, read git, edit docs/STATUS.md | edit other files, run code |
+| team-lead | primary | delegate, judge, ask the CEO, read git, edit docs/STATUS.md | edit other files, run code, commit |
 | team-planner | subagent | write docs/**, AGENTS.md | edit code |
 | team-critic | subagent | plan pre-mortem | edit anything |
 | team-implementer | subagent (hidden) | implement, test, commit; push and open PR in /ship | force push, push to main, ask the CEO |
@@ -83,7 +83,7 @@ Change: re-run `./install.sh opencode -Budget <tier> -Strong <id> -Fast <id>`, p
 - `agents/team-verifier.md` — trim the bash allow-list to your stack.
 - `agents/team-lead.md` — escalation criteria (the charter's "Additional escalation items" are added).
 - `plugins/guardrails.ts` — blocked-command patterns.
-- `opencode.json` — `instructions` auto-injects docs/CHARTER*.md and docs/STATUS*.md every session. No model = inherit. `subagent_depth: 2` lets team-planner/implementer/reviewer/critic (subagents) each call the explore subagent themselves — opencode's default of 1 would block that and fail the call silently.
+- `opencode.json` — `instructions` auto-injects docs/CHARTER*.md and docs/STATUS*.md every session. No model = inherit. `subagent_depth: 2` lets team-planner/implementer/reviewer/critic (subagents) each call the explore subagent themselves — opencode's default of 1 would block that and fail the call silently. docs/STATUS.md is local (git-ignored by the project installer; after a global install add the line yourself) and never committed.
 - Per-role models: add `model: provider/id` to the agent frontmatter (or use /hire). Subagents without a model follow the invoking primary agent.
 - `temperature` and `steps` per agent are role-based starting values.
 

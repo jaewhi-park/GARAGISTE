@@ -10,7 +10,8 @@ export const TeamCompaction: Plugin = async () => ({
 - Last team-verifier result (PASS/FAIL) and failing items
 - Open review findings (blocker/major) and their lens
 - Decisions waiting on the CEO and the default if unanswered
-- On resume, re-read the current plan or spec file (AGENTS.md, docs/CHARTER.md and docs/STATUS.md are already injected)
+- On resume, re-read the current plan or spec file (AGENTS.md, docs/CHARTER.md and, when it exists, docs/STATUS.md are already injected)
+- docs/STATUS.md is local (git-ignored) and never committed; milestone commits made this session (plan, spec, docs) and what is still uncommitted
 `)
   },
 })

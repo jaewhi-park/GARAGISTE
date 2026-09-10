@@ -139,7 +139,7 @@ fi
 
 # 4. .gitignore
 GI="$ROOT/.gitignore"
-for line in ".claude/worktrees/" ".claude/agent-memory-local/"; do
+for line in ".claude/worktrees/" ".claude/agent-memory-local/" "docs/STATUS.md"; do
   grep -qxF "$line" "$GI" 2>/dev/null || { [ "$DRY" = 1 ] && echo "+ append $line >> .gitignore" || { [ -s "$GI" ] && [ -n "$(tail -c1 "$GI")" ] && echo >> "$GI"; echo "$line" >> "$GI"; }; }
 done
 

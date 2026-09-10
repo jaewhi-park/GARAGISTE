@@ -70,6 +70,12 @@ if ($Global -and -not $DryRun) {  # commands and the lead's bash allow-list name
 if (-not $Global) {
   $DocsReadme = Join-Path (Split-Path $Dest) "docs\README.md"
   if (-not (Test-Path $DocsReadme) -and -not $DryRun) { New-Item -ItemType Directory -Force -Path (Split-Path $DocsReadme) | Out-Null; Copy-Item (Join-Path $Src "docs\README.md") $DocsReadme }
+  # .gitignore (the status board is local to the checkout)
+  $Gi = Join-Path (Split-Path $Dest) ".gitignore"
+  foreach ($line in "docs/STATUS.md") {
+    $has = (Test-Path $Gi) -and ((Get-Content $Gi) -contains $line)
+    if (-not $has) { if ($DryRun) { Write-Host "+ append $line >> .gitignore" } else { if ((Test-Path $Gi) -and (Get-Item $Gi).Length -gt 0 -and -not ([IO.File]::ReadAllText($Gi)).EndsWith("`n")) { Add-Content $Gi "" }; Add-Content $Gi $line } }
+  }
 }
 
 # 2.5 Per-role model assignment

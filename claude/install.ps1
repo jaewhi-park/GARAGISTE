@@ -136,7 +136,7 @@ if ($Budget -ne "inherit" -or $Set.Count -gt 0) {
 }
 
 $Gi = Join-Path $Root ".gitignore"
-foreach ($line in ".claude/worktrees/", ".claude/agent-memory-local/") {
+foreach ($line in ".claude/worktrees/", ".claude/agent-memory-local/", "docs/STATUS.md") {
   $has = (Test-Path $Gi) -and ((Get-Content $Gi) -contains $line)
   if (-not $has) { if ($DryRun) { Write-Host "+ append $line >> .gitignore" } else { if ((Test-Path $Gi) -and (Get-Item $Gi).Length -gt 0 -and -not ([IO.File]::ReadAllText($Gi)).EndsWith("`n")) { Add-Content $Gi "" }; Add-Content $Gi $line } }
 }

@@ -4,7 +4,7 @@ agent: team-lead
 ---
 Ship. Target: $ARGUMENTS
 
-1. If docs/STATUS.md records `Last verifier: PASS full @<hash>` and `<hash>` equals `git log -1 --format=%H` — or every commit since it touches only docs/ (`git diff --stat <hash>..HEAD`) — reuse that verdict as the evidence. Otherwise run full verification with team-verifier (all commands in AGENTS.md; include the parity harness for legacy) and record the hash. On FAIL, go back to the /build loop.
+1. If docs/STATUS.md records `Last verifier: PASS full @<hash>` and `<hash>` equals `git log -1 --format=%H` — or every commit since it touches only docs-only files (`git diff --stat <hash>..HEAD`) — reuse that verdict as the evidence. Otherwise run full verification with team-verifier (all commands in AGENTS.md; include the parity harness for legacy) and record the hash. On FAIL, go back to the /build loop.
 2. **Resolve the merge policy automatically.** If AGENTS.md "## Merge policy" has an explicit value, use it (override; with no remote an `auto-low-risk` override still resolves to **local**, only without the approval question for `risk:low`); otherwise derive it from repository state:
    - `git remote` is empty → **local**
    - a remote exists, `gh repo view --json autoMergeAllowed -q .autoMergeAllowed` is true, and the default branch has a protection rule with required status checks (check `gh api repos/{owner}/{repo}/branches/<default>/protection` or `gh api repos/{owner}/{repo}/rules/branches/<default>`) → **auto-low-risk**
@@ -18,4 +18,5 @@ Ship. Target: $ARGUMENTS
    - **local**: nothing more.
    Never push to main directly.
 6. **local** only: ask the CEO for merge approval with the evidence summary (skip the question only when the Merge-policy override says auto-low-risk and the label is `risk:low`); on approval run `git switch main && git merge --no-ff plan/<slug>` then `git branch -d plan/<slug>` yourself.
-7. Update docs/STATUS.md yourself (PR link or merge commit; next action).
+7. **manual** and **auto-low-risk**: `git switch main` yourself (in a linked worktree stay on the worktree branch; the plan branch keeps its PR; the next command's sync pulls the merge in) and tell the CEO in one line to merge before the next /plan.
+8. Update docs/STATUS.md yourself: keep the Plan line with its Branch and set Shipped: PR <link> (manual, auto-low-risk; `PR pending — <branch> pushed` when the CEO opens the PR themselves) or merge <hash> (local); Step: none; Next actions: 1. merge the PR (manual, or auto-low-risk with risk:high) or wait for auto-merge (auto-low-risk, risk:low) — omitted for local, 2. `/plan <next BACKLOG item>`.

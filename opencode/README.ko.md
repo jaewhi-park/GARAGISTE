@@ -44,13 +44,13 @@
 | `/policy [값]` | 머지 정책의 현재 자동 판정과 근거 확인, 필요 시 override |
 | `/spawn <계획들>` | 병렬: 계획별 worktree·브랜치 생성, 새 세션 명령 제시 |
 | `/integrate [브랜치들]` | 머지 큐: 브랜치별 리뷰 → 머지 → 충돌 해소 → verifier, 직렬 |
-| `/handoff [메모]` | 세션 마무리: STATUS.md 갱신, WIP 커밋, 대기 결정 정리 |
-| `/resume [메모]` | 새 세션 첫 커맨드: STATUS.md·계획·git 대조 후 재개 |
+| `/handoff [메모]` | 단계 도중에 멈추는 세션의 마무리: STATUS.md(로컬) 작성, WIP 커밋, 대기 결정 정리 |
+| `/resume [메모]` | 상태판이 있을 때 새 세션의 첫 커맨드: STATUS.md·계획·git 대조 후 재개 |
 
 ## 팀
 | 에이전트 | mode | 할 수 있는 것 | 못 하는 것 |
 |---|---|---|---|
-| team-lead | primary | 위임·판정·CEO 질의, git 조회, docs/STATUS.md 갱신 | 그 외 파일 수정, 코드 실행 |
+| team-lead | primary | 위임·판정·CEO 질의, git 조회, docs/STATUS.md 갱신 | 그 외 파일 수정, 코드 실행, 커밋 |
 | team-planner | subagent | docs/**, AGENTS.md 작성 | 코드 수정 |
 | team-critic | subagent | 계획 pre-mortem | 모든 수정 |
 | team-implementer | subagent(hidden) | 구현·테스트·커밋, /ship 에서 push·PR | force push, main push, 질문 |
@@ -65,10 +65,10 @@
 - 자율 결정은 docs/DECISIONS.md, 아키텍처 결정은 docs/adr/.
 
 ## 세션 수명주기
-세션은 작업 기억, 레포가 장기 기억이다. 상태는 세 곳에 남는다: 단계마다의 커밋, 계획 파일, `docs/STATUS.md`(상태판, 매 세션 자동 주입).
+세션은 작업 기억, 레포가 장기 기억이다. 상태는 세 곳에 남는다: 단계마다의 커밋, 계획 파일(승인 시 커밋), `docs/STATUS.md`(상태판 — 로컬 파일, git-ignore, 매 세션 자동 주입; 전역 설치면 .gitignore에 직접 추가).
 - 한 세션 = 한 계획(PR). 다른 작업은 새 세션에서 시작한다.
-- 끝낼 때: `/handoff` → 종료. 자연스러운 종료 시점은 `/ship` 직후, 계획 승인 직후, 컴팩션이 2회 이상 일어났을 때.
-- 이어갈 때: 새 세션 → `/resume`. 같은 날 잠깐 끊긴 경우만 `opencode -c`(마지막 세션 이어서)를 쓴다. 길게 이어진 세션은 요약 위에 요약이 쌓여 품질이 떨어진다.
+- 끝낼 때: `/ship`이나 `/plan`이 끝났으면 상태판과 커밋이 이미 남아 있으니 그냥 닫는다. 단계 도중에 멈출 때, 컴팩션이 2회 이상일 때, 팀이 헛돌 때만 `/handoff`.
+- 이어갈 때: 상태판이 있으면 새 세션 → `/resume`, 없으면(새 클론·worktree·진행 중 없음) 바로 `/plan <백로그 항목>`. 같은 날 잠깐 끊긴 경우만 `opencode -c`(마지막 세션 이어서)를 쓴다. 길게 이어진 세션은 요약 위에 요약이 쌓여 품질이 떨어진다.
 - 중간 컴팩션은 `plugins/compaction.ts`가 상태판 항목을 요약에 강제로 남긴다.
 
 ## 병렬과 머지
@@ -97,7 +97,7 @@
 - `agents/team-verifier.md` — bash allow-list를 실제 스택에 맞게 줄인다.
 - `agents/team-lead.md` — 에스컬레이션 기준. 헌장의 "에스컬레이션 추가 항목"이 여기에 더해진다.
 - `plugins/guardrails.ts` — 차단 명령 정규식.
-- `opencode.json` — `instructions`로 docs/CHARTER*.md, docs/STATUS*.md를 매 세션 자동 주입한다. model 미지정 = 상속. `subagent_depth: 2`는 team-planner/implementer/reviewer/critic(모두 subagent)이 각자 explore를 부를 수 있게 하는 값 — opencode 기본값 1이면 이 호출이 조용히 막힌다.
+- `opencode.json` — `instructions`로 docs/CHARTER*.md, docs/STATUS*.md를 매 세션 자동 주입한다. model 미지정 = 상속. `subagent_depth: 2`는 team-planner/implementer/reviewer/critic(모두 subagent)이 각자 explore를 부를 수 있게 하는 값 — opencode 기본값 1이면 이 호출이 조용히 막힌다. docs/STATUS.md는 로컬 파일(프로젝트 설치가 git-ignore; 전역 설치면 직접 추가)이고 커밋하지 않는다.
 - 역할별로 다른 모델을 쓰고 싶으면 해당 `agents/*.md` frontmatter에 `model: provider/id`만 추가한다. subagent는 미지정 시 호출한 primary의 모델을 따른다.
 - 각 에이전트의 `temperature`/`steps`는 역할 기준 초기값이다. 모델에 맞게 조정.
 
