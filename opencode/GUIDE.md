@@ -16,6 +16,7 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 | Grooming | `/backlog [idea]` | Fix only the order of the top three |
 | Design | (inside `/plan`) | Read the ADR's alternatives and consequences; check reversibility |
 | Single-track development | `/plan <item>` → `/run <plan>` | Answer the one intake call (or state "done when" yourself), approve the plan once, answer gate questions only, keep your hands off |
+| Complex feature | `/plan <item>` → "yes, spec" at intake | Answer 2–3 rounds in your own words, approve the spec, then the plan |
 | Parallel development | `/spawn <plans>` → `/build` in each session → `/integrate` | Check that file sets do not overlap; decide the integration order |
 | Review | (inside `/run`) or `/review` | Rule only on conflicting findings |
 | QA | (verifier, automatic) + try it yourself | Read the commands run and failure counts, not the green light |
@@ -84,11 +85,11 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Team: inventory (docs/ASSESSMENT.md) → unknowns reported → parity harness → strategy comparison (ADR, docs/REBUILD_PLAN.md) → AGENTS.md. Ends by suggesting `/hire` (a rebuild weights critic and reviewer).
 - You: two decisions only. (1) preserve or fix each "current behaviour that looks like a bug" — item by item. (2) the strategy (strangler fig / module-by-module / full rewrite). The default is strangler fig; a full rewrite needs evidence from the team.
 - Approval criteria: does the parity harness PASS entirely against legacy? Without it, refuse to approve any rebuild step.
-- Common mistakes: "let's just rewrite it" without a harness. In legacy without a spec, the only spec is current behaviour.
+- Common mistakes: "let's just rewrite it" without a harness. In legacy without a written spec (docs/specs/), the only spec is current behaviour.
 
 ### 2.3 Design and architecture decisions
 - When: hard-to-reverse decisions (data model, public interfaces, dependencies, stack).
-- Command: none. During `/plan` the planner produces a comparison table and an ADR draft; the critic adds a pre-mortem; the lead asks when escalation criteria are hit.
+- Command: none. During `/plan` the planner produces a comparison table and an ADR draft; the critic adds a pre-mortem; the lead asks when escalation criteria are hit. A spec, if any, is the input: it says what; the ADR answers how.
 - You: follow the team's recommendation but **read the consequences and judge whether you can live with them**. Decide only the hard-to-reverse ones yourself; delegate the rest (they land in docs/DECISIONS.md).
 - Approval criteria: does the ADR list two or more alternatives, each with a rejection reason?
 - Common mistakes: intervening in every decision. Never reading the decision log — skim DECISIONS.md weekly so you know what the team decided on its own.
@@ -97,16 +98,16 @@ Every entry has the same shape: when / command / what the team does / **what you
 - When: an idea arrives; you do not know what to do next.
 - Command: `/backlog <idea>` or `/backlog` (groom only)
 - Team: updates docs/BACKLOG.md, prioritizes against the charter, separates excluded items, proposes the top three.
-- You: fix only the **order** of the top three. If an item looks bigger than a day, say "split it".
+- You: fix only the **order** of the top three. If an item looks bigger than a day, say "split it" or "spec it".
 - Common mistakes: keeping the backlog in your head instead of the team's — then nobody catches conflicts with the charter.
 
 ### 2.5 Single-track development (the default)
 - When: most work. One plan per session.
-- Command: `/plan <backlog item or feature>` → intake (one call) → approve → `/run <plan file>`. For step-by-step control use `/build` → `/review` → `/ship` instead.
-- Team: intake (one call: done when / not this time / fixed in advance — skipped when the request already says so, and for backlog items, bug lines and re-plans) → plan (sections 1–2 are your answers verbatim) → critic review (3+ steps or high risk) → escalation questions → `/run`: branch → implement, verify and commit per step → review and fixes → ship and merge verdict. It stops only for escalation, a fix loop over 3 rounds, and merge approval.
-- You: answer the intake in your own words when the options do not fit; the planner writes it down. Then **actually read the plan.** Are the completion criteria verifiable statements; are the steps 300 lines or less; does it stay inside the non-goals? After approval, keep your hands off. Questions arrive in the form decision / options / recommendation / default — take the recommendation or say why not.
+- Command: `/plan <backlog item or feature>` → intake (one call) → approve → `/run <plan file>`. For step-by-step control use `/build` → `/review` → `/ship` instead. For a complex feature answer "yes, spec" at intake: 2–3 chat rounds → docs/specs/NNNN-<slug>.md → approve the spec → the plan.
+- Team: intake (one call: spec? / done when / not this time / fixed in advance — skipped when the request already says so, and for bug lines and re-plans; a backlog item skips all but the spec question, and only when it is size L or names a new page, API or data model) → spec rounds if chosen (structure → detail → your corrections → approval; the planner writes docs/specs/NNNN-<slug>.md after every round) → plan (sections 1–2 are your answers or the spec verbatim) → critic review (3+ steps or high risk) → escalation questions → `/run`: branch → implement, verify and commit per step → review and fixes → ship and merge verdict. It stops only for escalation, a fix loop over 3 rounds, and merge approval.
+- You: answer the intake in your own words when the options do not fit; the planner writes it down. The spec rounds are the one place you talk at length: answer in your own words, give paths and links (design file, similar screen, external doc) rather than pasting documents, and read the draft file yourself before correcting. Then **actually read the plan.** Are the completion criteria verifiable statements; are the steps 300 lines or less; does it stay inside the non-goals? After approval, keep your hands off. Questions arrive in the form decision / options / recommendation / default — take the recommendation or say why not.
 - Approval criteria (plan): completion criteria · per-step verification command · rollback method — all three present.
-- Common mistakes: ordering big work in chat without a plan. Two plans in one session. Changing direction while the team is working (stop and re-plan instead). Answering the intake with "your call" on the one thing you care about — you will reject the plan for it at approval.
+- Common mistakes: ordering big work in chat without a plan. Two plans in one session. Changing direction while the team is working (stop and re-plan instead). Answering the intake with "your call" on the one thing you care about — you will reject the plan for it at approval. Ordering a complex feature with a one-liner and no spec.
 - When a large diff is normal: scaffolding, generated code, lockfiles, bulk formatting/renames, deletions. If it is a separate commit labelled with its kind, the 300-line rule does not apply — but the review criteria differ: is it reproducible (regeneration diff zero), is logic mixed in, do build and tests pass. Do not read such commits line by line; check those three things.
 
 ### 2.6 Parallel development
@@ -116,6 +117,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - opencode subagents have no worktree isolation, so "in-session parallelism" is not supported. Parallel means session-level.
 - You: check that the plans' "files touched" sets do not overlap, and decide the integration order (dependencies first). While it runs, answer each session's questions only.
 - Approval criteria: zero overlapping files. If they overlap, run sequentially.
+- Plans cut from one spec run in parallel only if the split proposal showed disjoint files and no depends-on; the spec's "done when" is checked as a whole after the last one ships.
 - Common mistakes: parallelizing the steps of one feature (steps are sequential). Integrating several branches at once (always one at a time).
 
 ### 2.7 Review
@@ -170,13 +172,13 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.13 Ending a session
 - When: a plan is finished, right after `/ship`, after two or more compactions, when the team spins, at the end of the day.
 - Command: `/handoff [note]`
-- Team: `wip:` commit of uncommitted changes → docs/STATUS.md updated → report "finished / waiting / first action next session".
+- Team: `wip:` commit of uncommitted changes → docs/STATUS.md updated (including a spec in progress and its round) → report "finished / waiting / first action next session".
 - You: check that the **first next action** matches your view. If not, correct it right there (the team fixes STATUS). Answer waiting decisions now or at the start of the next session.
 - Common mistakes: closing the window without `/handoff` — uncommitted changes and reasoning are lost.
 
 ### 2.14 Resuming in a new session
 - Command: new session → `/resume [note]`. Use `opencode -c` only for a short interruption. Long sessions stack summaries on summaries and degrade; the default is a fresh session.
-- Team: reconciles the status board (auto-injected), the plan and git → trusts the repo and fixes the board on disagreement → verifier first if the last result was FAIL → asks about waiting decisions → continues from the next action.
+- Team: reconciles the status board (auto-injected), the plan and git → trusts the repo and fixes the board on disagreement → verifier first if the last result was FAIL → asks about waiting decisions → continues from the next action (for a stopped spec: `/plan docs/specs/NNNN-<slug>.md`).
 - You: answer waiting decisions. If the report says board and repo disagree, the repo is right.
 - Rule: one session = one plan. Another plan means another session.
 
@@ -184,7 +186,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.15 Retrospective
 - When: the same mistake twice, frequent CEO intervention, after an incident, after a release.
 - Command: `/retro <plan slug | session | incident>`
-- Team: reads the docs/METRICS.md trend first (rework, questions, duration) → pinpoints at most three places where rework, verification failures, review blockers or CEO intervention occurred, with root causes → proposes a countermeasure per cause and where it belongs (one rule line / a skill / a hook (hard block) / the plan format) → the planner applies only what you approve.
+- Team: reads the docs/METRICS.md trend first (rework, questions, duration) → pinpoints at most three places where rework, verification failures, review blockers or CEO intervention occurred, with root causes → proposes a countermeasure per cause and where it belongs (one rule line / a skill / a hook (hard block) / the plan format) → the planner applies only what you approve. Intake and spec rounds are not counted as intervention; a spec that needed more than 2 correction rounds is a subject.
 - Choosing the place: a fact or prohibition that applies every time → one line in AGENTS.md; a multi-step procedure → a skill; something the prompt cannot be trusted with → a hook; something missed at planning time → the plan format.
 - You: approve **only rules with a violation behind them**. Reject generalities ("always be careful"). When AGENTS.md passes 300 lines, ask for procedures to move into skills.
 - Common mistakes: repeating the same prompt without a retro. Approving many rules and bloating AGENTS.md.
@@ -199,19 +201,27 @@ Every entry has the same shape: when / command / what the team does / **what you
 
 ## 3. Rhythm
 
-- Daily (1–2 hours): `/resume` → (one item from the backlog) answer the intake call, approve `/plan` → hands off during `/run` (answer gate questions only) → merge per verdict → `/handoff`.
+- Daily (1–2 hours): `/resume` → (one item from the backlog) answer the intake call (or the spec rounds), approve `/plan` → hands off during `/run` (answer gate questions only) → merge per verdict → `/handoff`.
 - Weekly: `/backlog` for next week's top three, `/release`, skim docs/DECISIONS.md, `/retro` if needed.
 - First week: day 1 `/kickoff` (or `/assess`) plus a "verification command that runs in under a minute" → days 2–3 walking skeleton → days 4–5 two features through plan→run → one `/retro`. Parallelism from week two.
-- Three metrics: rework count / questions per session (one intake call per plan is expected and not counted) / plan-approval→merge time. `/ship` appends one line per plan to docs/METRICS.md and `/retro` reads it. If they fall, the setup fits.
+- Three metrics: rework count / questions per session (the intake call and spec rounds are expected and not counted) / plan-approval→merge time. `/ship` appends one line per plan to docs/METRICS.md and `/retro` reads it. If they fall, the setup fits.
 
 ## 4. Approval checklists
+
+Before approving a spec:
+- [ ] every "done when" is a verifiable statement
+- [ ] "not this time" is not empty
+- [ ] each undecided item says when it will be decided
+- [ ] no "how" inside (stack, schema design, libraries)
+- [ ] two pages or less, links not pastes
+- [ ] it says who uses it and when
 
 Before approving a plan:
 - [ ] completion criteria are verifiable statements (commands, tests, numbers)
 - [ ] every step has a verification command; logic-change steps are 300 lines or less; mechanical changes (scaffolding, generated code, lockfiles, formatting, deletions) are separate steps
 - [ ] no conflict with non-goals or the charter
 - [ ] a rollback method is written down
-- [ ] sections 1–2 match your intake answers
+- [ ] sections 1–2 match your intake answers or the spec
 - [ ] the critic said APPROVE (when it ran)
 
 After approval, `/run` takes it to the end. You are called back only for escalation, a fix loop over 3 rounds, and merge approval.
@@ -230,10 +240,11 @@ Before merging a PR:
 - Auto-injected documents growing: CHARTER 60 lines, STATUS 30 lines. The planner splits them when exceeded — there is no hard cap in opencode (unlike the Claude Code flavor's session-start hook), so a file that grows past this stays uncapped and is injected in full every session.
 - Critic and 4 lenses on small plans: under 3 steps and risk:low, the critic is skipped and review uses 2 lenses. Adjust via the operating profile (/hire).
 - Intake asks at most once per plan; if backlog items, bug lines or re-plans still draw questions, it is a `/retro` subject.
+- Spec rounds are the exception to short chats: give paths and links, never paste documents (the planner reads them); the file is the memory, so `/handoff` after a long spec session and re-enter with `/plan docs/specs/NNNN-<slug>.md`.
 - On your side: do not re-ask the same question every session — record decisions in docs/DECISIONS.md and let the lead follow them. One plan per session. When the context gets heavy, `/handoff` and start fresh.
 
 ## 6. Do not
-- Order large work in chat without a plan
+- Order large work in chat without a plan, or a complex feature with a one-liner and no spec
 - Approve on the green light alone
 - Change direction while the team is working (stop and re-plan)
 - Fix reviewer findings yourself

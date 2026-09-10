@@ -4,7 +4,7 @@ description: "Checklist for assessing a legacy codebase: inventory, risk registe
 ---
 # legacy-assessment
 
-Without a spec, current behaviour is the spec. The goal of assessment is to know what must be preserved.
+Without a written spec (docs/specs/), current behaviour is the spec. The goal of assessment is to know what must be preserved.
 
 ## Inventory (send Explore out per area, in parallel)
 - Entry points: executables, schedulers, APIs, UI, batch jobs — call flow

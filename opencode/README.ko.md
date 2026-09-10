@@ -29,13 +29,13 @@
 |---|---|
 | `/kickoff <아이디어>` | 신규 프로젝트. 헌장 → 스택 ADR → 골격 → AGENTS.md → 첫 계획 → /hire |
 | `/assess <대상>` | 레거시. 인벤토리 → parity harness → 리빌드 전략 ADR → AGENTS.md → /hire |
-| `/plan <항목>` | 접수 질문 1회 → planner 작성 → critic 리뷰(3단계 이상 또는 risk:high) → 승인 요청 |
+| `/plan <항목>` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/) → planner 작성 → critic 리뷰(3단계 이상 또는 risk:high) → 승인 요청 |
 | `/build <계획파일>` | 단계별 implementer → verifier 루프 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |
 | `/review [기준브랜치]` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
 | `/ship` | 전체 검증 · 문서 · 브랜치 push · PR 생성(risk 라벨) · 머지는 정책대로 |
 | `/retro <대상>` | 실패를 AGENTS.md 규칙/스킬/가드레일로 환류 |
-| `/backlog [아이디어]` | PM: 스펙 있는 백로그 항목·우선순위 (docs/BACKLOG.md, 선택적 GitHub Issues) |
+| `/backlog [아이디어]` | PM: 완료 조건이 있는 백로그 항목·우선순위 (docs/BACKLOG.md, 선택적 GitHub Issues) |
 | `/release [버전]` | 운영: 버전·CHANGELOG·릴리즈 노트, 태그 명령 제시 |
 | `/roster` | 에이전트별 모델·권한 표와 변경 방법 |
 | `/lang [code]` | 작업 언어 설정: 스크립트로 AGENTS.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
@@ -59,7 +59,7 @@
 
 ## 에이전트 간 계약
 - 모든 subagent는 고정된 보고 형식으로 lead에 답한다 (verifier: PASS/FAIL, reviewer/critic: 마지막 줄 APPROVE/REVISE).
-- lead만 CEO에게 질문한다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값.
+- lead만 CEO에게 질문한다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값. 예외는 /plan의 사양서 라운드로, 여기서는 열린 질문과 자유 서술 답이 허용된다.
 - 수정 루프는 3회 상한. 넘으면 멈추고 보고한다.
 - 자율 결정은 docs/DECISIONS.md, 아키텍처 결정은 docs/adr/.
 

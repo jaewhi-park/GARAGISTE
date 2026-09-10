@@ -26,7 +26,7 @@
 |---|---|---|
 | 경영 | `/kickoff <아이디어>` / `/assess <대상>` | CHARTER, ADR, CLAUDE.md, (레거시) ASSESSMENT·PARITY·REBUILD_PLAN; 끝에 /hire |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
-| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`) | 접수 질문 1회 → docs/plans/*.md, 단계별 커밋 |
+| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`) | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md, 단계별 커밋 |
 | 병렬 | `/parallel <계획들>` → `/integrate` | worktree별 브랜치 → 직렬 머지 큐 |
 | 품질 | `/review` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
 | 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
@@ -52,7 +52,7 @@
 - 아침: `/backlog`로 오늘 할 항목 확정 → `/plan` 승인 → `/run` (병렬이면 아래 참고)
 - 낮: lead의 AskUserQuestion에만 답한다. 그 외는 자율.
 - 저녁: `/run`이 ship까지 끝내면 머지 정책대로. 주 1회 `/release`, 실패가 반복되면 `/retro`.
-- 사람의 네 가지 일: 헌장·접수 질문에 답하기 / 계획 승인·에스컬레이션 결정 / PR 머지(정책에 따라) / 회고 승인.
+- 사람의 네 가지 일: 헌장·접수·사양서 질문에 답하기 / 계획 승인·에스컬레이션 결정 / PR 머지(정책에 따라) / 회고 승인.
 
 ## 머지 정책 — 자동 판정
 `/ship`이 저장소 상태를 보고 정한다. 설정 파일을 고칠 일은 없다.

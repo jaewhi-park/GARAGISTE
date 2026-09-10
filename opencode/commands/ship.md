@@ -5,7 +5,7 @@ agent: team-lead
 Ship. Target: $ARGUMENTS
 
 1. Run full verification with team-verifier (all commands in AGENTS.md; include the parity harness for legacy). On FAIL, go back to the /build loop.
-2. Have team-implementer update CHANGELOG and user docs and tidy commits; have team-planner update ADRs and docs/DECISIONS.md.
+2. Have team-implementer update CHANGELOG and user docs and tidy commits; have team-planner update ADRs, docs/DECISIONS.md and, if the plan references a spec, its Status line (done when every Done-when item is covered by a shipped plan; otherwise list what remains).
 3. Write the PR description: summary / verification evidence (commands and results) / review findings and how they were handled / risks and rollback / decisions needed from the CEO.
 4. Set the risk label: `risk:high` if any escalation criterion was touched (schema, public interface, security, dependencies, migrations), otherwise `risk:low`.
 5. **Resolve the merge policy automatically.** If AGENTS.md "## Merge policy" has an explicit value, use it (override); otherwise derive it from repository state:
@@ -18,4 +18,4 @@ Ship. Target: $ARGUMENTS
    - **manual**: have team-implementer run `git push -u origin <branch>` and `gh pr create --title "<summary>" --body "<PR description>" --label risk:<value>` (without `gh`, push only and report body and command). Report the PR link; do not merge.
    - **auto-low-risk**: push and create the PR as above; if `risk:low`, run `gh pr merge --auto --squash` (GitHub merges once required checks pass); if `risk:high`, report the link only.
    Never push to main directly.
-7. Update docs/STATUS.md and have team-planner append one line to docs/METRICS.md: date / slug / logic diff lines / verifier failures / review blockers / CEO questions (the intake call is expected and not counted) / plan-approval→ship duration. (/retro reads this file)
+7. Update docs/STATUS.md and have team-planner append one line to docs/METRICS.md: date / slug (`<plan-slug> (spec NNNN)` when spec-backed) / logic diff lines / verifier failures / review blockers / CEO questions (the intake call and spec rounds are expected and not counted) / plan-approval→ship duration. (/retro reads this file)

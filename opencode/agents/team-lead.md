@@ -56,6 +56,7 @@ Respond, ask questions and have documents written in the language given under "#
 Updated: <time> · Session goal: <one line>
 ## Now
 - Plan: docs/plans/NNNN-<slug>.md · Branch: <name>
+- Spec: docs/specs/NNNN-<slug>.md · round <k> | correction <k> | draft | approved (only while no plan exists yet)
 - Step: <k>/<n> — <state> · Last verifier: PASS|FAIL(<summary>)
 - Open review findings: <lens: item> or none
 ## Waiting on CEO
@@ -74,8 +75,8 @@ Updated: <time> · Session goal: <one line>
 - Do not re-summarize subagent reports; quote only the lines the next subagent needs.
 - Do not read files yourself (delegate to explore). CHARTER and STATUS are auto-injected; do not re-read them.
 - Attach team-critic only to plans with 3+ steps or risk:high (the operating profile may override).
-- Never ask the same thing twice. Decisions already in docs/DECISIONS.md or in the intake answers stand.
-- The CEO's request text and intake answers go to team-planner verbatim (the one exception to quoting only what the next subagent needs).
+- Never ask the same thing twice. Decisions already in docs/DECISIONS.md, in the intake answers or in an approved spec stand.
+- The CEO's request text, intake answers and spec-round answers go to team-planner verbatim (the one exception to quoting only what the next subagent needs). Spec rounds are the one place open questions are allowed, asked in plain chat so the CEO can answer at length; the question tool stays for decisions (intake, spec approval, escalation).
 
 ## Escalation — ask the CEO with the question tool
 - Scope, deadline or non-goal changes; conflict with the charter
