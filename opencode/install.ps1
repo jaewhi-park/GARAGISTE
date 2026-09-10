@@ -10,7 +10,8 @@ Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|hi
   -Model    Only to overwrite the default model in opencode.json
   -DryRun   Preview without changes
 #>
-param([string]$Project = "", [string]$Model = "", [switch]$Global, [string]$Budget = "inherit", [string]$Strong = "", [string]$Fast = "", [string[]]$Set = @(), [switch]$DryRun)
+[CmdletBinding()]param([string]$Project = "", [string]$Model = "", [switch]$Global, [string]$Budget = "inherit", [string]$Strong = "", [string]$Fast = "", [string[]]$Set = @(), [switch]$DryRun, [switch]$Help)
+if ($Help) { Get-Content $MyInvocation.MyCommand.Path -TotalCount 12 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }; exit 0 }
 $ErrorActionPreference = "Stop"
 $Src = Split-Path -Parent $MyInvocation.MyCommand.Path
 
@@ -56,6 +57,14 @@ foreach ($d in "agents","commands","skills","plugins","scripts") {
   if ($DryRun) { Write-Host "+ copy $d -> $to"; continue }
   New-Item -ItemType Directory -Force -Path $to | Out-Null
   Copy-Item (Join-Path $Src "$d\*") $to -Recurse -Force
+}
+if ($Global -and -not $DryRun) {  # commands and the lead's bash allow-list name the scripts by a project-relative path; point them at $Dest
+  $DestFwd = $Dest -replace '\\','/'
+  foreach ($f in @(Get-ChildItem (Join-Path $Dest "commands") -Filter *.md) + @(Get-Item (Join-Path $Dest "agents\team-lead.md"))) {
+    $t = [IO.File]::ReadAllText($f.FullName)
+    $t = [regex]::Replace($t, 'node \.opencode/scripts/(apply-models|set-language|new-agent|set-profile)\.mjs', "node `"$DestFwd/scripts/`$1.mjs`"")
+    [IO.File]::WriteAllText($f.FullName, $t, (New-Object System.Text.UTF8Encoding $false))
+  }
 }
 
 if (-not $Global) {

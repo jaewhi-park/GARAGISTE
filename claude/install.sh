@@ -32,6 +32,12 @@ if [ "$MODE" = global ]; then
   for d in agents skills hooks scripts; do run mkdir -p "$DEST/$d"; done
   for d in agents skills hooks; do run cp -R "$SRC/.claude/$d/." "$DEST/$d/"; done
   for f in apply-models.mjs set-language.mjs new-agent.mjs set-profile.mjs; do run cp "$SRC/scripts/$f" "$DEST/scripts/$f"; done
+  # Skills call the scripts by a project-relative path; in a global install they live under $DEST, so point them there.
+  if [ "$DRY" = 0 ]; then
+    for f in "$DEST"/skills/*/SKILL.md; do
+      sed -i.bak -E "s#node \\.claude/scripts/(apply-models|set-language|new-agent|set-profile)\\.mjs#node \"$DEST/scripts/\\1.mjs\"#g" "$f" && rm -f "$f.bak"
+    done
+  fi
   if [ "$DRY" = 0 ]; then
 python3 - "$CFG" "$SRC/.claude/settings.json" "$DEST" << 'PY'
 import json, sys, pathlib
@@ -42,11 +48,16 @@ for entries in s["hooks"].values():
     for e in entries:
         for h in e["hooks"]:
             h["command"] = h["command"].replace("node .claude/hooks/", f'node "{dest}/hooks/') + '"'  # quoted: $HOME may contain spaces
+s["permissions"]["allow"] = [a.replace("node .claude/scripts/", f'node "{dest}/scripts/').replace(".mjs:*", '.mjs":*') if a.startswith("Bash(node .claude/scripts/") else a for a in s["permissions"]["allow"]]
 perm = d.setdefault("permissions", {})
 for k in ("allow", "deny"):
     perm[k] = list(dict.fromkeys(list(perm.get(k, [])) + s["permissions"][k]))
+# Hooks: keep the repo's own hooks and add ours when absent (an existing PreToolUse hook, e.g. a formatter, must not hide the guardrails).
 hooks = d.setdefault("hooks", {})
-for ev, entries in s["hooks"].items(): hooks.setdefault(ev, entries)
+for ev, entries in s["hooks"].items():
+    cur = hooks.setdefault(ev, [])
+    have = {h["command"] for e in cur for h in e.get("hooks", [])}
+    cur.extend(e for e in entries if not all(h["command"] in have for h in e["hooks"]))
 # Global install does not force a default agent (avoids team-lead appearing in every repo).
 dst.parent.mkdir(parents=True, exist_ok=True)
 dst.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
@@ -95,7 +106,7 @@ run mkdir -p "$ROOT/.claude/scripts"; for f in apply-models.mjs set-language.mjs
 run mkdir -p "$ROOT/docs"
 [ -f "$ROOT/docs/README.md" ] || run cp "$SRC/docs/README.md" "$ROOT/docs/README.md"
 
-# 3. Merge settings.json (agent, permissions union, hooks only for missing events)
+# 3. Merge settings.json (agent, permissions union, hook entries added when absent)
 CFG="$ROOT/.claude/settings.json"
 if [ "$DRY" = 1 ]; then echo "+ merge $SRC/.claude/settings.json -> $CFG"
 else
@@ -108,9 +119,12 @@ d["agent"] = s["agent"]
 perm = d.setdefault("permissions", {})
 for k in ("allow", "deny"):
     perm[k] = list(dict.fromkeys(list(perm.get(k, [])) + s["permissions"][k]))
+# Hooks: keep the repo's own hooks and add ours when absent (an existing PreToolUse hook, e.g. a formatter, must not hide the guardrails).
 hooks = d.setdefault("hooks", {})
 for ev, entries in s["hooks"].items():
-    hooks.setdefault(ev, entries)
+    cur = hooks.setdefault(ev, [])
+    have = {h["command"] for e in cur for h in e.get("hooks", [])}
+    cur.extend(e for e in entries if not all(h["command"] in have for h in e["hooks"]))
 dst.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
 print("→ Merged:", dst)
 PY
@@ -126,7 +140,7 @@ fi
 # 4. .gitignore
 GI="$ROOT/.gitignore"
 for line in ".claude/worktrees/" ".claude/agent-memory-local/"; do
-  grep -qxF "$line" "$GI" 2>/dev/null || { [ "$DRY" = 1 ] && echo "+ append $line >> .gitignore" || echo "$line" >> "$GI"; }
+  grep -qxF "$line" "$GI" 2>/dev/null || { [ "$DRY" = 1 ] && echo "+ append $line >> .gitignore" || { [ -s "$GI" ] && [ -n "$(tail -c1 "$GI")" ] && echo >> "$GI"; echo "$line" >> "$GI"; }; }
 done
 
 command -v claude >/dev/null 2>&1 || echo "! 'claude' not found on PATH."
