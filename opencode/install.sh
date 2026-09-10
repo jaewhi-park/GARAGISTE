@@ -68,6 +68,12 @@ for d in agents commands skills plugins scripts; do
   run mkdir -p "$DEST/$d"
   run cp -R "$SRC/$d/." "$DEST/$d/"
 done
+# Commands and the lead's bash allow-list name the scripts by a project-relative path; in a global install they live under $DEST.
+if [ "$MODE" = global ] && [ "$DRY" = 0 ]; then
+  for f in "$DEST"/commands/*.md "$DEST"/agents/team-lead.md; do
+    sed -i.bak -E "s#node \\.opencode/scripts/(apply-models|set-language|new-agent|set-profile)\\.mjs#node \"$DEST/scripts/\\1.mjs\"#g" "$f" && rm -f "$f.bak"
+  done
+fi
 
 # 2.5 Per-role model assignment (budget profile)
 if [ "$BUDGET" != inherit ] || [ ${#SETS[@]} -gt 0 ]; then

@@ -25,6 +25,7 @@ for ($i = 0; $i -lt $Rest.Count; $i++) {
   $t = "$($Rest[$i])"
   if ($t -match '^-{1,2}([A-Za-z][A-Za-z0-9-]*)$') {
     $name = $Matches[1] -replace '-', ''
+    if ($name -match '^(h|help)$') { $name = 'Help' }
     $hasValue = ($i + 1 -lt $Rest.Count) -and -not ("$($Rest[$i+1])" -match '^-{1,2}[A-Za-z]')
     if ($hasValue) { $named[$name] = $Rest[$i + 1]; $i++ } else { $named[$name] = $true }
   } else { Write-Host "! Cannot parse argument: $t"; exit 1 }

@@ -9,15 +9,19 @@ import { basename, join, resolve } from "node:path";
 
 const argv = process.argv.slice(2);
 let file = "AGENTS.md", root = process.cwd(), code = "";
+const usage = () => { console.error("Usage: node set-language.mjs <code> [--file AGENTS.md|CLAUDE.md] [--root <dir>]"); process.exit(2); };
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
-  if (a === "--file") file = argv[++i];
-  else if (a === "--root") root = argv[++i];
+  if (a === "--file" || a === "--root") {
+    const v = argv[++i];
+    if (v === undefined || v.startsWith("--")) usage();
+    if (a === "--file") file = v; else root = v;
+  }
   else if (a === "-h" || a === "--help") { console.log(readFileSync(new URL(import.meta.url), "utf8").split("\n").slice(1, 6).join("\n").replace(/^\/\/ ?/gm, "")); process.exit(0); }
   else code = code ? `${code} ${a}` : a;
 }
 code = code.trim();
-if (!code) { console.error("Usage: node set-language.mjs <code> [--file AGENTS.md|CLAUDE.md] [--root <dir>]"); process.exit(2); }
+if (!code) usage();
 
 const path = resolve(join(root, file));
 const HEADING = "## Language";
@@ -32,12 +36,14 @@ if (!existsSync(path)) {
 const raw = readFileSync(path, "utf8");
 const eol = raw.includes("\r\n") ? "\r\n" : "\n";
 const lines = raw.split(/\r?\n/);
-const isH2 = (l) => /^##\s/.test(l);
-let start = lines.findIndex((l) => l.trim() === HEADING);
+// Lines inside fenced code blocks are never headings (CLAUDE.md often shows "## Language" as an example).
+const fenced = []; { let f = false; for (const l of lines) { if (/^[ \t]*(```|~~~)/.test(l)) f = !f; fenced.push(f); } }
+const isH2 = (l, i) => !fenced[i] && /^##\s/.test(l);
+let start = lines.findIndex((l, i) => !fenced[i] && l.trim() === HEADING);
 let previous = "(unset)";
 if (start >= 0) {
   let end = start + 1;
-  while (end < lines.length && !isH2(lines[end])) end++;
+  while (end < lines.length && !isH2(lines[end], end)) end++;
   const old = lines.slice(start + 1, end).map((l) => l.trim().replace(/^-\s*/, "").replace(/\s*\(.*\)\s*$/, "")).filter(Boolean);
   if (old.length) previous = old.join(" ");
   // keep one blank line before the next section
@@ -48,7 +54,8 @@ if (start >= 0) {
   if (at < 0) { at = lines.length; while (at > 0 && lines[at - 1].trim() === "") at--; lines.splice(at, lines.length - at, "", ...section, ""); }
   else lines.splice(at, 0, ...section, "");
 }
-let out = lines.join(eol).replace(/(\r?\n){3,}$/, eol).replace(/(\r?\n){3,}/g, `${eol}${eol}`);
+// Only the file's tail is normalised (one trailing newline); blank lines elsewhere, including inside code blocks, are left alone.
+let out = lines.join(eol).replace(/(\r?\n){2,}$/, eol);
 if (!out.endsWith(eol)) out += eol;
 writeFileSync(path, out);
 console.log(`→ ${file} Language: ${previous} → ${code}`);

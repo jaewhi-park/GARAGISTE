@@ -48,7 +48,7 @@ if (!OPENCODE[preset]) die("preset must be one of researcher|author|engineer|jud
 
 // ---- model: explicit, or copied from the sibling role ----
 let model = null, effort = null;
-if (opt.model) { const m = /^([^:]+)(?::(\w+))?$/.exec(opt.model); model = m[1]; effort = m[2] ?? null; }
+if (opt.model) { const m = flavor !== "claude" ? [null, opt.model] : /^([^:]+)(?::(\w+))?$/.exec(opt.model); model = m[1]; effort = m[2] ?? null; }
 else if (opt.like) {
   const f = join(dest, opt.like.endsWith(".md") ? opt.like : `${opt.like}.md`);
   if (!existsSync(f)) die(`--like agent not found: ${f}`);
@@ -64,12 +64,12 @@ const prompt = readFileSync(body, "utf8").replace(/\r\n/g, "\n").trim();
 let front;
 if (flavor === "opencode") {
   const p = OPENCODE[preset];
-  front = [`description: ${description}`, "mode: subagent", `temperature: ${p.temperature}`, `steps: ${p.steps}`, `color: ${p.color}`];
+  front = [`description: ${JSON.stringify(description)}`, "mode: subagent", `temperature: ${p.temperature}`, `steps: ${p.steps}`, `color: ${p.color}`];
   if (model) front.push(`model: ${model}`);
   front.push("permission:", ...indent(p.perm));
 } else {
   const p = CLAUDE[preset];
-  front = [`name: ${name}`, `description: ${description}`, `tools: ${p.tools}`, `maxTurns: ${p.maxTurns}`, `color: ${p.color}`];
+  front = [`name: ${name}`, `description: ${JSON.stringify(description)}`, `tools: ${p.tools}`, `maxTurns: ${p.maxTurns}`, `color: ${p.color}`];
   if (model) front.push(`model: ${model}`);
   if (effort) front.push(`effort: ${effort}`);
 }

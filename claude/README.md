@@ -90,7 +90,7 @@ The session is working memory; the repo is long-term memory. State lives in thre
 
 ## Differences from the opencode flavor
 - Per-path edit permissions exist only where the hook enforces them: team-lead may edit docs/STATUS.md and nothing else (`guardrails.mjs`). The planner's "docs only" rule is prompt-level and caught by the reviewer; for a hard block, add a path rule to the same hook.
-- Secret-file blocking (`.env`, keys, certificates) applies to the file tools (Read/Edit/Write) via deny rules and the hook; Bash can still `cat .env`. Keep secrets out of the repo or add a Bash pattern to `guardrails.mjs` for a hard block.
+- Secret-file blocking (`.env`, keys, certificates) applies to the file tools (Read/Edit/Write) via deny rules and the hook, and the hook also blocks shell commands that print such files (`cat .env`, `Get-Content .env.local`, `grep KEY .env`). A program reading the file itself (`node -e`, `python -c`) is not caught — keep secrets out of the repo.
 - `permissions.deny` is session-wide. Force pushes and direct pushes to main are blocked by deny rules and hooks; feature-branch pushes are allowed.
 - The `Agent(...)` list on the main-session agent (`--agent` / `settings.agent`) is the allowlist of subagents the lead may call. Inside a subagent definition the parenthesized list is ignored.
 - `memory: project` gives roles long-term memory — the company's accumulated experience.
