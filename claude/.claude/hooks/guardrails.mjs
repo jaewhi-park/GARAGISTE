@@ -5,7 +5,7 @@ import { execSync } from "node:child_process";
 
 const BLOCKED_COMMANDS = [
   /\bgit\s+(reset\s+--hard\b|clean\s+-\w*f\w*|checkout\s+--\s+\.(\s|$)|branch\s+(-D\b|-f\b|--force\b))/,
-  /\bgit\s+switch\b[^|;&]*(\s-[Cf]\b|--force(-create)?\b|--discard-changes\b)/,   // the lead creates plan branches itself; never force-switch
+  /\bgit\s+switch\b[^|;&]*(\s-[a-zA-Z]*[Cf][a-zA-Z]*\b|--force(-create)?\b|--discard-changes\b)/,   // the lead creates plan branches itself; never force-switch
   /\brm\s+-[a-zA-Z]*[rR][a-zA-Z]*\s+(\/|~|\.\.)/i,
   /\bRemove-Item\b[^|;]*-Recurse/i,
   /\b(DROP|TRUNCATE)\s+(TABLE|DATABASE|SCHEMA)\b/i,

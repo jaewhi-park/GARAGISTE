@@ -8,7 +8,7 @@ AGENTS.md is injected into every session. It must be short and true.
 
 ## Principles
 - Under 300 lines. Procedures go in skills; facts go here.
-- List only commands that were actually run and passed (confirmed by team-verifier; at kickoff the implementer's report seeds them and the verifier confirms right after; at assess they carry an `unverified` flag until the verifier has run them).
+- List only commands that were actually run and passed (confirmed by team-verifier; at kickoff the implementer's report seeds them and the verifier confirms right after; at assess each command line ends with ` — unverified` until the verifier has run it; /assess step 4 removes the marker).
 - Add rules only when something actually went wrong (retro output). No generalities.
 - Always separate quick verification (under one minute) from full verification.
 

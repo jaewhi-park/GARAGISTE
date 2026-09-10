@@ -47,7 +47,7 @@ if (start >= 0) {
 } else {
   let at = lines.findIndex((l, i) => !fenced[i] && l.trim() === "## Merge policy");
   if (at < 0) { at = lines.length; while (at > 0 && lines[at - 1].trim() === "") at--; lines.splice(at, lines.length - at, "", ...section, ""); }
-  else lines.splice(at, 0, ...section, "");
+  else lines.splice(at, 0, ...(at > 0 && lines[at - 1].trim() ? [""] : []), ...section, "");
 }
 let out = lines.join(eol).replace(/(\r?\n){2,}$/, eol);
 if (!out.endsWith(eol)) out += eol;
