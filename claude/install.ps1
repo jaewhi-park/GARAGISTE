@@ -6,7 +6,8 @@ Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|hi
   -Budget  Per-role model (opus/sonnet/haiku) and effort assignment. unlimited (API) · high (Max 20x) · medium (Max 5x) · low (Pro)
   -Set     Per-agent override, e.g. -Set team-implementer=sonnet:high
 #>
-param([string]$Project = "", [switch]$Global, [string]$Budget = "inherit", [string[]]$Set = @(), [switch]$DryRun)
+[CmdletBinding()]param([string]$Project = "", [switch]$Global, [string]$Budget = "inherit", [string[]]$Set = @(), [switch]$DryRun, [switch]$Help)
+if ($Help) { Get-Content $MyInvocation.MyCommand.Path -TotalCount 8 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }; exit 0 }
 $ErrorActionPreference = "Stop"
 $Src = Split-Path -Parent $MyInvocation.MyCommand.Path
 function Set-Prop($obj, $name, $value) {
@@ -19,10 +20,17 @@ if ($Global) {
   Write-Host "→ Global install: $Dest"
   if (-not $DryRun) {
     foreach ($d in "agents","skills","hooks") { $to = Join-Path $Dest $d; New-Item -ItemType Directory -Force -Path $to | Out-Null; Copy-Item (Join-Path $Src ".claude\$d\*") $to -Recurse -Force }
-    New-Item -ItemType Directory -Force -Path (Join-Path $Dest "scripts") | Out-Null; foreach ($f in "apply-models.mjs","set-language.mjs","new-agent.mjs") { Copy-Item (Join-Path $Src "scripts\$f") (Join-Path $Dest "scripts\$f") -Force }
+    New-Item -ItemType Directory -Force -Path (Join-Path $Dest "scripts") | Out-Null; foreach ($f in "apply-models.mjs","set-language.mjs","new-agent.mjs","set-profile.mjs") { Copy-Item (Join-Path $Src "scripts\$f") (Join-Path $Dest "scripts\$f") -Force }
     $DestFwd = $Dest -replace '\\','/'
+    # Skills call the scripts by a project-relative path; in a global install they live under $Dest, so point them there.
+    foreach ($f in Get-ChildItem (Join-Path $Dest "skills") -Recurse -Filter SKILL.md) {
+      $t = [IO.File]::ReadAllText($f.FullName)
+      $t = [regex]::Replace($t, 'node \.claude/scripts/(apply-models|set-language|new-agent|set-profile)\.mjs', "node `"$DestFwd/scripts/`$1.mjs`"")
+      [IO.File]::WriteAllText($f.FullName, $t, (New-Object System.Text.UTF8Encoding $false))
+    }
     $s = Get-Content (Join-Path $Src ".claude\settings.json") -Raw | ConvertFrom-Json
     foreach ($ev in $s.hooks.PSObject.Properties) { foreach ($e in $ev.Value) { foreach ($h in $e.hooks) { $h.command = $h.command.Replace("node .claude/hooks/", "node `"$DestFwd/hooks/") + '"' } } }  # quoted: $HOME may contain spaces
+    $s.permissions.allow = @($s.permissions.allow | ForEach-Object { if ($_ -like 'Bash(node .claude/scripts/*') { $_.Replace('node .claude/scripts/', "node `"$DestFwd/scripts/").Replace('.mjs:*', '.mjs":*') } else { $_ } })
     $d = if (Test-Path $Cfg) { Get-Content $Cfg -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
     if (-not $d.PSObject.Properties['permissions']) { Set-Prop $d 'permissions' ([pscustomobject]@{}) }
     foreach ($k in "allow","deny") {
@@ -31,7 +39,12 @@ if ($Global) {
       Set-Prop $d.permissions $k $cur
     }
     if (-not $d.PSObject.Properties['hooks']) { Set-Prop $d 'hooks' ([pscustomobject]@{}) }
-    foreach ($ev in $s.hooks.PSObject.Properties) { if (-not $d.hooks.PSObject.Properties[$ev.Name]) { Set-Prop $d.hooks $ev.Name $ev.Value } }
+    foreach ($ev in $s.hooks.PSObject.Properties) {  # keep the repo's own hooks; add ours when absent
+      if (-not $d.hooks.PSObject.Properties[$ev.Name]) { Set-Prop $d.hooks $ev.Name $ev.Value; continue }
+      $cur = @($d.hooks.($ev.Name)); $have = @($cur | ForEach-Object { $_.hooks } | ForEach-Object { $_.command })
+      foreach ($e in $ev.Value) { if (@($e.hooks | Where-Object { $have -notcontains $_.command }).Count -gt 0) { $cur += $e } }
+      Set-Prop $d.hooks $ev.Name $cur
+    }
     New-Item -ItemType Directory -Force -Path (Split-Path $Cfg) | Out-Null
     [IO.File]::WriteAllText($Cfg, ($d | ConvertTo-Json -Depth 12), (New-Object System.Text.UTF8Encoding $false))
     Write-Host "→ Merged: $Cfg (hook paths absolute, no default agent)"
@@ -84,7 +97,7 @@ foreach ($d in "agents","skills","hooks") {
   New-Item -ItemType Directory -Force -Path $to | Out-Null
   Copy-Item (Join-Path $Src ".claude\$d\*") $to -Recurse -Force
 }
-if (-not $DryRun) { New-Item -ItemType Directory -Force -Path (Join-Path $Dest "scripts") | Out-Null; foreach ($f in "apply-models.mjs","set-language.mjs","new-agent.mjs") { Copy-Item (Join-Path $Src "scripts\$f") (Join-Path $Dest "scripts\$f") -Force } }
+if (-not $DryRun) { New-Item -ItemType Directory -Force -Path (Join-Path $Dest "scripts") | Out-Null; foreach ($f in "apply-models.mjs","set-language.mjs","new-agent.mjs","set-profile.mjs") { Copy-Item (Join-Path $Src "scripts\$f") (Join-Path $Dest "scripts\$f") -Force } }
 $DocsReadme = Join-Path $Root "docs\README.md"
 if (-not (Test-Path $DocsReadme) -and -not $DryRun) {
   New-Item -ItemType Directory -Force -Path (Join-Path $Root "docs") | Out-Null
@@ -104,8 +117,11 @@ else {
     Set-Prop $d.permissions $k $cur
   }
   if (-not $d.PSObject.Properties['hooks']) { Set-Prop $d 'hooks' ([pscustomobject]@{}) }
-  foreach ($ev in $s.hooks.PSObject.Properties) {
-    if (-not $d.hooks.PSObject.Properties[$ev.Name]) { Set-Prop $d.hooks $ev.Name $ev.Value }
+  foreach ($ev in $s.hooks.PSObject.Properties) {  # keep the repo's own hooks; add ours when absent
+    if (-not $d.hooks.PSObject.Properties[$ev.Name]) { Set-Prop $d.hooks $ev.Name $ev.Value; continue }
+    $cur = @($d.hooks.($ev.Name)); $have = @($cur | ForEach-Object { $_.hooks } | ForEach-Object { $_.command })
+    foreach ($e in $ev.Value) { if (@($e.hooks | Where-Object { $have -notcontains $_.command }).Count -gt 0) { $cur += $e } }
+    Set-Prop $d.hooks $ev.Name $cur
   }
   [IO.File]::WriteAllText($Cfg, ($d | ConvertTo-Json -Depth 12), (New-Object System.Text.UTF8Encoding $false))
   Write-Host "→ Merged: $Cfg"
@@ -122,7 +138,7 @@ if ($Budget -ne "inherit" -or $Set.Count -gt 0) {
 $Gi = Join-Path $Root ".gitignore"
 foreach ($line in ".claude/worktrees/", ".claude/agent-memory-local/") {
   $has = (Test-Path $Gi) -and ((Get-Content $Gi) -contains $line)
-  if (-not $has) { if ($DryRun) { Write-Host "+ append $line >> .gitignore" } else { Add-Content $Gi $line } }
+  if (-not $has) { if ($DryRun) { Write-Host "+ append $line >> .gitignore" } else { if ((Test-Path $Gi) -and (Get-Item $Gi).Length -gt 0 -and -not ([IO.File]::ReadAllText($Gi)).EndsWith("`n")) { Add-Content $Gi "" }; Add-Content $Gi $line } }
 }
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { Write-Host "! 'claude' not found on PATH." }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Host "! node not found. Hooks require Node.js." }
@@ -131,5 +147,5 @@ Write-Host @"
 Next steps:
   1. Run claude in the repo (team-lead is the main agent). Accept the folder-trust prompt so hooks are enabled.
   2. New project: /kickoff <idea>   Legacy: /assess <target>   Continue: /resume
-  3. Model assignment (hiring): /hire
+  3. Models: /hire at the end of kickoff/assess refines them; pass -Budget <tier> here so the first session already runs the verifier on the fast model
 "@

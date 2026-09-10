@@ -7,7 +7,7 @@ This skill runs only when the CEO invoked it directly or when /run chains it via
 
 Review the current branch's changes. Base branch: $ARGUMENTS (if empty, whichever of main or master exists)
 
-1. Check scope and risk with `git diff --stat`. Default lenses: correctness + security. Add performance + maintainability (4 lenses) for risk:high (escalation criteria touched), a logic diff over 300 lines, or hot-path / data-processing changes. Launch one team-reviewer per lens in parallel, each told its lens and the diff range.
+1. Check scope and risk: `git log --oneline <base>..HEAD`, then `git diff --stat` over the logic commits only (skip commits labelled scaffold/gen/mechanical/deps/delete; ignore test and doc files). Default lenses: correctness + security. Add performance + maintainability (4 lenses) for risk:high (escalation criteria touched), a logic diff over 600 lines, or hot-path / data-processing changes; the operating profile may override. Launch one team-reviewer per lens in parallel, each told its lens and the diff range.
 2. Collect blocker/major findings and merge duplicates. Conflicting findings go to the CEO.
-3. Have team-implementer fix and team-verifier confirm (max 3 rounds).
-4. When every lens is APPROVE, report the findings and how they were handled. If the CEO invoked /review directly, do not call it via the Skill tool — suggest to the CEO in a sentence: "run `/ship`" (inside a /run chain, run continues).
+3. Note HEAD (`git log -1 --format=%H`), then have team-implementer fix and team-verifier confirm (quick). Re-review only the fix diff (`git diff <noted HEAD>..HEAD`) with the lenses that returned REQUEST_CHANGES; a lens that returned APPROVE stands unless the fix touched a file outside the diff range it reviewed, in which case it re-reviews the fix diff too, in the same turn. Max 3 rounds; past that, stop and report to the CEO.
+4. When every lens is APPROVE: if the CEO invoked /review directly, report the findings and how they were handled, then do not call it via the Skill tool — suggest to the CEO in a sentence: "run `/ship`". Inside a /run chain, carry them into the final report and continue.

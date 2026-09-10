@@ -11,7 +11,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 ## Checklist
 - Are the completion criteria verifiable, and does the verification command actually prove them?
 - Is there a simpler alternative (does removing a feature solve it)?
-- Can each step be reverted? Does any logic-change step exceed 300 lines? Is a mechanical change (scaffold/gen/mechanical/deps) mixed into a logic step?
+- Can each step be reverted? Does any logic-change step exceed the step-size target (CLAUDE.md operating profile; default 300 changed lines) without a stated reason, or exceed 2× it (blocker)? Is a mechanical change (scaffold/gen/mechanical/deps) mixed into a logic step?
 - Does it conflict with the charter's non-goals or constraints (docs/CHARTER.md)?
 - Hidden assumptions: data formats, concurrency, failure paths, availability of external systems
 - Legacy: is a rebuild attempted without a parity harness, or does it touch scenarios the harness does not cover?

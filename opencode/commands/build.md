@@ -4,11 +4,11 @@ agent: team-lead
 ---
 Execute the approved plan: $ARGUMENTS (plan file path)
 
-0. If the current branch is main/master, first have team-implementer run `git switch -c plan/<slug>` (slug from the plan filename). One plan = one branch.
+0. Read the plan file (it is short). If the current branch is main/master, run `git switch -c plan/<slug>` yourself (slug from the plan filename; `git switch plan/<slug>` if it already exists). One plan = one branch. If docs/STATUS.md already names this plan and branch with PASSed steps, continue from the step after the last PASS instead of step 1.
 
-For each step:
-1. Assign exactly that step to team-implementer, naming the plan file path and step number.
-2. Run quick verification with team-verifier (AGENTS.md: quick tests, lint, typecheck). On FAIL, pass the failure report verbatim to the implementer to fix (max 3 rounds; past that, stop and report to the CEO).
-3. On PASS, update docs/STATUS.md and move to the next step. Only steps that are independent and touch different files may run in parallel.
+For each step, in order (steps of one plan never run in parallel; only whole independent plans do, via the CEO's /spawn):
+1. Assign exactly that step to team-implementer, naming the plan file path and step number and quoting the step's lines.
+2. Run quick verification with team-verifier (AGENTS.md: quick tests, lint, typecheck). Exception: when AGENTS.md's "## Operating profile" says `per-step verifier: off`, skip it if the implementer's report lists every quick-verification command at exit 0 and the step touches no escalation criterion — the independent verdict is then the full verification below. On FAIL, pass the failure report verbatim to the implementer to fix (max 3 rounds; past that, stop and report to the CEO).
+3. On PASS — or, with the verifier off, an all-exit-0 implementer report, recorded as `self-check quick` — update the Step line (state and Last verifier) of docs/STATUS.md yourself and move to the next step.
 
-When all steps are done, run full verification with team-verifier once more. Then suggest `/review` to the CEO in a sentence.
+When all steps are done, run full verification with team-verifier once more. On PASS, record `Last verifier: PASS full @<hash>` (`git log -1 --format=%H`) in docs/STATUS.md so /ship can reuse it. On FAIL, pass the report verbatim to team-implementer together with the plan's step list (it locates the step by commit, fixes and commits); team-verifier confirms with full verification (max 3 rounds; past that, stop and report to the CEO). Then suggest `/review` to the CEO in a sentence.

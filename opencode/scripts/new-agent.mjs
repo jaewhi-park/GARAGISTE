@@ -41,14 +41,14 @@ const CLAUDE = {
 const RULES = {
   researcher: ["You never edit files and never run commands that change state. Report facts with file paths and line numbers; conclusions only, no long quotes."],
   author: ["You edit only under docs/. You never edit code. Leave undecided items marked as undecided; never fill gaps with guesses."],
-  engineer: ["Small diffs (a step is 300 lines or less of logic change), tests included, run the quick verification from the rules file before reporting, commit with a clear message. Never force push, never push to main, never weaken or skip tests."],
+  engineer: ["Small diffs (a step targets the operating profile's step-size target, default 300 changed lines of logic; state the reason if larger, never beyond 2x), tests included, run the quick verification from the rules file before reporting, commit with a clear message. Never force push, never push to main, never weaken or skip tests."],
   judge: ["You never edit and never fix. Judge only what you were given. The last line of your report is exactly one verdict: PASS / FAIL, or APPROVE / REQUEST_CHANGES, whichever the lead asked for. Findings above it in severity order with file:line."],
 };
 if (!OPENCODE[preset]) die("preset must be one of researcher|author|engineer|judge");
 
 // ---- model: explicit, or copied from the sibling role ----
 let model = null, effort = null;
-if (opt.model) { const m = /^([^:]+)(?::(\w+))?$/.exec(opt.model); model = m[1]; effort = m[2] ?? null; }
+if (opt.model) { const m = flavor !== "claude" ? [null, opt.model] : /^([^:]+)(?::(\w+))?$/.exec(opt.model); model = m[1]; effort = m[2] ?? null; }
 else if (opt.like) {
   const f = join(dest, opt.like.endsWith(".md") ? opt.like : `${opt.like}.md`);
   if (!existsSync(f)) die(`--like agent not found: ${f}`);
@@ -64,12 +64,12 @@ const prompt = readFileSync(body, "utf8").replace(/\r\n/g, "\n").trim();
 let front;
 if (flavor === "opencode") {
   const p = OPENCODE[preset];
-  front = [`description: ${description}`, "mode: subagent", `temperature: ${p.temperature}`, `steps: ${p.steps}`, `color: ${p.color}`];
+  front = [`description: ${JSON.stringify(description)}`, "mode: subagent", `temperature: ${p.temperature}`, `steps: ${p.steps}`, `color: ${p.color}`];
   if (model) front.push(`model: ${model}`);
   front.push("permission:", ...indent(p.perm));
 } else {
   const p = CLAUDE[preset];
-  front = [`name: ${name}`, `description: ${description}`, `tools: ${p.tools}`, `maxTurns: ${p.maxTurns}`, `color: ${p.color}`];
+  front = [`name: ${name}`, `description: ${JSON.stringify(description)}`, `tools: ${p.tools}`, `maxTurns: ${p.maxTurns}`, `color: ${p.color}`];
   if (model) front.push(`model: ${model}`);
   if (effort) front.push(`effort: ${effort}`);
 }

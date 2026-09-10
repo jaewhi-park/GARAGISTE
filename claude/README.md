@@ -16,7 +16,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 ## CEO console (skills = slash commands)
 | Loop | Command | Artifact |
 |---|---|---|
-| Governance | `/kickoff <idea>` / `/assess <target>` | CHARTER, ADR, CLAUDE.md, (legacy) ASSESSMENT · PARITY · REBUILD_PLAN; ends with /hire |
+| Governance | `/kickoff <idea>` / `/assess <target>` | CHARTER, ADR, CLAUDE.md, (legacy) ASSESSMENT · REBUILD_PLAN · parity-harness plan; ends with /hire |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
 | Engineering | `/plan <item>` → `/run <plan>` (or `/build`) | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md, one commit per step |
 | Parallel | `/parallel <plans>` → `/integrate` | one branch per worktree → serial merge queue |
@@ -24,15 +24,15 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 | Operations | `/ship` → `/release [ver]` · `/policy` | PR (risk label) or local merge, CHANGELOG, docs/releases/*.md |
 | Governance | `/retro <subject>` | CLAUDE.md rules / skills / hooks updated |
 | Handoff | `/handoff` / `/resume` | docs/STATUS.md |
-| Team | `/hire` / `/roster` | per-role model and effort assignment; roster table |
+| Team | `/hire` / `/roster` | per-role model and effort assignment and the operating profile, both via script; roster table |
 | Language | `/lang [code]` | rewrites the `## Language` section of CLAUDE.md via script, effective immediately |
 | Recruiting | `/recruit <gap>` | new role from a permission preset, model and effort copied from the sibling role; created by script on approval |
 
 ## Team (.claude/agents/)
 | Agent | Role | Tools | Notes |
 |---|---|---|---|
-| team-lead | tech lead / EM; main-session agent | Agent(team-*, Explore), Read/Grep/Glob, Bash, AskUserQuestion | no Edit/Write; default via `settings.agent` |
-| team-planner | architect; docs, plans, ADRs, status board | Read/Grep/Glob, Edit/Write, Bash, Web* | `memory: project` — accumulates architecture knowledge |
+| team-lead | tech lead / EM; main-session agent | Agent(team-*, Explore), Read/Grep/Glob, Bash, Edit/Write, AskUserQuestion | Edit/Write on docs/STATUS.md only (hook-enforced); default via `settings.agent` |
+| team-planner | architect; docs, plans, specs, ADRs | Read/Grep/Glob, Edit/Write, Bash, Web* | `memory: project` — accumulates architecture knowledge |
 | team-critic | design review (pre-mortem) | Read/Grep/Glob | read-only |
 | team-implementer | senior engineer (main checkout, sequential) | Read/Grep/Glob, Edit/Write, Bash | commits; pushes and opens the PR in /ship |
 | team-builder | senior engineer (parallel) | same | `isolation: worktree` — implements a whole plan in its own worktree, self-verifies |
@@ -69,7 +69,7 @@ Rule: the unit of parallelism is a plan (feature), not a step. Run only plans wh
 When `git remote` is empty, `/ship` writes the PR description to docs/prs/NNNN-<slug>.md and merges into local main with `git merge --no-ff` per policy. The gates stay: one plan = one branch, verifier, review, risk label, merge-commit rollback. `/release` creates a local tag after approval. Adding GitHub switches the next `/ship` to the PR flow automatically.
 
 ## Models and budget
-**The recommended path is `/hire`.** The lead confirms candidates (aliases opus/sonnet/haiku, plus API model IDs you name), asks budget tier, project character and parallel plans, and proposes a role × model × effort table with reasons. On approval it applies via `scripts/apply-models.mjs` (which only changes model/effort lines) and leaves an "Operating profile" in CLAUDE.md. `/kickoff` and `/assess` end by running it. The `--budget` profiles below are for non-interactive use.
+**The recommended path is `/hire`.** The lead confirms candidates (aliases opus/sonnet/haiku, plus API model IDs you name), asks budget tier, project character and parallel plans, and proposes a role × model × effort table with reasons. On approval it applies via `scripts/apply-models.mjs` (which only changes model/effort lines) and leaves an "Operating profile" in CLAUDE.md. `/kickoff` and `/assess` end by running it. The `--budget` profiles below are for non-interactive use; pass `-Budget <tier>` at install time so the first (kickoff/assess) session already runs the verifier on haiku, and `/hire` refines it.
 
 Default is `inherit`. Aliases resolve to the plan's latest models, so no detection is needed; the tier is your choice of usage cap: unlimited (API/in-house) · high (Max 20x) · medium (Max 5x) · low (Pro). The plan cannot be read from the CLI, so a human chooses.
 
@@ -89,8 +89,8 @@ Change: re-run `./install.sh claude -Budget <tier>`, per-agent with `-Set team-i
 The session is working memory; the repo is long-term memory. State lives in three places — one commit per step, the plan file, `docs/STATUS.md` (auto-injected by the SessionStart hook). One session = one plan (PR). End with `/handoff`, continue in a new session with `/resume`. Use `claude --continue` only for short interruptions. Planner and reviewer accumulate long-term knowledge in `.claude/agent-memory/<name>/` (requires auto memory enabled).
 
 ## Differences from the opencode flavor
-- No per-path edit permissions. The planner's "docs only" rule is prompt-level and caught by the reviewer. For a hard block, add a path rule to `.claude/hooks/guardrails.mjs`.
-- Secret-file blocking (`.env`, keys, certificates) applies to the file tools (Read/Edit/Write) via deny rules and the hook; Bash can still `cat .env`. Keep secrets out of the repo or add a Bash pattern to `guardrails.mjs` for a hard block.
+- Per-path edit permissions exist only where the hook enforces them: team-lead may edit docs/STATUS.md and nothing else (`guardrails.mjs`). The planner's "docs only" rule is prompt-level and caught by the reviewer; for a hard block, add a path rule to the same hook.
+- Secret-file blocking (`.env`, keys, certificates) applies to the file tools (Read/Edit/Write) via deny rules and the hook, and the hook also blocks shell commands that print such files (`cat .env`, `Get-Content .env.local`, `grep KEY .env`). A program reading the file itself (`node -e`, `python -c`) is not caught — keep secrets out of the repo.
 - `permissions.deny` is session-wide. Force pushes and direct pushes to main are blocked by deny rules and hooks; feature-branch pushes are allowed.
 - The `Agent(...)` list on the main-session agent (`--agent` / `settings.agent`) is the allowlist of subagents the lead may call. Inside a subagent definition the parenthesized list is ignored.
 - `memory: project` gives roles long-term memory — the company's accumulated experience.

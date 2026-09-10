@@ -10,7 +10,7 @@ export const TeamCompaction: Plugin = async () => ({
 - Last team-verifier result (PASS/FAIL) and failing items
 - Open review findings (blocker/major) and their lens
 - Decisions waiting on the CEO and the default if unanswered
-- On resume, re-read AGENTS.md, docs/CHARTER.md, docs/STATUS.md and the current plan or spec file
+- On resume, re-read the current plan or spec file (AGENTS.md, docs/CHARTER.md and docs/STATUS.md are already injected)
 `)
   },
 })

@@ -7,9 +7,18 @@
       "Bash(git log:*)",
       "Bash(git show:*)",
       "Bash(git branch:*)",
+      "Bash(git switch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git merge --no-ff:*)",
+      "Bash(git remote:*)",
+      "Bash(git worktree list:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh api:*)",
+      "Bash(gh pr view:*)",
       "Bash(node .claude/scripts/apply-models.mjs:*)",
       "Bash(node .claude/scripts/set-language.mjs:*)",
-      "Bash(node .claude/scripts/new-agent.mjs:*)"
+      "Bash(node .claude/scripts/new-agent.mjs:*)",
+      "Bash(node .claude/scripts/set-profile.mjs:*)"
     ],
     "deny": [
       "Read(./.env)",

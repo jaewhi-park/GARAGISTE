@@ -62,7 +62,7 @@ First run: run `claude` in the repo → accept the folder-trust prompt (this ena
 Check: right after SessionStart you see "GARAGISTE: docs/CHARTER.md is missing…" (hook works), and `/kickoff` etc. appear in the slash menu while knowledge skills such as `charter` or `spec` do not.
 
 ### Models and budget — `/hire`
-When `/kickoff` or `/assess` finishes, the lead runs `/hire`. It confirms available models (aliases opus/sonnet/haiku), asks you for a budget tier (unlimited / high = Max 20x / medium = Max 5x / low = Pro), the project's character and parallel plans, and proposes a role × model table with reasons. You approve it or change a line or two. Principle: the strongest model where judgment happens (planner, critic, reviewer), the fastest model for the verifier, the implementer by budget. On approval a script changes only the `model:` lines and an "Operating profile" is left in CLAUDE.md. Takes effect from the next session. Re-run `/hire` when the budget changes; `/roster` shows the current assignment. The installer's `-Budget` profiles distribute mechanically without judgment, for non-interactive use.
+When `/kickoff` or `/assess` finishes, the lead runs `/hire`. It confirms available models (aliases opus/sonnet/haiku), asks you for a budget tier (unlimited / high = Max 20x / medium = Max 5x / low = Pro), the project's character and parallel plans, and proposes a role × model table with reasons. You approve it or change a line or two. Principle: the strongest model where judgment happens (planner, critic, reviewer), the fastest model for the verifier, the implementer by budget. On approval a script changes only the `model:` lines and an "Operating profile" is left in CLAUDE.md. Takes effect from the next session. Pass `-Budget <tier>` at install time so the kickoff/assess session itself already runs the verifier on the fast model; `/hire` then refines it. Re-run `/hire` when the budget changes; `/roster` shows the current assignment. The installer's `-Budget` profiles distribute mechanically without judgment, for non-interactive use.
 
 ### Language
 Agent prompts are English. Responses, questions and documents follow the `## Language` line in CLAUDE.md. `/kickoff` and `/assess` ask for it first when it is not set; `/lang <code>` changes it any time (a script rewrites only that section). When unset, agents mirror the language of your latest message, but an English command template can still tip the lead into English: if that happens, run `/lang`.
@@ -74,7 +74,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.1 Planning a new project
 - When: the repo is empty, or the idea precedes the code.
 - Command: `/kickoff <one or two sentences>`
-- Team: charter questions → docs/CHARTER.md → stack alternatives and ADR → empty skeleton (tests and lint pass) → CLAUDE.md → walking-skeleton plan. Ends by running `/hire`.
+- Team: charter questions → docs/CHARTER.md → stack ADR (critic-reviewed) → skeleton → CLAUDE.md, ADR decision, backlog and walking-skeleton plan in one pass → full verification → `/hire`. The first `/run` happens in a new session (model assignments load at session start).
 - You: answer the seven questions. Do not wave through **three non-goals** and the **success metric** — the charter is the yardstick for every later verdict. Read the stack ADR's "why not the alternatives" and approve.
 - Approval criteria: is the success metric a measurable statement; did the verification commands actually pass on the skeleton (verifier report).
 - Common mistakes: putting a feature list in the charter (that is the backlog). Handing the stack decision to the team wholesale — it is the most expensive decision to reverse, so choose it yourself.
@@ -82,9 +82,9 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.2 Legacy takeover / rebuild planning
 - When: there is existing code to fix or replace.
 - Command: `/assess <path or description>`
-- Team: inventory (docs/ASSESSMENT.md) → unknowns reported → parity harness → strategy comparison (ADR, docs/REBUILD_PLAN.md) → CLAUDE.md. Ends by running `/hire` (a rebuild weights critic and reviewer).
-- You: two decisions only. (1) preserve or fix each "current behaviour that looks like a bug" — item by item. (2) the strategy (strangler fig / module-by-module / full rewrite). The default is strangler fig; a full rewrite needs evidence from the team.
-- Approval criteria: does the parity harness PASS entirely against legacy? Without it, refuse to approve any rebuild step.
+- Team: inventory (docs/ASSESSMENT.md) → unknowns reported, preserve/fix policy in one call → strategy and first seam (ADR, docs/REBUILD_PLAN.md, CLAUDE.md) → a plan for the first seam's parity harness → `/hire` (a rebuild weights critic and reviewer). The harness is built through `/run` as plan 0001 in a new session; every later rebuild step extends it to its seam first.
+- You: two decisions only. (1) preserve or fix each "current behaviour that looks like a bug" — one call with defaults: accept them or name the items to fix. (2) the strategy (strangler fig / module-by-module / full rewrite). The default is strangler fig; a full rewrite needs evidence from the team.
+- Approval criteria: does the parity harness PASS against legacy for the seam being rebuilt (docs/PARITY.md lists what it covers)? Without it, refuse to approve that step.
 - Common mistakes: "let's just rewrite it" without a harness. In legacy without a written spec (docs/specs/), the only spec is current behaviour.
 
 ### 2.3 Design and architecture decisions
@@ -105,7 +105,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - When: most work. One plan per session.
 - Command: `/plan <backlog item or feature>` → intake (one call) → approve → `/run <plan file>`. For step-by-step control use `/build` → `/review` → `/ship` instead. For a complex feature answer "yes, spec" at intake: 2–3 chat rounds → docs/specs/NNNN-<slug>.md → approve the spec → the plan.
 - Team: intake (one call: spec? / done when / not this time / fixed in advance — skipped when the request already says so, and for bug lines and re-plans; a backlog item skips all but the spec question, and only when it is size L or names a new page, screen, API or data model) → spec rounds if chosen (structure → detail → your corrections → approval; the planner writes docs/specs/NNNN-<slug>.md after every round) → plan (sections 1–2 are your answers or the spec verbatim) → critic review (3+ steps or high risk) → escalation questions → `/run`: branch → implement, verify and commit per step → review and fixes → ship and merge verdict. It stops only for escalation, a fix loop over 3 rounds, and merge approval.
-- You: answer the intake in your own words when the options do not fit; the planner writes it down. The spec rounds are the one place you talk at length: answer in your own words, give paths and links (design file, similar screen, external doc) rather than pasting documents, and read the draft file yourself before correcting. Then **actually read the plan.** Are the completion criteria verifiable statements; are the steps 300 lines or less; does it stay inside the non-goals? After approval, keep your hands off. Questions arrive in the form decision / options / recommendation / default — take the recommendation or say why not.
+- You: answer the intake in your own words when the options do not fit; the planner writes it down. The spec rounds are the one place you talk at length: answer in your own words, give paths and links (design file, similar screen, external doc) rather than pasting documents, and read the draft file yourself before correcting. Then **actually read the plan.** Are the completion criteria verifiable statements; are logic steps within the step-size target (300 by default; a larger step states why); does it stay inside the non-goals? After approval, keep your hands off. Questions arrive in the form decision / options / recommendation / default — take the recommendation or say why not.
 - Approval criteria (plan): completion criteria · per-step verification command · rollback method — all three present.
 - Common mistakes: ordering big work in chat without a plan. Two plans in one session. Changing direction while the team is working (stop and re-plan instead). Answering the intake with "your call" on the one thing you care about — you will reject the plan for it at approval. Ordering a complex feature with a one-liner and no spec.
 - When a large diff is normal: scaffolding, generated code, lockfiles, bulk formatting/renames, deletions. If it is a separate commit labelled with its kind, the 300-line rule does not apply — but the review criteria differ: is it reproducible (regeneration diff zero), is logic mixed in, do build and tests pass. Do not read such commits line by line; check those three things.
@@ -124,12 +124,12 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.7 Review
 - When: after `/build` finishes; before integrating each branch.
 - Command: `/review [base branch]`
-- Team: picks lenses by risk — correctness + security by default; performance + maintainability added for high risk, logic diffs over 300 lines or hot paths. Runs them in parallel → collects blocker/major → fix loop (max 3) → all APPROVE.
+- Team: picks lenses by risk — correctness + security by default; performance + maintainability added for high risk, logic diffs over 600 lines or hot paths. Runs them in parallel → collects blocker/major → fix loop (max 3; only the fix diff is re-reviewed, by the lenses that objected) → all APPROVE.
 - You: rule when findings conflict. Otherwise read the summary only. If a finding keeps recurring, note it as a `/retro` candidate.
 - Common mistakes: approving without reading the review. Fixing reviewer findings yourself (have the implementer do it).
 
 ### 2.8 QA and verification
-- When: always, automatically (verifier after every step). Human QA before shipping.
+- When: always, automatically (verifier after every step by default; the operating profile can move it to the end of `/build`, where the full verification is the independent verdict). Human QA before shipping.
 - Command: none. If needed, `@team-verifier full verification` directly.
 - Team: runs the "quick" and "full" verification from CLAUDE.md and reports PASS/FAIL with failure counts only.
 - You: **do not trust the green light; read the evidence** — which commands ran, how many tests. Zero tests means PASS is meaningless. Before shipping, use the product once yourself (automation misses the user's view).
@@ -195,7 +195,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.16 Hiring (model assignment)
 - When: right after `/kickoff` or `/assess` (the lead runs it), when the budget tier changes, when the team feels too slow or too expensive.
 - Command: `/hire [note]`
-- Team: takes the aliases opus/sonnet/haiku (and any API model IDs you name) as candidates; asks budget tier, project character, parallel plans and roles to emphasize in one go → proposes a role × model table with reasons → also proposes the operating profile (default lenses 2/4, parallelism, critic threshold) → on approval, changes only model lines via script and writes "## Operating profile" to CLAUDE.md.
+- Team: takes the aliases opus/sonnet/haiku (and any API model IDs you name) as candidates; asks budget tier, project character, parallel plans and roles to emphasize in one go → proposes a role × model table with reasons → also proposes the operating profile (default lenses 2/4, parallelism, critic threshold, per-step verifier, step-size target) → on approval, one script changes only model lines and another writes "## Operating profile" to CLAUDE.md.
 - You: answer the questions. For models the lead does not know (in-house models), **you must say which is strongest and which is fastest** — the lead does not guess. Approve the table or change a line or two.
 - Approval criteria: did the strongest model go to planner, critic and reviewer? Is the verifier on the fastest model? On the low tier, are parallelism and 4 lenses out of the defaults?
 - Common mistakes: cutting the reviewer first to save cost (quality collapses there first — cut the implementer first). Expecting the change to apply without opening a new session.
@@ -219,7 +219,7 @@ Before approving a spec:
 
 Before approving a plan:
 - [ ] completion criteria are verifiable statements (commands, tests, numbers)
-- [ ] every step has a verification command; logic-change steps are 300 lines or less; mechanical changes (scaffolding, generated code, lockfiles, formatting, deletions) are separate steps
+- [ ] every step has a verification command; logic-change steps are within the step-size target (default 300 changed lines) or state why not (never beyond 2×); mechanical changes (scaffolding, generated code, lockfiles, formatting, deletions) are separate steps
 - [ ] no conflict with non-goals or the charter
 - [ ] a rollback method is written down
 - [ ] sections 1–2 match your intake answers or the spec
@@ -238,8 +238,8 @@ Before merging a PR:
 ## 5. Where tokens leak and how to stop it
 - Repeatedly checking subagent status: forbidden by the lead's rules (synchronous calls, wait for completion). If you still see it, it is a `/retro` subject.
 - Progress narration ("I will now…"): forbidden by rule. Results and decisions only.
-- Auto-injected documents growing: CHARTER 60 lines, STATUS 30 lines. The planner splits them when exceeded; the hook truncates at 120 lines.
-- Critic and 4 lenses on small plans: under 3 steps and risk:low, the critic is skipped and review uses 2 lenses. Adjust via the operating profile (/hire).
+- Auto-injected documents growing: CHARTER 60 lines, STATUS 30 lines. The lead keeps STATUS within the cap; the planner splits CHARTER when exceeded; the hook truncates at 120 lines.
+- Critic and 4 lenses on small plans: under 3 logic steps and risk:low the critic is skipped; review uses 2 lenses below 600 logic lines and risk:low. Adjust via the operating profile (/hire).
 - Intake asks at most once per plan; if bug lines, re-plans or backlog items (beyond the one spec question for size L or a new page, screen, API or data model) still draw questions, it is a `/retro` subject.
 - Spec rounds are the exception to short chats: give paths and links, never paste documents (the planner reads them); the file is the memory, so `/handoff` after a long spec session and re-enter with `/plan docs/specs/NNNN-<slug>.md`.
 - On your side: do not re-ask the same question every session — record decisions in docs/DECISIONS.md and let the lead follow them. One plan per session. When the context gets heavy, `/handoff` and start fresh.

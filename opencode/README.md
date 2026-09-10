@@ -21,7 +21,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | Command | When |
 |---|---|
 | `/kickoff <idea>` | New project. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
-| `/assess <target>` | Legacy. Inventory → parity harness → rebuild strategy ADR → AGENTS.md → /hire |
+| `/assess <target>` | Legacy. Inventory → preserve/fix policy → rebuild strategy ADR → AGENTS.md → parity-harness plan for the first seam → /hire |
 | `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
 | `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes → critic reviews (3+ steps or risk:high) → approval requested |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |
@@ -30,7 +30,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/ship` | Full verification · docs · risk label · automatic merge-policy resolution → PR or local merge |
 | `/release [version]` | Operations: version, CHANGELOG, release notes, tag commands |
 | `/policy [value]` | Show the current merge-policy verdict and reason; optionally override |
-| `/hire [note]` | Assign models per role from available models, budget and project character (CEO approves) |
+| `/hire [note]` | Assign models per role and the operating profile from available models, budget and project character (CEO approves; both via script) |
 | `/roster` | Table of agents, models and permissions, plus how to change them |
 | `/lang [code]` | Set the working language: rewrites the `## Language` section of AGENTS.md via script, effective immediately |
 | `/recruit <gap>` | Propose a new role (preset permissions, model taken from the sibling role in the roster); created by script on CEO approval |
@@ -65,7 +65,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 When `git remote` is empty, `/ship` writes the PR description to docs/prs/NNNN-<slug>.md and merges into local main with `git merge --no-ff` per policy (after CEO approval in manual). The gates stay: one plan = one branch, verifier, review, risk label, merge-commit rollback (`git revert -m 1`). `/release` creates a local tag after approval. When you add GitHub (`git remote add origin …`), the next `/ship` switches to the PR flow automatically, and enabling protection + auto-merge on main switches to auto-low-risk. No config edits.
 
 ## Models and budget
-**The recommended path is `/hire`.** The lead lists available models (`opencode models`), asks budget tier, project character and parallel plans, and proposes a role × model table with reasons. On approval it applies via `scripts/apply-models.mjs` (which only changes `model:` lines) and leaves an "Operating profile" (default lenses, parallelism, critic threshold) in AGENTS.md. `/kickoff` and `/assess` end by suggesting it. The `--budget` profiles below are for non-interactive/scripted use.
+**The recommended path is `/hire`.** The lead lists available models (`opencode models`), asks budget tier, project character and parallel plans, and proposes a role × model table with reasons. On approval it applies via `scripts/apply-models.mjs` (which only changes `model:` lines) and leaves an "Operating profile" (default lenses, parallelism, critic threshold, per-step verifier, step-size target) in AGENTS.md. `/kickoff` and `/assess` end by suggesting it. The `--budget` profiles below are for non-interactive/scripted use; pass `-Budget <tier> -Strong <id> -Fast <id>` at install time so the first (kickoff/assess) session already runs the verifier on the fast model, and `/hire` refines it.
 
 Default is `inherit` (no model lines → session provider/model). `-Budget` distributes two models (strong/fast) across roles; `-Strong`/`-Fast` are required.
 

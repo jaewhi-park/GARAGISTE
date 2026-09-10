@@ -8,7 +8,7 @@ AGENTS.md is injected into every session. It must be short and true.
 
 ## Principles
 - Under 300 lines. Procedures go in skills; facts go here.
-- List only commands that were actually run and passed (confirmed by team-verifier).
+- List only commands that were actually run and passed (confirmed by team-verifier; at kickoff the implementer's report seeds them and the verifier confirms right after; at assess each command line ends with ` — unverified` until the verifier has run it; /assess step 4 removes the marker).
 - Add rules only when something actually went wrong (retro output). No generalities.
 - Always separate quick verification (under one minute) from full verification.
 
@@ -35,13 +35,13 @@ One-line summary (details: docs/CHARTER.md · legacy: docs/ASSESSMENT.md, docs/R
 
 ## Definition of Done
 - quick verification passes; new logic has tests
-- a logic-change step diff is 300 lines or less (state the split reason if exceeded)
+- a logic-change step diff is within the operating profile's step-size target (default 300 changed lines: `git diff --stat` insertions + deletions, tests included, mechanical changes excluded); a larger step states why, never beyond 2×
 - mechanical changes (scaffold/gen/mechanical/deps) are separate commits with kind and reproduction command; regeneration diff is zero
 - docs, ADRs and docs/DECISIONS.md updated
-- review APPROVE (lenses scale with risk: default correctness+security; 4 lenses for risk:high, large or integration diffs)
+- review APPROVE (lenses scale with risk: default correctness+security; 4 lenses for risk:high, over 600 logic lines, or integration diffs)
 
 ## Operating profile
-- (filled by /hire: budget tier / default review lenses 2|4 / parallelism none|session / critic minimum steps / hire date)
+- (filled by /hire via set-profile.mjs: budget tier / default review lenses 2|4 / parallelism none|session / critic minimum steps / per-step verifier on|off / step-size target / hire date)
 
 ## Merge policy
 - (leave empty for automatic resolution by /ship: no remote→local, protection+auto-merge→auto-low-risk, otherwise→manual. Write manual | auto-low-risk to force)

@@ -28,7 +28,7 @@
 | 커맨드 | 언제 |
 |---|---|
 | `/kickoff <아이디어>` | 신규 프로젝트. 헌장 → 스택 ADR → 골격 → AGENTS.md → 첫 계획 → /hire |
-| `/assess <대상>` | 레거시. 인벤토리 → parity harness → 리빌드 전략 ADR → AGENTS.md → /hire |
+| `/assess <대상>` | 레거시. 인벤토리 → 보존/수정 방침 → 리빌드 전략 ADR → AGENTS.md → 첫 seam의 parity harness 계획 → /hire |
 | `/plan <항목>` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/) → planner 작성 → critic 리뷰(3단계 이상 또는 risk:high) → 승인 요청 |
 | `/build <계획파일>` | 단계별 implementer → verifier 루프 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |
@@ -37,7 +37,7 @@
 | `/retro <대상>` | 실패를 AGENTS.md 규칙/스킬/가드레일로 환류 |
 | `/backlog [아이디어]` | PM: 완료 조건이 있는 백로그 항목·우선순위 (docs/BACKLOG.md, 선택적 GitHub Issues) |
 | `/release [버전]` | 운영: 버전·CHANGELOG·릴리즈 노트, 태그 명령 제시 |
-| `/hire [메모]` | 사용 가능한 모델·예산·프로젝트 성격에 맞춰 역할별 모델 배정(CEO 승인) |
+| `/hire [메모]` | 사용 가능한 모델·예산·프로젝트 성격에 맞춰 역할별 모델 배정과 운영 프로필(CEO 승인, 둘 다 스크립트) |
 | `/roster` | 에이전트별 모델·권한 표와 변경 방법 |
 | `/lang [code]` | 작업 언어 설정: 스크립트로 AGENTS.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
 | `/recruit <gap>` | 새 역할 제안(프리셋 권한, 모델은 로스터의 형제 역할에서 복사); CEO 승인 후 스크립트가 생성 |
@@ -79,7 +79,7 @@
 `git remote`가 비어 있으면 `/ship`은 push·PR 대신 docs/prs/NNNN-<slug>.md 에 PR 설명을 남기고, 머지 정책대로 로컬 main에 `git merge --no-ff` 한다(manual이면 CEO 승인 후). 게이트는 그대로다 — 계획 하나 = 브랜치 하나, verifier, 4렌즈 리뷰, 위험도, 머지 커밋 단위 롤백(`git revert -m 1`). `/release`는 승인 후 로컬 태그를 만든다. GitHub를 붙이면(`git remote add origin …`) 다음 `/ship`부터 자동으로 PR 흐름이 되고, main 보호 + auto-merge를 켜면 자동으로 auto-low-risk가 된다. 설정 파일을 고칠 일은 없다.
 
 ## 모델과 예산
-**권장 경로는 `/hire`** 다. lead 가 사용 가능한 모델을 확인하고(opencode: `opencode models`, Claude Code: 별칭), 예산 티어·프로젝트 성격·병렬 계획을 묻고, 역할 × 모델 표를 이유와 함께 제안한다. 승인하면 `scripts/apply-models.mjs`(model 줄만 바꾸는 스크립트)로 적용하고 AGENTS.md 에 "운영 프로필"(기본 렌즈 수·병렬·critic 기준)을 남긴다. `/kickoff`·`/assess` 끝에 자동으로 제안된다. 아래 `--budget` 프로필은 비대화형·스크립트용이다.
+**권장 경로는 `/hire`** 다. lead 가 사용 가능한 모델을 확인하고(opencode: `opencode models`, Claude Code: 별칭), 예산 티어·프로젝트 성격·병렬 계획을 묻고, 역할 × 모델 표를 이유와 함께 제안한다. 승인하면 `scripts/apply-models.mjs`(model 줄만 바꾸는 스크립트)로 적용하고 AGENTS.md 에 "운영 프로필"(기본 렌즈 수·병렬·critic 기준·단계별 verifier·단계 크기 목표)을 남긴다. `/kickoff`·`/assess` 끝에 자동으로 제안된다. 아래 `--budget` 프로필은 비대화형·스크립트용이다. 설치할 때 `-Budget <티어> -Strong <id> -Fast <id>`를 주면 첫(kickoff/assess) 세션부터 verifier가 빠른 모델로 돌고, `/hire`가 그 위에서 다듬는다.
 
 기본은 `inherit`(에이전트에 model 줄 없음 → 세션의 provider/model 상속). `--budget` 을 주면 두 모델(strong/fast)을 역할별로 배분한다. 설치 시 `opencode models` 로 사용 가능한 모델을 감지해 strong/fast 를 제안하고, 터미널이면 확인을 받는다.
 

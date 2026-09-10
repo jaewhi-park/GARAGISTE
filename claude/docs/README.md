@@ -10,7 +10,7 @@ If the code is the product, this directory is the company. Agents forget when a 
 | plans/NNNN-*.md | Engineering — how (sections 1–2 from the intake or spec) | /plan | every piece of work |
 | adr/NNNN-*.md | Architecture decisions — why this design | planner | every hard-to-reverse decision |
 | DECISIONS.md | Autonomous decision log | planner | whenever the lead decides without the CEO |
-| STATUS.md | Status board (session handoff) | /plan (spec rounds), /build, /handoff | every step, verdict, decision, spec round |
+| STATUS.md | Status board (session handoff) | lead | every step, verdict, decision, spec round |
 | METRICS.md | Governance — one line per plan | /ship | every ship (/retro reads it) |
 | prs/NNNN-*.md | PR description when there is no remote | /ship (local mode) | every local-mode ship |
 | releases/<ver>.md | Operations — release notes | /release | every release |

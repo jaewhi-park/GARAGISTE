@@ -6,7 +6,7 @@ user-invocable: false
 # parity-harness
 
 ## Principles
-- No rebuild step starts without the harness.
+- No rebuild step starts without the harness — for the seam it rebuilds. The first harness covers the first seam the strategy picks (plan 0001, built through /run); each rebuild step's step 0 extends it to that step's seam; a full-rewrite strategy needs near-complete coverage before its first replacement step. docs/PARITY.md's "uncovered areas" is the boundary the planner and critic enforce.
 - Bugs are recorded as current behaviour for now. Preserve-or-fix is the CEO's decision and goes in the decision log.
 - Normalization rules (timestamps, ordering, floating-point tolerance, temporary IDs) are documented explicitly.
 
