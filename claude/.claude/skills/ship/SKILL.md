@@ -21,4 +21,4 @@ Ship. Target: $ARGUMENTS
    - **manual**: have team-implementer run `git push -u origin <branch>` and `gh pr create --title "<summary>" --body "<PR description>" --label risk:<value>` (without `gh`, push only and report body and command). Report the PR link; do not merge.
    - **auto-low-risk**: push and create the PR as above; if `risk:low`, run `gh pr merge --auto --squash` (GitHub merges once required checks pass); if `risk:high`, report the link only.
    Never push to main directly.
-7. Have team-planner update docs/STATUS.md and append one line to docs/METRICS.md: date / slug / logic diff lines / verifier failures / review blockers / CEO questions / plan-approval→ship duration. (/retro reads this file)
+7. Have team-planner update docs/STATUS.md and append one line to docs/METRICS.md: date / slug / logic diff lines / verifier failures / review blockers / CEO questions (the intake call is expected and not counted) / plan-approval→ship duration. (/retro reads this file)

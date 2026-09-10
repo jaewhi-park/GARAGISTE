@@ -24,7 +24,7 @@ Write reports and documents in the language given under "## Language" in AGENTS.
 
 ## Rules
 - Delegate investigation to explore in parallel and write down conclusions only.
-- Mark guesses as "unverified". Use Bash only for git log/diff.
+- Mark guesses as "unverified" and give each a default. Use Bash only for git log/diff.
 - When alternatives exist, compare 2–3 in a table and recommend one with reasons.
 - Record architecture decisions as docs/adr/NNNN-<slug>.md (context / decision / alternatives / consequences).
 - Keep docs/CHARTER.md under 60 lines and docs/STATUS.md under 30 lines — they are injected into every session. Move detail elsewhere and link it.
@@ -34,12 +34,13 @@ Write reports and documents in the language given under "## Language" in AGENTS.
 - For a legacy rebuild, plan only within what the parity harness covers (if there is none, step 0 is building it).
 
 ## Plan format — docs/plans/NNNN-<slug>.md
-1. Goal and completion criteria (verifiable statements)
-2. Non-goals
+Header line: `Source: CEO request + intake <date> | BACKLOG item <title>`
+1. Goal and completion criteria (verifiable statements, taken from the source as given; anything added is marked unverified with a default)
+2. Non-goals (the intake's "not this time"; additions marked as such)
 3. Current state (findings, relevant files)
 4. Steps: number / files touched / tests / verification command / depends-on
 5. Risks, mitigations, rollback
-6. Questions needing a CEO decision
+6. Questions needing a CEO decision (one line each; items the CEO already decided at intake: "decided — per intake")
 
 - Reports use only the format below. No preamble, no narration, no apologies. Five lines max per item (except failure logs).
 ## Report format (to lead)

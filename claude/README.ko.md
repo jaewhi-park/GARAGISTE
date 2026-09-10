@@ -24,15 +24,15 @@
 ## CEO 콘솔 (스킬 = 슬래시 커맨드, CEO만 호출 가능)
 | 루프 | 커맨드 | 산출물 |
 |---|---|---|
-| 경영 | `/kickoff <아이디어>` / `/assess <대상>` | CHARTER, ADR, CLAUDE.md, (레거시) ASSESSMENT·PARITY·REBUILD_PLAN |
+| 경영 | `/kickoff <아이디어>` / `/assess <대상>` | CHARTER, ADR, CLAUDE.md, (레거시) ASSESSMENT·PARITY·REBUILD_PLAN; 끝에 /hire |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
-| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`) | docs/plans/*.md, 단계별 커밋 |
+| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`) | 접수 질문 1회 → docs/plans/*.md, 단계별 커밋 |
 | 병렬 | `/parallel <계획들>` → `/integrate` | worktree별 브랜치 → 직렬 머지 큐 |
 | 품질 | `/review` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
 | 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
 | 경영 | `/retro <대상>` | CLAUDE.md 규칙 / 스킬 / 훅 갱신 |
 | 인수인계 | `/handoff` / `/resume` | docs/STATUS.md |
-| 팀 관리 | `/roster` | 에이전트별 모델·effort 표, 변경 방법 |
+| 팀 관리 | `/hire` / `/roster` | 역할별 모델·effort 배정; 로스터 표 |
 | 언어 | `/lang [code]` | 스크립트로 CLAUDE.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
 | 채용 | `/recruit <gap>` | 권한 프리셋과 형제 역할의 모델·effort로 새 역할 생성(승인 후 스크립트) |
 
@@ -49,10 +49,10 @@
 | Explore | 코드베이스 조사 (내장) | 읽기 전용 | |
 
 ## 회사처럼 돌리는 리듬
-- 아침: `/backlog`로 오늘 할 항목 확정 → `/plan` 승인 → `/build` (병렬이면 아래 참고)
+- 아침: `/backlog`로 오늘 할 항목 확정 → `/plan` 승인 → `/run` (병렬이면 아래 참고)
 - 낮: lead의 AskUserQuestion에만 답한다. 그 외는 자율.
-- 저녁: `/review` → `/ship` (팀이 push·PR 생성) → 머지 정책대로. 주 1회 `/release`, 실패가 반복되면 `/retro`.
-- 사람의 네 가지 일: 헌장 질문에 답하기 / 계획 승인·에스컬레이션 결정 / PR 머지(정책에 따라) / 회고 승인.
+- 저녁: `/run`이 ship까지 끝내면 머지 정책대로. 주 1회 `/release`, 실패가 반복되면 `/retro`.
+- 사람의 네 가지 일: 헌장·접수 질문에 답하기 / 계획 승인·에스컬레이션 결정 / PR 머지(정책에 따라) / 회고 승인.
 
 ## 머지 정책 — 자동 판정
 `/ship`이 저장소 상태를 보고 정한다. 설정 파일을 고칠 일은 없다.

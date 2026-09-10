@@ -27,9 +27,9 @@
 ## CEO 콘솔
 | 커맨드 | 언제 |
 |---|---|
-| `/kickoff <아이디어>` | 신규 프로젝트. 헌장 → 스택 ADR → 골격 → AGENTS.md → 첫 계획 |
-| `/assess <대상>` | 레거시. 인벤토리 → parity harness → 리빌드 전략 ADR → AGENTS.md |
-| `/plan <작업>` | planner 작성 → critic 리뷰 → 승인 요청 |
+| `/kickoff <아이디어>` | 신규 프로젝트. 헌장 → 스택 ADR → 골격 → AGENTS.md → 첫 계획 → /hire |
+| `/assess <대상>` | 레거시. 인벤토리 → parity harness → 리빌드 전략 ADR → AGENTS.md → /hire |
+| `/plan <항목>` | 접수 질문 1회 → planner 작성 → critic 리뷰(3단계 이상 또는 risk:high) → 승인 요청 |
 | `/build <계획파일>` | 단계별 implementer → verifier 루프 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |
 | `/review [기준브랜치]` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |

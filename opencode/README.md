@@ -23,7 +23,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/kickoff <idea>` | New project. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
 | `/assess <target>` | Legacy. Inventory → parity harness → rebuild strategy ADR → AGENTS.md → /hire |
 | `/backlog [idea]` | Product: spec-carrying backlog items with priority (docs/BACKLOG.md, optional GitHub Issues) |
-| `/plan <item>` | Planner writes → critic reviews (3+ steps or risk:high) → approval requested |
+| `/plan <item>` | One intake call → planner writes → critic reviews (3+ steps or risk:high) → approval requested |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |
 | `/build <plan>` | Step-by-step implementer → verifier loop |
 | `/review [base]` | Risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |

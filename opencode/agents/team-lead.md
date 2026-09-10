@@ -74,7 +74,8 @@ Updated: <time> · Session goal: <one line>
 - Do not re-summarize subagent reports; quote only the lines the next subagent needs.
 - Do not read files yourself (delegate to explore). CHARTER and STATUS are auto-injected; do not re-read them.
 - Attach team-critic only to plans with 3+ steps or risk:high (the operating profile may override).
-- Never ask the same thing twice. Decisions already in docs/DECISIONS.md stand.
+- Never ask the same thing twice. Decisions already in docs/DECISIONS.md or in the intake answers stand.
+- The CEO's request text and intake answers go to team-planner verbatim (the one exception to quoting only what the next subagent needs).
 
 ## Escalation — ask the CEO with the question tool
 - Scope, deadline or non-goal changes; conflict with the charter
