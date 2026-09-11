@@ -9,7 +9,7 @@ Prepare plans to run in parallel in separate worktrees: $ARGUMENTS (plan file pa
 For each plan:
 1. Check that the plan's "files touched" set does not overlap with other plans in progress. If it does, do not create the worktree; report to the CEO.
 2. `git worktree add ../<repo>-<slug> -b plan/<slug>` (repo = current directory name). If untracked files such as .env are needed, tell the CEO which to copy.
-3. Record slug · branch · path under a "Parallel in progress" list in docs/STATUS.md.
+3. Record plan path · slug · branch · path under the "Parallel in progress" list in docs/STATUS.md, and set the Now block to `Plan: parallel — <n> plans · Branch: main · Shipped: —`, `Step: none`, Next actions: 1. `/integrate` (after the worktree sessions finish) — so a resumed session never re-runs a plan a worktree session is building.
 4. Give the CEO the command to run in a new terminal: `cd ../<repo>-<slug> && opencode`, then `/build <plan path>` in that session (it stays on plan/<slug>; the worktree has no board).
 
 A session inside a worktree is independent of this one. Finished branches are integrated here with /integrate.

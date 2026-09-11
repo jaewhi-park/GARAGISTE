@@ -8,4 +8,4 @@ Groom the backlog. Input: $ARGUMENTS
 2. Prioritize against the charter's success metrics and non-goals; move anything that hits a non-goal to an "Excluded" section.
 3. If the `gh` CLI is available and the CEO wants it, create GitHub Issues for P0/P1 items (issue body = completion criteria).
 4. Propose the top three with reasons and one candidate to `/plan` this week (an item with a spec link is planned with `/plan docs/specs/…` and draws no questions; a size-L item without one is offered a spec at intake).
-5. Have team-implementer commit docs/BACKLOG.md (`docs(backlog): groom <date>`) on the current branch.
+5. Have team-implementer commit docs/BACKLOG.md (`docs(backlog): groom <date>`) on the current branch, and remove a `Brief: … revised` line from the board yourself (the revision is groomed in).

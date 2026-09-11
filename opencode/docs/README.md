@@ -6,7 +6,7 @@ If the code is the product, this directory is the company. Agents forget when a 
 |---|---|---|---|
 | BRIEF.md | Product — the brief (기획서): direction, decided / later / rejected, non-goals, success metric, sketches | /brainstorm (via the planner) | before kickoff or assess; revised on a pivot |
 | CHARTER.md | Governance — the constitution, derived from BRIEF.md | /kickoff, /assess | at kickoff or assess; when the brief is revised |
-| BACKLOG.md | Product — what and why | /backlog | when ideas or requests appear |
+| BACKLOG.md | Product — what and why | /backlog (seeded by /brainstorm `req:` items and /kickoff) | when ideas or requests appear |
 | specs/NNNN-*.md | Product — what exactly and when done (complex features) | /plan (spec rounds, via the planner) | when the CEO opts in at intake; revised via `/plan <spec> 수정:` (rev n) |
 | plans/NNNN-*.md | Engineering — how (sections 1–2 from the intake or spec) | /plan | every piece of work; amended via `/plan <plan> 수정:` (rev n, from the step after the last PASS) |
 | adr/NNNN-*.md | Architecture decisions — why this design | planner | every hard-to-reverse decision |

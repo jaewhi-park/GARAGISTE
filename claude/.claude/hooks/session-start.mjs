@@ -34,7 +34,9 @@ if (hasCharter || hasStatus) {
     const head = readFileSync(briefPath, "utf8").split("\n").slice(0, 20);
     const status = (head.find((l) => /^Status:/.test(l)) ?? "Status: ?").replace(/^Status:\s*/, "").trim();
     const kind = (head.find((l) => /^Kind:/.test(l)) ?? "Kind: ?").replace(/^Kind:\s*/, "").trim();
-    if (/^(approved|revised)/.test(status)) {
+    if (/\(rev \d+ draft\)/.test(status)) {
+      process.stdout.write(`GARAGISTE: docs/BRIEF.md has a revision in progress (${status}). Start with /brainstorm to finish it.\n`);
+    } else if (/^(approved|revised)/.test(status)) {
       const next = /^레거시|^legacy/i.test(kind) ? `/assess ${(kind.match(/\((.+)\)/) ?? [])[1] ?? "<path>"}` : "/kickoff";
       process.stdout.write(`GARAGISTE: docs/BRIEF.md is ${status} (Kind: ${kind}) and docs/CHARTER.md is missing. Start with ${next}.\n`);
     } else {
