@@ -24,7 +24,7 @@ garagiste/
   install.sh / install.ps1     # 진입점: <opencode|claude> [옵션]
   opencode/                    # opencode 판 (.opencode/ 로 설치되는 agents·commands·skills·plugins + GUIDE.md)
   claude/                      # Claude Code 판 (.claude/ 로 설치되는 agents·skills·hooks + GUIDE.md)
-  scripts/                     # 이 저장소 관리용 도구 (정합성 검사와 그 기준선; 설치되지 않음)
+  scripts/                     # 이 저장소 관리용 도구 (정합성 검사와 그 기준선, 훅 검사; 설치되지 않음)
 ```
 각 판의 `GUIDE.md` 가 사람용 사용법(설치, 상황별 역할, 체크리스트)이고, `README.md` 가 설정 레퍼런스다.
 
@@ -34,6 +34,8 @@ garagiste/
 node scripts/parity-check.mjs
 ```
 `claude/` 의 파일마다 `opencode/` 의 짝을 찾아 claude 쪽을 opencode 어휘로 바꾼 뒤(CLAUDE.md → AGENTS.md, AskUserQuestion → the question tool, `/parallel` → `/spawn`, …) 남는 차이를 `scripts/parity-baseline.txt` 에 기록된 허용 차이와 비교해, 달라진 곳만 보고한다. 두 판의 README 가 같은 커맨드·산출물을 언급하는지, `scripts/*.mjs` 넷이 동일한지, 각 `.ko.md` 가 영어 원본의 절 구조를 유지하는지도 본다. 보고된 줄은 다른 판에 빚진 수정이거나 의도한 차이다. 후자면 `--update` 로 기록하고, 기준선 파일의 diff 가 리뷰어에게 무엇이 갈라졌는지 보여 준다.
+
+`node scripts/hook-check.mjs` 는 가드레일 쪽 짝이다. 명령·경로·역할의 매트릭스를 Claude Code 훅과 opencode 플러그인에 넣어(파괴적 명령, 비밀 파일, push 정책, gh api 변경, 역할별 allow-list) 기대한 판정과 다른 것이 하나라도 있으면 실패한다. `guardrails.mjs` 나 `guardrails.ts` 를 고친 뒤 실행한다.
 
 ## 원칙 여섯 줄
 1. 판단하는 자와 실행하는 자를 분리한다 — implementer 는 자기 결과를 판정하지 않고, reviewer 는 고치지 않고, lead 는 코드를 쓰지 않는다.
