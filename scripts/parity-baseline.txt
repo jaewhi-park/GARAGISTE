@@ -32,7 +32,7 @@ claude/.claude/skills/hire/SKILL.md ↔ opencode/commands/hire.md
   Hire the team (assign a model [-and effort-] per role). Note: $ARGUMENTS
   1. Candidates: [-the default candidates are the aliases opus / sonnet / haiku (they resolve-] {+run `opencode models`+} to [-the plan's latest models). Include other model IDs (API, Bedrock, Vertex) only if-] {+list available models. For models you know by name, summarize strengths (reasoning, code, speed, cost, context). For models you do not know (e.g. in-house), do not guess — ask+} the CEO [-names them. Plan-] {+which is strongest, which is fastest, context length+} and [-usage caps cannot be read from the CLI — ask, do not guess.-] {+cost constraints.+}
   2. Conditions (one question-tool call): budget tier (unlimited [-= API/in-house-] / high [-= Max 20x-] / medium [-= Max 5x-] / low [-= Pro),-] {+— sense of the usage cap),+} project character (docs/BRIEF.md via team-planner's report or the brainstorm session, docs/CHARTER.md and ASSESSMENT.md — a legacy rebuild weights critic and reviewer; a prototype weights speed), whether parallel development is planned, and any role to make deliberately strong or cheap.
-  3. Proposal: a role × model [-× effort-] table with a one-sentence reason per row and a note of where tokens concentrate. Principle: [-strong-] {+the strongest+} model [-and high effort-] where judgment happens (planner, critic, reviewer); [-verifier on haiku·low;-] {+the fastest model for verifier;+} implementer by budget. Also propose an operating profile: default review lenses (2 or 4), parallelism (none / [-session-level / /spawn),-] {+session-level),+} minimum logic steps for critic, per-step verifier (on | off — keep on for risk:high plans and legacy), step-size target (default 300 changed lines). [-On the low tier, drop parallelism and 4 lenses from the defaults.-]
+  3. Proposal: a role × model [-× effort-] table with a one-sentence reason per row and a note of where tokens concentrate. Principle: [-strong-] {+the strongest+} model [-and high effort-] where judgment happens (planner, critic, reviewer); [-verifier on haiku·low;-] {+the fastest model for verifier;+} implementer by budget. Also propose an operating profile: default review lenses (2 or 4), parallelism (none / [-session-level / /spawn),-] {+session-level),+} minimum logic steps for critic, per-step verifier (on | off — keep on for risk:high plans and legacy), step-size target (default 300 changed lines). On the low tier, drop parallelism and 4 lenses from the defaults.
   - [-Models and effort:-] {+Models:+} `node .opencode/scripts/apply-models.mjs --flavor opencode --dest .opencode/agents --budget inherit --set [-team-lead=<model>:<effort> --set team-planner=...-] {+team-lead=<id>+} --set [-team-critic=...-] {+team-planner=<id>+} --set [-team-implementer=...-] {+team-critic=<id>+} --set [-team-builder=...-] {+team-implementer=<id>+} --set [-team-reviewer=...-] {+team-reviewer=<id>+} --set [-team-verifier=...`. The session (lead) model is written to settings.json from the team-lead value.-] {+team-verifier=<id>`.+} The script changes only [-model/effort-] {+`model:`+} lines. Never edit agent files directly.
   - Operating profile: `node .opencode/scripts/set-profile.mjs "budget tier: <tier>" "default review lenses: <2|4>" "parallelism: [-<none|session|parallel>"-] {+<none|session>"+} "critic minimum steps: <n>" "per-step verifier: <on|off>" "step-size target: <n>" "hired: <date> — <one-line reason>"`. The script rewrites only the "## Operating profile" [-section;-] {+section of AGENTS.md;+} no planner call.
   - Commit: have team-implementer commit the files the scripts changed inside the repository (agent files under .opencode/, [-.opencode/settings.json,-] AGENTS.md), by path, as `chore(hire): <tier> — models and operating profile` on the current branch.
@@ -135,10 +135,6 @@ claude/GUIDE.ko.md ↔ opencode/GUIDE.ko.md
   | 병렬 개발 | `/spawn <계획들>` → {+각 세션 `/build` →+} `/integrate` → `/ship` [-(또는 `opencode --worktree`)-] | 파일 집합이 겹치지 않는지 확인, 통합 순서 결정 |
   | 세션 재개 | `/resume` | 상태판이 있을 [-때만(세션 시작 안내가 알려 준다).-] {+때만(주입된 파일을 보면 안다).+} 상태판과 저장소가 어긋나면 저장소 편 들기 |
   - --global → ~/.config/opencode (모든 [-레포; 기본 에이전트는 강제하지 않아 `opencode --agent team-lead` 로 시작).-] {+레포).+} 전역 설치는 프로젝트의 .gitignore를 건드릴 수 없으니 `docs/STATUS.md`는 직접 추가한다(잊으면 첫 이정표 커밋이 추가한다).
-  - 현재 레포의 [-`.opencode/{agents,skills,hooks}`와 `docs/README.md`를 넣고 `.opencode/settings.json`을 병합한다(기존 값 유지, 목록은 합집합). `~/.config/opencode/`는-] {+`.opencode/{agents,commands,skills,plugins}`와 루트 `opencode.json`에만 설치된다. `~/.config/opencode`는+} 건드리지 않는다. {+모든 레포에 적용하려면 `--global`.+}
-  - 모델은 [-세션 모델을 상속한다(에이전트 파일에 `model:` 없음). 역할별로-] {+지정하지 않는다 — 기존 opencode 설정의 provider/model을 상속한다.+} 바꾸려면 [-해당 `agents/*.md`에 `model:` 한 줄.-] {+`--model provider/id`.+}
-  - [-훅은 Node로 되어 있어 Windows에서도 동작한다. `.opencode/`를 커밋한다.-] {+기존 `opencode.json`은 병합된다(instructions 합집합, permission은 없는 키만). `--dry-run`으로 먼저 볼 수 있다.+}
-  {+- `.opencode/`와 `opencode.json`을 커밋한다. 팀 구성이 레포와 함께 버전 관리된다.+}
   첫 실행: 레포에서 `opencode` → [-폴더 신뢰 확인에 동의(훅이 켜진다) → settings의 `agent` 설정으로 team-lead가 메인 에이전트다-] {+Tab 으로 `team-lead` 선택+} → 먼저 `/brainstorm`(기획서), 그다음 신규면 `/kickoff`, 레거시면 `/assess`; 이어하기면 `/resume`.
   확인할 것: [-SessionStart 직후 "GARAGISTE: no product brief yet…" 안내가 보이는지(훅 동작), `/kickoff` 등이 슬래시 메뉴에 보이고 `charter`·`spec` 같은 지식 스킬은-] {+planner가 docs/ 밖을 못 쓰고 docs/ 안은 쓰는지(edit 패턴은 루트 기준 상대 경로: `docs/*`, `**/docs/**`는+} 안 [-보이는지.-] {+됨), 훅이 `git push --force`를 막는지.+}
   `/kickoff` 또는 `/assess` 가 끝나면 lead 가 `/hire` 를 [-실행한다.-] {+제안한다.+} lead 가 사용 가능한 모델을 확인하고 당신에게 예산 티어(unlimited / high=Max 20x / medium=Max 5x / low=Pro), 프로젝트 성격, 병렬 계획을 묻고 역할 × 모델 표를 이유와 함께 내놓는다. 당신은 표를 승인하거나 한두 줄 바꾼다. 원칙: 판단하는 자리(planner·critic·reviewer)에 강한 모델, verifier 는 가장 빠른 모델, implementer 는 예산에 따라. 승인하면 스크립트가 model 줄만 바꾸고 AGENTS.md 에 "운영 프로필"이 남는다. 새 세션부터 반영. 설치할 때 `-Budget [-<티어>`를-] {+<티어> -Strong <id> -Fast <id>`를+} 주면 kickoff/assess 세션부터 verifier가 빠른 모델로 돌고, `/hire`가 그 위에서 다듬는다. 예산이 바뀌면 `/hire` 를 다시 하고, 현재 배정은 `/roster` 로 본다. 설치 스크립트의 `--budget` 은 판단 없이 기계적으로 배분하는 비대화형 경로다.
@@ -178,26 +174,16 @@ claude/GUIDE.md ↔ opencode/GUIDE.md
 claude/README.ko.md ↔ opencode/README.ko.md
   only in claude: /agents
   only in claude: /model
-  only in claude: docs/releases
   only in claude: guardrails.mjs
   only in claude: team-builder
-  only in opencode: docs/BRIEF
-  only in opencode: docs/CHARTER
-  only in opencode: docs/DECISIONS
-  only in opencode: docs/adr
 
 claude/README.md ↔ opencode/README.md
   only in claude: /agents
   only in claude: /command
   only in claude: /model
   only in claude: /skill
-  only in claude: docs/releases
   only in claude: guardrails.mjs
   only in claude: team-builder
-  only in opencode: docs/BRIEF
-  only in opencode: docs/CHARTER
-  only in opencode: docs/DECISIONS
-  only in opencode: docs/adr
 
 claude/docs/README.md ↔ opencode/docs/README.md
   CHARTER.md and STATUS.md are injected into every session (via [-the SessionStart hook).-] {+`instructions` in opencode.json).+} STATUS.md is local to the checkout — each worktree has its own — and is never committed (the project installer git-ignores it; after a global install add the line yourself); milestone commits (docs(brief), docs(plan), docs(kickoff), …) carry the durable state. BRIEF.md is never injected: the commands that need it name it.
@@ -210,25 +196,19 @@ claude/scripts/set-language.mjs ↔ opencode/scripts/set-language.mjs (identical
 
 claude/scripts/set-profile.mjs ↔ opencode/scripts/set-profile.mjs (identical)
 
-README.md ↔ README.ko.md
-  en "License" has no ko section
+README.md ↔ README.ko.md (identical)
 
 claude/GUIDE.md ↔ claude/GUIDE.ko.md
   en "GARAGISTE User Guide — Claude Code flavor" | ko "GARAGISTE 사용 가이드 — Claude Code 판": para 2→3
-  en "1. Install and first run" | ko "1. 설치와 첫 실행": li 8→11, fence 1→2, para 10→11
 
 claude/README.md ↔ claude/README.ko.md
   en "GARAGISTE — Claude Code flavor" | ko "garagiste/claude — GARAGISTE — Claude Code 판": para 2→5
   en "Install" | ko "설치": para 2→5
   en "Session lifecycle" | ko "세션 수명주기": para 1→3
-  en "Workflow — sequential by default, parallel by choice" and ko "작업 방식 — 순차가 기본, 병렬은 선택" are in a different order
 
 opencode/GUIDE.md ↔ opencode/GUIDE.ko.md
   en "GARAGISTE User Guide — opencode flavor" | ko "GARAGISTE 사용 가이드 — opencode 판": para 2→3
-  en "1. Install and first run" | ko "1. 설치와 첫 실행": li 8→12, fence 1→2, para 10→11
 
 opencode/README.md ↔ opencode/README.ko.md
   en "GARAGISTE — opencode flavor" | ko "GARAGISTE — opencode 판": para 2→5
   en "Install" | ko "설치": para 4→7
-  en "Known caveats" | ko "알려진 주의점": para 0→1
-  ko "세션 수명주기" has no en section

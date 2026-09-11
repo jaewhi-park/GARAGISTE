@@ -49,16 +49,6 @@
 - 경로가 레포의 하위 폴더면 git 루트로 올라가 설치하고 알려준다. git 저장소가 아니면 `git init` 을 제안한다.
 - --global  → ~/.config/opencode (모든 레포). 전역 설치는 프로젝트의 .gitignore를 건드릴 수 없으니 `docs/STATUS.md`는 직접 추가한다(잊으면 첫 이정표 커밋이 추가한다).
 
-레포 루트에서:
-```
-./install.sh          # macOS / Linux / WSL
-.\install.ps1        # Windows PowerShell (실행 정책 오류가 나면 아래 참고)
-```
-- 현재 레포의 `.opencode/{agents,commands,skills,plugins}`와 루트 `opencode.json`에만 설치된다. `~/.config/opencode`는 건드리지 않는다. 모든 레포에 적용하려면 `--global`.
-- 모델은 지정하지 않는다 — 기존 opencode 설정의 provider/model을 상속한다. 바꾸려면 `--model provider/id`.
-- 기존 `opencode.json`은 병합된다(instructions 합집합, permission은 없는 키만). `--dry-run`으로 먼저 볼 수 있다.
-- `.opencode/`와 `opencode.json`을 커밋한다. 팀 구성이 레포와 함께 버전 관리된다.
-
 **Windows 실행 정책**: `.\install.ps1` 이 "스크립트를 실행할 수 없으므로" 로 막히면 둘 중 하나.
 - 한 번만: `powershell -ExecutionPolicy Bypass -File .\install.ps1`
 - 영구(권장): `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 후 `Unblock-File .\install.ps1` (인터넷에서 받은 파일 표식 제거)

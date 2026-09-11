@@ -196,8 +196,9 @@ function normalizeOpencode(text) {
   return { fm, body: tidy(body.map(canon)) };
 }
 function mentions(text) {
-  // Slash commands, team roles, docs/ artifacts (with or without .md) and scripts named in a document.
-  return new Set(Array.from(text.matchAll(/(?<![\w.~/*])\/[a-z][a-z-]*\b|\bteam-[a-z]+\b|\bdocs\/[A-Za-z_]+(?:\.md)?|\b[\w-]+\.mjs\b/g), (m) => m[0].replace(/\.md$/, "")));
+  // Slash commands (a "/" after a letter in any script is a path or a pair such as 테스트/lint, not a command), team
+  // roles, docs/ artifacts (with or without .md) and scripts named in a document.
+  return new Set(Array.from(text.matchAll(/(?<![\p{L}\p{N}_.~/*])\/[a-z][a-z-]*\b|\bteam-[a-z]+\b|\bdocs\/[A-Za-z_]+(?:\.md)?|\b[\w-]+\.mjs\b/gu), (m) => m[0].replace(/\.md$/, "")));
 }
 const COUNTS = ["h", "li", "row", "fence", "para"];
 function structure(text) {

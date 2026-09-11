@@ -49,15 +49,6 @@
 - 경로가 레포의 하위 폴더면 git 루트로 올라가 설치하고 알려준다. git 저장소가 아니면 `git init` 을 제안한다.
 - --global  → ~/.claude (모든 레포; 기본 에이전트는 강제하지 않아 `claude --agent team-lead` 로 시작). 전역 설치는 프로젝트의 .gitignore를 건드릴 수 없으니 `docs/STATUS.md`는 직접 추가한다(잊으면 첫 이정표 커밋이 추가한다).
 
-레포 루트에서:
-```
-./install.sh        # macOS / Linux / WSL
-.\install.ps1      # Windows PowerShell (실행 정책 오류가 나면 아래 참고)
-```
-- 현재 레포의 `.claude/{agents,skills,hooks}`와 `docs/README.md`를 넣고 `.claude/settings.json`을 병합한다(기존 값 유지, 목록은 합집합). `~/.claude/`는 건드리지 않는다.
-- 모델은 세션 모델을 상속한다(에이전트 파일에 `model:` 없음). 역할별로 바꾸려면 해당 `agents/*.md`에 `model:` 한 줄.
-- 훅은 Node로 되어 있어 Windows에서도 동작한다. `.claude/`를 커밋한다.
-
 **Windows 실행 정책**: `.\install.ps1` 이 "스크립트를 실행할 수 없으므로" 로 막히면 둘 중 하나.
 - 한 번만: `powershell -ExecutionPolicy Bypass -File .\install.ps1`
 - 영구(권장): `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 후 `Unblock-File .\install.ps1` (인터넷에서 받은 파일 표식 제거)

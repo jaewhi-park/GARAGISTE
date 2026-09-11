@@ -45,3 +45,6 @@ node scripts/parity-check.mjs
 
 ## 상태
 opinionated template, v0.x. 재료(계획 우선, 테스트 오라클, 작은 diff, worktree 격리, 별도 컨텍스트 리뷰)는 널리 검증된 것이고, 이 배치는 벤치마크된 적 없다. `docs/METRICS.md` 를 보며 잘라내라.
+
+## 라이선스
+MIT — [LICENSE](LICENSE) 참고.

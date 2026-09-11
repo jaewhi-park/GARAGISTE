@@ -22,14 +22,14 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 |---|---|
 | `/brainstorm <idea or file>` | Product brief (docs/BRIEF.md): free brainstorming with the lead, or a document you wrote → open slots → critic pre-mortem → approval → commit. Run it again to revise the brief (pivot) |
 | `/kickoff` | New project, from the approved brief. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
-| `/assess <target>` | Legacy, from the approved brief. Inventory → preserve/fix policy → rebuild strategy ADR → AGENTS.md → parity-harness plan for the first seam → /hire |
+| `/assess <target>` | Legacy, from the approved brief. Inventory (docs/ASSESSMENT.md) → preserve/fix policy → rebuild strategy ADR → docs/REBUILD_PLAN.md → AGENTS.md → parity-harness plan for the first seam → /hire |
 | `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
 | `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes → critic reviews (3+ steps or risk:high) → approval requested; `/plan <spec or plan> 수정: …` revises an approved spec or amends a running plan (differences only, same branch) |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |
 | `/build <plan>` | Step-by-step implementer → verifier loop |
 | `/review [base]` | Risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
 | `/ship` | Full verification · docs · risk label · a "Try it" section for user-facing plans (never auto-merged) · automatic merge-policy resolution → PR or local merge |
-| `/release [version]` | Operations: version, CHANGELOG, release notes, tag commands |
+| `/release [version]` | Operations: version, CHANGELOG, release notes (docs/releases/*.md), tag commands |
 | `/policy [value]` | Show the current merge-policy verdict and reason; optionally override |
 | `/hire [note]` | Assign models per role and the operating profile from available models, budget and project character (CEO approves; both via script) |
 | `/roster` | Table of agents, models and permissions, plus how to change them |
@@ -57,6 +57,13 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 - Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered — except the spec rounds of /plan, where open questions and free-text answers are allowed.
 - Fix loops are capped at 3 rounds; past that, stop and report.
 - Autonomous decisions go to docs/DECISIONS.md, architecture decisions to docs/adr/.
+
+## Session lifecycle
+The session is working memory; the repo is long-term memory. State lives in three places — one commit per step, the plan file (committed at approval), `docs/STATUS.md` (the board — local, git-ignored, auto-injected every session; after a global install add it to .gitignore yourself).
+- One session = one plan (PR). Start other work in a new session.
+- Ending: a finished `/ship` or `/plan` already leaves the board and the commits in place — just close. `/handoff` only when stopping mid-step, after two or more compactions, or when the team is going in circles.
+- Continuing: with a board, new session → `/resume`; without one (fresh clone, worktree, nothing in progress) go straight to `/plan <backlog item>`. Use `opencode -c` (continue the last session) only for a short interruption the same day. Long sessions stack summaries on summaries and degrade.
+- Mid-session compaction: `plugins/compaction.ts` forces the board's items into the summary.
 
 ## Parallelism and merging
 - Parallelism is session-level: `/spawn` creates a worktree (`../<repo>-<slug>`) and branch per plan; a separate `opencode` session runs `/build` in each worktree; `/integrate` in the main session reviews, merges and verifies branches one at a time (merge queue) into an integration branch cut from main, which `/ship` then ships as one PR (or one local merge). opencode subagents have no worktree isolation, so in-session parallelism is not supported.

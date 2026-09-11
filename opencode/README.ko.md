@@ -29,7 +29,7 @@
 |---|---|
 | `/brainstorm <아이디어 또는 파일>` | 기획서(docs/BRIEF.md): lead와 자유 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인 → 커밋. 피벗이면 다시 실행해 개정 |
 | `/kickoff` | 신규 프로젝트, 승인된 기획서에서. 헌장 → 스택 ADR → 골격 → AGENTS.md → 첫 계획 → /hire |
-| `/assess <대상>` | 레거시, 승인된 기획서에서. 인벤토리 → 보존/수정 방침 → 리빌드 전략 ADR → AGENTS.md → 첫 seam의 parity harness 계획 → /hire |
+| `/assess <대상>` | 레거시, 승인된 기획서에서. 인벤토리(docs/ASSESSMENT.md) → 보존/수정 방침 → 리빌드 전략 ADR → docs/REBUILD_PLAN.md → AGENTS.md → 첫 seam의 parity harness 계획 → /hire |
 | `/plan <항목>` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/) → planner 작성 → critic 리뷰(3단계 이상 또는 risk:high) → 승인 요청; `/plan <사양서 또는 계획> 수정: …`은 승인된 사양서 개정·진행 중 계획 수정(차이만, 같은 브랜치) |
 | `/build <계획파일>` | 단계별 implementer → verifier 루프 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |
@@ -37,7 +37,7 @@
 | `/ship` | 전체 검증 · 문서 · 브랜치 push · PR 생성(risk 라벨; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) · 머지는 정책대로 |
 | `/retro <대상>` | 실패를 AGENTS.md 규칙/스킬/가드레일로 환류 |
 | `/backlog [아이디어]` | PM: 완료 조건이 있는 백로그 항목·우선순위 (docs/BACKLOG.md, 선택적 GitHub Issues) |
-| `/release [버전]` | 운영: 버전·CHANGELOG·릴리즈 노트, 태그 명령 제시 |
+| `/release [버전]` | 운영: 버전·CHANGELOG·릴리즈 노트(docs/releases/*.md), 태그 명령 제시 |
 | `/hire [메모]` | 사용 가능한 모델·예산·프로젝트 성격에 맞춰 역할별 모델 배정과 운영 프로필(CEO 승인, 둘 다 스크립트) |
 | `/roster` | 에이전트별 모델·권한 표와 변경 방법 |
 | `/lang [code]` | 작업 언어 설정: 스크립트로 AGENTS.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
@@ -106,5 +106,4 @@
 - edit 권한 패턴은 저장소 루트 기준 상대 경로(`docs/plans/x.md`, `AGENTS.md`)와 비교되고 `*`는 단순 `.*`다. `**/docs/**`가 아니라 `docs/*`로 쓸 것: `**/` 형태는 앞에 `/`를 요구해서 아무것도 매칭되지 않는다. 첫 사용 시 planner가 docs/ 밖은 못 쓰고 docs/ 안은 쓸 수 있는지 한 번 확인할 것.
 - 내장 explore 에이전트는 bash를 가지며 전역 `ask`를 상속하므로 조사 중 `ls`, `git rev-parse` 하나하나에 프롬프트가 떴다. `opencode.json`의 `agent.explore.permission.bash`에 읽기 전용 allowlist를 두어 그 밖의 명령은 프롬프트 없이 거부되고 explore는 grep/glob/read로 대신한다. 스택에 맞게 목록을 늘릴 것.
 - 스킬은 에이전트가 자발적으로 로드하지 않을 수 있어 커맨드에서 이름을 명시해 로드시킨다.
-- 헤드리스 실행(`opencode run`)에서는 permission 프롬프트가 뜰 수 없다. 팀 에이전트는 모두 명시적
-  allow/deny로 되어 있으나, 내장 build/plan은 글로벌 기본값(ask)을 따른다.
+- 헤드리스 실행(`opencode run`)에서는 permission 프롬프트가 뜰 수 없다. 팀 에이전트는 모두 명시적 allow/deny로 되어 있으나, 내장 build/plan은 글로벌 기본값(ask)을 따른다.
