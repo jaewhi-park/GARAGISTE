@@ -8,6 +8,8 @@ Configuration reference: README.md. Where artifacts live: docs/README.md. 한국
 You have four jobs: **decide / read the evidence / set the quality bar / merge (per policy).**
 The team does the rest. You do not type code (typo-level fixes excepted). You do read any diff that touches data, interfaces or security.
 
+![The workflow in one picture: the start line joins the main line every piece of work takes; the hotfix line skips the plan; the parallel branch rejoins at /ship; the after-merge loop returns to /plan; double rings are where you answer or approve](../assets/workflow-map.svg)
+
 | Situation | Command | What you do, in one line |
 |---|---|---|
 | Product brief | `/brainstorm <idea or file>` | Brainstorm freely with the lead, or bring the document you wrote; answer the open slots and the pre-mortem; approve the brief. Run it again to revise (pivot) |
