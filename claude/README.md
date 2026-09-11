@@ -19,6 +19,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 | Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | docs/BRIEF.md (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then docs/CHARTER.md, docs/adr/, CLAUDE.md, (legacy) docs/ASSESSMENT.md · docs/REBUILD_PLAN.md · parity-harness plan; /hire in the closing step, then the board |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
 | Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <spec or plan> 수정: …` | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md, one commit per step; a revision writes only the differences and a running plan continues on its branch |
+| Hotfix | `/hotfix <what and why>` | one pass on hotfix/<slug>, no plan file: implement + regression test → full verification → one correctness lens → PR (never auto-merged) or local merge; over 3 files / 50 logic lines or on a Risk path it stops and points at /plan; one docs/METRICS.md line marked `hotfix:` |
 | Parallel | `/parallel <plans>` → `/integrate` → `/ship` | one branch per worktree → serial merge queue into `integrate/<date>` → one PR |
 | Quality | `/review` | risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
 | Operations | `/ship` → `/release [ver]` · `/policy` | PR (risk label; a "Try it" section for user-facing plans, never auto-merged) or local merge, CHANGELOG, docs/releases/*.md |

@@ -27,6 +27,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes → critic reviews (3+ steps or risk:high) → approval requested; `/plan <spec or plan> 수정: …` revises an approved spec or amends a running plan (differences only, same branch) |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |
 | `/build <plan>` | Step-by-step implementer → verifier loop |
+| `/hotfix <what and why>` | Small, well-specified change without a plan: implement + regression test → full verification → one correctness lens → PR (never auto-merged) or local merge on hotfix/<slug>; over 3 files / 50 logic lines or on a Risk path it stops and points at /plan; one docs/METRICS.md line marked `hotfix:` |
 | `/review [base]` | Risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
 | `/ship` | Full verification · docs · risk label · a "Try it" section for user-facing plans (never auto-merged) · automatic merge-policy resolution → PR or local merge |
 | `/release [version]` | Operations: version, CHANGELOG, release notes (docs/releases/*.md), tag commands |

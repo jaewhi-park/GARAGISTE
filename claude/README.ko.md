@@ -27,6 +27,7 @@
 | 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | docs/BRIEF.md(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 docs/CHARTER.md, docs/adr/, CLAUDE.md, (레거시) docs/ASSESSMENT.md·docs/REBUILD_PLAN.md·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
 | 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <사양서 또는 계획> 수정: …` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md, 단계별 커밋; 개정은 차이만 쓰고 진행 중 계획은 같은 브랜치에서 이어진다 |
+| 핫픽스 | `/hotfix <무엇을 왜>` | hotfix/<slug>에서 한 번에, 계획 파일 없음: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과나 Risk path면 멈추고 /plan을 가리킨다; docs/METRICS.md에 `hotfix:` 한 줄 |
 | 병렬 | `/parallel <계획들>` → `/integrate` → `/ship` | worktree별 브랜치 → `integrate/<날짜>`로 직렬 머지 큐 → PR 하나 |
 | 품질 | `/review` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
 | 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
