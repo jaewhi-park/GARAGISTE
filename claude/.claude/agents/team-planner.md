@@ -26,6 +26,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 
 ## Plan format — docs/plans/NNNN-<slug>.md
 Header line: `Source: CEO request [+ intake] <date> | BACKLOG item <title> [req: <ID>] | docs/specs/NNNN-<slug>.md (part k of n)` — a BACKLOG item with a `spec:` link is sourced from the spec, not the item; an item's `req:` ID is carried along
+Risk line: `Risk: high — <matched globs or escalation item> | low` — match the files the steps touch (section 4) against the rules file's "## Risk paths" and the lead's escalation criteria; a hit is high, and the lead may raise it, never lower it
 1. Goal and completion criteria (verifiable statements, taken from the source as given; anything added is marked unverified with a default)
 2. Non-goals and fixed constraints (the intake's "not this time" and "fixed in advance", or the spec's; additions marked as such)
 3. Current state (findings, relevant files)

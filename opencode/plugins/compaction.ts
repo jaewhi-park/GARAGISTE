@@ -11,6 +11,7 @@ export const TeamCompaction: Plugin = async () => ({
 - Revision in progress, if any (/plan 수정: path): the spec or plan file, its draft rev, discussion fragments not yet handed to the planner — quote them verbatim
 - Last team-verifier result (PASS/FAIL) and failing items
 - Open review findings (blocker/major) and their lens
+- The board's Counts line (verifier FAIL / review blockers / CEO questions / corrections) — carry the numbers verbatim
 - Decisions waiting on the CEO and the default if unanswered
 - On resume, re-read the current plan file; for a spec or brief in progress have team-planner report its open slots (the lead never reads them). AGENTS.md, docs/CHARTER.md and, when it exists, docs/STATUS.md are already injected
 - docs/STATUS.md is local (git-ignored) and never committed; milestone commits made this session (plan, spec, docs) and what is still uncommitted
