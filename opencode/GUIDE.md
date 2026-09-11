@@ -18,7 +18,7 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 | Design | (inside `/plan`) | Read the ADR's alternatives and consequences; check reversibility |
 | Single-track development | `/plan <item>` → `/run <plan>` | Answer the one intake call (or state "done when" yourself), approve the plan once, answer gate questions only, keep your hands off |
 | Complex feature | `/plan <item>` → "yes, spec" at intake | Answer 2–3 rounds in your own words, approve the spec, then the plan |
-| Parallel development | `/spawn <plans>` → `/build` in each session → `/integrate` | Check that file sets do not overlap; decide the integration order |
+| Parallel development | `/spawn <plans>` → `/build` in each session → `/integrate` → `/ship` | Check that file sets do not overlap; decide the integration order |
 | Review | (inside `/run`) or `/review` | Rule only on conflicting findings |
 | QA | (verifier, automatic) + the PR's "Try it" steps | Read the commands run and failure counts, not the green light; walk the Try-it steps before merging |
 | Debugging | `/plan "bug: … reproduction test first"` | Give the most concrete reproduction you can |
@@ -116,7 +116,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 
 ### 2.6 Parallel development
 - When: two or more features that are independent at the file level, and sequential is too slow. **Do not use it in the first two weeks.**
-- Command: in the main session, `/spawn <plan files>` → the team creates a `../<repo>-<slug>` worktree and `plan/<slug>` branch per plan and prints the command for a new terminal → you open a terminal: `cd ../<repo>-<slug> && opencode` → `/build <plan>` directly in that session (the worktree session stays on plan/<slug> and has no board) → finished branches are integrated in the main session with `/integrate`.
+- Command: in the main session, `/spawn <plan files>` → the team creates a `../<repo>-<slug>` worktree and `plan/<slug>` branch per plan and prints the command for a new terminal → you open a terminal: `cd ../<repo>-<slug> && opencode` → `/build <plan>` directly in that session (the worktree session stays on plan/<slug> and has no board) → finished branches are integrated in the main session with `/integrate` into an integration branch cut from main (`integrate/<date>`) → `/ship` ships that branch as one PR (or one local merge).
 - Precondition: `.opencode/` and `opencode.json` must be committed so worktree sessions also have the team (or install with `-Global`). Copy untracked files such as `.env` into the worktree yourself. Plans are committed at approval, which is what worktrees see.
 - opencode subagents have no worktree isolation, so "in-session parallelism" is not supported. Parallel means session-level.
 - You: check that the plans' "files touched" sets do not overlap, and decide the integration order (dependencies first). While it runs, answer each session's questions only.
@@ -158,7 +158,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: repeating "try again" in a spinning session. A polluted context gets worse the longer you keep it alive.
 
 ### 2.11 Merging
-- Local integration (`/integrate`): parallel branches are reviewed → merged → conflicts resolved by the implementer and re-reviewed → verified, one at a time into the current branch. You decide only whether to revert when a failure is reported.
+- Local integration (`/integrate`): parallel branches are reviewed → merged → conflicts resolved by the implementer and re-reviewed → verified, one at a time into an integration branch cut from main (`integrate/<date>`); `/ship` then ships that branch like a plan branch — one PR or one local merge, one METRICS line per plan. You decide only whether to revert when a failure is reported.
 - Merging into main: `/ship` **resolves the policy automatically** from repository state. You never edit configuration for this.
   - No remote → `local`: the PR description lands in docs/prs/NNNN-<slug>.md and the lead asks for approval. Read it as you would a PR (verification evidence, review handling, rollback). On approval it merges into local main with `merge --no-ff`.
   - Remote, no protection → `manual`: the team pushes and opens the PR (`risk:low|high`). You read the PR and merge. For `risk:high`, read the diff yourself.

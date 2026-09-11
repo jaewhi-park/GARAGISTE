@@ -18,7 +18,7 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 | Design | (inside `/plan`) | Read the ADR's alternatives and consequences; check reversibility |
 | Single-track development | `/plan <item>` → `/run <plan>` | Answer the one intake call (or state "done when" yourself), approve the plan once, answer gate questions only, keep your hands off |
 | Complex feature | `/plan <item>` → "yes, spec" at intake | Answer 2–3 rounds in your own words, approve the spec, then the plan |
-| Parallel development | `/parallel <plans>` → `/integrate` (or `claude --worktree`) | Check that file sets do not overlap; decide the integration order |
+| Parallel development | `/parallel <plans>` → `/integrate` → `/ship` (or `claude --worktree`) | Check that file sets do not overlap; decide the integration order |
 | Review | (inside `/run`) or `/review` | Rule only on conflicting findings |
 | QA | (verifier, automatic) + the PR's "Try it" steps | Read the commands run and failure counts, not the green light; walk the Try-it steps before merging |
 | Debugging | `/plan "bug: … reproduction test first"` | Give the most concrete reproduction you can |
@@ -117,7 +117,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.6 Parallel development
 - When: two or more features that are independent at the file level, and sequential is too slow. **Do not use it in the first two weeks.**
 - Option 1 (session-level, most robust): one terminal per feature with `claude --worktree <feature>` → each session runs `/plan` → `/run`. You merge PRs in order and ask later branches to "rebase on main and re-verify". In a `claude --worktree` session `/plan` and `/run` stay on the worktree's branch.
-- Option 2 (in-session): in the main session, `/parallel <plan files>` → one team-builder per plan implements, self-verifies and commits in an isolated worktree → `/integrate` reviews, merges and verifies one branch at a time. Track progress in the "Awaiting integration" list in `docs/STATUS.md`.
+- Option 2 (in-session): in the main session, `/parallel <plan files>` → one team-builder per plan implements, self-verifies and commits in an isolated worktree → `/integrate` reviews, merges and verifies one branch at a time into an integration branch cut from main (`integrate/<date>`) → `/ship` ships that branch as one PR (or one local merge). Track progress in the "Awaiting integration" list in `docs/STATUS.md`.
 - Option 3 (agent teams, experimental): `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in `settings.json` → `env`. Only when modules are truly independent and teammates need to coordinate.
 - Precondition: `.claude/` must be committed or listed in `.worktreeinclude` so worktree sessions also have the team. Add `.env` to `.worktreeinclude` as well. Plans are committed at approval, which is what worktrees see.
 - You: check that the plans' "files touched" sets do not overlap, and decide the integration order (dependencies first). While it runs, answer each session's questions only.
@@ -159,7 +159,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: repeating "try again" in a spinning session. A polluted context gets worse the longer you keep it alive.
 
 ### 2.11 Merging
-- Local integration (`/integrate`): parallel branches are reviewed → merged → conflicts resolved by the implementer and re-reviewed → verified, one at a time into the current branch. You decide only whether to revert when a failure is reported.
+- Local integration (`/integrate`): parallel branches are reviewed → merged → conflicts resolved by the implementer and re-reviewed → verified, one at a time into an integration branch cut from main (`integrate/<date>`); `/ship` then ships that branch like a plan branch — one PR or one local merge, one METRICS line per plan. You decide only whether to revert when a failure is reported.
 - Merging into main: `/ship` **resolves the policy automatically** from repository state. You never edit configuration for this.
   - No remote → `local`: the PR description lands in docs/prs/NNNN-<slug>.md and the lead asks for approval. Read it as you would a PR (verification evidence, review handling, rollback). On approval it merges into local main with `merge --no-ff`.
   - Remote, no protection → `manual`: the team pushes and opens the PR (`risk:low|high`). You read the PR and merge. For `risk:high`, read the diff yourself.
