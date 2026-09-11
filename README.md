@@ -23,7 +23,7 @@ garagiste/
   install.sh / install.ps1     # entry point: <opencode|claude> [options]
   opencode/                    # opencode flavor (agents · commands · skills · plugins installed as .opencode/, plus GUIDE.md)
   claude/                      # Claude Code flavor (agents · skills · hooks installed as .claude/, plus GUIDE.md)
-  scripts/                     # maintainer tools for this repository (parity check and its baseline; never installed)
+  scripts/                     # maintainer tools for this repository (parity check and its baseline, hook check; never installed)
 ```
 Each flavor's `GUIDE.md` is the human manual (install, what to do in each situation, checklists); its `README.md` is the configuration reference. Agent prompts are English; agents respond in the language set under `## Language` in the project's rules file (AGENTS.md / CLAUDE.md), asked once at the start of `/brainstorm` and changed any time with `/lang <code>`; when unset they mirror the CEO's language.
 
@@ -33,6 +33,8 @@ Both flavors are edited by hand, so a change to a command, agent or guide belong
 node scripts/parity-check.mjs
 ```
 It pairs every `claude/` file with its `opencode/` counterpart, translates the claude side into opencode vocabulary (CLAUDE.md → AGENTS.md, AskUserQuestion → the question tool, `/parallel` → `/spawn`, …) and reports where the remaining difference moved away from the accepted divergence recorded in `scripts/parity-baseline.txt`. It also checks that the flavor READMEs name the same commands and artifacts, that the four `scripts/*.mjs` are identical, and that each `.ko.md` keeps the section structure of its English original. A reported line is either a fix owed to the other flavor or a deliberate difference; for the latter, `--update` records it, and the baseline's diff shows reviewers what diverged.
+
+`node scripts/hook-check.mjs` is the companion for the guardrails: it feeds a matrix of commands, paths and roles to the Claude Code hook and the opencode plugin (destructive commands, secret files, the push policy, gh api mutations, the role allow-lists) and fails on any verdict that differs from the expected one. Run it after touching `guardrails.mjs` or `guardrails.ts`.
 
 ## Six principles
 1. Separate judgment from execution — the implementer does not grade its own work, the reviewer does not fix, the lead does not write code.
