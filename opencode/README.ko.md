@@ -32,6 +32,7 @@
 | `/assess <대상>` | 레거시, 승인된 기획서에서. 인벤토리(docs/ASSESSMENT.md) → 보존/수정 방침 → 리빌드 전략 ADR → docs/REBUILD_PLAN.md → AGENTS.md → 첫 seam의 parity harness 계획 → /hire |
 | `/plan <항목>` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/) → planner 작성 → critic 리뷰(3단계 이상 또는 risk:high) → 승인 요청; `/plan <사양서 또는 계획> 수정: …`은 승인된 사양서 개정·진행 중 계획 수정(차이만, 같은 브랜치) |
 | `/build <계획파일>` | 단계별 implementer → verifier 루프 |
+| `/hotfix <무엇을 왜>` | 계획 없는 작고 명확한 수정: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → hotfix/<slug>에서 PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과나 Risk path면 멈추고 /plan을 가리킨다; docs/METRICS.md에 `hotfix:` 한 줄 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |
 | `/review [기준브랜치]` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
 | `/ship` | 전체 검증 · 문서 · 브랜치 push · PR 생성(risk 라벨; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) · 머지는 정책대로 |

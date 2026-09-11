@@ -22,6 +22,7 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 | Review | (inside `/run`) or `/review` | Rule only on conflicting findings |
 | QA | (verifier, automatic) + the PR's "Try it" steps | Read the commands run and failure counts, not the green light; walk the Try-it steps before merging |
 | Debugging | `/plan "bug: … reproduction test first"` | Give the most concrete reproduction you can |
+| Small fix | `/hotfix <what and why>` | One sentence with an obvious check (a bug with a reproduction, a wrong string, config or default, a version bump); read the diff and merge — anything needing a design decision is a `/plan` |
 | Change request | say stop, then `/plan <spec or plan file> 수정: <what changed>` | Talk it through, say "write it up", approve the revision; a running plan continues on its branch |
 | Troubleshooting | 3-strike rule, drop the session | When the team spins, stop rather than fix |
 | Merging | `/integrate` / `/policy` | Local integration is the team's; main merges follow the automatic verdict (local / manual / auto-low-risk) |
@@ -204,6 +205,14 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Approval criteria: did the strongest model go to planner, critic and reviewer? Is the verifier on the fastest model? On the low tier, are parallelism and 4 lenses out of the defaults?
 - Common mistakes: cutting the reviewer first to save cost (quality collapses there first — cut the implementer first). Expecting the change to apply without opening a new session.
 
+### 2.17 Hotfix (a small, well-specified change)
+- When: a change you can state in one sentence whose check is obvious — a defect with a reproduction, a wrong string, configuration value or default, a dependency or version bump. Not for new behaviour, anything needing a design decision, or a file under the rules file's "Risk paths": those are a `/plan`.
+- Command: `/hotfix <what to change and why>` — one pass, no plan file, no intake.
+- Team: branch `hotfix/<slug>` → implementer (the change, a regression test when it fixes logic, quick verification, one commit whose body quotes your request) → cap check (over 3 files or 50 logic lines, or a Risk path: it stops and asks — proceed as risk:high, or plan it) → full verification → one correctness lens → PR with the evidence (never auto-merged, even under auto-low-risk) or a local merge after your approval → one docs/METRICS.md line marked `hotfix:`.
+- You: state the defect or the wrong value, not the fix, unless you know it. Then read the diff — it is small enough to read in full, and the PR is the only human look it gets — and merge.
+- Approval criteria (PR): the verification evidence lists the commands run; the regression test is in the diff when logic changed; the diff stays inside what you asked.
+- Common mistakes: hotfixing a change that needs a design decision, or three hotfixes in a row on the same area (that is a `/plan`, and a `/retro` subject: `hotfix:` lines piling up in METRICS). Merging on the green light without reading the diff.
+
 ## 3. Rhythm
 
 - Daily (1–2 hours): `/resume` → (one item from the backlog) answer the intake call (or the spec rounds), approve `/plan` → hands off during `/run` (answer gate questions only) → merge per verdict → (`/handoff` only if something is left mid-flight).
@@ -260,6 +269,7 @@ Before merging a PR:
 
 ## 6. Do not
 - Order large work in chat without a plan, or a complex feature with a one-liner and no spec
+- Hotfix a change that needs a design decision or touches a Risk path, or merge a hotfix PR without reading its diff
 - Approve on the green light alone
 - Change direction in chat while the team is working (say stop, then `/plan <plan file> 수정:`)
 - Fix reviewer findings yourself
