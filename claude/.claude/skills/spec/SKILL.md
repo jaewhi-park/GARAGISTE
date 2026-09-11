@@ -20,11 +20,14 @@ After each round: hand the answers verbatim to team-planner, which writes or upd
 3. Correction — after round 2 name the file path and go straight to the approval question; on "correct" the CEO reads the draft file and corrects in plain chat, team-planner revises, and the approval question is asked again. Max 2 correction rounds; what is still disputed goes under Undecided.
 4. Approval — one AskUserQuestion: approve, plan now / approve, plan next session (the spec is committed and the board written — /plan step 0a) / correct / stop here (stays draft). On approval team-planner sets `Status: approved <date>` and writes `spec: docs/specs/NNNN-<slug>.md` into the source BACKLOG item, if any.
 
+## Revision — `/plan docs/specs/NNNN-<slug>.md 수정: <what changed>`
+An approved or in-progress spec changes only through /plan's revision path (step 0b): a short brainstorm-mode discussion, "정리해줘", then team-planner writes only the differences (Done-when, Not-this-time, Undecided), bumps `(rev n)`, adds a Revision-history line and reports the impact (plans in flight, shipped plans from docs/METRICS.md, charter or brief conflicts); the critic checks the changed parts; the CEO approves (max 2 corrections). A plan in flight absorbs the change through its own `수정:` amendment; shipped plans get a BACKLOG item. Never edit an approved spec any other way.
+
 ## Template — docs/specs/NNNN-<slug>.md
 Own NNNN sequence (next free number in docs/specs/). The first plan from a spec reuses its slug; split parts use `<slug>-<part>`.
 ````
 # <Feature> Spec
-Status: draft | approved <date> | in progress — plans: docs/plans/… | done | superseded by …
+Status: draft | approved <date> [(rev n)] | in progress — plans: docs/plans/… | done | superseded by …
 Source: BACKLOG item <title> | CEO request <date>
 ## Purpose and users (who, when, why now)
 ## Core flow
@@ -36,9 +39,10 @@ Source: BACKLOG item <title> | CEO request <date>
 ## Quality (only where stricter than the charter)
 ## Reuse and references (paths and links; attachments under docs/specs/assets/<slug>/)
 ## Undecided (item — when it will be decided; "decided in the plan's ADR" for how-questions)
+## Revision history (date — rev n — what changed — plans affected)
 ````
 
 ## Writing rules
 - Leave unanswered items as "undecided — <when>". Never fill them with guesses. A "your call" answer becomes "undecided — planner default: <x>; confirm at plan approval".
 - A hard-to-reverse choice surfaced in a round goes under Undecided as "decided in the plan's ADR", not into the spec.
-- Lifecycle: /plan (spec-backed) sets Status to `in progress — plans: …`, appending each later part's plan path; /ship marks it done when every Done-when item is covered by a shipped plan; /backlog sweeps specs that are approved, in progress or done for candidates.
+- Lifecycle: /plan (spec-backed) sets Status to `in progress — plans: …`, appending each later part's plan path; /ship marks it done when every Done-when item is covered by a shipped plan; /backlog sweeps specs that are approved, in progress or done for candidates; a revision bumps `(rev n)` and appends to Revision history.

@@ -18,10 +18,10 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 |---|---|---|
 | Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | BRIEF (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then CHARTER, ADR, CLAUDE.md, (legacy) ASSESSMENT · REBUILD_PLAN · parity-harness plan; /hire in the closing step, then the board |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
-| Engineering | `/plan <item>` → `/run <plan>` (or `/build`) | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md, one commit per step |
+| Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <spec or plan> 수정: …` | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md, one commit per step; a revision writes only the differences and a running plan continues on its branch |
 | Parallel | `/parallel <plans>` → `/integrate` | one branch per worktree → serial merge queue |
 | Quality | `/review` | risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
-| Operations | `/ship` → `/release [ver]` · `/policy` | PR (risk label) or local merge, CHANGELOG, docs/releases/*.md |
+| Operations | `/ship` → `/release [ver]` · `/policy` | PR (risk label; a "Try it" section for user-facing plans, never auto-merged) or local merge, CHANGELOG, docs/releases/*.md |
 | Governance | `/retro <subject>` | CLAUDE.md rules / skills / hooks updated |
 | Handoff | `/handoff` (mid-flight only) / `/resume` | docs/STATUS.md (local, git-ignored) |
 | Team | `/hire` / `/roster` | per-role model and effort assignment and the operating profile, both via script; roster table |

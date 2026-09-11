@@ -26,10 +26,10 @@
 |---|---|---|
 | 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | BRIEF(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 CHARTER, ADR, CLAUDE.md, (레거시) ASSESSMENT·REBUILD_PLAN·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
-| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`) | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md, 단계별 커밋 |
+| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <사양서 또는 계획> 수정: …` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md, 단계별 커밋; 개정은 차이만 쓰고 진행 중 계획은 같은 브랜치에서 이어진다 |
 | 병렬 | `/parallel <계획들>` → `/integrate` | worktree별 브랜치 → 직렬 머지 큐 |
 | 품질 | `/review` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
-| 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
+| 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
 | 경영 | `/retro <대상>` | CLAUDE.md 규칙 / 스킬 / 훅 갱신 |
 | 인수인계 | `/handoff`(단계 도중에만) / `/resume` | docs/STATUS.md(로컬, git-ignore) |
 | 팀 관리 | `/hire` / `/roster` | 역할별 모델·effort 배정과 운영 프로필(둘 다 스크립트); 로스터 표 |

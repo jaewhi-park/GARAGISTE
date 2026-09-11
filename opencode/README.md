@@ -24,11 +24,11 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/kickoff` | New project, from the approved brief. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
 | `/assess <target>` | Legacy, from the approved brief. Inventory → preserve/fix policy → rebuild strategy ADR → AGENTS.md → parity-harness plan for the first seam → /hire |
 | `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
-| `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes → critic reviews (3+ steps or risk:high) → approval requested |
+| `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes → critic reviews (3+ steps or risk:high) → approval requested; `/plan <spec or plan> 수정: …` revises an approved spec or amends a running plan (differences only, same branch) |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |
 | `/build <plan>` | Step-by-step implementer → verifier loop |
 | `/review [base]` | Risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
-| `/ship` | Full verification · docs · risk label · automatic merge-policy resolution → PR or local merge |
+| `/ship` | Full verification · docs · risk label · a "Try it" section for user-facing plans (never auto-merged) · automatic merge-policy resolution → PR or local merge |
 | `/release [version]` | Operations: version, CHANGELOG, release notes, tag commands |
 | `/policy [value]` | Show the current merge-policy verdict and reason; optionally override |
 | `/hire [note]` | Assign models per role and the operating profile from available models, budget and project character (CEO approves; both via script) |
