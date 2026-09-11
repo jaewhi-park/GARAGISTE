@@ -19,7 +19,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 | Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | BRIEF (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then CHARTER, ADR, CLAUDE.md, (legacy) ASSESSMENT · REBUILD_PLAN · parity-harness plan; /hire in the closing step, then the board |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
 | Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <spec or plan> 수정: …` | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md, one commit per step; a revision writes only the differences and a running plan continues on its branch |
-| Parallel | `/parallel <plans>` → `/integrate` | one branch per worktree → serial merge queue |
+| Parallel | `/parallel <plans>` → `/integrate` → `/ship` | one branch per worktree → serial merge queue into `integrate/<date>` → one PR |
 | Quality | `/review` | risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
 | Operations | `/ship` → `/release [ver]` · `/policy` | PR (risk label; a "Try it" section for user-facing plans, never auto-merged) or local merge, CHANGELOG, docs/releases/*.md |
 | Governance | `/retro <subject>` | CLAUDE.md rules / skills / hooks updated |
@@ -51,7 +51,7 @@ The default (`/build`, inside `/run`) implements one plan in one session, step b
 
 When you do need parallelism, try in this order:
 1. **Session-level**: one terminal per feature with `claude --worktree <feature>` → each session runs /plan → /run. You merge PRs in order; ask later branches to "rebase on main and re-verify". Simplest and most robust.
-2. **In-session** (`/parallel` → `/integrate`): the lead launches one team-builder per plan; builders implement, self-verify and commit in isolated worktrees and report their branches. `/integrate` reviews, merges (conflicts resolved by the implementer), and verifies **one branch at a time**. `worktree.baseRef: head` makes builders branch from the session's current branch.
+2. **In-session** (`/parallel` → `/integrate`): the lead launches one team-builder per plan; builders implement, self-verify and commit in isolated worktrees and report their branches. `/integrate` reviews, merges (conflicts resolved by the implementer), and verifies **one branch at a time** into an integration branch cut from main; `/ship` then ships it as one PR (or one local merge). `worktree.baseRef: head` makes builders branch from the session's current branch.
 3. **Agent teams** (experimental): set `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in `settings.json` → `env`. Teammates share a task list and talk to each other. Only when modules are truly independent and teammates need to coordinate.
 
 Rule: the unit of parallelism is a plan (feature), not a step. Run only plans whose "files touched" sets do not overlap. Integration is always serial, with the verifier after every merge.

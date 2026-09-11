@@ -27,7 +27,7 @@
 | 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | BRIEF(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 CHARTER, ADR, CLAUDE.md, (레거시) ASSESSMENT·REBUILD_PLAN·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
 | 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <사양서 또는 계획> 수정: …` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md, 단계별 커밋; 개정은 차이만 쓰고 진행 중 계획은 같은 브랜치에서 이어진다 |
-| 병렬 | `/parallel <계획들>` → `/integrate` | worktree별 브랜치 → 직렬 머지 큐 |
+| 병렬 | `/parallel <계획들>` → `/integrate` → `/ship` | worktree별 브랜치 → `integrate/<날짜>`로 직렬 머지 큐 → PR 하나 |
 | 품질 | `/review` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
 | 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
 | 경영 | `/retro <대상>` | CLAUDE.md 규칙 / 스킬 / 훅 갱신 |
@@ -68,7 +68,7 @@
 
 병렬이 필요할 때는 세 가지, 위에서부터 시도한다:
 1. **세션 병렬**: 터미널마다 `claude --worktree <기능명>` → 각 세션에서 /plan → /build → /review → /ship. 사람이 PR 순서대로 머지하고, 나중 브랜치는 그 세션에서 "main에 rebase 후 재검증"을 시킨다. 가장 단순하고 견고하다.
-2. **세션 내 병렬** (/parallel → /integrate): lead가 team-builder를 계획마다 하나씩 동시에 띄운다. builder는 `isolation: worktree` 로 자기 worktree에서 계획 전체를 구현·자체 검증·커밋하고 브랜치를 보고한다. lead는 /integrate 로 브랜치를 **하나씩** 리뷰 → 머지 → (충돌은 implementer가 해소) → verifier → 다음. `worktree.baseRef: head` 설정으로 builder는 세션의 현재 브랜치에서 분기한다.
+2. **세션 내 병렬** (/parallel → /integrate): lead가 team-builder를 계획마다 하나씩 동시에 띄운다. builder는 `isolation: worktree` 로 자기 worktree에서 계획 전체를 구현·자체 검증·커밋하고 브랜치를 보고한다. lead는 /integrate 로 main에서 딴 통합 브랜치에 브랜치를 **하나씩** 리뷰 → 머지 → (충돌은 implementer가 해소) → verifier → 다음, 그리고 /ship 이 그 브랜치를 PR 하나(또는 로컬 머지 하나)로 출하한다. `worktree.baseRef: head` 설정으로 builder는 세션의 현재 브랜치에서 분기한다.
 3. **agent teams** (실험적): `settings.json`의 `env`에 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. 팀원 세션이 공유 태스크 목록을 두고 서로 통신한다. 모듈이 진짜 독립적이고 팀원끼리 조율이 필요할 때만.
 
 규칙: 병렬 단위는 계획(기능)이지 단계가 아니다. `/plan` 의 "변경 파일" 집합이 겹치지 않는 계획만 동시에 돌린다. 통합은 항상 직렬(머지 큐)이고, 머지마다 verifier를 돌린다.

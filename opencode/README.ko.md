@@ -44,7 +44,7 @@
 | `/recruit <gap>` | 새 역할 제안(프리셋 권한, 모델은 로스터의 형제 역할에서 복사); CEO 승인 후 스크립트가 생성 |
 | `/policy [값]` | 머지 정책의 현재 자동 판정과 근거 확인, 필요 시 override |
 | `/spawn <계획들>` | 병렬: 계획별 worktree·브랜치 생성, 새 세션 명령 제시 |
-| `/integrate [브랜치들]` | 머지 큐: 브랜치별 리뷰 → 머지 → 충돌 해소 → verifier, 직렬 |
+| `/integrate [브랜치들]` | `integrate/<날짜>`로의 머지 큐: 브랜치별 리뷰 → 머지 → 충돌 해소 → verifier, 직렬; 그다음 `/ship`이 그 브랜치를 PR 하나로 출하 |
 | `/handoff [메모]` | 단계 도중에 멈추는 세션의 마무리: STATUS.md(로컬) 작성, WIP 커밋, 대기 결정 정리 |
 | `/resume [메모]` | 상태판이 있을 때 새 세션의 첫 커맨드: STATUS.md·계획·git 대조 후 재개 |
 
@@ -73,7 +73,7 @@
 - 중간 컴팩션은 `plugins/compaction.ts`가 상태판 항목을 요약에 강제로 남긴다.
 
 ## 병렬과 머지
-- 병렬은 세션 단위다: `/spawn` 이 계획별 worktree(`../<레포>-<slug>`)와 브랜치를 만들고, 각 worktree에서 별도 `opencode` 세션이 `/build` 한다. 메인 세션의 `/integrate` 가 브랜치를 하나씩 리뷰·머지·검증한다(머지 큐). opencode subagent에는 worktree 격리가 없어 세션 내 병렬은 지원하지 않는다.
+- 병렬은 세션 단위다: `/spawn` 이 계획별 worktree(`../<레포>-<slug>`)와 브랜치를 만들고, 각 worktree에서 별도 `opencode` 세션이 `/build` 한다. 메인 세션의 `/integrate` 가 main에서 딴 통합 브랜치에 브랜치를 하나씩 리뷰·머지·검증하고(머지 큐), `/ship` 이 그 브랜치를 PR 하나(또는 로컬 머지 하나)로 출하한다. opencode subagent에는 worktree 격리가 없어 세션 내 병렬은 지원하지 않는다.
 - 머지 정책은 `/ship`이 저장소 상태로 자동 판정한다: 원격 없음→`local`(PR 문서 + 로컬 main 머지, 승인 후), 원격+main 보호+auto-merge→`auto-low-risk`(`risk:low`는 CI 통과 시 자동 머지, `risk:high`는 사람), 그 외→`manual`(PR까지, 머지는 사람). AGENTS.md의 "머지 정책" 줄은 비워 두는 게 기본이고, 적으면 override다. `/policy`로 현재 판정과 근거를 본다. 플러그인은 어느 경우에도 force push와 main 직접 push를 막는다.
 
 ## 로컬 전용 (원격 없는 초기 빌드업)

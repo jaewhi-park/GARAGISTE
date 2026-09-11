@@ -36,7 +36,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/lang [code]` | Set the working language: rewrites the `## Language` section of AGENTS.md via script, effective immediately |
 | `/recruit <gap>` | Propose a new role (preset permissions, model taken from the sibling role in the roster); created by script on CEO approval |
 | `/spawn <plans>` | Parallel: create a worktree and branch per plan, print the new-session command |
-| `/integrate [branches]` | Merge queue: per-branch review → merge → conflict resolution → verifier, serially |
+| `/integrate [branches]` | Merge queue into `integrate/<date>`: per-branch review → merge → conflict resolution → verifier, serially; `/ship` then ships that branch as one PR |
 | `/retro <subject>` | Feed failures back into AGENTS.md rules, skills or guardrails |
 | `/handoff [note]` | Wrap up a session that stops mid-flight: write STATUS.md (local), commit WIP, list pending decisions |
 | `/resume [note]` | First command of a new session when a board exists: reconcile STATUS.md, plan and git, then continue |
@@ -59,7 +59,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 - Autonomous decisions go to docs/DECISIONS.md, architecture decisions to docs/adr/.
 
 ## Parallelism and merging
-- Parallelism is session-level: `/spawn` creates a worktree (`../<repo>-<slug>`) and branch per plan; a separate `opencode` session runs `/build` in each worktree; `/integrate` in the main session reviews, merges and verifies branches one at a time (merge queue). opencode subagents have no worktree isolation, so in-session parallelism is not supported.
+- Parallelism is session-level: `/spawn` creates a worktree (`../<repo>-<slug>`) and branch per plan; a separate `opencode` session runs `/build` in each worktree; `/integrate` in the main session reviews, merges and verifies branches one at a time (merge queue) into an integration branch cut from main, which `/ship` then ships as one PR (or one local merge). opencode subagents have no worktree isolation, so in-session parallelism is not supported.
 - The merge policy is resolved automatically by `/ship`: no remote → `local` (PR document + local merge into main after approval); remote + protected main + auto-merge → `auto-low-risk` (`risk:low` PRs auto-merge once CI passes; `risk:high` is human); otherwise → `manual` (PR only, human merges). Leave the "## Merge policy" line in AGENTS.md empty by default; writing a value overrides. `/policy` shows the verdict and reason. The plugin blocks force pushes and direct pushes to main in every case.
 
 ## Local-only (early build-up without a remote)
