@@ -17,14 +17,14 @@
 ./install.sh claude -Project <레포 경로>        # macOS / Linux / WSL
 .\install.ps1 claude -Project <레포 경로>       # Windows PowerShell
 ```
-`.claude/{agents,skills,hooks}`와 `docs/README.md`를 넣고 `.claude/settings.json`을 병합한다(기존 값 유지, 목록은 합집합).
+`.claude/{agents,skills,hooks,scripts}`와 `docs/README.md`를 넣고 `.claude/settings.json`을 병합한다(기존 값 유지, 목록은 합집합).
 전역(`~/.claude/`)은 건드리지 않는다. `.claude/`를 커밋하면 팀 구성이 레포와 함께 버전 관리된다.
 첫 실행 때 폴더 신뢰 확인에 동의해야 훅이 동작한다. 모델은 세션 모델을 상속한다(에이전트 파일에 `model:` 없음).
 
 ## CEO 콘솔 (스킬 = 슬래시 커맨드, CEO만 호출 가능)
 | 루프 | 커맨드 | 산출물 |
 |---|---|---|
-| 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | BRIEF(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 CHARTER, ADR, CLAUDE.md, (레거시) ASSESSMENT·REBUILD_PLAN·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
+| 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | docs/BRIEF.md(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 docs/CHARTER.md, docs/adr/, CLAUDE.md, (레거시) docs/ASSESSMENT.md·docs/REBUILD_PLAN.md·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
 | 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <사양서 또는 계획> 수정: …` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md, 단계별 커밋; 개정은 차이만 쓰고 진행 중 계획은 같은 브랜치에서 이어진다 |
 | 병렬 | `/parallel <계획들>` → `/integrate` → `/ship` | worktree별 브랜치 → `integrate/<날짜>`로 직렬 머지 큐 → PR 하나 |
@@ -45,23 +45,20 @@
 | team-implementer | 시니어 엔지니어 (메인 체크아웃, 순차) | Read/Grep/Glob, Edit/Write, Bash | 커밋함, /ship 에서 브랜치 push·PR 생성 |
 | team-builder | 시니어 엔지니어 (병렬용) | 동일 | `isolation: worktree` — 계획 하나를 자기 worktree에서 통째로 구현, 자체 검증 |
 | team-reviewer | 렌즈별 코드 리뷰 | Read/Grep/Glob, Bash | `memory: project` — 반복 결함 패턴 축적 |
-| team-verifier | CI | Bash, Read/Grep/Glob | CLAUDE.md의 명령만 실행 |
+| team-verifier | CI | Bash, Read/Grep/Glob | 훅의 빌드/테스트/lint 도구 allow-list와 읽기 전용 git만 실행; `npm run` 스크립트가 무엇을 실행하는지는 검사하지 않는다 — CLAUDE.md의 Commands 규칙은 프롬프트 수준 |
 | Explore | 코드베이스 조사 (내장) | 읽기 전용 | |
+
+## 에이전트 간 계약
+- 모든 subagent는 고정된 보고 형식으로 lead에 답한다 (verifier: PASS/FAIL, reviewer/critic: 마지막 줄 APPROVE/REVISE).
+- lead만 CEO에게 질문한다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값. 예외는 /plan의 사양서 라운드로, 여기서는 열린 질문과 자유 서술 답이 허용된다.
+- 수정 루프는 3회 상한. 넘으면 멈추고 보고한다.
+- 자율 결정은 docs/DECISIONS.md, 아키텍처 결정은 docs/adr/.
 
 ## 회사처럼 돌리는 리듬
 - 아침: `/backlog`로 오늘 할 항목 확정 → `/plan` 승인 → `/run` (병렬이면 아래 참고)
 - 낮: lead의 AskUserQuestion에만 답한다. 그 외는 자율.
 - 저녁: `/run`이 ship까지 끝내면 머지 정책대로. 주 1회 `/release`, 실패가 반복되면 `/retro`.
 - 사람의 네 가지 일: 기획서 브레인스토밍과 접수·사양서 질문에 답하기 / 계획 승인·에스컬레이션 결정 / PR 머지(정책에 따라) / 회고 승인.
-
-## 머지 정책 — 자동 판정
-`/ship`이 저장소 상태를 보고 정한다. 설정 파일을 고칠 일은 없다.
-| 저장소 상태 | 판정 | 동작 |
-|---|---|---|
-| 원격 없음 | `local` | PR 설명을 docs/prs/에 저장, 승인 후 로컬 main에 `merge --no-ff` |
-| 원격 있음, main 보호·auto-merge 없음 | `manual` | 브랜치 push + PR(risk 라벨). 사람이 머지 |
-| 원격 있음 + main 보호(필수 체크) + auto-merge 허용 | `auto-low-risk` | `risk:low`는 `gh pr merge --auto`, `risk:high`는 사람 |
-즉 "자동 머지를 켠다" = GitHub에서 main 보호와 auto-merge를 켜는 것이고, 그게 곧 안전 조건이다. `/policy`로 현재 판정과 근거를 확인하고, 정말 필요할 때만 CLAUDE.md에 override(`manual`/`auto-low-risk`)를 적는다. 훅은 어느 판정에서도 force push와 main 직접 push를 막는다.
 
 ## 작업 방식 — 순차가 기본, 병렬은 선택
 기본(/build)은 한 세션에서 계획 하나를 메인 체크아웃에서 단계별로 순차 구현한다. 기능을 여러 개 의뢰하면 lead는 /plan 을 여러 번 만들고 하나씩 /build 한다. worktree도 머지도 없고, 충돌도 구조적으로 없다. 개인 프로젝트 대부분은 이걸로 충분하다.
@@ -72,6 +69,15 @@
 3. **agent teams** (실험적): `settings.json`의 `env`에 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`. 팀원 세션이 공유 태스크 목록을 두고 서로 통신한다. 모듈이 진짜 독립적이고 팀원끼리 조율이 필요할 때만.
 
 규칙: 병렬 단위는 계획(기능)이지 단계가 아니다. `/plan` 의 "변경 파일" 집합이 겹치지 않는 계획만 동시에 돌린다. 통합은 항상 직렬(머지 큐)이고, 머지마다 verifier를 돌린다.
+
+## 머지 정책 — 자동 판정
+`/ship`이 저장소 상태를 보고 정한다. 설정 파일을 고칠 일은 없다.
+| 저장소 상태 | 판정 | 동작 |
+|---|---|---|
+| 원격 없음 | `local` | PR 설명을 docs/prs/에 저장, 승인 후 로컬 main에 `merge --no-ff` |
+| 원격 있음, main 보호·auto-merge 없음 | `manual` | 브랜치 push + PR(risk 라벨). 사람이 머지 |
+| 원격 있음 + main 보호(필수 체크) + auto-merge 허용 | `auto-low-risk` | `risk:low`는 `gh pr merge --auto`, `risk:high`는 사람 |
+즉 "자동 머지를 켠다" = GitHub에서 main 보호와 auto-merge를 켜는 것이고, 그게 곧 안전 조건이다. `/policy`로 현재 판정과 근거를 확인하고, 정말 필요할 때만 CLAUDE.md에 override(`manual`/`auto-low-risk`)를 적는다. 훅은 어느 판정에서도 force push와 main 직접 push를 막는다.
 
 ## 로컬 전용 (원격 없는 초기 빌드업)
 `git remote`가 비어 있으면 `/ship`은 push·PR 대신 docs/prs/NNNN-<slug>.md 에 PR 설명을 남기고, 머지 정책대로 로컬 main에 `git merge --no-ff` 한다(manual이면 CEO 승인 후). 게이트는 그대로다 — 계획 하나 = 브랜치 하나, verifier, 4렌즈 리뷰, 위험도, 머지 커밋 단위 롤백. `/release`는 승인 후 로컬 태그를 만든다. GitHub를 붙이면(`git remote add origin …`) 다음 `/ship`부터 자동으로 PR 흐름이 되고, main 보호 + auto-merge를 켜면 자동으로 auto-low-risk가 된다. 설정 파일을 고칠 일은 없다.

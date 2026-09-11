@@ -16,7 +16,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 ## CEO console (skills = slash commands)
 | Loop | Command | Artifact |
 |---|---|---|
-| Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | BRIEF (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then CHARTER, ADR, CLAUDE.md, (legacy) ASSESSMENT · REBUILD_PLAN · parity-harness plan; /hire in the closing step, then the board |
+| Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | docs/BRIEF.md (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then docs/CHARTER.md, docs/adr/, CLAUDE.md, (legacy) docs/ASSESSMENT.md · docs/REBUILD_PLAN.md · parity-harness plan; /hire in the closing step, then the board |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
 | Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <spec or plan> 수정: …` | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md, one commit per step; a revision writes only the differences and a running plan continues on its branch |
 | Parallel | `/parallel <plans>` → `/integrate` → `/ship` | one branch per worktree → serial merge queue into `integrate/<date>` → one PR |
@@ -39,6 +39,12 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 | team-reviewer | per-lens code review | Read/Grep/Glob, Bash | `memory: project` — accumulates recurring defect patterns |
 | team-verifier | CI | Bash, Read/Grep/Glob | hook allow-list of build/test/lint tools plus read-only git; what an `npm run` script executes is not inspected — the CLAUDE.md Commands rule is prompt-level |
 | Explore | codebase research (built-in) | read-only | |
+
+## Contracts between agents
+- Every subagent reports in a fixed format (verifier: PASS/FAIL; reviewer/critic: last line APPROVE/REVISE).
+- Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered — except the spec rounds of /plan, where open questions and free-text answers are allowed.
+- Fix loops are capped at 3 rounds; past that, stop and report.
+- Autonomous decisions go to docs/DECISIONS.md, architecture decisions to docs/adr/.
 
 ## Running it like a company
 - Morning: confirm today's items with `/backlog` → approve `/plan` → `/run` (see parallelism below)
