@@ -8,6 +8,11 @@ GARAGISTE is an autonomous development team template that works nearly identical
 
 한국어 문서: [README.ko.md](README.ko.md) · [opencode/GUIDE.ko.md](opencode/GUIDE.ko.md) · [claude/GUIDE.ko.md](claude/GUIDE.ko.md)
 
+## The workflow in one picture
+![GARAGISTE workflow map — the start line joins the main line every piece of work takes; the hotfix line skips the plan; the parallel branch rejoins at /ship; the after-merge loop returns to /plan; double rings are where the CEO answers or approves](assets/workflow-map.svg)
+
+Blue is the path every piece of work takes: `/backlog` → `/plan` → `/build` → `/review` → `/ship` → merge, with `/run` driving the three middle stops in one go. Red is `/hotfix`, one pass without a plan for a change you can state in one sentence. Green is parallel work: `/parallel` (Claude Code) or `/spawn` (opencode), then `/integrate` before `/ship`. Purple is what happens after a merge: `/release` weekly, `/retro` when failures repeat, then the next `/plan`. Double rings mark the stops where you answer or approve; the team passes every other stop on its own.
+
 ## Install
 ```
 ./install.sh claude   -Project <repo path>      # Claude Code flavor
@@ -23,7 +28,8 @@ garagiste/
   install.sh / install.ps1     # entry point: <opencode|claude> [options]
   opencode/                    # opencode flavor (agents · commands · skills · plugins installed as .opencode/, plus GUIDE.md)
   claude/                      # Claude Code flavor (agents · skills · hooks installed as .claude/, plus GUIDE.md)
-  scripts/                     # maintainer tools for this repository (parity check and its baseline, hook check; never installed)
+  scripts/                     # maintainer tools for this repository (parity check and its baseline, hook check, map builder; never installed)
+  assets/                      # the workflow map shown above (English and Korean)
 ```
 Each flavor's `GUIDE.md` is the human manual (install, what to do in each situation, checklists); its `README.md` is the configuration reference. Agent prompts are English; agents respond in the language set under `## Language` in the project's rules file (AGENTS.md / CLAUDE.md), asked once at the start of `/brainstorm` and changed any time with `/lang <code>`; when unset they mirror the CEO's language.
 

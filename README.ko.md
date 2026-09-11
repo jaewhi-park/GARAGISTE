@@ -9,6 +9,11 @@
 
 GARAGISTE 는 **opencode** 와 **Claude Code** 양쪽에서 거의 똑같이 동작하는 자율 개발 팀 템플릿이다. 핵심 에이전트 6개(lead · planner · critic · implementer · reviewer · verifier) — Claude Code 는 병렬 구현용(`/parallel`) team-builder 를 하나 더 둔다 — 회사의 운영 루프를 담은 커맨드(`/kickoff` `/plan` `/run` `/review` `/ship` `/release` `/retro` `/handoff` `/resume` …), 저장소 상태에서 추론되는 머지 정책, 세션을 넘어 이어지는 상태판, 그리고 **사람이 무엇을 해야 하는지** 적은 가이드로 되어 있다.
 
+## 한눈에 보는 워크플로우
+![GARAGISTE 워크플로우 노선도 — 시작 선이 매 작업이 밟는 기본 경로에 합류하고, 핫픽스 선은 계획을 건너뛰며, 병렬 선은 /ship 에 합류하고, 출하 뒤 선은 /plan 으로 돌아온다. 겹친 원은 CEO 가 답하거나 승인하는 역](assets/workflow-map.ko.svg)
+
+파란 선이 매 작업이 밟는 기본 경로다: `/backlog` → `/plan` → `/build` → `/review` → `/ship` → 머지. `/run` 은 가운데 세 역을 한 번에 지난다. 빨간 선은 `/hotfix`, 한 문장으로 말할 수 있는 수정을 계획 없이 한 번에 처리하는 길이다. 초록 선은 병렬 작업: `/parallel`(Claude Code) 또는 `/spawn`(opencode) 뒤 `/integrate` 를 거쳐 `/ship` 으로. 보라 선은 머지 뒤의 일: 주 1회 `/release`, 실패가 반복되면 `/retro`, 그다음 다음 `/plan`. 겹친 원이 당신이 답하거나 승인하는 역이고, 나머지 역은 팀이 알아서 지난다.
+
 ## 설치
 ```
 ./install.sh claude   -Project <레포 경로>      # Claude Code 판
@@ -24,7 +29,8 @@ garagiste/
   install.sh / install.ps1     # 진입점: <opencode|claude> [옵션]
   opencode/                    # opencode 판 (.opencode/ 로 설치되는 agents·commands·skills·plugins + GUIDE.md)
   claude/                      # Claude Code 판 (.claude/ 로 설치되는 agents·skills·hooks + GUIDE.md)
-  scripts/                     # 이 저장소 관리용 도구 (정합성 검사와 그 기준선, 훅 검사; 설치되지 않음)
+  scripts/                     # 이 저장소 관리용 도구 (정합성 검사와 그 기준선, 훅 검사, 노선도 생성; 설치되지 않음)
+  assets/                      # 위 워크플로우 노선도 (영문·한글)
 ```
 각 판의 `GUIDE.md` 가 사람용 사용법(설치, 상황별 역할, 체크리스트)이고, `README.md` 가 설정 레퍼런스다.
 
