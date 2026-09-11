@@ -17,9 +17,9 @@ Respond, ask questions and have documents written in the language given under "#
 - Skill invocation rule: five command skills may be called via the Skill tool — build, review, ship inside the /run chain; hire in the closing step of /kickoff and /assess; roster (read-only) anytime. Everything else (brainstorm, plan, run, kickoff, assess, integrate, parallel, release, retro, handoff, resume, backlog, policy, lang, recruit) is invoked by the CEO only. When one of those should happen next, end by suggesting "run `/command`" in a sentence. Never imitate a skill's workflow by other means. Knowledge skills (brief, charter, claude-md, legacy-assessment, parity-harness, spec) are not commands: load one via the Skill tool only when the running command names it.
 - Move to the next step only after a PASS: team-verifier's, or — when the operating profile says `per-step verifier: off` — the implementer's report with every quick-verification command at exit 0 on a step that touches no escalation criterion; the independent verdict is then team-verifier's full verification at the end of /build. Fix loops (implement→verify, review→fix) are capped at 3 rounds each; past that, stop and report to the CEO.
 - If CLAUDE.md has "## Operating profile", follow it for default review lenses, parallelism, the critic threshold, the per-step verifier and the step-size target (/hire fills it). Otherwise use the defaults below.
-- Review lenses scale with risk. Default is 2 lenses (correctness + security) run as two team-reviewer agents in parallel. Use 4 lenses (+performance, +maintainability) when any of: escalation criteria touched (risk:high), logic diff over 600 lines (logic commits only; tests, docs and commits labelled scaffold/gen/mechanical/deps excluded), hot-path or heavy data-processing change, branch integration in /integrate.
+- Review lenses scale with risk. Default is 2 lenses (correctness + security) run as two team-reviewer agents in parallel. Use 4 lenses (+performance, +maintainability) when any of: risk:high — a "## Risk paths" hit (the planner's `Risk:` header, /review's `git diff --name-only` match) or an escalation criterion touched; you may raise it, never lower a path hit — logic diff over 600 lines (the recipe in /review: numstat over the logic commits, tests and docs excluded), hot-path or heavy data-processing change, branch integration in /integrate.
 - Autonomous decisions are logged one line each in docs/DECISIONS.md via team-planner (date, decision, reason).
-- You maintain the status board docs/STATUS.md yourself (Edit; that file only; keep it under 30 lines — it is injected into every session): update it after every step completion, verifier result, review verdict and CEO decision. Format:
+- You maintain the status board docs/STATUS.md yourself (Edit; that file only; keep it under 30 lines — it is injected into every session): update it after every step completion, verifier result, review verdict and CEO decision, and bump the Counts line as things happen — a verifier FAIL, a blocker/major finding, an escalation question, a spec or brief correction round (intake, spec rounds, brief slots and the merge gate are expected and not counted); /ship reads METRICS from that line, never from memory. Format:
 ```
 # STATUS
 Updated: <time> · Session goal: <one line>
@@ -29,6 +29,7 @@ Updated: <time> · Session goal: <one line>
 - Brief: docs/BRIEF.md · brainstorm (checkpoint <k>) | draft | correction <k> | approved · Kind: 신규 | 레거시 (<path>) (until /kickoff or /assess has run) | revision (checkpoint <k>) | revision draft | revision correction <k> | revised (rev <n>) (a /brainstorm revision; /backlog clears it)
 - Step: <k>/<n> — <state> | none · Last verifier: PASS quick | self-check quick (verifier off) | PASS full @<hash> | FAIL(<summary>)
 - Open review findings: <lens: item> or none
+- Counts: verifier FAIL <n> · review blockers <n> · CEO questions <n> · corrections <k>
 ## Waiting on CEO
 - <decision> — default: <if no answer>
 ## Awaiting integration (from /parallel until /ship)
@@ -51,11 +52,11 @@ Updated: <time> · Session goal: <one line>
 - Do not narrate progress ("I will now..."). State results and decisions.
 - Do not re-summarize subagent reports; quote only the lines the next subagent needs.
 - Do not read long files yourself: delegate searches, multi-file questions and anything over ~100 lines to the Explore subagent and take back summaries. A single file whose path you know and expect under ~100 lines — the current plan, a skill, a docs/prs entry — Read it directly; an Explore spawn costs more than the file. CHARTER and STATUS are auto-injected: never re-read CHARTER, and Read docs/STATUS.md once before your first edit of a session (Write it in the format above when it does not exist yet).
-- Attach team-critic only to plans with 3+ logic steps or risk:high (the operating profile may override).
+- Attach team-critic only to plans with 3+ logic steps or risk:high — the plan's `Risk:` header (the operating profile may override).
 - Never ask the same thing twice. Decisions already in docs/DECISIONS.md, in the intake answers or in an approved spec stand.
 - The CEO's request text, intake answers, spec-round answers and brainstorm fragments go to team-planner verbatim (the one exception to quoting only what the next subagent needs). Spec rounds, /brainstorm and the `수정:` revision discussions are the places open questions are allowed, asked in plain chat so the CEO can answer at length; AskUserQuestion stays for decisions (intake, spec and brief approval, escalation). A spec-round answer may arrive in several messages: collect until the CEO closes the round, then one planner call with every fragment verbatim (the `spec` skill says when a round closes).
 
-## Escalation — ask the CEO with AskUserQuestion
+## Escalation — ask the CEO with AskUserQuestion (each question here adds one to the board's Counts line)
 - Scope, deadline or non-goal changes; conflict with the charter
 - Data model / schema, public interface (API, CLI, file format, event schema) changes
 - Security, auth, secrets, production resources

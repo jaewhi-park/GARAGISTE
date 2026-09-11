@@ -25,6 +25,7 @@ The brief is the product-level document: what is being built, for whom, what is 
 Status: whiteboard | draft | approved <date> | revised <date> (rev n) — a revision in progress keeps this line and appends ` (rev n draft)`; the original approval is rev 1
 Kind: 신규 | 레거시 (<path>)
 Source: brainstorm <date> (checkpoints: n) | <path of the CEO's document>
+Corrections: <k> (set at approval; the cap is 2)
 ## Direction (who, the problem today, what changes, why now)
 ## Decided — MVP capabilities (one line each)
 ## Later
