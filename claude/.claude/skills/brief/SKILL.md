@@ -23,7 +23,7 @@ The brief is the product-level document: what is being built, for whom, what is 
 ## Template — docs/BRIEF.md
 ````
 # <Project> Brief
-Status: whiteboard | draft | approved <date> | revised <date>
+Status: whiteboard | draft | approved <date> | revised <date> (rev n) — a revision in progress keeps this line and appends ` (rev n draft)`; the original approval is rev 1
 Kind: 신규 | 레거시 (<path>)
 Source: brainstorm <date> (checkpoints: n) | <path of the CEO's document>
 ## Direction (who, the problem today, what changes, why now)
@@ -48,7 +48,7 @@ Source: brainstorm <date> (checkpoints: n) | <path of the CEO's document>
 - Decided items are one line each; when a line starts to describe a flow, a screen or an API, cut it to one line and move the rest to the appendix.
 - A requirement list with IDs (a requirements document, an RFP, a 과제 제안서) goes to docs/BACKLOG.md as items — title, value, completion criteria from the requirement text, size and priority `undecided — next /backlog`, `req: <ID>` — and the brief keeps the product-level summary and a pointer; the ID follows the item into the plan's Source line and the METRICS line.
 - Normalizing a document the CEO brought (entrance B): keep their wording and headings where they map, `Source:` = the path, never paste the original; what the document does not say stays Open (most such documents lack non-goals, the kill criterion and a measurable metric).
-- Whiteboard (during the brainstorm): append each checkpoint under "## Whiteboard" as decided / later / rejected (reason) / open, in order; the compile step replaces the whiteboard with the template.
-- Revision: write only the differences, add a Revision-history line, and list every charter line the change touches (Users, Success metrics, Non-goals, Constraints); apply them to docs/CHARTER.md only after approval.
+- Whiteboard (during the brainstorm): append each checkpoint under "## Whiteboard" (create mode, `Status: whiteboard`) or "## Whiteboard (revision)" (revision mode; the Status line keeps its date and carries `(rev n draft)`) as decided / later / rejected (reason) / open, in order; the compile step replaces the whiteboard with the template or the differences.
+- Revision: write only the differences, add a Revision-history line, bump the rev (the original approval is rev 1, the first revision rev 2), and list every charter line the change touches (Users, Success metrics, Non-goals, Constraints); apply them to docs/CHARTER.md only after approval, when the Status becomes `revised <date> (rev n)`.
 - Report line (the Summary of the planner's report): `Brief: docs/BRIEF.md · Status: <s> · Kind: <k> · decided <n> · later <n> · rejected <n> · Open: <slots> · Undecided: <items>` — a revision adds `· changes <n> · charter: <lines> · plans affected: <paths or none>`.
 - Lifecycle: /brainstorm creates it (approved) and revises it (revised); /kickoff and /assess derive docs/CHARTER.md from it and settle its Undecided items at their confirmation question; /backlog sweeps Later and the appendix; spec rounds reference the appendix by path; /hire reads it for the project's character.

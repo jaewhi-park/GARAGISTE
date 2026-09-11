@@ -116,7 +116,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 
 ### 2.6 Parallel development
 - When: two or more features that are independent at the file level, and sequential is too slow. **Do not use it in the first two weeks.**
-- Command: in the main session, `/spawn <plan files>` → the team creates a `../<repo>-<slug>` worktree and `plan/<slug>` branch per plan and prints the command for a new terminal → you open a terminal: `cd ../<repo>-<slug> && opencode` → `/build <plan>` directly in that session (the worktree session stays on plan/<slug> and has no board) → finished branches are integrated in the main session with `/integrate` into an integration branch cut from main (`integrate/<date>`) → `/ship` ships that branch as one PR (or one local merge).
+- Command: in the main session, `/spawn <plan files>` → the team creates a `../<repo>-<slug>` worktree and `plan/<slug>` branch per plan and prints the command for a new terminal → you open a terminal: `cd ../<repo>-<slug> && opencode` → `/build <plan>` directly in that session (the worktree session stays on plan/<slug> and has no board) → close the worktree session, then finished branches are integrated in the main session with `/integrate` into an integration branch cut from main (`integrate/<date>`) → `/ship` ships that branch as one PR (or one local merge).
 - Precondition: `.opencode/` and `opencode.json` must be committed so worktree sessions also have the team (or install with `-Global`). Copy untracked files such as `.env` into the worktree yourself. Plans are committed at approval, which is what worktrees see.
 - opencode subagents have no worktree isolation, so "in-session parallelism" is not supported. Parallel means session-level.
 - You: check that the plans' "files touched" sets do not overlap, and decide the integration order (dependencies first). While it runs, answer each session's questions only.
@@ -125,7 +125,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: parallelizing the steps of one feature (steps are sequential). Integrating several branches at once (always one at a time).
 
 ### 2.7 Review
-- When: after `/build` finishes; before integrating each branch.
+- When: after `/build` finishes (`/integrate` reviews each parallel branch itself).
 - Command: `/review [base branch]`
 - Team: picks lenses by risk — correctness + security by default; performance + maintainability added for high risk, logic diffs over 600 lines or hot paths. Runs them in parallel → collects blocker/major → fix loop (max 3; only the fix diff is re-reviewed, by the lenses that objected) → all APPROVE.
 - You: rule when findings conflict. Otherwise read the summary only. If a finding keeps recurring, note it as a `/retro` candidate.
@@ -158,7 +158,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: repeating "try again" in a spinning session. A polluted context gets worse the longer you keep it alive.
 
 ### 2.11 Merging
-- Local integration (`/integrate`): parallel branches are reviewed → merged → conflicts resolved by the implementer and re-reviewed → verified, one at a time into an integration branch cut from main (`integrate/<date>`); `/ship` then ships that branch like a plan branch — one PR or one local merge, one METRICS line per plan. You decide only whether to revert when a failure is reported.
+- Local integration (`/integrate`): parallel branches are reviewed → merged → conflicts resolved by the implementer and re-reviewed → verified, one at a time into an integration branch cut from main (`integrate/<date>`); `/ship` then ships that branch like a plan branch — one PR or one local merge, one METRICS line per plan. A failed merge is reverted by the team, which then reports; you decide what happens next.
 - Merging into main: `/ship` **resolves the policy automatically** from repository state. You never edit configuration for this.
   - No remote → `local`: the PR description lands in docs/prs/NNNN-<slug>.md and the lead asks for approval. Read it as you would a PR (verification evidence, review handling, rollback). On approval it merges into local main with `merge --no-ff`.
   - Remote, no protection → `manual`: the team pushes and opens the PR (`risk:low|high`). You read the PR and merge. For `risk:high`, read the diff yourself.
@@ -176,7 +176,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.13 Ending a session
 - When: a session that stops mid-step, after two or more compactions, when the team spins, at the end of a day with work in flight — not after a finished `/ship` or `/plan` (board and commits are already in place).
 - Command: `/handoff [note]`
-- Team: an open spec round is checkpointed to the planner → docs/STATUS.md written (local, never committed; including a spec in progress and its round) → `wip:` commit of uncommitted code, `docs:` commit of uncommitted documents → report "finished / waiting / first action next session".
+- Team: an open brainstorm, spec round or revision discussion is checkpointed to the planner → docs/STATUS.md written (local, never committed; including a spec in progress and its round) → `wip:` commit of uncommitted code, `docs:` commit of uncommitted documents → report "finished / waiting / first action next session".
 - You: check that the **first next action** matches your view. If not, correct it right there (the team fixes STATUS). Answer waiting decisions now or at the start of the next session.
 - Common mistakes: closing the window mid-step without `/handoff` — uncommitted changes and reasoning are lost.
 - Upgrading a project that committed docs/STATUS.md under the old flow: re-run the installer (adds the .gitignore line); the next milestone commit removes the file from the repository.
@@ -191,7 +191,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.15 Retrospective
 - When: the same mistake twice, frequent CEO intervention, after an incident, after a release.
 - Command: `/retro <plan slug | session | incident>`
-- Team: reads the docs/METRICS.md trend first (rework, questions, duration) → pinpoints at most three places where rework, verification failures, review blockers or CEO intervention occurred, with root causes → proposes a countermeasure per cause and where it belongs (one rule line / a skill / a hook (hard block) / the plan format) → the planner applies only what you approve. Intake and spec rounds are not counted as intervention; a spec that needed more than 2 correction rounds is a subject.
+- Team: reads the docs/METRICS.md trend first (rework, questions, duration) → pinpoints at most three places where rework, verification failures, review blockers or CEO intervention occurred, with root causes → proposes a countermeasure per cause and where it belongs (one rule line / a skill / a hook (hard block) / the plan format) → the planner applies only what you approve. Intake and spec rounds are not counted as intervention; a spec or brief that hit the correction cap, or a plan amended more than once, is a subject.
 - Choosing the place: a fact or prohibition that applies every time → one line in AGENTS.md; a multi-step procedure → a skill; something the prompt cannot be trusted with → a hook; something missed at planning time → the plan format.
 - You: approve **only rules with a violation behind them**. Reject generalities ("always be careful"). When AGENTS.md passes 300 lines, ask for procedures to move into skills.
 - Common mistakes: repeating the same prompt without a retro. Approving many rules and bloating AGENTS.md.

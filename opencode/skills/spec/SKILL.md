@@ -1,6 +1,6 @@
 ---
 name: spec
-description: Procedure, question rounds and template for a feature specification (docs/specs/NNNN-<slug>.md). Loaded by /plan step 0a when the CEO opts in at intake or re-enters with a docs/specs file; never for bugs, rebuild steps or re-plans.
+description: Procedure, question rounds and template for a feature specification (docs/specs/NNNN-<slug>.md). Loaded by /plan step 0a when the CEO opts in at intake or re-enters with a docs/specs file, and by step 0b for a spec revision; never for bugs, rebuild steps or plan amendments.
 ---
 # spec
 
@@ -8,7 +8,7 @@ A spec says **what** and **when it is done**, in the CEO's words. It never choos
 
 ## When
 Offered at /plan step 0 (question 1). Warranted for a new page or screen, a new API or data model, several flows, or anything the CEO cannot state as one done-when line.
-Never for: bugs (the reproduction is the spec), docs/REBUILD_PLAN.md steps (docs/PARITY.md is the spec), re-plans.
+Never for: bugs (the reproduction is the spec), docs/REBUILD_PLAN.md steps (docs/PARITY.md is the spec), plan amendments (the `수정:` path of a plan).
 
 ## Rounds
 The intake answers (done when / not this time / fixed in advance) — or, for a BACKLOG item, its completion criteria and dependencies — already seed the spec. The rounds are asked in plain chat — the one place open questions and long answers are allowed; the question tool is used only for the approval.
@@ -20,13 +20,13 @@ After each round: hand the answers verbatim to team-planner, which writes or upd
 4. Approval — one question-tool call: approve, plan now / approve, plan next session (the spec is committed and the board written — /plan step 0a) / correct / stop here (stays draft). On approval team-planner sets `Status: approved <date>` and writes `spec: docs/specs/NNNN-<slug>.md` into the source BACKLOG item, if any.
 
 ## Revision — `/plan docs/specs/NNNN-<slug>.md 수정: <what changed>`
-An approved or in-progress spec changes only through /plan's revision path (step 0b): a short brainstorm-mode discussion, "정리해줘", then team-planner writes only the differences (Done-when, Not-this-time, Undecided), bumps `(rev n)`, adds a Revision-history line and reports the impact (plans in flight, shipped plans from docs/METRICS.md, charter or brief conflicts); the critic checks the changed parts; the CEO approves (max 2 corrections). A plan in flight absorbs the change through its own `수정:` amendment; shipped plans get a BACKLOG item. Never edit an approved spec any other way.
+An approved or in-progress spec changes only through /plan's revision path (step 0b): a short brainstorm-mode discussion, "정리해줘", then team-planner writes only the differences (Done-when, Not-this-time, Undecided), bumps `(rev n)` (the original approval is rev 1, the first revision rev 2; `rev n draft` until approval), adds a Revision-history line and reports the impact (plans in flight, shipped plans from docs/METRICS.md, charter or brief conflicts); the critic checks the changed parts; the CEO approves (max 2 corrections). A plan in flight absorbs the change through its own `수정:` amendment; shipped plans get a BACKLOG item. Never edit an approved spec any other way.
 
 ## Template — docs/specs/NNNN-<slug>.md
 Own NNNN sequence (next free number in docs/specs/). The first plan from a spec reuses its slug; split parts use `<slug>-<part>`.
 ````
 # <Feature> Spec
-Status: draft | approved <date> [(rev n)] | in progress — plans: docs/plans/… | done | superseded by …
+Status: draft | approved <date> [(rev n | rev n draft)] | in progress — plans: docs/plans/… | done | superseded by …
 Source: BACKLOG item <title> | CEO request <date>
 ## Purpose and users (who, when, why now)
 ## Core flow
