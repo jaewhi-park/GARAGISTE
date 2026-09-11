@@ -30,4 +30,4 @@ For each seam, judge: "can a new implementation sit beside it and take over traf
 - full rewrite: only when the code is small or the parity harness is nearly complete. Demand evidence.
 
 ## Output — docs/ASSESSMENT.md
-Inventory / risk register / seams / test status / current behaviour that looks like bugs / unknowns (need CEO confirmation)
+Inventory / risk register / seams / test status / current behaviour that looks like bugs (mark those that conflict with the target state or invariants in docs/BRIEF.md) / unknowns (need CEO confirmation)

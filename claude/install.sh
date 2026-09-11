@@ -67,7 +67,7 @@ PY
   if [ "$BUDGET" != inherit ] || [ ${#SETS[@]} -gt 0 ]; then
     command -v node >/dev/null 2>&1 && run node "$SRC/scripts/apply-models.mjs" --flavor claude --dest "$DEST/agents" --settings "$CFG" --budget "$BUDGET" ${SETS[@]+"${SETS[@]}"}
   fi
-  echo; echo "Next: in any repo run \`claude --agent team-lead\` → /kickoff or /assess. (To make it the default for one repo, set \"agent\": \"team-lead\" in that repo's .claude/settings.json.)"
+  echo; echo "Next: in any repo run \`claude --agent team-lead\` → /brainstorm, then /kickoff or /assess. (To make it the default for one repo, set \"agent\": \"team-lead\" in that repo's .claude/settings.json.)"
   exit 0
 fi
 
@@ -149,6 +149,6 @@ cat << 'MSG'
 
 Next steps:
   1. Run `claude` in the repo (settings.agent makes team-lead the main agent). Accept the folder-trust prompt so hooks are enabled.
-  2. New project: /kickoff <idea>   Legacy: /assess <target>   Continue: /resume
+  2. Brief first: /brainstorm <idea or file>   New project: /kickoff   Legacy: /assess <target>   Continue: /resume
   3. Models: /hire at the end of kickoff/assess refines them; pass -Budget <tier> here so the first session already runs the verifier on the fast model
 MSG

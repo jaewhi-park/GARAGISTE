@@ -1,5 +1,6 @@
 // SessionStart hook: stdout is injected into the session context. Loads the charter and the status board every session and
-// says where to start: a board -> /resume; only a charter -> /plan or /backlog (never /resume); neither -> /kickoff or /assess.
+// says where to start: a board -> /resume; only a charter -> /plan or /backlog (never /resume); neither -> /brainstorm, or
+// /kickoff | /assess when docs/BRIEF.md is already approved (the brief itself is never injected).
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -25,5 +26,19 @@ if (hasCharter || hasStatus) {
     : "No status board (fresh clone, new worktree, or nothing in progress): start with /plan <backlog item> or /backlog. /resume is not needed.";
   process.stdout.write(`# GARAGISTE context (SessionStart auto-injection)\n${parts.join("\n\n")}\n\n${tail}\n`);
 } else {
-  process.stdout.write("GARAGISTE: docs/CHARTER.md is missing. Start with /kickoff for a new project or /assess for a legacy codebase.\n");
+  // No charter and no board: the product brief decides the first command. Only its Status and Kind lines are read.
+  const briefPath = join(cwd, "docs/BRIEF.md");
+  if (!existsSync(briefPath)) {
+    process.stdout.write("GARAGISTE: no product brief yet (docs/BRIEF.md). Start with /brainstorm <idea, or the path of a document you wrote>.\n");
+  } else {
+    const head = readFileSync(briefPath, "utf8").split("\n").slice(0, 20);
+    const status = (head.find((l) => /^Status:/.test(l)) ?? "Status: ?").replace(/^Status:\s*/, "").trim();
+    const kind = (head.find((l) => /^Kind:/.test(l)) ?? "Kind: ?").replace(/^Kind:\s*/, "").trim();
+    if (/^(approved|revised)/.test(status)) {
+      const next = /^레거시|^legacy/i.test(kind) ? `/assess ${(kind.match(/\((.+)\)/) ?? [])[1] ?? "<path>"}` : "/kickoff";
+      process.stdout.write(`GARAGISTE: docs/BRIEF.md is ${status} (Kind: ${kind}) and docs/CHARTER.md is missing. Start with ${next}.\n`);
+    } else {
+      process.stdout.write(`GARAGISTE: docs/BRIEF.md is still ${status || "unfinished"}. Start with /brainstorm to continue it.\n`);
+    }
+  }
 }

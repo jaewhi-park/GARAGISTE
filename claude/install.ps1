@@ -53,7 +53,7 @@ if ($Global) {
       node (Join-Path $Src "scripts\apply-models.mjs") @a
     }
   }
-  Write-Host "`nNext: in any repo run claude --agent team-lead → /kickoff or /assess. (To make it the default for one repo, set ""agent"": ""team-lead"" in that repo's .claude\settings.json.)"
+  Write-Host "`nNext: in any repo run claude --agent team-lead → /brainstorm, then /kickoff or /assess. (To make it the default for one repo, set ""agent"": ""team-lead"" in that repo's .claude\settings.json.)"
   exit 0
 }
 
@@ -146,6 +146,6 @@ Write-Host @"
 
 Next steps:
   1. Run claude in the repo (team-lead is the main agent). Accept the folder-trust prompt so hooks are enabled.
-  2. New project: /kickoff <idea>   Legacy: /assess <target>   Continue: /resume
+  2. Brief first: /brainstorm <idea or file>   New project: /kickoff   Legacy: /assess <target>   Continue: /resume
   3. Models: /hire at the end of kickoff/assess refines them; pass -Budget <tier> here so the first session already runs the verifier on the fast model
 "@

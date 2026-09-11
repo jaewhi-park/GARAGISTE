@@ -15,7 +15,7 @@ GARAGISTE is an autonomous development team template that works nearly identical
 .\install.ps1 claude  -Project <repo path>      # Windows PowerShell
 ```
 Omit `-Project` for the current directory, use `-Global` for a global install. Options are identical across flavors; both `--project` and `-Project` spellings work.
-In the first session, start a new project with `/kickoff` or a legacy codebase with `/assess`; each is followed by `/hire`, which assigns models per role.
+In the first session, write the product brief with `/brainstorm` (talk it through with the lead, or bring a document you wrote), then start a new project with `/kickoff` or a legacy codebase with `/assess`; each is followed by `/hire`, which assigns models per role.
 
 ## Layout
 ```
@@ -24,7 +24,7 @@ garagiste/
   opencode/                    # opencode flavor (agents · commands · skills · plugins installed as .opencode/, plus GUIDE.md)
   claude/                      # Claude Code flavor (agents · skills · hooks installed as .claude/, plus GUIDE.md)
 ```
-Each flavor's `GUIDE.md` is the human manual (install, what to do in each situation, checklists); its `README.md` is the configuration reference. Agent prompts are English; agents respond in the language set under `## Language` in the project's rules file (AGENTS.md / CLAUDE.md), asked once at the start of `/kickoff` or `/assess` and changed any time with `/lang <code>`; when unset they mirror the CEO's language.
+Each flavor's `GUIDE.md` is the human manual (install, what to do in each situation, checklists); its `README.md` is the configuration reference. Agent prompts are English; agents respond in the language set under `## Language` in the project's rules file (AGENTS.md / CLAUDE.md), asked once at the start of `/brainstorm` and changed any time with `/lang <code>`; when unset they mirror the CEO's language.
 
 ## Six principles
 1. Separate judgment from execution — the implementer does not grade its own work, the reviewer does not fix, the lead does not write code.

@@ -16,7 +16,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 ## CEO console (skills = slash commands)
 | Loop | Command | Artifact |
 |---|---|---|
-| Governance | `/kickoff <idea>` / `/assess <target>` | CHARTER, ADR, CLAUDE.md, (legacy) ASSESSMENT · REBUILD_PLAN · parity-harness plan; /hire in the closing step, then the board |
+| Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | BRIEF (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then CHARTER, ADR, CLAUDE.md, (legacy) ASSESSMENT · REBUILD_PLAN · parity-harness plan; /hire in the closing step, then the board |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
 | Engineering | `/plan <item>` → `/run <plan>` (or `/build`) | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md, one commit per step |
 | Parallel | `/parallel <plans>` → `/integrate` | one branch per worktree → serial merge queue |
@@ -44,7 +44,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 - Morning: confirm today's items with `/backlog` → approve `/plan` → `/run` (see parallelism below)
 - Day: answer only the lead's AskUserQuestion prompts. Everything else is autonomous.
 - Evening: `/run` finishes with ship → merge per policy. Weekly `/release`; `/retro` when failures repeat.
-- The human's four jobs: answer charter, intake and spec questions / approve plans and decide escalations / merge PRs (per policy) / approve retro rules.
+- The human's four jobs: brainstorm the brief and answer intake and spec questions / approve plans and decide escalations / merge PRs (per policy) / approve retro rules.
 
 ## Workflow — sequential by default, parallel by choice
 The default (`/build`, inside `/run`) implements one plan in one session, step by step, in the main checkout. Ask for several features and the lead makes several `/plan`s and runs them one after another. No worktrees, no merges, no conflicts by construction. Most personal projects need nothing more.

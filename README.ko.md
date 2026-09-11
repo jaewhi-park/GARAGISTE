@@ -1,6 +1,6 @@
 # GARAGISTE
 
-> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff`·`/assess` 시작 시 한 번 묻고, `/lang <code>`로 언제든 변경). 비어 있으면 당신이 쓰는 언어를 따릅니다.
+> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/brainstorm` 시작 시 한 번 묻고, `/lang <code>`로 언제든 변경). 비어 있으면 당신이 쓰는 언어를 따릅니다.
 
 
 > 나도 그들처럼 차고에서 시작하고 싶었지만, 우리 집엔 차고가 없다. 그래서 설정 파일 한 폴더로 차고를 지었다.
@@ -16,7 +16,7 @@ GARAGISTE 는 **opencode** 와 **Claude Code** 양쪽에서 거의 똑같이 동
 .\install.ps1 claude  -Project <레포 경로>      # Windows PowerShell
 ```
 `-Project` 를 생략하면 현재 경로, `-Global` 이면 전역. 옵션은 두 판이 같고 `--project`/`-Project` 두 표기를 모두 받는다.
-설치 후 첫 세션에서 신규 프로젝트는 `/kickoff`, 레거시는 `/assess`, 그다음 `/hire` 로 역할별 모델을 배정한다.
+설치 후 첫 세션에서 `/brainstorm` 으로 기획서를 만들고(lead 와 자유 토론, 또는 직접 쓴 문서), 신규 프로젝트는 `/kickoff`, 레거시는 `/assess`, 그다음 `/hire` 로 역할별 모델을 배정한다.
 
 ## 구조
 ```

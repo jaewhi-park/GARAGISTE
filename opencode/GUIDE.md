@@ -10,8 +10,9 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 
 | Situation | Command | What you do, in one line |
 |---|---|---|
-| New project | `/kickoff <idea>` | Answer the charter questions honestly; approve the stack ADR |
-| Legacy takeover | `/assess <target>` | Decide preserve-or-fix for "behaviour that looks like a bug"; approve the rebuild strategy |
+| Product brief | `/brainstorm <idea or file>` | Brainstorm freely with the lead, or bring the document you wrote; answer the open slots and the pre-mortem; approve the brief. Run it again to revise (pivot) |
+| New project | `/kickoff` | Needs the approved brief. Confirm the derived charter lines and the stack ADR |
+| Legacy takeover | `/assess <target>` | Needs the approved brief. Decide preserve-or-fix for "behaviour that looks like a bug"; approve the rebuild strategy |
 | Hiring | `/hire` | Answer the budget-tier and character questions; approve the assignment table (right after kickoff/assess) |
 | Grooming | `/backlog [idea]` | Fix only the order of the top three |
 | Design | (inside `/plan`) | Read the ADR's alternatives and consequences; check reversibility |
@@ -28,7 +29,7 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 | Resuming a session | `/resume` | Only when a board exists (the injected files show whether one does); if board and repo disagree, side with the repo |
 | Retrospective | `/retro <subject>` | Approve only one-line rules backed by an incident; reject the rest |
 | Team check | `/roster` | Confirm model and permission assignments |
-| Wrong language | `/lang <code>` | Asked once at the start of `/kickoff` or `/assess`; change any time |
+| Wrong language | `/lang <code>` | Asked once at the start of `/brainstorm`; change any time |
 | Missing role | `/recruit <gap>` | Only for a new permission boundary or a separate judge; a missing skill is not a role. Model comes from the roster, no extra /hire |
 
 ## 1. Install and first run
@@ -58,14 +59,14 @@ Three install targets. Give the flavor (opencode) to the entry point at the repo
 
 **Not a git repository**: the team relies on branches, commits and worktrees. The installer offers `git init` (default branch main); accept it.
 
-First run: run `opencode` in the repo → Tab to select `team-lead` → `/kickoff` for a new project, `/assess` for legacy, `/resume` to continue.
+First run: run `opencode` in the repo → Tab to select `team-lead` → `/brainstorm` first (the product brief), then `/kickoff` for a new project or `/assess` for legacy; `/resume` to continue.
 Check: the planner can write inside docs/ but not outside (edit patterns are repo-relative: `docs/*`, never `**/docs/**`), and the plugin blocks `git push --force`.
 
 ### Models and budget — `/hire`
 When `/kickoff` or `/assess` finishes, the lead suggests `/hire`. It confirms available models (`opencode models`), asks you for a budget tier (unlimited / high = Max 20x / medium = Max 5x / low = Pro), the project's character and parallel plans, and proposes a role × model table with reasons. You approve it or change a line or two. Principle: the strongest model where judgment happens (planner, critic, reviewer), the fastest model for the verifier, the implementer by budget. On approval a script changes only the `model:` lines and an "Operating profile" is left in AGENTS.md. Takes effect from the next session. Pass `-Budget <tier> -Strong <id> -Fast <id>` at install time so the kickoff/assess session itself already runs the verifier on the fast model; `/hire` then refines it. Re-run `/hire` when the budget changes; `/roster` shows the current assignment. The installer's `-Budget` profiles distribute mechanically without judgment, for non-interactive use.
 
 ### Language
-Agent prompts are English. Responses, questions and documents follow the `## Language` line in AGENTS.md. `/kickoff` and `/assess` ask for it first when it is not set; `/lang <code>` changes it any time (a script rewrites only that section). When unset, agents mirror the language of your latest message, but an English command template can still tip the lead into English: if that happens, run `/lang`.
+Agent prompts are English. Responses, questions and documents follow the `## Language` line in AGENTS.md. `/brainstorm` asks for it first when it is not set (`/kickoff` and `/assess` only when the brief was committed from elsewhere); `/lang <code>` changes it any time (a script rewrites only that section). When unset, agents mirror the language of your latest message, but an English command template can still tip the lead into English: if that happens, run `/lang`.
 
 ## 2. Situations
 
@@ -73,19 +74,20 @@ Every entry has the same shape: when / command / what the team does / **what you
 
 ### 2.1 Planning a new project
 - When: the repo is empty, or the idea precedes the code.
-- Command: `/kickoff <one or two sentences>`
-- Team: charter questions → docs/CHARTER.md → stack ADR (critic-reviewed) → skeleton → AGENTS.md, ADR decision, backlog and walking-skeleton plan in one pass → full verification → docs commit → the lead suggests `/hire` (model assignment, committed; run it in this session). The session ends with the board written; the first `/run` happens in a new session (model assignments load at session start) — start it directly, no `/handoff`.
-- You: answer the seven questions. Do not wave through **three non-goals** and the **success metric** — the charter is the yardstick for every later verdict. Read the stack ADR's "why not the alternatives" and approve.
-- Approval criteria: is the success metric a measurable statement; did the verification commands actually pass on the skeleton (verifier report).
-- Common mistakes: putting a feature list in the charter (that is the backlog). Handing the stack decision to the team wholesale — it is the most expensive decision to reverse, so choose it yourself.
+- Commands: `/brainstorm <idea, or the path of a document you wrote>` → `/kickoff`
+- Team, `/brainstorm`: free brainstorming (the lead proposes and pushes back; no agenda) or your document normalized → "기획서 만들어줘" / "write it up" → docs/BRIEF.md compiled (decided / later / rejected with reasons, sketches in an appendix) → the slots the brainstorm left open are asked once → critic pre-mortem, presented to you as a correction round → approval → docs commit → the board says `/kickoff`. In a long brainstorm the planner keeps a whiteboard every ten or so exchanges, so a cut session resumes with `/brainstorm`.
+- Team, `/kickoff`: charter derived from the brief (no questions) → stack ADR (critic-reviewed) → one confirmation call (the stack, the three charter lines, the brief's undecided items) → skeleton → AGENTS.md, ADR decision, backlog from the brief's decided lines and a walking-skeleton plan (the thinnest slice of the brief's core flow) in one pass → full verification → docs commit → the lead suggests `/hire` (model assignment, committed; run it in this session). The session ends with the board written; the first `/run` happens in a new session (model assignments load at session start) — start it directly, no `/handoff`.
+- You: talk the way you would in a chat, then say "write it up". Answer the open slots honestly — **three non-goals**, a **measurable success metric** and the **kill criterion** are what brainstorms skip and what every later verdict is judged against. Read the pre-mortem findings; each comes with a default. Approve the brief; at `/kickoff` read the stack ADR's "why not the alternatives" and approve. When the direction changes later, run `/brainstorm` again: it revises the brief and the charter follows.
+- Approval criteria: is the success metric a measurable statement; does the brief say what was rejected and why; did the verification commands actually pass on the skeleton (verifier report).
+- Common mistakes: designing a feature inside the brainstorm (that is `/plan`'s spec rounds — the lead says so and keeps one line in the appendix). Bringing a document and skipping the open slots (it usually lacks non-goals and a kill criterion). Handing the stack decision to the team wholesale — it is the most expensive decision to reverse, so choose it yourself.
 
 ### 2.2 Legacy takeover / rebuild planning
 - When: there is existing code to fix or replace.
-- Command: `/assess <path or description>`
-- Team: inventory (docs/ASSESSMENT.md) → unknowns reported, preserve/fix policy in one call → strategy and first seam (ADR, docs/REBUILD_PLAN.md, AGENTS.md) and a minimal charter (you confirm goal, non-goals and success metric together with the strategy) → a plan for the first seam's parity harness → docs commit → the lead suggests `/hire` (a rebuild weights critic and reviewer; committed; run it in this session). The session ends with the board written; the harness is built through `/run` as plan 0001 in a new session (model assignments load at session start) — start it directly, no `/handoff`. Every later rebuild step extends it to its seam first.
-- You: three decisions only. (1) preserve or fix each "current behaviour that looks like a bug" — one call with defaults: accept them or name the items to fix. (2) the strategy (strangler fig / module-by-module / full rewrite). The default is strangler fig; a full rewrite needs evidence from the team. (3) the three charter lines the team derived — edit them if they are wrong.
+- Commands: `/brainstorm <why rebuild, target state, what must not change, deadline>` (one paragraph and "write it up" is enough; or a document you wrote) → `/assess <path>`
+- Team, `/brainstorm`: a short rebuild brief (Kind: 레거시) → open slots → pre-mortem → approval → commit. Team, `/assess`: inventory (docs/ASSESSMENT.md; "looks like a bug" items that conflict with the brief's target state are marked) → unknowns reported, preserve/fix policy in one call → strategy and first seam (ADR, docs/REBUILD_PLAN.md, AGENTS.md) and the charter derived from the brief and the assessment (you confirm goal, non-goals and success metric together with the strategy) → a plan for the first seam's parity harness → docs commit → the lead suggests `/hire` (a rebuild weights critic and reviewer; committed; run it in this session). The session ends with the board written; the harness is built through `/run` as plan 0001 in a new session (model assignments load at session start) — start it directly, no `/handoff`. Every later rebuild step extends it to its seam first. If the inventory changes the target, revise the brief with `/brainstorm`.
+- You: say why the rebuild happens and what must not change; then three decisions only. (1) preserve or fix each "current behaviour that looks like a bug" — one call with defaults: accept them or name the items to fix. (2) the strategy (strangler fig / module-by-module / full rewrite). The default is strangler fig; a full rewrite needs evidence from the team. (3) the charter lines the team derived — edit them if they are wrong.
 - Approval criteria: does the parity harness PASS against legacy for the seam being rebuilt (docs/PARITY.md lists what it covers)? Without it, refuse to approve that step.
-- Common mistakes: "let's just rewrite it" without a harness. In legacy without a written spec (docs/specs/), the only spec is current behaviour.
+- Common mistakes: "let's just rewrite it" without a harness. In legacy without a written spec (docs/specs/), the only spec is current behaviour — what should change beyond it is said by the brief and nothing else.
 
 ### 2.3 Design and architecture decisions
 - When: hard-to-reverse decisions (data model, public interfaces, dependencies, stack).
@@ -97,7 +99,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.4 Backlog and priorities
 - When: an idea arrives; you do not know what to do next.
 - Command: `/backlog <idea>` or `/backlog` (groom only)
-- Team: updates docs/BACKLOG.md, prioritizes against the charter, separates excluded items, proposes the top three.
+- Team: updates docs/BACKLOG.md (sweeping the brief's "later" lines and appendix too), prioritizes against the charter, separates excluded items, proposes the top three.
 - You: fix only the **order** of the top three. If an item looks bigger than a day, say "split it" or "spec it".
 - Common mistakes: keeping the backlog in your head instead of the team's — then nobody catches conflicts with the charter.
 
@@ -204,10 +206,18 @@ Every entry has the same shape: when / command / what the team does / **what you
 
 - Daily (1–2 hours): `/resume` → (one item from the backlog) answer the intake call (or the spec rounds), approve `/plan` → hands off during `/run` (answer gate questions only) → merge per verdict → (`/handoff` only if something is left mid-flight).
 - Weekly: `/backlog` for next week's top three, `/release`, skim docs/DECISIONS.md, `/retro` if needed.
-- First week: day 1 `/kickoff` (or `/assess`) plus a "verification command that runs in under a minute" → days 2–3 walking skeleton → days 4–5 two features through plan→run → one `/retro`. Parallelism from week two.
+- First week: day 1 `/brainstorm`, then `/kickoff` (or `/assess`), plus a "verification command that runs in under a minute" → days 2–3 walking skeleton → days 4–5 two features through plan→run → one `/retro`. Parallelism from week two.
 - Three metrics: rework count / questions per session (the intake call and spec rounds are expected and not counted) / plan-approval→merge time. `/ship` appends one line per plan to docs/METRICS.md and `/retro` reads it. If they fall, the setup fits.
 
 ## 4. Approval checklists
+
+Before approving the brief:
+- [ ] the success metric is a number or an observable fact
+- [ ] at least three concrete non-goals, and a kill criterion
+- [ ] "decided" holds capabilities one line each, not flows or screens (those are for specs)
+- [ ] every rejected idea has its reason
+- [ ] each undecided item says when it will be decided
+- [ ] Kind says 신규 or 레거시 (path), so the next command is clear
 
 Before approving a spec:
 - [ ] every "done when" is a verifiable statement
@@ -242,6 +252,7 @@ Before merging a PR:
 - Critic and 4 lenses on small plans: under 3 logic steps and risk:low the critic is skipped; review uses 2 lenses below 600 logic lines and risk:low. Adjust via the operating profile (/hire).
 - Intake asks at most once per plan; if bug lines, re-plans or backlog items (beyond the one spec question for size L or a new page, screen, API or data model) still draw questions, it is a `/retro` subject.
 - Spec rounds are the exception to short chats: give paths and links, never paste documents (the planner reads them); the file is the memory, so after long spec rounds choose "approve, plan next session" (the spec is committed) and re-enter with `/plan docs/specs/NNNN-<slug>.md`.
+- The brainstorm lives in the lead's context: the planner checkpoints it every ten or so exchanges, and after a long one run `/kickoff` or `/assess` in a new session (the board points there).
 - On your side: do not re-ask the same question every session — record decisions in docs/DECISIONS.md and let the lead follow them. One plan per session. When the context gets heavy, `/handoff` and start fresh.
 
 ## 6. Do not
