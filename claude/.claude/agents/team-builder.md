@@ -16,7 +16,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 - If verification still fails after 3 attempts, make a `wip:` commit, stop and report the failure.
 - Never weaken, skip or delete tests to get a pass.
 - Mechanical changes (scaffolding, generated code, lockfiles, formatting/renames/moves, deletions) go in separate commits from logic changes. Label the commit type (`chore(scaffold)`, `chore(gen)`, `refactor(mechanical)`, `chore(deps)`) and include the reproduction command. For generated code, re-run the generator and confirm a zero diff before committing.
-- No merge, rebase, push or worktree removal. The lead integrates via /integrate.
+- No merge, rebase, push, pull or worktree removal (the guardrail hook blocks them). The lead integrates via /integrate.
 
 - Reports use only the format below. No preamble, no narration, no apologies. Five lines max per item (except failure logs).
 ## Report format

@@ -81,7 +81,7 @@ Keep the strongest model where judgment happens (planning, design review, code r
 Change: re-run `./install.sh opencode -Budget <tier> -Strong <id> -Fast <id>`, per-agent with `-Set team-reviewer=<id>`, back to inheritance with `-Budget inherit`. `/roster` shows the current assignment.
 
 ## Customization points
-- `agents/team-verifier.md` — trim the bash allow-list to your stack.
+- `agents/team-verifier.md` — trim the bash allow-list to your stack (it restricts which tools run, not what their scripts execute).
 - `agents/team-lead.md` — escalation criteria (the charter's "Additional escalation items" are added).
 - `plugins/guardrails.ts` — blocked-command patterns.
 - `opencode.json` — `instructions` auto-injects docs/CHARTER*.md and docs/STATUS*.md every session. No model = inherit. `subagent_depth: 2` lets team-planner/implementer/reviewer/critic (subagents) each call the explore subagent themselves — opencode's default of 1 would block that and fail the call silently. docs/STATUS.md is local (git-ignored by the project installer; after a global install add the line yourself) and never committed.

@@ -31,13 +31,13 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 ## Team (.claude/agents/)
 | Agent | Role | Tools | Notes |
 |---|---|---|---|
-| team-lead | tech lead / EM; main-session agent | Agent(team-*, Explore), Read/Grep/Glob, Bash, Edit/Write, AskUserQuestion | Edit/Write on docs/STATUS.md only (hook-enforced); default via `settings.agent`; never commits (hook) |
+| team-lead | tech lead / EM; main-session agent | Agent(team-*, Explore), Read/Grep/Glob, Bash, Edit/Write, AskUserQuestion | Edit/Write on docs/STATUS.md only; Bash allow-list (git branch/merge/sync commands, gh reads, the scripts, read-only helpers; no redirection); never commits, pushes or merges PRs — all hook-enforced; default via `settings.agent` |
 | team-planner | architect; docs, plans, specs, ADRs | Read/Grep/Glob, Edit/Write, Bash, Web* | `memory: project` — accumulates architecture knowledge |
 | team-critic | design review (pre-mortem) | Read/Grep/Glob | read-only |
 | team-implementer | senior engineer (main checkout, sequential) | Read/Grep/Glob, Edit/Write, Bash | commits; pushes and opens the PR in /ship |
 | team-builder | senior engineer (parallel) | same | `isolation: worktree` — implements a whole plan in its own worktree, self-verifies |
 | team-reviewer | per-lens code review | Read/Grep/Glob, Bash | `memory: project` — accumulates recurring defect patterns |
-| team-verifier | CI | Bash, Read/Grep/Glob | runs only the commands listed in CLAUDE.md |
+| team-verifier | CI | Bash, Read/Grep/Glob | hook allow-list of build/test/lint tools plus read-only git; what an `npm run` script executes is not inspected — the CLAUDE.md Commands rule is prompt-level |
 | Explore | codebase research (built-in) | read-only | |
 
 ## Running it like a company
@@ -89,8 +89,8 @@ Change: re-run `./install.sh claude -Budget <tier>`, per-agent with `-Set team-i
 The session is working memory; the repo is long-term memory. State lives in three places — one commit per step, the plan file (committed at approval), `docs/STATUS.md` (local, git-ignored, auto-injected by the SessionStart hook; after a global install add it to .gitignore yourself). One session = one plan (PR). A finished /ship or /plan leaves board and commits in place, so the next session starts with `/resume` when a board exists, else straight with the suggested command; `/handoff` only when stopping mid-flight. Use `claude --continue` only for short interruptions. Planner and reviewer accumulate long-term knowledge in `.claude/agent-memory/<name>/` (requires auto memory enabled).
 
 ## Differences from the opencode flavor
-- Per-path edit permissions exist only where the hook enforces them: team-lead may edit docs/STATUS.md and nothing else (`guardrails.mjs`), and the same hook blocks its `git add`/`git commit`. The planner's "docs only" rule is prompt-level and caught by the reviewer; for a hard block, add a path rule to the same hook.
-- Secret-file blocking (`.env`, keys, certificates) applies to the file tools (Read/Edit/Write) via deny rules and the hook, and the hook also blocks shell commands that print such files (`cat .env`, `Get-Content .env.local`, `grep KEY .env`). A program reading the file itself (`node -e`, `python -c`) is not caught — keep secrets out of the repo.
+- Role rules are enforced by `guardrails.mjs` from the hook's `agent_type`, mirroring the opencode permission blocks: team-lead edits docs/STATUS.md only and its shell is an allow-list (no commits, pushes, PR merges or shell writes); team-planner edits only docs/** and CLAUDE.md and its shell is git status/diff/log/show; team-reviewer's shell is the same read-only git; team-builder cannot push, merge, rebase, pull or touch worktrees; team-verifier runs only the tool allow-list. team-implementer and team-critic are scoped by their tools line and the generic rules; a role created by /recruit gets the generic rules only — add an `agent_type` branch to the hook for a hard boundary.
+- Secret-file blocking (`.env*`, `.envrc`, keys, certificates, `credentials`, `.netrc`, `.npmrc`, `.git-credentials`) applies to Read/Edit/Write/Grep via the hook and deny rules, and the hook blocks shell commands that name such a file next to a program that prints or evaluates files — also behind `sudo`, `xargs`, `find -exec`, `$( )`, pipelines, `git show <rev>:.env`, and `node -e` / `python -c` one-liners. Best effort: a program that opens the file without naming it (a script, `env`) is not caught — keep secrets out of the repo.
 - `permissions.deny` is session-wide. Force pushes and direct pushes to main are blocked by deny rules and hooks; feature-branch pushes are allowed.
 - The `Agent(...)` list on the main-session agent (`--agent` / `settings.agent`) is the allowlist of subagents the lead may call. Inside a subagent definition the parenthesized list is ignored.
 - `memory: project` gives roles long-term memory — the company's accumulated experience.
