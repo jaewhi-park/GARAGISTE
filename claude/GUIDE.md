@@ -20,8 +20,9 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 | Complex feature | `/plan <item>` → "yes, spec" at intake | Answer 2–3 rounds in your own words, approve the spec, then the plan |
 | Parallel development | `/parallel <plans>` → `/integrate` (or `claude --worktree`) | Check that file sets do not overlap; decide the integration order |
 | Review | (inside `/run`) or `/review` | Rule only on conflicting findings |
-| QA | (verifier, automatic) + try it yourself | Read the commands run and failure counts, not the green light |
+| QA | (verifier, automatic) + the PR's "Try it" steps | Read the commands run and failure counts, not the green light; walk the Try-it steps before merging |
 | Debugging | `/plan "bug: … reproduction test first"` | Give the most concrete reproduction you can |
+| Change request | say stop, then `/plan <spec or plan file> 수정: <what changed>` | Talk it through, say "write it up", approve the revision; a running plan continues on its branch |
 | Troubleshooting | 3-strike rule, drop the session | When the team spins, stop rather than fix |
 | Merging | `/integrate` / `/policy` | Local integration is the team's; main merges follow the automatic verdict (local / manual / auto-low-risk) |
 | Shipping and releasing | `/ship` → `/release` | Read the PR's verification evidence; read the diff yourself if `risk:high` |
@@ -108,8 +109,9 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Command: `/plan <backlog item or feature>` → intake (one call) → approve (the plan is committed on main at approval) → `/run <plan file>`. For step-by-step control use `/build` → `/review` → `/ship` instead. For a complex feature answer "yes, spec" at intake: 2–3 chat rounds → docs/specs/NNNN-<slug>.md → approve the spec → the plan.
 - Team: intake (one call: spec? / done when / not this time / fixed in advance — skipped when the request already says so, and for bug lines and re-plans; a backlog item skips all but the spec question, and only when it is size L or names a new page, screen, API or data model) → spec rounds if chosen (structure → detail → your corrections → approval; the planner writes docs/specs/NNNN-<slug>.md after every round) → plan (sections 1–2 are your answers or the spec verbatim) → critic review (3+ steps or high risk) → escalation questions → approval commit → `/run` (same session): branch → implement, verify and commit per step → review and fixes → ship and merge verdict. It stops only for escalation, a fix loop over 3 rounds, and merge approval.
 - You: answer the intake in your own words when the options do not fit; the planner writes it down. The spec rounds are the one place you talk at length: answer in your own words, give paths and links (design file, similar screen, external doc) rather than pasting documents, and read the draft file yourself before correcting. Then **actually read the plan.** Are the completion criteria verifiable statements; are logic steps within the step-size target (300 by default; a larger step states why); does it stay inside the non-goals? After approval, keep your hands off. Questions arrive in the form decision / options / recommendation / default — take the recommendation or say why not.
+- Changing course: an approved spec or a running plan is changed with `/plan <its file> 수정: <what changed>` — say stop first if a plan is running (the team finishes the step's verification and holds). The same five moves as a brief revision: talk it through (the lead proposes options and impact), say "write it up", the planner writes only the differences (a plan: only the steps after the last PASS, on its branch), the critic checks the changed parts, you approve. Then `/run <plan file>` continues on the same branch; a spec revision tells you which plan to amend next.
 - Approval criteria (plan): completion criteria · per-step verification command · rollback method — all three present.
-- Common mistakes: ordering big work in chat without a plan. Two plans in one session. Changing direction while the team is working (stop and re-plan instead). Answering the intake with "your call" on the one thing you care about — you will reject the plan for it at approval. Ordering a complex feature with a one-liner and no spec. Splitting `/plan` and `/run` across sessions by habit — only after long spec rounds.
+- Common mistakes: ordering big work in chat without a plan. Two plans in one session. Changing direction in chat while the team is working (say stop, then `/plan <plan file> 수정: <what changed>`). Answering the intake with "your call" on the one thing you care about — you will reject the plan for it at approval. Ordering a complex feature with a one-liner and no spec. Splitting `/plan` and `/run` across sessions by habit — only after long spec rounds.
 - When a large diff is normal: scaffolding, generated code, lockfiles, bulk formatting/renames, deletions. If it is a separate commit labelled with its kind, the 300-line rule does not apply — but the review criteria differ: is it reproducible (regeneration diff zero), is logic mixed in, do build and tests pass. Do not read such commits line by line; check those three things.
 
 ### 2.6 Parallel development
@@ -168,7 +170,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: enabling auto-low-risk without branch protection. Waving through conflict-resolution diffs without review (a correctness re-review is configured, but check).
 
 ### 2.12 Shipping and releasing
-- `/ship`: full verification → docs and CHANGELOG → PR description → push → PR (or local merge). You read the PR's "verification evidence" and "risks and rollback". If either is empty, do not merge. After the PR is opened the session is back on main; merge before the next `/plan` (the next session pulls the merge in).
+- `/ship`: full verification → docs and CHANGELOG → PR description → push → PR (or local merge). You read the PR's "verification evidence" and "risks and rollback". If either is empty, do not merge. A user-facing PR also carries a "Try it" section: run the command, walk the steps, then merge (such PRs are never auto-merged). After the PR is opened the session is back on main; merge before the next `/plan` (the next session pulls the merge in).
 - `/release [version]`: version proposal → full verification → finalized CHANGELOG → docs/releases/<ver>.md → tag commands. You push the tag. If interfaces changed, a major/minor question arrives.
 - Common mistakes: release notes written from the team's view (what changed) — they must be the user's view (what is different, known issues, rollback).
 
@@ -245,6 +247,7 @@ Before merging a PR:
 - [ ] the test-file diff contains no skip, deletion or weakening
 - [ ] mechanical commits (scaffold/gen/mechanical/deps) contain no logic changes, and gen commits regenerate with zero diff
 - [ ] a rollback method exists
+- [ ] for a user-facing PR, you walked the "Try it" steps yourself
 
 ## 5. Where tokens leak and how to stop it
 - Repeatedly checking subagent status: forbidden by the lead's rules (synchronous calls, wait for completion). If you still see it, it is a `/retro` subject.
@@ -259,7 +262,7 @@ Before merging a PR:
 ## 6. Do not
 - Order large work in chat without a plan, or a complex feature with a one-liner and no spec
 - Approve on the green light alone
-- Change direction while the team is working (stop and re-plan)
+- Change direction in chat while the team is working (say stop, then `/plan <plan file> 수정:`)
 - Fix reviewer findings yourself
 - Try to rescue a spinning session
 - Enable auto-merge without branch protection

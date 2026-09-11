@@ -30,11 +30,11 @@
 | `/brainstorm <아이디어 또는 파일>` | 기획서(docs/BRIEF.md): lead와 자유 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인 → 커밋. 피벗이면 다시 실행해 개정 |
 | `/kickoff` | 신규 프로젝트, 승인된 기획서에서. 헌장 → 스택 ADR → 골격 → AGENTS.md → 첫 계획 → /hire |
 | `/assess <대상>` | 레거시, 승인된 기획서에서. 인벤토리 → 보존/수정 방침 → 리빌드 전략 ADR → AGENTS.md → 첫 seam의 parity harness 계획 → /hire |
-| `/plan <항목>` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/) → planner 작성 → critic 리뷰(3단계 이상 또는 risk:high) → 승인 요청 |
+| `/plan <항목>` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/) → planner 작성 → critic 리뷰(3단계 이상 또는 risk:high) → 승인 요청; `/plan <사양서 또는 계획> 수정: …`은 승인된 사양서 개정·진행 중 계획 수정(차이만, 같은 브랜치) |
 | `/build <계획파일>` | 단계별 implementer → verifier 루프 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |
 | `/review [기준브랜치]` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
-| `/ship` | 전체 검증 · 문서 · 브랜치 push · PR 생성(risk 라벨) · 머지는 정책대로 |
+| `/ship` | 전체 검증 · 문서 · 브랜치 push · PR 생성(risk 라벨; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) · 머지는 정책대로 |
 | `/retro <대상>` | 실패를 AGENTS.md 규칙/스킬/가드레일로 환류 |
 | `/backlog [아이디어]` | PM: 완료 조건이 있는 백로그 항목·우선순위 (docs/BACKLOG.md, 선택적 GitHub Issues) |
 | `/release [버전]` | 운영: 버전·CHANGELOG·릴리즈 노트, 태그 명령 제시 |
