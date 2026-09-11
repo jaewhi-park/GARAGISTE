@@ -1,12 +1,12 @@
 # GARAGISTE — opencode 판
 
-> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/kickoff`·`/assess` 시작 시 한 번 묻고, `/lang <code>`로 언제든 변경). 비어 있으면 당신이 쓰는 언어를 따릅니다.
+> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/brainstorm` 시작 시 한 번 묻고, `/lang <code>`로 언제든 변경). 비어 있으면 당신이 쓰는 언어를 따릅니다.
 
 
 사람용 사용법은 **GUIDE.md**(설치·상황별 역할), 산출물 지도는 docs/README.md. 이 파일은 설정 레퍼런스다.
 
 신규 제품이든 레거시 리빌드든 같은 팀이 맡는다. 팀의 "성격"(역할·권한·절차)은 여기 글로벌 설정에,
-프로젝트의 "사실"(명령·구조·결정)은 각 레포의 AGENTS.md와 docs/에 둔다. 팀은 /kickoff 또는 /assess로
+프로젝트의 "사실"(명령·구조·결정)은 각 레포의 AGENTS.md와 docs/에 둔다. 팀은 /brainstorm 뒤 /kickoff 또는 /assess로
 자기 자신을 새 레포에 온보딩한다.
 
 ## 설치
@@ -27,8 +27,9 @@
 ## CEO 콘솔
 | 커맨드 | 언제 |
 |---|---|
-| `/kickoff <아이디어>` | 신규 프로젝트. 헌장 → 스택 ADR → 골격 → AGENTS.md → 첫 계획 → /hire |
-| `/assess <대상>` | 레거시. 인벤토리 → 보존/수정 방침 → 리빌드 전략 ADR → AGENTS.md → 첫 seam의 parity harness 계획 → /hire |
+| `/brainstorm <아이디어 또는 파일>` | 기획서(docs/BRIEF.md): lead와 자유 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인 → 커밋. 피벗이면 다시 실행해 개정 |
+| `/kickoff` | 신규 프로젝트, 승인된 기획서에서. 헌장 → 스택 ADR → 골격 → AGENTS.md → 첫 계획 → /hire |
+| `/assess <대상>` | 레거시, 승인된 기획서에서. 인벤토리 → 보존/수정 방침 → 리빌드 전략 ADR → AGENTS.md → 첫 seam의 parity harness 계획 → /hire |
 | `/plan <항목>` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/) → planner 작성 → critic 리뷰(3단계 이상 또는 risk:high) → 승인 요청 |
 | `/build <계획파일>` | 단계별 implementer → verifier 루프 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |

@@ -74,7 +74,7 @@ if (tool === "Bash" || tool === "PowerShell") {
     process.stderr.write(`[guardrail] blocked: command reads a secret file: ${cmd}\n`);
     process.exit(2);
   }
-  // team-lead never commits: milestone commits (plan, spec, kickoff/assess docs, hire output) and step commits alike go to
+  // team-lead never commits: milestone commits (brief, plan, spec, kickoff/assess docs, hire output) and step commits alike go to
   // team-implementer, mirroring the opencode flavor's team-lead, which has no git commit permission. Global options before the
   // subcommand (`git -c k=v commit`, `git -C <dir> add`) are tolerated by the pattern; `rm` covers `git rm --cached` (staging too).
   if (input.agent_type === "team-lead" && /\bgit\b(\s+-[cC]\s*\S+|\s+--\S+)*\s+(add|rm|commit|stash)\b/.test(cmd)) {

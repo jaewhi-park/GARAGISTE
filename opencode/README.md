@@ -2,7 +2,7 @@
 
 Human manual: **GUIDE.md** (install, what to do in each situation). Artifact map: docs/README.md. This file is the configuration reference. 한국어: README.ko.md, GUIDE.ko.md.
 
-The team's *character* (roles, permissions, procedures) lives in this template; the project's *facts* (commands, structure, decisions) live in the repo's AGENTS.md and docs/. The team onboards itself into a new repo with /kickoff or /assess.
+The team's *character* (roles, permissions, procedures) lives in this template; the project's *facts* (commands, structure, decisions) live in the repo's AGENTS.md and docs/. The team onboards itself into a new repo with /brainstorm, then /kickoff or /assess.
 
 ## Install
 From the repository root: `./install.sh opencode [-Project <path>|.] [-Global]` / `.\install.ps1 opencode [-Project <path>] [-Global]`. Default is the current directory (its git repo root). `-Global` → ~/.config/opencode (every repo). Running `opencode/install.sh` directly works too (without the flavor argument).
@@ -20,8 +20,9 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 ## CEO console
 | Command | When |
 |---|---|
-| `/kickoff <idea>` | New project. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
-| `/assess <target>` | Legacy. Inventory → preserve/fix policy → rebuild strategy ADR → AGENTS.md → parity-harness plan for the first seam → /hire |
+| `/brainstorm <idea or file>` | Product brief (docs/BRIEF.md): free brainstorming with the lead, or a document you wrote → open slots → critic pre-mortem → approval → commit. Run it again to revise the brief (pivot) |
+| `/kickoff` | New project, from the approved brief. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
+| `/assess <target>` | Legacy, from the approved brief. Inventory → preserve/fix policy → rebuild strategy ADR → AGENTS.md → parity-harness plan for the first seam → /hire |
 | `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
 | `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes → critic reviews (3+ steps or risk:high) → approval requested |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |

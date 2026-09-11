@@ -141,6 +141,6 @@ Write-Host @"
 
 Next steps:
   1. Run opencode in the repo → press Tab to select team-lead
-  2. New project: /kickoff <idea>   Legacy: /assess <target>   Continue: /resume
+  2. Brief first: /brainstorm <idea or file>   New project: /kickoff   Legacy: /assess <target>   Continue: /resume
   3. Models: /hire at the end of kickoff/assess refines them; pass -Budget <tier> -Strong <id> -Fast <id> here so the first session already runs the verifier on the fast model
 "@
