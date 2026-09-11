@@ -100,7 +100,7 @@
 
 ## opencode 버전과의 차이
 - 경로별 edit 권한은 훅이 강제하는 곳에만 있다: team-lead는 docs/STATUS.md만 수정할 수 있고(`guardrails.mjs`), 같은 훅이 `git add`/`git commit`도 막는다. planner의 "docs만 수정"은 프롬프트 규칙이고 리뷰어가 잡는다. 하드 차단이 필요하면 같은 훅에 경로 규칙을 추가한다.
-- 비밀 파일 차단(`.env`, 키, 인증서)은 deny 규칙과 훅을 통해 파일 도구(Read/Edit/Write)에 적용되고, 훅은 그 파일을 출력하는 셸 명령(`cat .env`, `Get-Content .env.local`, `grep KEY .env`)도 막는다. 프로그램이 직접 파일을 읽는 경우(`node -e`, `python -c`)는 못 잡으니 비밀은 저장소 밖에 둔다.
+- 비밀 파일 차단(`.env*`, `.envrc`, 키, 인증서, `credentials`, `.netrc`, `.npmrc`, `.git-credentials`)은 훅과 deny 규칙을 통해 Read/Edit/Write/Grep에 적용되고, 훅은 그런 파일을 이름으로 부르면서 출력·평가하는 셸 명령도 막는다 — `sudo`, `xargs`, `find -exec`, `$( )`, 파이프라인, `git show <rev>:.env`, `node -e`·`python -c` 한 줄까지. 최선의 방어일 뿐이다: 파일을 이름 없이 여는 프로그램(스크립트, `env`)은 잡지 못하니 비밀은 저장소 밖에 둔다.
 - `permissions.deny`는 세션 전체에 걸린다. force push와 main 직접 push를 deny와 훅으로 막고, 기능 브랜치 push는 허용한다.
 - 메인 세션 에이전트(`--agent`/`settings.agent`)의 `Agent(...)` 목록은 lead가 부를 수 있는 subagent 허용 목록이다. subagent 정의 안에서는 괄호 목록이 무시된다.
 - `memory: project`로 역할별 장기 기억이 생긴다. opencode에는 없는 기능이라 회사의 "경험 축적"에 해당한다.

@@ -25,7 +25,12 @@ permission:
     "pyright*": allow
     "mvn *": allow
     "gradle*": allow
-    "*gradlew*": allow
+    "gradlew*": allow
+    "./gradlew*": allow
+    ".\\gradlew*": allow
+    "git status*": allow
+    "git diff*": allow
+    "git log*": allow
     "go *": allow
     "cargo *": allow
     "dotnet *": allow
