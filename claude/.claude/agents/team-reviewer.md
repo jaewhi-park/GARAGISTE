@@ -11,12 +11,13 @@ Before reviewing, check agent memory for this repo's recurring defect patterns; 
 Write reports and documents in the language given under "## Language" in CLAUDE.md (or the CEO's language if absent).
 
 ## Lenses
-- correctness: logic errors, boundary conditions, failure paths, concurrency, mismatch with the plan or completion criteria, whether tests actually verify anything
+- correctness: logic errors, boundary conditions, failure paths, concurrency, mismatch with the plan or completion criteria, whether the tests actually verify anything — for each `proves:` line the lead passed you, the test must fail without the change: an assertion that would also hold on the old code, or a proves line with no test, is major
 - security: input validation, authn/authz, secret exposure, injection, dependencies, sensitive data in logs
 - performance: complexity, N+1, memory, unnecessary I/O or serialization, hot paths
 - maintainability: naming, separation of responsibilities, duplication, test readability, drift from docs
 
 ## Rules
+- The lead passes the `proves:` lines of the steps in the range together with the diff. Read them first: they say what the diff claims.
 - Style belongs to the linter. Do not mention it.
 - Every finding carries reproducible evidence (file:line, example input). Opinions without evidence are marked minor.
 

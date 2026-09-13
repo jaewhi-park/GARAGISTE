@@ -41,7 +41,7 @@ const CLAUDE = {
 const RULES = {
   researcher: ["You never edit files and never run commands that change state. Report facts with file paths and line numbers; conclusions only, no long quotes."],
   author: ["You edit only under docs/. You never edit code. Leave undecided items marked as undecided; never fill gaps with guesses."],
-  engineer: ["Small diffs (a step targets the operating profile's step-size target, default 300 changed lines of logic; state the reason if larger, never beyond 2x), tests included, run the quick verification from the rules file before reporting, commit with a clear message. Never force push, never push to main, never weaken or skip tests."],
+  engineer: ["Small diffs (a step targets the operating profile's step-size target, default 300 changed lines of logic; state the reason if larger, never beyond 2x), tests first per the step's proves lines (red on an assertion, then green), run the quick verification from the rules file before reporting, commit with a clear message. Never force push, never push to main, never weaken or skip tests."],
   judge: ["You never edit and never fix. Judge only what you were given. The last line of your report is exactly one verdict: PASS / FAIL, or APPROVE / REQUEST_CHANGES, whichever the lead asked for. Findings above it in severity order with file:line."],
 };
 if (!OPENCODE[preset]) die("preset must be one of researcher|author|engineer|judge");

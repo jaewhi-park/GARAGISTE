@@ -18,11 +18,11 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 |---|---|---|
 | Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | docs/BRIEF.md (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then docs/CHARTER.md, docs/adr/, CLAUDE.md, (legacy) docs/ASSESSMENT.md · docs/REBUILD_PLAN.md · parity-harness plan; /hire in the closing step, then the board |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
-| Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <spec or plan> 수정: …` | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md, one commit per step; a revision writes only the differences and a running plan continues on its branch |
+| Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <spec or plan> 수정: …` | one intake call (optional spec rounds → docs/specs/*.md) → docs/plans/*.md (one to four `proves` lines per logic step, at most 4 logic steps per plan), one commit per step with its tests first (red → green); a revision writes only the differences and a running plan continues on its branch |
 | Hotfix | `/hotfix <what and why>` | one pass on hotfix/<slug>, no plan file: implement + regression test → full verification → one correctness lens → PR (never auto-merged) or local merge; over 3 files / 50 logic lines or on a Risk path it stops and points at /plan; one docs/METRICS.md line marked `hotfix:` |
 | Parallel | `/parallel <plans>` → `/integrate` → `/ship` | one branch per worktree → serial merge queue into `integrate/<date>` → one PR |
-| Quality | `/review` | risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
-| Operations | `/ship` → `/release [ver]` · `/policy` | PR (risk label; a "Try it" section for user-facing plans, never auto-merged) or local merge, CHANGELOG, docs/releases/*.md |
+| Quality | `/review` | test-file floor (a logic commit with no test file stops it), then risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
+| Operations | `/ship` → `/release [ver]` · `/policy` | PR (risk label; a "Proven" section first — the tests, red → green, and the command to run them; a "Try it" section for user-facing plans, never auto-merged) or local merge, CHANGELOG, docs/releases/*.md |
 | Governance | `/retro <subject>` | CLAUDE.md rules / skills / hooks updated |
 | Handoff | `/handoff` (mid-flight only) / `/resume` | docs/STATUS.md (local, git-ignored) |
 | Team | `/hire` / `/roster` | per-role model and effort assignment and the operating profile, both via script; roster table |
@@ -42,7 +42,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 | Explore | codebase research (built-in) | read-only | |
 
 ## Contracts between agents
-- Every subagent reports in a fixed format (verifier: PASS/FAIL; reviewer/critic: last line APPROVE/REVISE).
+- Every subagent reports in a fixed format (implementer: a Proven line per proves line, red → green; verifier: PASS/FAIL; reviewer/critic: last line APPROVE/REVISE).
 - Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered — except the spec rounds of /plan, where open questions and free-text answers are allowed.
 - Fix loops are capped at 3 rounds; past that, stop and report.
 - Autonomous decisions go to docs/DECISIONS.md, architecture decisions to docs/adr/.

@@ -2,7 +2,7 @@
 // Writes the "## Operating profile" section of the rules file (AGENTS.md or CLAUDE.md). Used by /hire after CEO approval.
 // Usage: node set-profile.mjs [--file AGENTS.md|CLAUDE.md] [--root <repo dir>] "<line>" ["<line>"...]
 //   Each argument becomes one bullet, e.g. "budget tier: high" "default review lenses: 2" "parallelism: none"
-//   "critic minimum steps: 3" "per-step verifier: on" "step-size target: 300" "hired: 2026-09-10 — MVP, opus where judgment happens".
+//   "plan-size target: 4" "per-step verifier: off" "step-size target: 300" "hired: 2026-09-10 — MVP, opus where judgment happens".
 // Replaces just that section when it exists (or inserts it before "## Merge policy" / at the end); everything else is untouched.
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";

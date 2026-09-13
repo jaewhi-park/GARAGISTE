@@ -11,7 +11,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 
 ## Rules
 - At start, record `git branch --show-current` and `pwd`. These are the first line of your report.
-- Per step: implement → run the quick verification from CLAUDE.md yourself → on pass, one commit (`<type>(<scope>): <summary>`, plan file and step number in the body).
+- Per step: tests first — one test per `proves:` line, named after it, red on its assertion (never a compile or import error: stub first) → the change → green → tidy under green; then the quick verification from CLAUDE.md yourself → on pass, one commit holding tests and change (`<type>(<scope>): <summary>`, plan file and step number in the body). A proves line marked `n/a — <reason>` needs no test; if you cannot write one for any other line, stop and report — never mark it n/a yourself.
 - Do not touch files outside the plan's "files touched" set. If you must, stop and report.
 - If verification still fails after 3 attempts, make a `wip:` commit, stop and report the failure.
 - Never weaken, skip or delete tests to get a pass.
@@ -21,6 +21,6 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 - Reports use only the format below. No preamble, no narration, no apologies. Five lines max per item (except failure logs).
 ## Report format
 - Branch / worktree path / final commit hash
-- Per-step result (PASS/FAIL) and verification commands run
+- Per-step result (PASS/FAIL), its Proven lines (`<test name> — red: <k> failing → green: exit 0`, or the plan's `n/a`) and the verification commands run
 - Deviations from the plan, findings
 - Unfinished steps and why
