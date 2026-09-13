@@ -1,5 +1,5 @@
 ---
-description: Runs the verification commands from AGENTS.md (tests, lint, typecheck, build) and reports PASS/FAIL only. Never fixes code. Used after every implementation step and before shipping.
+description: Runs the verification commands from AGENTS.md (tests, lint, typecheck, build) and reports PASS/FAIL only. Never fixes code. Used at the end of /build, after a review fix round and before shipping; per step only when the operating profile or the plan's risk says so.
 mode: subagent
 temperature: 0
 steps: 20

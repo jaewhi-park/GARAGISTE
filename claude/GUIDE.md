@@ -22,7 +22,7 @@ The team does the rest. You do not type code (typo-level fixes excepted). You do
 | Complex feature | `/plan <item>` → "yes, spec" at intake | Answer 2–3 rounds in your own words, approve the spec, then the plan |
 | Parallel development | `/parallel <plans>` → `/integrate` → `/ship` (or `claude --worktree`) | Check that file sets do not overlap; decide the integration order |
 | Review | (inside `/run`) or `/review` | Rule only on conflicting findings |
-| QA | (verifier, automatic) + the PR's "Try it" steps | Read the commands run and failure counts, not the green light; walk the Try-it steps before merging |
+| QA | (each step proven red → green; the verifier in full at the end) + the PR's "Proven" and "Try it" sections | Run the Proven tests yourself from the PR's command; read the commands run and failure counts, not the green light; walk the Try-it steps before merging |
 | Debugging | `/plan "bug: … reproduction test first"` | Give the most concrete reproduction you can |
 | Small fix | `/hotfix <what and why>` | One sentence with an obvious check (a bug with a reproduction, a wrong string, config or default, a version bump); read the diff and merge — anything needing a design decision is a `/plan` |
 | Change request | say stop, then `/plan <spec or plan file> 수정: <what changed>` | Talk it through, say "write it up", approve the revision; a running plan continues on its branch |
@@ -80,7 +80,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - When: the repo is empty, or the idea precedes the code.
 - Commands: `/brainstorm <idea, or the path of a document you wrote>` → `/kickoff`
 - Team, `/brainstorm`: free brainstorming (the lead proposes and pushes back; no agenda) or your document normalized → "기획서 만들어줘" / "write it up" → docs/BRIEF.md compiled (decided / later / rejected with reasons, sketches in an appendix) → the slots the brainstorm left open are asked once → critic pre-mortem, presented to you as a correction round → approval → docs commit → the board says `/kickoff`. In a long brainstorm the planner keeps a whiteboard every ten or so exchanges, so a cut session resumes with `/brainstorm`.
-- Team, `/kickoff`: charter derived from the brief (no questions) → stack ADR (critic-reviewed) → one confirmation call (the stack, the three charter lines, the brief's undecided items) → skeleton → CLAUDE.md (Risk paths seeded), ADR decision, backlog from the brief's decided lines and a walking-skeleton plan (the thinnest slice of the brief's core flow) in one pass → full verification → docs commit → `/hire` (model assignment, committed). The session ends with the board written; the first `/run` happens in a new session (model assignments load at session start) — start it directly, no `/handoff`.
+- Team, `/kickoff`: charter derived from the brief (no questions) → stack ADR (critic-reviewed) → one confirmation call (the stack, the three charter lines, the brief's undecided items) → skeleton (one smoke test passes, so a harness exists) → CLAUDE.md (Risk paths seeded), ADR decision, backlog from the brief's decided lines and a walking-skeleton plan (the thinnest slice of the brief's core flow) in one pass → full verification → docs commit → `/hire` (model assignment, committed). The session ends with the board written; the first `/run` happens in a new session (model assignments load at session start) — start it directly, no `/handoff`.
 - You: talk the way you would in a chat, then say "write it up". Answer the open slots honestly — **three non-goals**, a **measurable success metric** and the **kill criterion** are what brainstorms skip and what every later verdict is judged against. Read the pre-mortem findings; each comes with a default. Approve the brief; at `/kickoff` read the stack ADR's "why not the alternatives" and approve. When the direction changes later, run `/brainstorm` again: it revises the brief and the charter follows.
 - Approval criteria: is the success metric a measurable statement; does the brief say what was rejected and why; did the verification commands actually pass on the skeleton (verifier report).
 - Common mistakes: designing a feature inside the brainstorm (that is `/plan`'s spec rounds — the lead says so and keeps one line in the appendix). Bringing a document and skipping the open slots (it usually lacks non-goals and a kill criterion). Handing the stack decision to the team wholesale — it is the most expensive decision to reverse, so choose it yourself.
@@ -110,10 +110,10 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.5 Single-track development (the default)
 - When: most work. One plan per session.
 - Command: `/plan <backlog item or feature>` → intake (one call) → approve (the plan is committed on main at approval) → `/run <plan file>`. For step-by-step control use `/build` → `/review` → `/ship` instead. For a complex feature answer "yes, spec" at intake: 2–3 chat rounds → docs/specs/NNNN-<slug>.md → approve the spec → the plan.
-- Team: intake (one call: spec? / done when / not this time / fixed in advance — skipped when the request already says so, and for bug lines and re-plans; a backlog item skips all but the spec question, and only when it is size L or names a new page, screen, API or data model) → spec rounds if chosen (structure → detail → your corrections → approval; the planner writes docs/specs/NNNN-<slug>.md after every round) → plan (sections 1–2 are your answers or the spec verbatim) → critic review (3+ steps or high risk) → escalation questions → approval commit → `/run` (same session): branch → implement, verify and commit per step → review and fixes → ship and merge verdict. It stops only for escalation, a fix loop over 3 rounds, and merge approval.
-- You: answer the intake in your own words when the options do not fit; the planner writes it down. The spec rounds are the one place you talk at length: answer in your own words, give paths and links (design file, similar screen, external doc) rather than pasting documents, and read the draft file yourself before correcting. Then **actually read the plan.** Are the completion criteria verifiable statements; are logic steps within the step-size target (300 by default; a larger step states why); does it stay inside the non-goals? After approval, keep your hands off. Questions arrive in the form decision / options / recommendation / default — take the recommendation or say why not.
+- Team: intake (one call: spec? / done when / not this time / fixed in advance — skipped when the request already says so, and for bug lines and re-plans; a backlog item skips all but the spec question, and only when it is size L or names a new page, screen, API or data model) → spec rounds if chosen (structure → detail → your corrections → approval; the planner writes docs/specs/NNNN-<slug>.md after every round) → plan (sections 1–2 are your answers or the spec verbatim) → critic review (high risk, more than the plan-size target of 4 logic steps, or the first part of a split — bigger work is cut into parts by what can be tried, and the later parts go to the backlog) → escalation questions → approval commit → `/run` (same session): branch → per step: the tests named by the plan's "proves" lines first (red), the change (green), one commit → full verification at the end → review and fixes → ship and merge verdict. It stops only for escalation, a fix loop over 3 rounds, and merge approval.
+- You: answer the intake in your own words when the options do not fit; the planner writes it down. The spec rounds are the one place you talk at length: answer in your own words, give paths and links (design file, similar screen, external doc) rather than pasting documents, and read the draft file yourself before correcting. Then **actually read the plan.** Are the completion criteria verifiable statements; does every logic step say what it proves — one to four lines in plain words, which become the test names — with `n/a` only where there is nothing to assert; is the plan within the plan-size target (4 logic steps by default) and each logic step within the step-size target (300 lines by default, tests excluded; a larger one states why); does it stay inside the non-goals? After approval, keep your hands off. Questions arrive in the form decision / options / recommendation / default — take the recommendation or say why not.
 - Changing course: an approved spec or a running plan is changed with `/plan <its file> 수정: <what changed>` — say stop first if a plan is running (the team finishes the step's verification and holds). The same five moves as a brief revision: talk it through (the lead proposes options and impact), say "write it up", the planner writes only the differences (a plan: only the steps after the last PASS, on its branch), the critic checks the changed parts, you approve. Then `/run <plan file>` continues on the same branch; a spec revision tells you which plan to amend next.
-- Approval criteria (plan): completion criteria · per-step verification command · rollback method — all three present.
+- Approval criteria (plan): completion criteria · per-step proves lines and verification command · rollback method — all three present.
 - Common mistakes: ordering big work in chat without a plan. Two plans in one session. Changing direction in chat while the team is working (say stop, then `/plan <plan file> 수정: <what changed>`). Answering the intake with "your call" on the one thing you care about — you will reject the plan for it at approval. Ordering a complex feature with a one-liner and no spec. Splitting `/plan` and `/run` across sessions by habit — only after long spec rounds.
 - When a large diff is normal: scaffolding, generated code, lockfiles, bulk formatting/renames, deletions. If it is a separate commit labelled with its kind, the 300-line rule does not apply — but the review criteria differ: is it reproducible (regeneration diff zero), is logic mixed in, do build and tests pass. Do not read such commits line by line; check those three things.
 
@@ -131,22 +131,22 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.7 Review
 - When: after `/build` finishes (`/integrate` reviews each parallel branch itself).
 - Command: `/review [base branch]`
-- Team: picks lenses by risk — correctness + security by default; performance + maintainability added for high risk, logic diffs over 600 lines or hot paths. Runs them in parallel → collects blocker/major → fix loop (max 3; only the fix diff is re-reviewed, by the lenses that objected) → all APPROVE. (risk:high is mechanical: a file under the rules file's \"Risk paths\" or an escalation item; the team may raise it, never lower a hit)
+- Team: first a mechanical floor — every logic commit whose step has proves lines must touch a test file, or the review stops before any reviewer runs and names the step to you. Then lenses by risk — correctness + security by default; performance + maintainability added for high risk, logic diffs over 600 lines or hot paths — each given the diff and the proves lines (a test that would also pass without the change is a major finding). Runs them in parallel → collects blocker/major → fix loop (max 3; only the fix diff is re-reviewed, by the lenses that objected; the verifier confirms each fix in full) → all APPROVE. (risk:high is mechanical: a file under the rules file's \"Risk paths\" or an escalation item; the team may raise it, never lower a hit)
 - You: rule when findings conflict. Otherwise read the summary only. If a finding keeps recurring, note it as a `/retro` candidate.
 - Common mistakes: approving without reading the review. Fixing reviewer findings yourself (have the implementer do it).
 
 ### 2.8 QA and verification
-- When: always, automatically (verifier after every step by default; the operating profile can move it to the end of `/build`, where the full verification is the independent verdict). Human QA before shipping.
+- When: every step is proven by its own tests — the implementer shows each red → green, and the lead checks that the report says so, not that it is true; the verifier's full verification is the independent verdict at the end of `/build`, after a review fix round and at `/ship` (per step only when the operating profile says so, and always for high-risk and legacy plans). Human QA before shipping.
 - Command: none. If needed, `@team-verifier full verification` directly.
 - Team: runs the "quick" and "full" verification from CLAUDE.md and reports PASS/FAIL with failure counts only.
-- You: **do not trust the green light; read the evidence** — which commands ran, how many tests. Zero tests means PASS is meaningless. Before shipping, use the product once yourself (automation misses the user's view).
-- If the repo has no tests: the first task is not a feature but a verification oracle. Start with `/plan "create a quick verification command"`. Without it the whole team is a plausible-code generator.
-- Common mistakes: leaving stale commands in CLAUDE.md. Missing that the team skipped a test to pass (the reviewer's correctness lens looks, but skim the test diff in the PR yourself).
+- You: **do not trust the green light; read the evidence** — which commands ran, how many tests. Zero tests means PASS is meaningless. The PR opens with a "Proven" section — the tests by name, each red → green, and the command that runs them: run it yourself; the names are the readable record of what was built. Before shipping, use the product once yourself (automation misses the user's view).
+- If the repo has no test harness: the planner makes the first step of the first plan the harness — a runner in the quick verification plus one smoke test through the seam being touched — so that plan is slower; expect it. `/kickoff` leaves the skeleton with one passing smoke test for the same reason. Without a harness the whole team is a plausible-code generator.
+- Common mistakes: leaving stale commands in CLAUDE.md. Missing that the team skipped a test to pass (the reviewer's correctness lens looks, but skim the test diff in the PR yourself). Accepting `n/a` on a step that has logic in it.
 
 ### 2.9 Debugging (unknown cause)
 - When: there is a symptom but no cause.
 - Command: `/plan "bug: <symptom>. Write a reproduction test first, confirm the cause, then fix"` (no intake call: the reproduction is the specification)
-- Team: Explore investigation → hypothesis → **failing reproduction test** → fix → test passes → review.
+- Team: Explore investigation → hypothesis → **failing reproduction test** (red on an assertion, not a compile error) → fix → test passes → review.
 - You: give the most concrete reproduction you can (inputs, environment, logs, since when). "Sometimes weird" cannot become a plan. If the team jumps to a fix without a reproduction test, send it back.
 - Approval criteria: does the diff contain a test that failed before the fix and passes after?
 - Common mistakes: approving a symptom-suppressing patch. If the cause is in data or interfaces, an escalation question arrives — decide then.
@@ -173,7 +173,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: enabling auto-low-risk without branch protection. Waving through conflict-resolution diffs without review (a correctness re-review is configured, but check).
 
 ### 2.12 Shipping and releasing
-- `/ship`: full verification → docs and CHANGELOG → PR description → push → PR (or local merge). You read the PR's "verification evidence" and "risks and rollback". If either is empty, do not merge. A user-facing PR also carries a "Try it" section: run the command, walk the steps, then merge (such PRs are never auto-merged). After the PR is opened the session is back on main; merge before the next `/plan` (the next session pulls the merge in).
+- `/ship`: full verification → docs and CHANGELOG → PR description → push → PR (or local merge). The PR opens with "Proven" — the tests by name with their red → green and the command that runs them: run it. Then read "verification evidence" and "risks and rollback". If any of them is empty, do not merge. A user-facing PR also carries a "Try it" section: run the command, walk the steps, then merge (such PRs are never auto-merged). After the PR is opened the session is back on main; merge before the next `/plan` (the next session pulls the merge in).
 - `/release [version]`: version proposal → full verification → finalized CHANGELOG → docs/releases/<ver>.md → tag commands. You push the tag. If interfaces changed, a major/minor question arrives.
 - Common mistakes: release notes written from the team's view (what changed) — they must be the user's view (what is different, known issues, rollback).
 
@@ -203,7 +203,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.16 Hiring (model assignment)
 - When: right after `/kickoff` or `/assess` (the lead runs it), when the budget tier changes, when the team feels too slow or too expensive.
 - Command: `/hire [note]`
-- Team: takes the aliases opus/sonnet/haiku (and any API model IDs you name) as candidates; asks budget tier, project character, parallel plans and roles to emphasize in one go → proposes a role × model table with reasons → also proposes the operating profile (default lenses 2/4, parallelism, critic threshold, per-step verifier, step-size target) → on approval, one script changes only model lines and another writes "## Operating profile" to CLAUDE.md.
+- Team: takes the aliases opus/sonnet/haiku (and any API model IDs you name) as candidates; asks budget tier, project character, parallel plans and roles to emphasize in one go → proposes a role × model table with reasons → also proposes the operating profile (default lenses 2/4, parallelism, plan-size target, per-step verifier — off by default, step-size target) → on approval, one script changes only model lines and another writes "## Operating profile" to CLAUDE.md.
 - You: answer the questions. For models the lead does not know (in-house models), **you must say which is strongest and which is fastest** — the lead does not guess. Approve the table or change a line or two.
 - Approval criteria: did the strongest model go to planner, critic and reviewer? Is the verifier on the fastest model? On the low tier, are parallelism and 4 lenses out of the defaults?
 - Common mistakes: cutting the reviewer first to save cost (quality collapses there first — cut the implementer first). Expecting the change to apply without opening a new session.
@@ -211,9 +211,9 @@ Every entry has the same shape: when / command / what the team does / **what you
 ### 2.17 Hotfix (a small, well-specified change)
 - When: a change you can state in one sentence whose check is obvious — a defect with a reproduction, a wrong string, configuration value or default, a dependency or version bump. Not for new behaviour, anything needing a design decision, or a file under the rules file's "Risk paths": those are a `/plan`.
 - Command: `/hotfix <what to change and why>` — one pass, no plan file, no intake.
-- Team: branch `hotfix/<slug>` → implementer (the change, a regression test when it fixes logic, quick verification, one commit whose body quotes your request) → cap check (over 3 files or 50 logic lines, or a Risk path: it stops and asks — proceed as risk:high, or plan it) → full verification → one correctness lens → PR with the evidence (never auto-merged, even under auto-low-risk) or a local merge after your approval → one docs/METRICS.md line marked `hotfix:`.
+- Team: branch `hotfix/<slug>` → implementer (when it fixes logic, a regression test that fails before the fix — otherwise it is not a logic hotfix — then the change, quick verification, one commit whose body quotes your request) → cap check (over 3 files or 50 logic lines, or a Risk path: it stops and asks — proceed as risk:high, or plan it) → full verification → one correctness lens → PR with the evidence (never auto-merged, even under auto-low-risk) or a local merge after your approval → one docs/METRICS.md line marked `hotfix:`.
 - You: state the defect or the wrong value, not the fix, unless you know it. Then read the diff — it is small enough to read in full, and the PR is the only human look it gets — and merge.
-- Approval criteria (PR): the verification evidence lists the commands run; the regression test is in the diff when logic changed; the diff stays inside what you asked.
+- Approval criteria (PR): the verification evidence lists the commands run; the regression test is in the diff with its red → green when logic changed; the diff stays inside what you asked.
 - Common mistakes: hotfixing a change that needs a design decision, or three hotfixes in a row on the same area (that is a `/plan`, and a `/retro` subject: `hotfix:` lines piling up in METRICS). Merging on the green light without reading the diff.
 
 ## 3. Rhythm
@@ -221,7 +221,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Daily (1–2 hours): `/resume` → (one item from the backlog) answer the intake call (or the spec rounds), approve `/plan` → hands off during `/run` (answer gate questions only) → merge per verdict → (`/handoff` only if something is left mid-flight).
 - Weekly: `/backlog` for next week's top three, `/release`, skim docs/DECISIONS.md, `/retro` if needed.
 - First week: day 1 `/brainstorm`, then `/kickoff` (or `/assess`), plus a "verification command that runs in under a minute" → days 2–3 walking skeleton → days 4–5 two features through plan→run → one `/retro`. Parallelism from week two.
-- Three metrics: rework count / questions per session (the intake call and spec rounds are expected and not counted) / plan-approval→merge time. `/ship` appends one line per plan to docs/METRICS.md from the board's Counts line (counted as the work happens, not reconstructed at ship) and `/retro` reads it. If they fall, the setup fits.
+- Four numbers: rework count / questions per session (the intake call and spec rounds are expected and not counted) / tests per plan (`tests +n` — a zero, or `n/a` creeping up, is a retro subject) / plan-approval→merge time. `/ship` appends one line per plan to docs/METRICS.md from the board's Counts line (counted as the work happens, not reconstructed at ship) and `/retro` reads it. If they fall, the setup fits.
 
 ## 4. Approval checklists
 
@@ -243,7 +243,8 @@ Before approving a spec:
 
 Before approving a plan:
 - [ ] completion criteria are verifiable statements (commands, tests, numbers)
-- [ ] every step has a verification command; logic-change steps are within the step-size target (default 300 changed lines) or state why not (never beyond 2×); mechanical changes (scaffolding, generated code, lockfiles, formatting, deletions) are separate steps
+- [ ] every logic step has one to four "proves" lines in plain words (or a reasoned `n/a`) and a verification command; logic-change steps are within the step-size target (default 300 changed lines, tests excluded) or state why not (never beyond 2×); mechanical changes (scaffolding, generated code, lockfiles, formatting, deletions) are separate steps
+- [ ] at most the plan-size target of logic steps (default 4), or the Steps line says why; a split is cut by what can be tried, not by layer
 - [ ] no conflict with non-goals or the charter
 - [ ] a rollback method is written down
 - [ ] sections 1–2 match your intake answers or the spec
@@ -253,6 +254,7 @@ After approval, `/run` takes it to the end. You are called back only for escalat
 
 Before merging a PR:
 - [ ] the verification evidence lists the commands run and zero failures (refuse if the test count is zero)
+- [ ] the "Proven" section names a test per proves line with its red → green, and you ran its command yourself
 - [ ] review findings and how they were handled are listed
 - [ ] for `risk:high`, you read the schema / interface / security diff yourself
 - [ ] the test-file diff contains no skip, deletion or weakening
@@ -264,7 +266,8 @@ Before merging a PR:
 - Repeatedly checking subagent status: forbidden by the lead's rules (synchronous calls, wait for completion). If you still see it, it is a `/retro` subject.
 - Progress narration ("I will now…"): forbidden by rule. Results and decisions only.
 - Auto-injected documents growing: CHARTER 60 lines, STATUS 30 lines. The lead keeps STATUS within the cap; the planner splits CHARTER when exceeded; the hook truncates at 120 lines.
-- Critic and 4 lenses on small plans: under 3 logic steps and risk:low the critic is skipped; review uses 2 lenses below 600 logic lines and risk:low. Risk is a file match against the rules file's "Risk paths", not a judgment — the team may raise it, never lower a hit. Adjust via the operating profile (/hire).
+- Critic and 4 lenses on small plans: at or under the plan-size target (4 logic steps) and risk:low the critic is skipped — it runs for high risk, a plan over the target and the first part of a split; review uses 2 lenses below 600 logic lines and risk:low.
+- Verifier per step: off by default — the implementer's red → green report carries each step and the verifier runs in full at the end of `/build`, after a review fix and at `/ship`; a four-step plan spawns it twice instead of seven times. Turn it on in the operating profile (/hire) when you want an independent quick run per step; high-risk and legacy plans get it regardless. Risk is a file match against the rules file's "Risk paths", not a judgment — the team may raise it, never lower a hit. Adjust via the operating profile (/hire).
 - Intake asks at most once per plan; if bug lines, re-plans or backlog items (beyond the one spec question for size L or a new page, screen, API or data model) still draw questions, it is a `/retro` subject.
 - Spec rounds are the exception to short chats: give paths and links, never paste documents (the planner reads them); the file is the memory, so after long spec rounds choose "approve, plan next session" (the spec is committed) and re-enter with `/plan docs/specs/NNNN-<slug>.md`.
 - The brainstorm lives in the lead's context: the planner checkpoints it every ten or so exchanges, and after a long one run `/kickoff` or `/assess` in a new session (the board points there).
@@ -274,6 +277,7 @@ Before merging a PR:
 - Order large work in chat without a plan, or a complex feature with a one-liner and no spec
 - Hotfix a change that needs a design decision or touches a Risk path, or merge a hotfix PR without reading its diff
 - Approve on the green light alone
+- Accept a plan whose logic steps do not say what they prove, or merge a PR whose Proven tests you did not run
 - Change direction in chat while the team is working (say stop, then `/plan <plan file> 수정:`)
 - Fix reviewer findings yourself
 - Try to rescue a spinning session

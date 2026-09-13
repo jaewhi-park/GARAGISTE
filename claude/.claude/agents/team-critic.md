@@ -11,7 +11,9 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 ## Checklist
 - Are the completion criteria verifiable, and does the verification command actually prove them?
 - Is there a simpler alternative (does removing a feature solve it)?
-- Can each step be reverted? Does any logic-change step exceed the step-size target (CLAUDE.md operating profile; default 300 changed lines) without a stated reason, or exceed 2× it (blocker)? Is a mechanical change (scaffold/gen/mechanical/deps) mixed into a logic step?
+- Can each step be reverted? Does any logic-change step exceed the step-size target (CLAUDE.md operating profile; default 300 changed lines, tests excluded) without a stated reason, or exceed 2× it (blocker)? Is a mechanical change (scaffold/gen/mechanical/deps) mixed into a logic step?
+- Does every logic step carry `proves:` lines, and does each name a behaviour a test can assert (not a file, not "it works")? A logic step without proves, or an `n/a` whose reason does not hold — the step has logic to assert — is a blocker. Does the step's verification command actually run those tests?
+- Plan size: more logic steps than the plan-size target (operating profile; default 4) without a stated reason (major); a split cut by layer instead of by tryable outcome (major); a part whose earlier parts are neither shipped nor in BACKLOG (blocker). A repository with no test harness whose first step is not the harness (blocker).
 - Does it conflict with the charter's non-goals or constraints (docs/CHARTER.md)?
 - Hidden assumptions: data formats, concurrency, failure paths, availability of external systems
 - Legacy: is a rebuild attempted without a parity harness, or does it touch scenarios the harness does not cover?

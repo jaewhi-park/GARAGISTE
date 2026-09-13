@@ -24,12 +24,12 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/kickoff` | New project, from the approved brief. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
 | `/assess <target>` | Legacy, from the approved brief. Inventory (docs/ASSESSMENT.md) → preserve/fix policy → rebuild strategy ADR → docs/REBUILD_PLAN.md → AGENTS.md → parity-harness plan for the first seam → /hire |
 | `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
-| `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes → critic reviews (3+ steps or risk:high) → approval requested; `/plan <spec or plan> 수정: …` revises an approved spec or amends a running plan (differences only, same branch) |
+| `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes (one to four `proves` lines per logic step, at most 4 logic steps per plan) → critic reviews (risk:high, over the plan-size target, or the first part of a split) → approval requested; `/plan <spec or plan> 수정: …` revises an approved spec or amends a running plan (differences only, same branch) |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |
-| `/build <plan>` | Step-by-step implementer → verifier loop |
+| `/build <plan>` | Step by step: the implementer proves each step red → green (tests in the step's commit); the verifier gives the full verdict at the end |
 | `/hotfix <what and why>` | Small, well-specified change without a plan: implement + regression test → full verification → one correctness lens → PR (never auto-merged) or local merge on hotfix/<slug>; over 3 files / 50 logic lines or on a Risk path it stops and points at /plan; one docs/METRICS.md line marked `hotfix:` |
 | `/review [base]` | Risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
-| `/ship` | Full verification · docs · risk label · a "Try it" section for user-facing plans (never auto-merged) · automatic merge-policy resolution → PR or local merge |
+| `/ship` | Full verification · docs · risk label · a "Proven" section first (the tests, red → green, and the command to run them) · a "Try it" section for user-facing plans (never auto-merged) · automatic merge-policy resolution → PR or local merge |
 | `/release [version]` | Operations: version, CHANGELOG, release notes (docs/releases/*.md), tag commands |
 | `/policy [value]` | Show the current merge-policy verdict and reason; optionally override |
 | `/hire [note]` | Assign models per role and the operating profile from available models, budget and project character (CEO approves; both via script) |
@@ -54,7 +54,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | explore | built-in | codebase and dependency research (bash limited to a read-only allowlist via opencode.json) | edit, anything not on the allowlist |
 
 ## Contracts between agents
-- Every subagent reports in a fixed format (verifier: PASS/FAIL; reviewer/critic: last line APPROVE/REVISE).
+- Every subagent reports in a fixed format (implementer: a Proven line per proves line, red → green; verifier: PASS/FAIL; reviewer/critic: last line APPROVE/REVISE).
 - Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered — except the spec rounds of /plan, where open questions and free-text answers are allowed.
 - Fix loops are capped at 3 rounds; past that, stop and report.
 - Autonomous decisions go to docs/DECISIONS.md, architecture decisions to docs/adr/.

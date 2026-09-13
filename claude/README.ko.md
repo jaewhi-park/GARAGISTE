@@ -26,11 +26,11 @@
 |---|---|---|
 | 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | docs/BRIEF.md(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 docs/CHARTER.md, docs/adr/, CLAUDE.md, (레거시) docs/ASSESSMENT.md·docs/REBUILD_PLAN.md·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
-| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <사양서 또는 계획> 수정: …` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md, 단계별 커밋; 개정은 차이만 쓰고 진행 중 계획은 같은 브랜치에서 이어진다 |
+| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <사양서 또는 계획> 수정: …` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지), 단계별 커밋에 테스트 먼저(빨강 → 초록); 개정은 차이만 쓰고 진행 중 계획은 같은 브랜치에서 이어진다 |
 | 핫픽스 | `/hotfix <무엇을 왜>` | hotfix/<slug>에서 한 번에, 계획 파일 없음: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과나 Risk path면 멈추고 /plan을 가리킨다; docs/METRICS.md에 `hotfix:` 한 줄 |
 | 병렬 | `/parallel <계획들>` → `/integrate` → `/ship` | worktree별 브랜치 → `integrate/<날짜>`로 직렬 머지 큐 → PR 하나 |
-| 품질 | `/review` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
-| 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
+| 품질 | `/review` | 테스트 파일 바닥(테스트 파일이 없는 논리 커밋은 멈춤), 그다음 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
+| 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨; 맨 앞에 "증명" 절 — 테스트, 빨강 → 초록, 돌리는 명령; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
 | 경영 | `/retro <대상>` | CLAUDE.md 규칙 / 스킬 / 훅 갱신 |
 | 인수인계 | `/handoff`(단계 도중에만) / `/resume` | docs/STATUS.md(로컬, git-ignore) |
 | 팀 관리 | `/hire` / `/roster` | 역할별 모델·effort 배정과 운영 프로필(둘 다 스크립트); 로스터 표 |
@@ -50,7 +50,7 @@
 | Explore | 코드베이스 조사 (내장) | 읽기 전용 | |
 
 ## 에이전트 간 계약
-- 모든 subagent는 고정된 보고 형식으로 lead에 답한다 (verifier: PASS/FAIL, reviewer/critic: 마지막 줄 APPROVE/REVISE).
+- 모든 subagent는 고정된 보고 형식으로 lead에 답한다 (implementer: proves 줄마다 Proven 줄, 빨강 → 초록; verifier: PASS/FAIL, reviewer/critic: 마지막 줄 APPROVE/REVISE).
 - lead만 CEO에게 질문한다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값. 예외는 /plan의 사양서 라운드로, 여기서는 열린 질문과 자유 서술 답이 허용된다.
 - 수정 루프는 3회 상한. 넘으면 멈추고 보고한다.
 - 자율 결정은 docs/DECISIONS.md, 아키텍처 결정은 docs/adr/.

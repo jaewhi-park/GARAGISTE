@@ -24,6 +24,7 @@ One-line summary (details: docs/CHARTER.md · legacy: docs/ASSESSMENT.md, docs/R
 ## Commands
 - setup:
 - quick verification (under one minute — relevant tests, lint, typecheck):
+- run one test file (the PR's Proven section names its command):
 - full verification:
 - parity harness (legacy):
 - build/run:
@@ -35,14 +36,15 @@ One-line summary (details: docs/CHARTER.md · legacy: docs/ASSESSMENT.md, docs/R
 - naming, error handling, logging, configuration, commit messages
 
 ## Definition of Done
-- quick verification passes; new logic has tests
-- a logic-change step diff is within the operating profile's step-size target (default 300 changed lines: `git diff --stat` insertions + deletions, tests included, mechanical changes excluded); a larger step states why, never beyond 2×
+- quick verification passes; every logic step's `proves:` lines have a test that was red before the change and green after (the implementer's Proven lines; `n/a` only where the plan says so)
+- a logic-change step diff is within the operating profile's step-size target (default 300 changed lines of logic: `git diff --stat` insertions + deletions, test files and mechanical changes excluded); a larger step states why, never beyond 2×
+- a plan holds at most the plan-size target of logic steps (default 4) or says why; bigger work is split by tryable outcome, the later parts in BACKLOG
 - mechanical changes (scaffold/gen/mechanical/deps) are separate commits with kind and reproduction command; regeneration diff is zero
 - docs, ADRs and docs/DECISIONS.md updated
 - review APPROVE (lenses scale with risk: default correctness+security; 4 lenses for risk:high — a "## Risk paths" hit or an escalation item — over 600 logic lines, or integration diffs)
 
 ## Operating profile
-- (filled by /hire via set-profile.mjs: budget tier / default review lenses 2|4 / parallelism none|session / critic minimum steps / per-step verifier on|off / step-size target / hire date)
+- (filled by /hire via set-profile.mjs: budget tier / default review lenses 2|4 / parallelism none|session / plan-size target (logic steps, default 4) / per-step verifier on|off / step-size target / hire date)
 
 ## Merge policy
 - (leave empty for automatic resolution by /ship: no remote→local, protection+auto-merge→auto-low-risk, otherwise→manual. Write manual | auto-low-risk to force)

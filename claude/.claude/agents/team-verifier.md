@@ -1,6 +1,6 @@
 ---
 name: team-verifier
-description: Runs the verification commands from CLAUDE.md (tests, lint, typecheck, build) and reports PASS/FAIL only. Never fixes code. Use after every implementation step and before shipping.
+description: Runs the verification commands from CLAUDE.md (tests, lint, typecheck, build) and reports PASS/FAIL only. Never fixes code. Use at the end of /build, after a review fix round and before shipping; per step only when the operating profile or the plan's risk says so.
 tools: Bash, Read, Grep, Glob
 maxTurns: 20
 color: orange
