@@ -38,12 +38,12 @@
 
 <!-- start line -->
 <circle cx="60" cy="120" r="9" class="ceo"/><text x="80" y="124"><tspan class="name">/brainstorm</tspan><tspan class="role" dx="8">approve the brief</tspan></text>
-<circle cx="60" cy="180" r="9" class="ceo"/><text x="80" y="184"><tspan class="name">/kickoff · /assess</tspan><tspan class="role" dx="8">new or legacy, one confirmation</tspan></text>
-<circle cx="60" cy="240" r="9" class="ceo"/><text x="80" y="244"><tspan class="name">/hire</tspan><tspan class="role" dx="8">approve</tspan></text>
+<circle cx="60" cy="180" r="9" class="ceo"/><text x="80" y="184"><tspan class="name">/kickoff · /assess</tspan><tspan class="role" dx="8">new or legacy · one question</tspan></text>
+<circle cx="60" cy="240" r="6.5" class="st st-feeder"/><text x="80" y="244"><tspan class="name">/hire</tspan><tspan class="role" dx="8">applied · roster shown</tspan></text>
 
 <!-- main line -->
 <circle cx="150" cy="300" r="9" class="ceo"/><text x="150" y="262" text-anchor="middle" class="role">order the top three</text><text x="150" y="280" text-anchor="middle" class="name">/backlog</text>
-<circle cx="300" cy="300" r="9" class="ceo"/><text x="300" y="248" text-anchor="middle" class="role">intake · proves lines</text><text x="300" y="262" text-anchor="middle" class="role">≤ 4 steps · approve</text><text x="300" y="280" text-anchor="middle" class="name">/plan</text>
+<circle cx="300" cy="300" r="6.5" class="st st-main"/><text x="300" y="248" text-anchor="middle" class="role">from the spec section</text><text x="300" y="262" text-anchor="middle" class="role">≤ 4 steps · critic approves</text><text x="300" y="280" text-anchor="middle" class="name">/plan</text>
 <circle cx="450" cy="300" r="6.5" class="st st-main"/><text x="450" y="248" text-anchor="middle" class="role">per step: test first</text><text x="450" y="262" text-anchor="middle" class="role">red → green → commit</text><text x="450" y="280" text-anchor="middle" class="name">/build</text>
 <circle cx="525" cy="300" r="4.5" class="st st-main"/><text x="525" y="324" text-anchor="middle" class="role">verifier · full, once</text>
 <circle cx="600" cy="300" r="6.5" class="st st-main"/><text x="600" y="248" text-anchor="middle" class="role">test-file floor, then</text><text x="600" y="262" text-anchor="middle" class="role">2 | 4 lenses → fix loop</text><text x="600" y="280" text-anchor="middle" class="name">/review</text>

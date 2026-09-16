@@ -1,49 +1,58 @@
 ---
 name: spec
-description: Procedure, question rounds and template for a feature specification (docs/specs/NNNN-<slug>.md). Loaded by /plan step 0a when the CEO opts in at intake or re-enters with a docs/specs file, and by step 0b for a spec revision; never for bugs, rebuild steps or plan amendments.
+description: Structure, section template and revision rules of the product spec (docs/SPEC.md — one document, one section per feature). Written by team-planner from the brief at /kickoff, never through CEO rounds; extended when a feature arrives later; revised through /plan's `수정:` path. Read by team-planner before writing or revising it and by team-critic when reviewing it.
 user-invocable: false
 ---
 # spec
 
-A spec says **what** and **when it is done**, in the CEO's words. It never chooses how: no stack, schema design, library or alternatives — those are ADR material written during /plan. Two pages or less; link rather than paste.
+docs/SPEC.md is the team's product spec: **what** each feature does and **when it is done**, one section per feature (F1, F2, …), all in one file. The team writes it; the CEO does not have to read it — the brief (docs/BRIEF.md) is what the CEO approved, and the spec is the team's expansion of it. When the CEO looks at the product later and says "이거 아닌데", the section changes and the plans follow (revision below). It never chooses how: no stack, schema design, library or alternatives — those are ADR material, decided in /plan. Link rather than paste; a section is one to two pages at most.
 
-## When
-Offered at /plan step 0 (question 1). Warranted for a new page or screen, a new API or data model, several flows, or anything the CEO cannot state as one done-when line.
-Never for: bugs (the reproduction is the spec), docs/REBUILD_PLAN.md steps (docs/PARITY.md is the spec), plan amendments (the `수정:` path of a plan).
+## Sources, in order of authority
+1. docs/BRIEF.md — Decided lines (one section each), Non-goals (nothing crosses them), Constraints, Quality bar, the appendix (the CEO's own words about flows and screens: use them verbatim as the section's core flow and screens; they are the closest thing to a CEO round).
+2. docs/CHARTER.md and docs/DECISIONS.md — earlier decisions stand; never re-decide them.
+3. The planner's own defaults — every slot the sources leave open is decided with a default, written as `decided by default: <x> — <reason>` in the section's Undecided list and logged as one line in docs/DECISIONS.md. Never a guess presented as fact, never a question to the CEO: only an item on the lead's escalation list (money, security or user data, a conflict with the brief's non-goals) goes to the CEO, through the lead.
 
-## Rounds
-The intake answers (done when / not this time / fixed in advance) — or, for a BACKLOG item, its completion criteria and dependencies — already seed the spec. The rounds are asked in plain chat — the one place open questions and long answers are allowed; AskUserQuestion is used only for the approval.
-1. Structure — one message, numbered: who uses it and when (trigger) / the core flow in 3–7 steps / why now (one line).
-2. Detail — only the slots still open after round 1: screens and states incl. empty and error (if UI) / data in and out and validation / interfaces touched — which, not their design (API, schema, file format, events) / quality stricter than the charter / reuse and references (existing screen, design file, similar feature, external doc, the brief's appendix in docs/BRIEF.md — paths and links, never pasted).
-An answer may arrive in several messages. A round closes only when the CEO says it is complete ("that's all", "여기까지", "됐다") or asks a question back; until then acknowledge in one line and do not re-ask. Hand the planner every fragment verbatim, in order, in one call per round; if about ten or more fragments pile up before the round closes, checkpoint them to the planner mid-round (a compaction must not lose them) and keep collecting — a /handoff mid-round checkpoints the same way. A CEO who opens with a description of their own is answering round 1. Rounds are not capped; only the corrections after the approval question are.
-After each round: hand the answers verbatim to team-planner, which writes or updates the spec and reports, as the Summary of its usual report, one line: `Spec: <path> · Status: <s> · Filled: <sections> · Open: <sections> · Undecided: <items>`; then update docs/STATUS.md yourself (`Spec: <path> · round <k> | correction <k> | draft | approved`; next action `/plan docs/specs/NNNN-<slug>.md`). Compose the next round from the planner's report line only; never read the file yourself. If the round answers are no longer in context (compaction), have team-planner report the open slots.
-3. Correction — after round 2 name the file path and go straight to the approval question; on "correct" the CEO reads the draft file and corrects in plain chat, team-planner revises, and the approval question is asked again. Max 2 correction rounds; what is still disputed goes under Undecided.
-4. Approval — one AskUserQuestion: approve, plan now / approve, plan next session (the spec is committed and the board written — /plan step 0a) / correct / stop here (stays draft). On approval team-planner sets `Status: approved <date>`, records `Corrections: <k>` and writes `spec: docs/specs/NNNN-<slug>.md` into the source BACKLOG item, if any.
-
-## Revision — `/plan docs/specs/NNNN-<slug>.md 수정: <what changed>`
-An approved or in-progress spec changes only through /plan's revision path (step 0b): a short brainstorm-mode discussion, "정리해줘", then team-planner writes only the differences (Done-when, Not-this-time, Undecided), bumps `(rev n)` (the original approval is rev 1, the first revision rev 2; `rev n draft` until approval), adds a Revision-history line and reports the impact (plans in flight, shipped plans from docs/METRICS.md, charter or brief conflicts); the critic checks the changed parts; the CEO approves (max 2 corrections). A plan in flight absorbs the change through its own `수정:` amendment; shipped plans get a BACKLOG item. Never edit an approved spec any other way.
-
-## Template — docs/specs/NNNN-<slug>.md
-Own NNNN sequence (next free number in docs/specs/). The first plan from a spec reuses its slug; split parts use `<slug>-<part>`.
+## Template — docs/SPEC.md
 ````
-# <Feature> Spec
-Status: draft | approved <date> [(rev n | rev n draft)] | in progress — plans: docs/plans/… | done | superseded by …
-Source: BACKLOG item <title> | CEO request <date>
-Corrections: <k> (set at approval; the cap is 2)
-## Purpose and users (who, when, why now)
-## Core flow
-## Screens and states (if UI; incl. empty and error)
-## Data and interfaces (what goes in and out; which interfaces are touched, not their design)
-## Exceptions and errors
-## Done when (verifiable)
-## Not this time
-## Quality (only where stricter than the charter)
-## Reuse and references (paths and links; attachments under docs/specs/assets/<slug>/)
-## Undecided (item — when it will be decided; "decided in the plan's ADR" for how-questions)
-## Revision history (date — rev n — what changed — plans affected)
+# <Project> Spec
+Source: docs/BRIEF.md (approved <date>) · Status: draft | current (rev n) · Sections: F1–F<n>
+
+## F1 <Feature name>
+Status: planned | in progress — plans: docs/plans/… | done | dropped (<reason>) [· rev n]
+Backlog: <item title(s)>
+### Purpose and users (who, when, why now)
+### Core flow (3–7 steps)
+### Screens and states (if UI; every screen lists empty, loading, error and success)
+### Data and interfaces (what goes in and out; which interfaces are touched, not their design)
+### Exceptions and errors
+### Done when (verifiable statements — each becomes a plan's completion criterion)
+### Not this time
+### Quality (only where stricter than the charter)
+### Reuse and references (paths and links; attachments under docs/spec-assets/<F-id>/)
+### Undecided (item — decided by default: <x> — <reason> | decided in the plan's ADR | escalated: <question>)
+### Revision history (date — rev n — what changed — plans affected)
+
+## F2 …
 ````
 
 ## Writing rules
-- Leave unanswered items as "undecided — <when>". Never fill them with guesses. A "your call" answer becomes "undecided — planner default: <x>; confirm at plan approval".
-- A hard-to-reverse choice surfaced in a round goes under Undecided as "decided in the plan's ADR", not into the spec.
-- Lifecycle: /plan (spec-backed) sets Status to `in progress — plans: …`, appending each later part's plan path; /ship marks it done when every Done-when item is covered by a shipped plan; /backlog sweeps specs that are approved, in progress or done for candidates; a revision bumps `(rev n)` and appends to Revision history.
+- One section per Decided line of the brief; a brief item that is really two features becomes two sections, and the brief's appendix sketches are placed under the section they belong to, verbatim.
+- Done-when lines are the contract: each one must be checkable by a test, a command or an observable fact. A section whose Done-when cannot be stated that way is not ready — say so in the report.
+- A UI section names every screen with its four states. A section that touches an interface names it (API, schema, file format, event) without designing it.
+- Not-this-time is never empty: what a reader would expect and is deliberately left out.
+- A hard-to-reverse choice surfaced while writing goes under Undecided as "decided in the plan's ADR", not into the section.
+- Section IDs (F1, F2, …) are permanent: a dropped feature keeps its number with `Status: dropped`; a new feature takes the next free number. Plans reference the ID (`Source: docs/SPEC.md F3`), BACKLOG items carry `spec: F3`, METRICS lines carry `(F3)`.
+- Report line (the Summary of the planner's report): `Spec: docs/SPEC.md · rev n · sections F1–F<n> · not ready: <ids> | none · escalated: <items> | none · defaults: <n> (in DECISIONS.md)`.
+
+## Extending — a feature that arrives after kickoff
+A new capability from the CEO (in chat, a backlog item without a section, a `/plan <feature>` request) gets a new section from the planner, written from the CEO's words verbatim plus defaults, before any plan is written from it — creating docs/SPEC.md with that section when the file does not exist yet (a legacy project has none until its first new feature). Reported with the same line; the critic reviews the new section with the plan.
+
+## Revision — `/plan F<n> 수정: <what changed>` or `/plan docs/SPEC.md 수정: <what changed>`
+The lead discusses the change with the CEO (brainstorm mode, short: what changed, the options, what it touches and costs), then hands the discussion to the planner verbatim. The planner rewrites only the section's differences (Done-when, Not-this-time, Screens, Undecided), bumps the section's `rev n`, appends a Revision-history line, and reports the impact as its Summary: `Spec: F<n> · rev n · Done-when ±<k> · plans in flight: <path (step k/n)> | none · shipped: <slugs from docs/METRICS.md lines carrying (F<n>)> | none · charter/brief conflict: <item> | none`. From that report the lead sorts the plans: shipped work that the change invalidates becomes a BACKLOG rework item; the plan in flight is amended from the step after its last PASS; unstarted plans are re-planned. The critic checks the changed section and the sort. The CEO is asked only when shipped work is discarded (the one expensive step); otherwise the team proceeds.
+
+## Lifecycle
+- /kickoff: the planner writes every section from the brief; the critic reviews the whole spec (findings to the planner; escalated items to the CEO through the lead); BACKLOG gets one item per section (`spec: F<n>`).
+- /plan: sections 1–2 of a plan are the section's Done-when and Not-this-time verbatim; the section's Status becomes `in progress — plans: …`.
+- /ship: a section is `done` when every Done-when line is covered by a shipped plan (the `(F<n>)` lines in docs/METRICS.md); otherwise `remaining: <uncovered lines>` is appended to its Status.
+- /backlog sweeps sections for uncovered Done-when lines and Not-this-time candidates.
+- /brainstorm revising the brief: the planner lists the sections the revision touches; each is revised as above.

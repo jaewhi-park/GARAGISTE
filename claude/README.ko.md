@@ -26,7 +26,7 @@
 |---|---|---|
 | 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | docs/BRIEF.md(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 docs/CHARTER.md, docs/adr/, CLAUDE.md, (레거시) docs/ASSESSMENT.md·docs/REBUILD_PLAN.md·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
-| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <사양서 또는 계획> 수정: …` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지), 단계별 커밋에 테스트 먼저(빨강 → 초록); 개정은 차이만 쓰고 진행 중 계획은 같은 브랜치에서 이어진다 |
+| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <F<n> 또는 계획> 수정: …` | 질문 없음: docs/SPEC.md 절에서 docs/plans/*.md(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지), critic의 APPROVE가 승인, 단계별 커밋에 테스트 먼저(빨강 → 초록); 개정은 차이만 쓰고 계획을 정리하며 진행 중 계획은 같은 브랜치에서 이어진다 |
 | 핫픽스 | `/hotfix <무엇을 왜>` | hotfix/<slug>에서 한 번에, 계획 파일 없음: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과나 Risk path면 멈추고 /plan을 가리킨다; docs/METRICS.md에 `hotfix:` 한 줄 |
 | 병렬 | `/parallel <계획들>` → `/integrate` → `/ship` | worktree별 브랜치 → `integrate/<날짜>`로 직렬 머지 큐 → PR 하나 |
 | 품질 | `/review` | 테스트 파일 바닥(테스트 파일이 없는 논리 커밋은 멈춤), 그다음 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
@@ -51,7 +51,7 @@
 
 ## 에이전트 간 계약
 - 모든 subagent는 고정된 보고 형식으로 lead에 답한다 (implementer: proves 줄마다 Proven 줄, 빨강 → 초록; verifier: PASS/FAIL, reviewer/critic: 마지막 줄 APPROVE/REVISE).
-- lead만 CEO에게 질문한다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값. 예외는 /plan의 사양서 라운드로, 여기서는 열린 질문과 자유 서술 답이 허용된다.
+- lead만 CEO에게 질문한다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값. 예외는 /brainstorm과 수정 논의로, 여기서는 열린 질문과 자유 서술 답이 허용된다.
 - 수정 루프는 3회 상한. 넘으면 멈추고 보고한다.
 - 자율 결정은 docs/DECISIONS.md, 아키텍처 결정은 docs/adr/.
 
@@ -59,7 +59,7 @@
 - 아침: `/backlog`로 오늘 할 항목 확정 → `/plan` 승인 → `/run` (병렬이면 아래 참고)
 - 낮: lead의 AskUserQuestion에만 답한다. 그 외는 자율.
 - 저녁: `/run`이 ship까지 끝내면 머지 정책대로. 주 1회 `/release`, 실패가 반복되면 `/retro`.
-- 사람의 네 가지 일: 기획서 브레인스토밍과 접수·사양서 질문에 답하기 / 계획 승인·에스컬레이션 결정 / PR 머지(정책에 따라) / 회고 승인.
+- 사람의 네 가지 일: 기획서 브레인스토밍과 승인 / kickoff 질문과 에스컬레이션 답하기 / PR 머지(정책에 따라) / 회고 승인. 계획은 critic이 승인하고 사양서(docs/SPEC.md)는 팀 것이다.
 
 ## 작업 방식 — 순차가 기본, 병렬은 선택
 기본(/build)은 한 세션에서 계획 하나를 메인 체크아웃에서 단계별로 순차 구현한다. 기능을 여러 개 의뢰하면 lead는 /plan 을 여러 번 만들고 하나씩 /build 한다. worktree도 머지도 없고, 충돌도 구조적으로 없다. 개인 프로젝트 대부분은 이걸로 충분하다.

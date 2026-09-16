@@ -7,11 +7,11 @@ If the code is the product, this directory is the company. Agents forget when a 
 | BRIEF.md | Product — the brief (기획서): direction, decided / later / rejected, non-goals, success metric, sketches | /brainstorm (via the planner) | before kickoff or assess; revised on a pivot |
 | CHARTER.md | Governance — the constitution, derived from BRIEF.md | /kickoff, /assess | at kickoff or assess; when the brief is revised |
 | BACKLOG.md | Product — what and why | /backlog (seeded by /brainstorm `req:` items and /kickoff) | when ideas or requests appear |
-| specs/NNNN-*.md | Product — what exactly and when done (complex features) | /plan (spec rounds, via the planner) | when the CEO opts in at intake; revised via `/plan <spec> 수정:` (rev n) |
-| plans/NNNN-*.md | Engineering — how (sections 1–2 from the intake or spec) | /plan | every piece of work except a /hotfix (its commit body carries the why); amended via `/plan <plan> 수정:` (rev n, from the step after the last PASS) |
+| SPEC.md | Product — what exactly and when done, one section (F<n>) per feature; the team's expansion of the brief | /kickoff (via the planner); /plan adds a section for a new feature | at kickoff; extended when a feature arrives; revised via `/plan F<n> 수정:` (rev n) |
+| plans/NNNN-*.md | Engineering — how (sections 1–2 from the spec section) | /plan | every piece of work except a /hotfix (its commit body carries the why); amended via `/plan <plan> 수정:` (rev n, from the step after the last PASS) |
 | adr/NNNN-*.md | Architecture decisions — why this design | planner | every hard-to-reverse decision |
 | DECISIONS.md | Autonomous decision log | planner | whenever the lead decides without the CEO |
-| STATUS.md | Status board (session pointer; committed at the cut points) | lead | every step, verdict, decision, spec round, brainstorm checkpoint; committed at the approval commits, ship, a question waiting on the CEO, handoff, a compaction stop |
+| STATUS.md | Status board (session pointer; committed at the cut points) | lead | every step, verdict, decision, brainstorm checkpoint; committed at the approval commits, ship, a question waiting on the CEO, handoff, a compaction stop |
 | METRICS.md | Governance — one line per plan or hotfix (`hotfix:<slug>`) | /ship, /hotfix | every ship (/retro reads it) |
 | prs/NNNN-*.md, prs/hotfix-*.md | PR description when there is no remote | /ship, /hotfix (local mode) | every local-mode ship |
 | releases/<ver>.md | Operations — release notes | /release | every release |

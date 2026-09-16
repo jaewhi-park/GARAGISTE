@@ -38,12 +38,12 @@
 
 <!-- start line -->
 <circle cx="60" cy="120" r="9" class="ceo"/><text x="80" y="124"><tspan class="name">/brainstorm</tspan><tspan class="role" dx="8">기획서 승인</tspan></text>
-<circle cx="60" cy="180" r="9" class="ceo"/><text x="80" y="184"><tspan class="name">/kickoff · /assess</tspan><tspan class="role" dx="8">신규 · 레거시, 확인 1회</tspan></text>
-<circle cx="60" cy="240" r="9" class="ceo"/><text x="80" y="244"><tspan class="name">/hire</tspan><tspan class="role" dx="8">배정 승인</tspan></text>
+<circle cx="60" cy="180" r="9" class="ceo"/><text x="80" y="184"><tspan class="name">/kickoff · /assess</tspan><tspan class="role" dx="8">신규 · 레거시 · 질문 1회</tspan></text>
+<circle cx="60" cy="240" r="6.5" class="st st-feeder"/><text x="80" y="244"><tspan class="name">/hire</tspan><tspan class="role" dx="8">바로 적용 · 배정표</tspan></text>
 
 <!-- main line -->
 <circle cx="150" cy="300" r="9" class="ceo"/><text x="150" y="262" text-anchor="middle" class="role">상위 3개 순서만</text><text x="150" y="280" text-anchor="middle" class="name">/backlog</text>
-<circle cx="300" cy="300" r="9" class="ceo"/><text x="300" y="248" text-anchor="middle" class="role">접수 1회 · 증명 줄</text><text x="300" y="262" text-anchor="middle" class="role">단계 4개까지 · 승인</text><text x="300" y="280" text-anchor="middle" class="name">/plan</text>
+<circle cx="300" cy="300" r="6.5" class="st st-main"/><text x="300" y="248" text-anchor="middle" class="role">사양서 절에서</text><text x="300" y="262" text-anchor="middle" class="role">단계 4개까지 · critic 승인</text><text x="300" y="280" text-anchor="middle" class="name">/plan</text>
 <circle cx="450" cy="300" r="6.5" class="st st-main"/><text x="450" y="248" text-anchor="middle" class="role">단계마다 테스트 먼저</text><text x="450" y="262" text-anchor="middle" class="role">빨강 → 초록 → 커밋</text><text x="450" y="280" text-anchor="middle" class="name">/build</text>
 <circle cx="525" cy="300" r="4.5" class="st st-main"/><text x="525" y="324" text-anchor="middle" class="role">verifier · 끝에 전체 검증 한 번</text>
 <circle cx="600" cy="300" r="6.5" class="st st-main"/><text x="600" y="248" text-anchor="middle" class="role">테스트 파일 바닥, 그다음</text><text x="600" y="262" text-anchor="middle" class="role">2 | 4 렌즈 → 수정 루프</text><text x="600" y="280" text-anchor="middle" class="name">/review</text>

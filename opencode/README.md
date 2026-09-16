@@ -24,7 +24,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/kickoff` | New project, from the approved brief. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
 | `/assess <target>` | Legacy, from the approved brief. Inventory (docs/ASSESSMENT.md) → preserve/fix policy → rebuild strategy ADR → docs/REBUILD_PLAN.md → AGENTS.md → parity-harness plan for the first seam → /hire |
 | `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
-| `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes (one to four `proves` lines per logic step, at most 4 logic steps per plan) → critic reviews (risk:high, over the plan-size target, or the first part of a split) → approval requested; `/plan <spec or plan> 수정: …` revises an approved spec or amends a running plan (differences only, same branch) |
+| `/plan <item>` | No questions: planner writes from the docs/SPEC.md section, the bug line or your words (one to four `proves` lines per logic step, at most 4 logic steps per plan) → critic reviews every plan and its APPROVE is the approval; `/plan <F<n> or plan> 수정: …` revises a spec section or amends a running plan (differences only, the plans sorted, same branch) |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |
 | `/build <plan>` | Step by step: the implementer proves each step red → green (tests in the step's commit); the verifier gives the full verdict at the end |
 | `/hotfix <what and why>` | Small, well-specified change without a plan: implement + regression test → full verification → one correctness lens → PR (never auto-merged) or local merge on hotfix/<slug>; over 3 files / 50 logic lines or on a Risk path it stops and points at /plan; one docs/METRICS.md line marked `hotfix:` |
@@ -55,7 +55,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 
 ## Contracts between agents
 - Every subagent reports in a fixed format (implementer: a Proven line per proves line, red → green; verifier: PASS/FAIL; reviewer/critic: last line APPROVE/REVISE).
-- Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered — except the spec rounds of /plan, where open questions and free-text answers are allowed.
+- Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered — except /brainstorm and the revision discussions, where open questions and free-text answers are allowed.
 - Fix loops are capped at 3 rounds; past that, stop and report.
 - Autonomous decisions go to docs/DECISIONS.md, architecture decisions to docs/adr/.
 

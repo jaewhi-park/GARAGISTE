@@ -22,8 +22,8 @@ const LABELS = {
     returnLabel: "after the merge, the next backlog item → /plan", mainTitle: "main line · every piece of work",
     branchTitle: "parallel — plans whose files do not overlap", loopTitle: "after the merge · release and retro",
     runLabel: "/run — build · review · ship in one go; it stops only for an escalation, a fix loop past 3 rounds, merge approval",
-    brainstorm: ["/brainstorm", "approve the brief"], kickoff: ["/kickoff · /assess", "new or legacy, one confirmation"], hire: ["/hire", "approve"],
-    backlog: ["/backlog", "order the top three"], plan: ["/plan", "intake · proves lines", "≤ 4 steps · approve"], build: ["/build", "per step: test first", "red → green → commit"],
+    brainstorm: ["/brainstorm", "approve the brief"], kickoff: ["/kickoff · /assess", "new or legacy · one question"], hire: ["/hire", "applied · roster shown"],
+    backlog: ["/backlog", "order the top three"], plan: ["/plan", "from the spec section", "≤ 4 steps · critic approves"], build: ["/build", "per step: test first", "red → green → commit"],
     verifierStop: "verifier · full, once", review: ["/review", "test-file floor, then", "2 | 4 lenses → fix loop"], ship: ["/ship", "verdict → PR · METRICS", "PR opens with Proven"], merge: ["merge", "run the Proven tests", "Try it, then merge"],
     hotfix: ["/hotfix", "one sentence, obvious check"], impl: "implementer · red test first", verify: "verifier, full", review1: "reviewer, one lens",
     prmerge: ["merge the PR", "read the diff · never auto-merged"],
@@ -38,8 +38,8 @@ const LABELS = {
     returnLabel: "머지 뒤 다음 백로그 항목으로 → /plan", mainTitle: "기본 경로 · 작업마다",
     branchTitle: "병렬 — 파일이 겹치지 않는 계획들", loopTitle: "출하 뒤 · 릴리즈와 회고",
     runLabel: "/run — build · review · ship 을 한 번에, 멈추는 곳은 에스컬레이션 · 수정 루프 3회 초과 · 머지 승인뿐",
-    brainstorm: ["/brainstorm", "기획서 승인"], kickoff: ["/kickoff · /assess", "신규 · 레거시, 확인 1회"], hire: ["/hire", "배정 승인"],
-    backlog: ["/backlog", "상위 3개 순서만"], plan: ["/plan", "접수 1회 · 증명 줄", "단계 4개까지 · 승인"], build: ["/build", "단계마다 테스트 먼저", "빨강 → 초록 → 커밋"],
+    brainstorm: ["/brainstorm", "기획서 승인"], kickoff: ["/kickoff · /assess", "신규 · 레거시 · 질문 1회"], hire: ["/hire", "바로 적용 · 배정표"],
+    backlog: ["/backlog", "상위 3개 순서만"], plan: ["/plan", "사양서 절에서", "단계 4개까지 · critic 승인"], build: ["/build", "단계마다 테스트 먼저", "빨강 → 초록 → 커밋"],
     verifierStop: "verifier · 끝에 전체 검증 한 번", review: ["/review", "테스트 파일 바닥, 그다음", "2 | 4 렌즈 → 수정 루프"], ship: ["/ship", "정책 판정 → PR · METRICS", "PR 은 증명 절로 시작"], merge: ["머지", "증명 테스트를 돌려 보고", "직접 확인 후 머지"],
     hotfix: ["/hotfix", "한 문장으로 말할 수 있는 수정"], impl: "implementer · 빨강 회귀 테스트", verify: "verifier 전체 검증", review1: "reviewer 1렌즈",
     prmerge: ["PR 머지", "diff 읽고 머지 · 자동 머지 없음"],
@@ -118,11 +118,11 @@ ${text(330, 480, "title", t.loopTitle)}
 <!-- start line -->
 ${ceo(60, 120)}${side(60, 120, t.brainstorm)}
 ${ceo(60, 180)}${side(60, 180, t.kickoff)}
-${ceo(60, 240)}${side(60, 240, t.hire)}
+${stop(60, 240, "feeder")}${side(60, 240, t.hire)}
 
 <!-- main line -->
 ${ceo(150, 300)}${above(150, 300, t.backlog)}
-${ceo(300, 300)}${above(300, 300, t.plan)}
+${stop(300, 300, "main")}${above(300, 300, t.plan)}
 ${stop(450, 300, "main")}${above(450, 300, t.build)}
 ${stop(525, 300, "main", 4.5)}${text(525, 324, "role", t.verifierStop, "middle")}
 ${stop(600, 300, "main")}${above(600, 300, t.review)}
