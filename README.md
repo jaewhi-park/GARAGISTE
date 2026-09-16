@@ -11,7 +11,7 @@ GARAGISTE is an autonomous development team template that works nearly identical
 ## The workflow in one picture
 ![GARAGISTE workflow map — the start line joins the main line every piece of work takes; the hotfix line skips the plan; the parallel branch rejoins at /ship; the after-merge loop returns to /plan; double rings are where the CEO answers or approves](assets/workflow-map.svg)
 
-Blue is the path every piece of work takes: `/backlog` → `/plan` → `/build` → `/review` → `/ship` → merge, with `/run` driving the three middle stops in one go. Red is `/hotfix`, one pass without a plan for a change you can state in one sentence. Green is parallel work: `/parallel` (Claude Code) or `/spawn` (opencode), then `/integrate` before `/ship`. Purple is what happens after a merge: `/release` weekly, `/retro` when failures repeat, then the next `/plan`. Double rings mark the stops where you answer or approve; the team passes every other stop on its own.
+Blue is the path every piece of work takes: `/backlog` → `/plan` → `/build` → `/review` → `/ship` → merge, with `/run` driving the three middle stops in one go. Red is `/hotfix`, one pass without a plan for a change you can state in one sentence. Green is parallel work: `/parallel` (Claude Code) or `/spawn` (opencode), then `/integrate` before `/ship`. Purple is what happens after a merge: `/release` weekly, `/retro` when failures repeat, then the next `/plan`. The iteration-review stop on the return line is where, every 2–4 plans, you try the product and say 계속 or give an instruction. Double rings mark the stops where you answer or approve; the team passes every other stop on its own.
 
 ## Install
 ```
