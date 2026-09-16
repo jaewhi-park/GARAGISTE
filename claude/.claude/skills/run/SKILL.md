@@ -1,11 +1,11 @@
 ---
 name: run
-description: Default path — take an approved plan through build → review → ship. Stops only at escalation, fix-loop overflow and a risk:high merge (the CEO's)
+description: Default path — take an approved plan through build → review → ship. Stops only at escalation, fix-loop overflow and a live risk:high merge (the CEO's word)
 argument-hint: "[plan file path]"
 ---
 Take the approved plan all the way: $ARGUMENTS (plan file path)
 
-Stop only at three places: an escalation question, a fix loop exceeding 3 rounds, and a `risk:high` merge (the CEO's; `risk:low` is merged by the lead). Otherwise proceed without asking the CEO.
+Stop only at three places: an escalation question, a fix loop exceeding 3 rounds, and a `risk:high` merge while the board's Stage is `live` (the CEO's word, from the PR's Risk summary; everything else is merged by the lead). Otherwise proceed without asking the CEO.
 
 1. Run `build` via the Skill tool (argument: $ARGUMENTS). Do not continue until it finishes.
 2. Run `review` via the Skill tool (argument: base branch, normally main).

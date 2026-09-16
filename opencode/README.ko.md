@@ -76,7 +76,7 @@
 
 ## 병렬과 머지
 - 병렬은 세션 단위다: `/spawn` 이 계획별 worktree(`../<레포>-<slug>`)와 브랜치를 만들고, 각 worktree에서 별도 `opencode` 세션이 `/build` 한다. 메인 세션의 `/integrate` 가 main에서 딴 통합 브랜치에 브랜치를 하나씩 리뷰·머지·검증하고(머지 큐), `/ship` 이 그 브랜치를 PR 하나(또는 로컬 머지 하나)로 출하한다. opencode subagent에는 worktree 격리가 없어 세션 내 병렬은 지원하지 않는다.
-- 머지 정책은 `/ship`이 저장소 상태로 자동 판정한다: 원격 없음→`local`(PR 문서 + 로컬 main 머지, 승인 후), 원격+main 보호+auto-merge→`auto-low-risk`(`risk:low`는 CI 통과 시 자동 머지, `risk:high`는 사람), 그 외→`manual`(PR까지, 머지는 사람). AGENTS.md의 "머지 정책" 줄은 비워 두는 게 기본이고, 적으면 override다. `/policy`로 현재 판정과 근거를 본다. 플러그인은 어느 경우에도 force push와 main 직접 push를 막는다.
+- 머지 정책은 `/ship`이 저장소 상태로 자동 판정한다: 원격 없음→`local`(PR 문서 + 로컬 main 머지, 승인 후), 원격+main 보호+auto-merge→`auto-low-risk`(`risk:low`는 CI 통과 시 자동 머지, `risk:high`는 출시 전 lead·출시 뒤 CEO 한마디), 그 외→`manual`(팀이 PR을 열고 같은 규칙으로 머지). AGENTS.md의 "머지 정책" 줄은 비워 두는 게 기본이고, 적으면 override다. `/policy`로 현재 판정과 근거를 본다. 플러그인은 어느 경우에도 force push와 main 직접 push를 막는다.
 
 ## 로컬 전용 (원격 없는 초기 빌드업)
 `git remote`가 비어 있으면 `/ship`은 push·PR 대신 docs/prs/NNNN-<slug>.md 에 PR 설명을 남기고, 머지 정책대로 로컬 main에 `git merge --no-ff` 한다(manual이면 CEO 승인 후). 게이트는 그대로다 — 계획 하나 = 브랜치 하나, verifier, 4렌즈 리뷰, 위험도, 머지 커밋 단위 롤백(`git revert -m 1`). `/release`는 승인 후 로컬 태그를 만든다. GitHub를 붙이면(`git remote add origin …`) 다음 `/ship`부터 자동으로 PR 흐름이 되고, main 보호 + auto-merge를 켜면 자동으로 auto-low-risk가 된다. 설정 파일을 고칠 일은 없다.

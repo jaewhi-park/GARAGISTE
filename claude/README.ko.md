@@ -5,7 +5,7 @@
 
 사람용 사용법은 **GUIDE.md**(설치·상황별 역할), 산출물 지도는 docs/README.md. 이 파일은 설정 레퍼런스다.
 
-레포 하나를 작은 소프트웨어 회사처럼 돌린다. 사람은 CEO(방향, 제품 수용, `risk:high` 머지), 에이전트는 팀이고, 팀은 이터레이션 단위로 스스로 돈다.
+레포 하나를 작은 소프트웨어 회사처럼 돌린다. 사람은 CEO(방향, 제품 수용, 출시 뒤 `risk:high` 머지의 한마디), 에이전트는 팀이고, 팀은 이터레이션 단위로 스스로 돈다.
 회사는 조직도가 아니라 다섯 루프다: 제품(백로그) → 엔지니어링(계획·구현) → 품질(검증·리뷰) → 운영(출하·릴리즈) → 경영(결정 기록·회고).
 각 루프는 `/스킬` 하나와 `docs/` 산출물 하나로 구현된다.
 
@@ -60,7 +60,7 @@
 - 아침: `/backlog`로 오늘 할 항목 확정 → `/plan` 승인 → `/run` (병렬이면 아래 참고)
 - 낮: lead의 AskUserQuestion에만 답한다. 그 외는 자율.
 - 저녁: `/run`이 ship까지 끝내면 머지 정책대로. 주 1회 `/release`, 실패가 반복되면 `/retro`.
-- 사람의 세 가지 일: 기획서 브레인스토밍과 승인 / 제품을 보고 원하는 것을 말하기 / 에스컬레이션 답하고 `risk:high` PR 머지. 계획은 critic이 승인하고, `risk:low` 작업은 lead가 머지하고, 사양서(docs/specs/)는 팀 것이다.
+- 사람의 세 가지 일: 기획서 브레인스토밍과 승인 / 제품을 보고 원하는 것을 말하기 / 에스컬레이션 답하고 출시 뒤 `risk:high` PR에 머지·보류 말하기. 계획은 critic이 승인하고, `risk:low` 작업은 lead가 머지하고, 사양서(docs/specs/)는 팀 것이다.
 
 ## 작업 방식 — 순차가 기본, 병렬은 선택
 기본(/build)은 한 세션에서 계획 하나를 메인 체크아웃에서 단계별로 순차 구현한다. 기능을 여러 개 의뢰하면 lead는 /plan 을 여러 번 만들고 하나씩 /build 한다. worktree도 머지도 없고, 충돌도 구조적으로 없다. 개인 프로젝트 대부분은 이걸로 충분하다.
@@ -78,7 +78,7 @@
 |---|---|---|
 | 원격 없음 | `local` | PR 설명을 docs/prs/에 저장, 승인 후 로컬 main에 `merge --no-ff` |
 | 원격 있음, main 보호·auto-merge 없음 | `manual` | 브랜치 push + PR(risk 라벨). 사람이 머지 |
-| 원격 있음 + main 보호(필수 체크) + auto-merge 허용 | `auto-low-risk` | `risk:low`는 `gh pr merge --auto`, `risk:high`는 사람 |
+| 원격 있음 + main 보호(필수 체크) + auto-merge 허용 | `auto-low-risk` | `risk:low`는 `gh pr merge --auto`, `risk:high`는 출시 전 lead·출시 뒤 CEO 한마디 |
 즉 "자동 머지를 켠다" = GitHub에서 main 보호와 auto-merge를 켜는 것이고, 그게 곧 안전 조건이다. `/policy`로 현재 판정과 근거를 확인하고, 정말 필요할 때만 CLAUDE.md에 override(`manual`/`auto-low-risk`)를 적는다. 훅은 어느 판정에서도 force push와 main 직접 push를 막는다.
 
 ## 로컬 전용 (원격 없는 초기 빌드업)

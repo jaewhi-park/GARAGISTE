@@ -44,7 +44,7 @@ It pairs every `claude/` file with its `opencode/` counterpart, translates the c
 
 ## The CEO's contract
 - The CEO approves one document, the brief; the team writes and decides the rest (spec, plans, defaults) and logs it in docs/DECISIONS.md.
-- The team runs in iterations of 2–4 plans, merges low-risk work itself, and stops after each iteration to show what can be tried; it asks only for what is expensive to reverse — money, security or user data, a non-goal conflict, `risk:high` merges.
+- The team runs in iterations of 2–4 plans, merges low-risk work itself, and stops after each iteration to show what can be tried; it asks only for what is expensive to reverse — money, security or user data, a non-goal conflict, `risk:high` merges once the product is live.
 - Ambiguity is confirmed in one line, never guessed into action; a remark is not an order.
 - Main is always runnable; the status board (docs/STATUS.md) is the CEO's window, and the product is the demo.
 
