@@ -5,36 +5,30 @@ Configuration reference: README.md. Where artifacts live: docs/README.md. 한국
 
 ## 0. One-page summary
 
-You have four jobs: **decide / read the evidence / set the quality bar / merge (per policy).**
-The team does the rest. You do not type code (typo-level fixes excepted). You do read any diff that touches data, interfaces or security.
+You have three jobs: **set the direction / look at the product / say what you want.**
+The team does the rest — it plans, builds, reviews and merges low-risk work on its own, in iterations of 2–4 plans, and stops to look at you after each one. You never have to type a command: say it, and the lead runs the procedure. You do read a diff when the team asks you to merge `risk:high` work (data, interfaces, security).
 
 ![The workflow in one picture: the start line joins the main line every piece of work takes; the hotfix line skips the plan; the parallel branch rejoins at /ship; the after-merge loop returns to /plan; double rings are where you answer or approve](../assets/workflow-map.svg)
 
-| Situation | Command | What you do, in one line |
+| You say | What the team does | What you do, in one line |
 |---|---|---|
-| Product brief | `/brainstorm <idea or file>` | Brainstorm freely with the lead, or bring the document you wrote; answer the open slots and the pre-mortem; approve the brief. Run it again to revise (pivot) |
-| New project | `/kickoff` | Needs the approved brief. One question: the stack and the budget. The team derives the charter and writes the spec (docs/specs/, one file per feature), the backlog and the first plan |
-| Legacy takeover | `/assess <target>` | Needs the approved brief. Decide preserve-or-fix for "behaviour that looks like a bug"; one question: the rebuild strategy and the budget |
-| Hiring | `/hire` | Applied from the kickoff/assess budget answer; run it when the budget changes — the roster is shown, change a line by saying so |
-| Grooming | `/backlog [idea]` | Fix only the order of the top three |
-| Design | (inside `/plan`) | Read the ADR's alternatives and consequences; check reversibility |
-| Single-track development | `/plan <item>` → `/run <plan>` | No questions: the plan comes from its spec section and the critic approves it; answer escalation questions only, hands off |
-| New feature in your words | `/plan <feature>` | The planner adds a spec section from your words and plans from it; you are asked only what the escalation list names |
-| Parallel development | `/spawn <plans>` → `/build` in each session → `/integrate` → `/ship` | Check that file sets do not overlap; decide the integration order |
-| Review | (inside `/run`) or `/review` | Rule only on conflicting findings |
-| QA | (each step proven red → green; the verifier in full at the end) + the PR's "Proven" and "Try it" sections | Run the Proven tests yourself from the PR's command; read the commands run and failure counts, not the green light; walk the Try-it steps before merging |
-| Debugging | `/plan "bug: … reproduction test first"` | Give the most concrete reproduction you can |
-| Small fix | `/hotfix <what and why>` | One sentence with an obvious check (a bug with a reproduction, a wrong string, config or default, a version bump); read the diff and merge — anything needing a design decision is a `/plan` |
-| Change request | say stop, then `/plan F<n> 수정: <what changed>` (or a plan file) | Talk it through, say "write it up"; the team revises the section, sorts the plans and continues — you are asked only when shipped work is discarded |
-| Troubleshooting | 3-strike rule, drop the session | When the team spins, stop rather than fix |
-| Merging | `/integrate` / `/policy` | Local integration is the team's; main merges follow the automatic verdict (local / manual / auto-low-risk) |
-| Shipping and releasing | `/ship` → `/release` | Read the PR's verification evidence; read the diff yourself if `risk:high` |
-| Ending a session | `/handoff` | Only when stopping mid-flight; check that "first action next session" in the report is right |
-| Resuming a session | `/resume` | Only when a board exists (the injected files show whether one does); if board and repo disagree, side with the repo |
-| Retrospective | `/retro <subject>` | Approve only one-line rules backed by an incident; reject the rest |
-| Team check | `/roster` | Confirm model and permission assignments |
-| Wrong language | `/lang <code>` | Asked once at the start of `/brainstorm`; change any time |
-| Missing role | `/recruit <gap>` | Only for a new permission boundary or a separate judge; a missing skill is not a role. Model comes from the roster, no extra /hire |
+| (first session) an idea, or the path of a document you wrote | Brainstorms with you, compiles docs/BRIEF.md, asks the open slots once, runs the pre-mortem | Talk freely; answer the slots honestly; approve the brief — the one document you approve |
+| "진행해" after the brief | `/kickoff` (or `/assess` for legacy): one question — the stack and the budget — then charter, spec, backlog, first plan and hire; the board says `Mode: running` | Answer the one question; open a new session and say 계속 |
+| "어디까지 됐어?" | Reconciles the board with git and answers: what is tryable, what changed, what waits on you | Nothing; try the product from main (the board's Run line) |
+| "계속" | Runs the next iteration (2–4 plans: plan → build → review → ship → merge), then stops with an iteration review | Read the review, try what it lists, say what you want |
+| "이거 추가하자" (a feature, in your words) | Writes a spec section and a backlog item from your words; plans it now if you say now, else next iteration | Say as much as you want; you are asked only what costs money or touches security |
+| "이거 바꿔" / "이거 없애" | Revises the spec section, sorts the plans (rework · amend · re-plan), continues | Talk it through; you are asked only when shipped work is discarded |
+| "이거 버그야" | A hotfix when it is one sentence with an obvious check, else a `bug:` plan at the head of the next iteration | Give the reproduction |
+| "이거 먼저" | Reorders the backlog and the next iteration | Nothing else |
+| "멈춰" | Finishes the step in progress, commits the board, waits (`Mode: paused`) | Say what you want next |
+| (the team asks) | An escalation: money, security or user data, a non-goal conflict, a fix loop past 3 rounds, `risk:high` work to merge | Answer in the decision / options / recommendation / default form; read the `risk:high` diff and merge |
+| (the team stops on its own) | The iteration review: tryable now · changed · check please · next iteration | Try it; then "계속" or an instruction |
+| (a session died mid-turn) | Reconciles the board with git at your first message and continues; at most one step is redone | Open a session and say anything |
+| `/spawn <plans>` → `/integrate` | Worktree per plan, serial integration, one PR | Only when files do not overlap; not in the first two weeks |
+| `/release [version]` | Version, CHANGELOG, release notes, the tag command | Push the tag |
+| `/retro <subject>` | Causes → rules, skills, hooks | Approve only one-line rules backed by an incident |
+| `/hire`, `/roster`, `/recruit <gap>`, `/lang <code>` | Models and budget, the roster, a new role, the working language | Only when something is wrong or the budget changes |
+| any slash command | The same procedure the lead would run for your words | Optional — typing it is never required |
 
 ## 1. Install and first run
 
@@ -104,17 +98,17 @@ Every entry has the same shape: when / command / what the team does / **what you
 - When: an idea arrives; you do not know what to do next.
 - Command: `/backlog <idea>` or `/backlog` (groom only)
 - Team: updates docs/BACKLOG.md (sweeping the brief's "later" lines and appendix too), prioritizes against the charter, separates excluded items, proposes the top three.
-- You: fix only the **order** of the top three. If an item looks bigger than a day, say "split it".
+- You: nothing, unless you want a different order — say so. If an item looks bigger than a day, say "split it".
 - Common mistakes: keeping the backlog in your head instead of the team's — then nobody catches conflicts with the charter.
 
 ### 2.5 Single-track development (the default)
 - When: most work. One plan per session.
-- Command: `/plan <backlog item or feature>` → the plan is written from its spec section (or your words), the critic approves it, it is committed on main → `/run <plan file>`. For step-by-step control use `/build` → `/review` → `/ship` instead. A feature that has no section yet gets one first, from your words — no rounds.
+- Command: none needed — inside an iteration (`deliver`) the team takes the next backlog item itself; `/plan <item>` still works by hand. The plan is written from its spec section (or your words), the critic approves it, it is committed on main → `/run <plan file>`, which merges `risk:low` work itself. For step-by-step control use `/build` → `/review` → `/ship` instead. A feature that has no section yet gets one first, from your words — no rounds.
 - Team: source resolved without questions (a spec section / a bug line with its reproduction / a rebuild step / your words → a new section) → plan (sections 1–2 are the section's Done-when and Not-this-time verbatim; bigger work is cut into parts by what can be tried, the later parts go to the backlog) → critic review of every plan (its APPROVE is the approval; two rounds at most) → escalation questions, if any → approval commit → `/run` (same session): branch → per step: the tests named by the plan's "proves" lines first (red), the change (green), one commit → full verification at the end → review and fixes → ship and merge verdict. It stops only for an escalation, a fix loop past 3 rounds and merge approval.
 - You: nothing before `/run`. Read the plan if you want to (what the critic holds it to is in section 4), but you are not the gate. After that, keep your hands off. Questions arrive in the form decision / options / recommendation / default — follow the recommendation or change it with a reason.
 - Changing course: a spec section or a running plan is changed with `/plan F<n> 수정: <what changed>` (or `/plan <plan file> 수정: …`) — say stop first if a plan is running (the team finishes the step's verification and holds). Talk it through (the lead proposes options and impact), say "write it up"; the planner writes only the differences and reports what they touch, the lead sorts the plans (shipped work → rework items, the plan in flight → amended after its last PASS, unstarted → re-planned), the critic checks the changed parts. You are asked only when shipped work is discarded. Then `/run <plan file>` continues on the same branch.
 - What the critic holds a plan to: completion criteria · per-step proves lines and verification command · rollback method — all three present, or it says REVISE.
-- Common mistakes: ordering big work in chat without a plan. Two plans in one session. Changing direction in chat while the team is working (say stop, then `/plan F<n> 수정: <what changed>`). Answering a question with "your call" on the one thing you care about — you will send the product back for it. Splitting `/plan` and `/run` across sessions by habit.
+- Common mistakes: ordering big work in chat without a plan. Two iterations in one session. Changing direction in chat while the team is working (say stop, then `/plan F<n> 수정: <what changed>`). Answering a question with "your call" on the one thing you care about — you will send the product back for it. Splitting `/plan` and `/run` across sessions by habit.
 - When a large diff is normal: scaffolding, generated code, lockfiles, bulk formatting/renames, deletions. If it is a separate commit labelled with its kind, the 300-line rule does not apply — but the review criteria differ: is it reproducible (regeneration diff zero), is logic mixed in, do build and tests pass. Do not read such commits line by line; check those three things.
 
 ### 2.6 Parallel development
@@ -161,10 +155,11 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: repeating "try again" in a spinning session. A polluted context gets worse the longer you keep it alive.
 
 ### 2.11 Merging
+- Lead-merge: in every policy below, `risk:low` work whose verification, review and checks are green is merged by the lead without asking; only `risk:high` (a Risk-paths hit, an escalation item) waits for you — the one diff you read.
 - Local integration (`/integrate`): parallel branches are reviewed → merged → conflicts resolved by the implementer and re-reviewed → verified, one at a time into an integration branch cut from main (`integrate/<date>`); `/ship` then ships that branch like a plan branch — one PR or one local merge, one METRICS line per plan. A failed merge is reverted by the team, which then reports; you decide what happens next.
 - Merging into main: `/ship` **resolves the policy automatically** from repository state. You never edit configuration for this.
   - No remote → `local`: the PR description lands in docs/prs/NNNN-<slug>.md and the lead asks for approval. Read it as you would a PR (verification evidence, review handling, rollback). On approval it merges into local main with `merge --no-ff`.
-  - Remote, no protection → `manual`: the team pushes and opens the PR (`risk:low|high`). You read the PR and merge. For `risk:high`, read the diff yourself.
+  - Remote, no protection → `manual`: the team pushes, opens the PR (`risk:low|high`) and merges `risk:low` once checks pass. For `risk:high`, you read the diff and merge.
   - Remote + protected main (required checks = CI) + auto-merge → `auto-low-risk`: `risk:low` merges automatically once CI passes; only `risk:high` waits for you. So "turning on auto-merge" means enabling protection and auto-merge on GitHub.
   - `/policy` shows the current verdict and reason. Force a verdict only when you must: `/policy manual` or `/policy auto-low-risk` (recorded as an override in AGENTS.md); `/policy auto` returns to automatic.
 - The team can never force-push or push directly to main (hooks). Every merge goes through a PR or an approved local merge.
@@ -172,7 +167,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: enabling auto-low-risk without branch protection. Waving through conflict-resolution diffs without review (a correctness re-review is configured, but check).
 
 ### 2.12 Shipping and releasing
-- `/ship`: full verification → docs and CHANGELOG → PR description → push → PR (or local merge). The PR opens with "Proven" — the tests by name with their red → green and the command that runs them: run it. Then read "verification evidence" and "risks and rollback". If any of them is empty, do not merge. A user-facing PR also carries a "Try it" section: run the command, walk the steps, then merge (such PRs are never auto-merged). After the PR is opened the session is back on main; merge before the next `/plan` (the next session pulls the merge in).
+- `/ship`: full verification → docs and CHANGELOG → PR description → push → PR (or local merge) → lead-merge for `risk:low`. The PR opens with "Proven" — the tests by name with their red → green and the command that runs them. A user-facing PR also carries a "Try it" section; it goes to the board's Tryable now, and main is always runnable, so you try the product from main whenever you like — a "Try it" section never holds a merge. For `risk:high` the PR waits for you: read "verification evidence", "risks and rollback" and the diff, then merge. After a ship the session is back on main.
 - `/release [version]`: version proposal → full verification → finalized CHANGELOG → docs/releases/<ver>.md → tag commands. You push the tag. If interfaces changed, a major/minor question arrives.
 - Common mistakes: release notes written from the team's view (what changed) — they must be the user's view (what is different, known issues, rollback).
 
@@ -188,7 +183,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Command: none. Open a new session and say anything ("어디까지 됐어?", "계속"): when the injected files include a board the lead does the resume procedure first — board against git, worktrees and PR state, the repository wins — and only then answers. With only a charter, start with `/plan` (nothing is in progress). `/resume [note]` still works by hand. Use `opencode -c` only for a short interruption. Long sessions stack summaries on summaries and degrade; the default is a fresh session.
 - Team: reconciles the status board (auto-injected), the plan and git → trusts the repo and fixes the board on disagreement → syncs local main with origin (fast-forward, or a rebase of the local milestone commits after a squash merge) → treats a board whose PR is merged as done (deletes the branch, next: `/plan`) → verifier first if the last result was FAIL → asks about waiting decisions → continues from the next action (for a section revision left open: `/plan F<n> 수정:`).
 - You: answer waiting decisions. If the report says board and repo disagree, the repo is right.
-- Rule: one session = one plan. Another plan means another session.
+- Rule: one session = one iteration. The team stops on its own at the iteration end; a compaction stops it earlier, and the next session continues.
 
 
 ### 2.15 Retrospective
@@ -217,7 +212,7 @@ Every entry has the same shape: when / command / what the team does / **what you
 
 ## 3. Rhythm
 
-- Daily (1–2 hours): open a session and say anything → `/plan <backlog item>` (no questions; the critic approves) → hands off during `/run` (answer escalation questions only) → merge per verdict → (`/handoff` only if something is left mid-flight).
+- Daily (1–2 hours): open a session and say "계속" → the team runs an iteration (2–4 plans) while you do something else → read the iteration review, try the product from main, say what you want → merge a `risk:high` PR when the review names one → (`/handoff` only if you leave mid-step).
 - Weekly: `/backlog` for next week's top three, `/release`, skim docs/DECISIONS.md, `/retro` if needed.
 - First week: day 1 `/brainstorm`, then `/kickoff` (or `/assess`), plus a "verification command that runs in under a minute" → days 2–3 walking skeleton → days 4–5 two features through plan→run → one `/retro`. Parallelism from week two.
 - Four numbers: rework count / questions per session (brainstorm and revision discussions are expected and not counted) / tests per plan (`tests +n` — a zero, or `n/a` creeping up, is a retro subject) / plan-approval→merge time. `/ship` appends one line per plan to docs/METRICS.md from the board's Counts line (counted as the work happens, not reconstructed at ship) and `/retro` reads it. If they fall, the setup fits.
@@ -240,9 +235,9 @@ What the critic holds every plan to (you no longer approve plans — this is wha
 - [ ] a rollback method is written down
 - [ ] sections 1–2 are the spec section's Done-when and Not-this-time verbatim
 
-On APPROVE, `/run` takes it to the end. You are called back only for escalation, a fix loop over 3 rounds, and merge approval.
+On APPROVE, `/run` takes it to the end. You are called back only for escalation, a fix loop over 3 rounds, and a `risk:high` merge.
 
-Before merging a PR:
+Before merging a `risk:high` PR (the only PRs you merge):
 - [ ] the verification evidence lists the commands run and zero failures (refuse if the test count is zero)
 - [ ] the "Proven" section names a test per proves line with its red → green, and you ran its command yourself
 - [ ] review findings and how they were handled are listed
@@ -262,7 +257,7 @@ Before merging a PR:
 - A plan draws no questions: its source is the spec section, the bug line or your words, and the planner's defaults are logged. If a `/plan` still asks you something outside the escalation list, it is a `/retro` subject.
 - The brainstorm and the revision discussions are the exception to short chats: say everything, and give paths and links rather than pasting documents (the planner reads them); the planner checkpoints the whiteboard every ten or so exchanges, so nothing is lost.
 - The brainstorm lives in the lead's context: the planner checkpoints it every ten or so exchanges, and after a long one run `/kickoff` or `/assess` in a new session (the board points there).
-- On your side: do not re-ask the same question every session — record decisions in docs/DECISIONS.md and let the lead follow them. One plan per session. When the context gets heavy, `/handoff` and start fresh — the board is committed, so nothing is lost between sessions.
+- On your side: do not re-ask the same question every session — record decisions in docs/DECISIONS.md and let the lead follow them. One iteration per session. When the context gets heavy, `/handoff` and start fresh — the board is committed, so nothing is lost between sessions.
 
 ## 6. Do not
 - Order large work in chat without a plan (say `/plan <it>` — the team writes the section and the plan)

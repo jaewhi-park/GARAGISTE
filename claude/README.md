@@ -2,7 +2,7 @@
 
 Human manual: **GUIDE.md** (install, what to do in each situation). Artifact map: docs/README.md. This file is the configuration reference. 한국어: README.ko.md, GUIDE.ko.md.
 
-Run one repository like a small software company. The human is the CEO (strategy, approvals, merges); the agents are the team. A company is not an org chart but five loops: product (backlog) → engineering (plan, implement) → quality (verify, review) → operations (ship, release) → governance (decision records, retros). Each loop is one `/skill` and one `docs/` artifact.
+Run one repository like a small software company. The human is the CEO (direction, the product's acceptance, `risk:high` merges); the agents are the team, and the team runs itself in iterations. A company is not an org chart but five loops: product (backlog) → engineering (plan, implement) → quality (verify, review) → operations (ship, release) → governance (decision records, retros). Each loop is one `/skill` and one `docs/` artifact.
 
 ## Install
 From the repository root: `./install.sh claude [-Project <path>|.] [-Global]` / `.\install.ps1 claude [-Project <path>] [-Global]`. Default is the current directory (its git repo root). `-Global` → ~/.claude (every repo; no default agent is forced, start with `claude --agent team-lead`). Running `claude/install.sh` directly works too.
@@ -17,6 +17,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 | Loop | Command | Artifact |
 |---|---|---|
 | Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | docs/BRIEF.md (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then docs/CHARTER.md, docs/adr/, docs/specs/, docs/BACKLOG.md, CLAUDE.md, (legacy) docs/ASSESSMENT.md · docs/REBUILD_PLAN.md · parity-harness plan; /hire in the closing step, then the board |
+| Running mode | (no command — say "계속") / `deliver` | one iteration: 2–4 plans through plan → run → merge, then an iteration review; docs/STATUS.md carries Mode, Iteration, Tryable now; `instruction` (a knowledge skill) is how the lead turns what the CEO says into the right procedure |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
 | Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <F<n> or plan> 수정: …` | no questions: docs/plans/*.md from its spec section (docs/specs/) (one to four `proves` lines per logic step, at most 4 logic steps per plan), the critic's APPROVE is the approval, one commit per step with its tests first (red → green); a revision writes only the differences, sorts the plans, and a running plan continues on its branch |
 | Hotfix | `/hotfix <what and why>` | one pass on hotfix/<slug>, no plan file: implement + regression test → full verification → one correctness lens → PR (never auto-merged) or local merge; over 3 files / 50 logic lines or on a Risk path it stops and points at /plan; one docs/METRICS.md line marked `hotfix:` |
@@ -51,7 +52,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 - Morning: confirm today's items with `/backlog` → approve `/plan` → `/run` (see parallelism below)
 - Day: answer only the lead's AskUserQuestion prompts. Everything else is autonomous.
 - Evening: `/run` finishes with ship → merge per policy. Weekly `/release`; `/retro` when failures repeat.
-- The human's four jobs: brainstorm and approve the brief / answer the kickoff question and escalations / merge PRs (per policy) / approve retro rules. Plans are approved by the critic; the spec (docs/specs/) is the team's.
+- The human's three jobs: brainstorm and approve the brief / look at the product and say what they want / answer escalations and merge `risk:high` PRs. Plans are approved by the critic, `risk:low` work is merged by the lead, the spec (docs/specs/) is the team's.
 
 ## Workflow — sequential by default, parallel by choice
 The default (`/build`, inside `/run`) implements one plan in one session, step by step, in the main checkout. Ask for several features and the lead makes several `/plan`s and runs them one after another. No worktrees, no merges, no conflicts by construction. Most personal projects need nothing more.
@@ -103,6 +104,6 @@ The session is working memory; the repo is long-term memory. State lives in thre
 - `memory: project` gives roles long-term memory — the company's accumulated experience.
 
 ## Notes
-- Workflow skills carry `disable-model-invocation: true`, so Claude cannot call them on its own. Five exceptions — `build`·`review`·`ship` (the `/run` chain), `hire` (closing step of `/kickoff`·`/assess`), `roster` (read-only) — allow model invocation and are bound by prompt to "CEO call or that chain only". For everything else the lead only suggests "run `/command`" in a sentence. Knowledge skills carry `user-invocable: false`: hidden from the menu, loaded by agents when needed.
+- No command skill is CEO-only: the lead runs any of them as a procedure when the CEO's words call for it (the `instruction` skill's triage) or the running loop does (`deliver`); the CEO may still type any. Knowledge skills carry `user-invocable: false`: hidden from the menu, loaded by agents when needed.
 - Under the default permission mode on Pro/Max (auto), subagents inherit the parent's mode. The team's safety comes from tool lists, deny rules and hooks, not from prompts: run the session in a mode that does not stop for each allowed tool call (`claude --permission-mode acceptEdits`, or accept the tool prompts once), otherwise every implementer edit and test run waits on you.
 - Hooks are written in Node and run unchanged on Windows. The patterns are a starting set; tune them to your stack.

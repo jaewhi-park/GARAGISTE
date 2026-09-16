@@ -11,7 +11,7 @@ If the code is the product, this directory is the company. Agents forget when a 
 | plans/NNNN-*.md | Engineering — how (sections 1–2 from the spec section) | /plan | every piece of work except a /hotfix (its commit body carries the why); amended via `/plan <plan> 수정:` (rev n, from the step after the last PASS) |
 | adr/NNNN-*.md | Architecture decisions — why this design | planner | every hard-to-reverse decision |
 | DECISIONS.md | Autonomous decision log | planner | whenever the lead decides without the CEO |
-| STATUS.md | Status board (session pointer; committed at the cut points) | lead | every step, verdict, decision, brainstorm checkpoint; committed at the approval commits, ship, a question waiting on the CEO, handoff, a compaction stop |
+| STATUS.md | Status board (Mode, Iteration, Tryable now, the session pointer; committed at the cut points) | lead | every step, verdict, decision, brainstorm checkpoint; committed at the approval commits, ship, a question waiting on the CEO, handoff, a compaction stop |
 | METRICS.md | Governance — one line per plan or hotfix (`hotfix:<slug>`) | /ship, /hotfix | every ship (/retro reads it) |
 | prs/NNNN-*.md, prs/hotfix-*.md | PR description when there is no remote | /ship, /hotfix (local mode) | every local-mode ship |
 | releases/<ver>.md | Operations — release notes | /release | every release |

@@ -2,7 +2,6 @@
 name: recruit
 description: Recruit a new role — when no existing agent fits (a different permission boundary or a separate judgment is needed), propose one to the CEO together with its model and create it on approval. The lead suggests it from /plan or /retro, never mid-build
 argument-hint: "[gap: what no current role can do]"
-disable-model-invocation: true
 ---
 Recruit a new team member. Gap: $ARGUMENTS
 

@@ -34,8 +34,13 @@ if (hasCharter || hasStatus) {
     // The board is committed, so a linked worktree carries the main checkout's copy: it describes that checkout, not this branch.
     tail = "This is a linked worktree: the board above belongs to the main checkout. Do not edit or commit docs/STATUS.md here — this branch's commits are its record. Start with /plan or `/run <plan>` on this branch; integration happens from the main checkout.";
   } else if (hasStatus) {
-    // The board is a pointer and may be stale (a session that died mid-turn, a PR merged since): the repository is the truth.
-    tail = "Reconcile first: run the `resume` procedure (the Skill tool) before answering the CEO — compare the board with git, worktrees and PR state, trust the repository, then continue from the board's next action. The CEO does not type /resume.";
+    // The board is a pointer and may be stale (a session that died mid-turn, a PR merged since): the repository is the truth. Its Mode line says what to do after reconciling.
+    const mode = (readFileSync(join(cwd, "docs/STATUS.md"), "utf8").match(/^Mode:\s*(.+)$/m) ?? [])[1]?.trim() ?? "";
+    const next = /^running/.test(mode) ? "The board says Mode: running — answer the CEO's message, then continue the iteration (the `deliver` skill) in the same turn; do not wait for a go."
+      : /iteration review/.test(mode) ? "The board says Mode: paused — iteration review: give the iteration review again (from the board) and wait for the CEO."
+      : /waiting on CEO/.test(mode) ? "The board says Mode: waiting on CEO: ask the open question again in one line, with its default."
+      : /^paused/.test(mode) ? `The board says Mode: ${mode}: say why in one line and wait.` : "Continue from the board's next action.";
+    tail = `Reconcile first: run the \`resume\` procedure (the Skill tool) before answering the CEO — compare the board with git, worktrees and PR state, trust the repository. ${next} The CEO does not type /resume.`;
   } else {
     tail = "No status board (a project from before the board was committed, or nothing in progress): start with /plan <backlog item> or /backlog.";
   }

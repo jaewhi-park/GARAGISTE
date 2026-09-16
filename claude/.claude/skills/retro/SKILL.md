@@ -2,7 +2,6 @@
 name: retro
 description: Retrospective — feed the causes of rework, failures, CEO intervention and incidents back into rules, skills or guardrails
 argument-hint: "[plan slug, session or incident]"
-disable-model-invocation: true
 ---
 Run a retrospective. Subject: $ARGUMENTS (plan slug, session or incident)
 

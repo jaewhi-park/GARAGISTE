@@ -28,10 +28,10 @@
 
 <!-- /run bracket and line titles -->
 <path class="bracket" d="M432,232 V226 H768 V232"/>
-<text x="600" y="220" text-anchor="middle" class="role">/run — build · review · ship in one go; it stops only for an escalation, a fix loop past 3 rounds, merge approval</text>
+<text x="600" y="220" text-anchor="middle" class="role">/run — build · review · ship · merge in one go; it stops only for an escalation, a fix loop past 3 rounds, a risk:high merge</text>
 <text x="78" y="92" class="title">start · once</text>
 <text x="316" y="142" class="title">hotfix · one pass, no plan — up to 3 files / 50 logic lines; a Risk path stops it</text>
-<text x="600" y="192" text-anchor="middle" class="role">after the merge, the next backlog item → /plan</text>
+<text x="600" y="192" text-anchor="middle" class="role">after the merge, the next backlog item → /plan (an iteration: 2–4 plans, then a review)</text>
 <text x="62" y="332" class="title">main line · every piece of work</text>
 <text x="350" y="390" class="title">parallel — plans whose files do not overlap</text>
 <text x="330" y="480" class="title">after the merge · release and retro</text>
@@ -48,7 +48,7 @@
 <circle cx="525" cy="300" r="4.5" class="st st-main"/><text x="525" y="324" text-anchor="middle" class="role">verifier · full, once</text>
 <circle cx="600" cy="300" r="6.5" class="st st-main"/><text x="600" y="248" text-anchor="middle" class="role">test-file floor, then</text><text x="600" y="262" text-anchor="middle" class="role">2 | 4 lenses → fix loop</text><text x="600" y="280" text-anchor="middle" class="name">/review</text>
 <circle cx="750" cy="300" r="6.5" class="st st-main"/><text x="750" y="248" text-anchor="middle" class="role">verdict → PR · METRICS</text><text x="750" y="262" text-anchor="middle" class="role">PR opens with Proven</text><text x="750" y="280" text-anchor="middle" class="name">/ship</text>
-<circle cx="900" cy="300" r="9" class="ceo"/><text x="900" y="248" text-anchor="middle" class="role">run the Proven tests</text><text x="900" y="262" text-anchor="middle" class="role">Try it, then merge</text><text x="900" y="280" text-anchor="middle" class="name">merge</text>
+<circle cx="900" cy="300" r="9" class="ceo"/><text x="900" y="248" text-anchor="middle" class="role">risk:low: the lead merges</text><text x="900" y="262" text-anchor="middle" class="role">risk:high: you read the diff</text><text x="900" y="280" text-anchor="middle" class="name">merge</text>
 
 <!-- hotfix line -->
 <circle cx="300" cy="120" r="9" class="ceo"/><text x="300" y="82" text-anchor="middle" class="role">one sentence, obvious check</text><text x="300" y="100" text-anchor="middle" class="name">/hotfix</text>

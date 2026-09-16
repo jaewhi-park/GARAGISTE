@@ -3,8 +3,6 @@ name: review
 description: Review a diff — the test-file floor, then 2 lenses (correctness/security) or 4 depending on risk, in parallel → fix loop
 argument-hint: "[base branch, default main]"
 ---
-This skill runs only when the CEO invoked it directly or when /run chains it via the Skill tool. Never invoke it on your own otherwise.
-
 Review the current branch's changes. Base branch: $ARGUMENTS (if empty, whichever of main or master exists)
 
 0. Test-file floor — a git command, no judgment. For every logic commit in `git log --format='%h %s' <base>..HEAD` (skip commits labelled scaffold/gen/mechanical/deps/delete, docs-only and `wip:` commits) whose plan step has a `proves:` line other than `n/a`, `git show --name-only --format= <sha>` must list at least one test file (the repository's convention — test/, tests/, __tests__/, spec/, *.test.*, *.spec.*, *_test.*, test_*; the rules file's Conventions may name it). A logic commit with none stops the review before any reviewer is spawned: name the step and commit to the CEO and end the turn. Recovery is the CEO's call — `/plan <plan path> 수정: step k proves → n/a — <reason>` when the step truly has nothing to assert, or "add the tests": team-implementer writes the tests for those proves lines (red shown against the step's parent commit), commits them as `test(<scope>): step k`, and the review starts again.

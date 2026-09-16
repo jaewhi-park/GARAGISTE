@@ -2,7 +2,6 @@
 name: release
 description: Release — version decision, finalized CHANGELOG, release notes, tag commands. Tag push is the CEO's
 argument-hint: "[version, or empty to propose]"
-disable-model-invocation: true
 ---
 Prepare a release. Version: $ARGUMENTS (empty = propose automatically)
 

@@ -3,8 +3,6 @@ name: hire
 description: Hiring — design per-role model assignments and an operating profile from available models, budget and project character; applied on the budget answer (from /kickoff, /assess or this command) and shown as a roster — the CEO changes a line by saying so. Right after /kickoff or /assess, when the budget changes, or when the team is too slow or expensive
 argument-hint: "[note: budget, preferences]"
 ---
-This skill runs only when the CEO invoked it directly or from the closing step of /kickoff or /assess via the Skill tool. When /kickoff or /assess passes the budget tier and the project's character, step 2 is skipped.
-
 Hire the team (assign a model and effort per role). Note: $ARGUMENTS
 
 1. Candidates: the default candidates are the aliases opus / sonnet / haiku (they resolve to the plan's latest models). Include other model IDs (API, Bedrock, Vertex) only if the CEO names them. Plan and usage caps cannot be read from the CLI — ask, do not guess.

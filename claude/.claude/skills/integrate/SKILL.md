@@ -2,7 +2,6 @@
 name: integrate
 description: Integrate finished branches one at a time into an integration branch cut from main — per-branch 4-lens review → merge → conflicts resolved by the implementer → verifier PASS → next (merge queue); /ship then ships that branch
 argument-hint: "[branches, or empty for the STATUS.md queue]"
-disable-model-invocation: true
 ---
 Integrate branches: $ARGUMENTS (if empty, the completed entries of the "Awaiting integration" list in docs/STATUS.md, in order)
 

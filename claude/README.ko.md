@@ -5,7 +5,7 @@
 
 사람용 사용법은 **GUIDE.md**(설치·상황별 역할), 산출물 지도는 docs/README.md. 이 파일은 설정 레퍼런스다.
 
-레포 하나를 작은 소프트웨어 회사처럼 돌린다. 사람은 CEO(전략·승인·머지), 에이전트는 팀.
+레포 하나를 작은 소프트웨어 회사처럼 돌린다. 사람은 CEO(방향, 제품 수용, `risk:high` 머지), 에이전트는 팀이고, 팀은 이터레이션 단위로 스스로 돈다.
 회사는 조직도가 아니라 다섯 루프다: 제품(백로그) → 엔지니어링(계획·구현) → 품질(검증·리뷰) → 운영(출하·릴리즈) → 경영(결정 기록·회고).
 각 루프는 `/스킬` 하나와 `docs/` 산출물 하나로 구현된다.
 
@@ -25,6 +25,7 @@
 | 루프 | 커맨드 | 산출물 |
 |---|---|---|
 | 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | docs/BRIEF.md(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 docs/CHARTER.md, docs/adr/, CLAUDE.md, (레거시) docs/ASSESSMENT.md·docs/REBUILD_PLAN.md·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
+| 가동 모드 | (커맨드 없음 — "계속") / `deliver` | 이터레이션 하나: 계획 2~4개를 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md에 Mode·Iteration·써 볼 수 있는 것. `instruction`(지식 스킬)은 lead가 CEO의 말을 맞는 절차로 바꾸는 규칙 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
 | 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <F<n> 또는 계획> 수정: …` | 질문 없음: 사양서 절(docs/specs/)에서 docs/plans/*.md(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지), critic의 APPROVE가 승인, 단계별 커밋에 테스트 먼저(빨강 → 초록); 개정은 차이만 쓰고 계획을 정리하며 진행 중 계획은 같은 브랜치에서 이어진다 |
 | 핫픽스 | `/hotfix <무엇을 왜>` | hotfix/<slug>에서 한 번에, 계획 파일 없음: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과나 Risk path면 멈추고 /plan을 가리킨다; docs/METRICS.md에 `hotfix:` 한 줄 |
@@ -59,7 +60,7 @@
 - 아침: `/backlog`로 오늘 할 항목 확정 → `/plan` 승인 → `/run` (병렬이면 아래 참고)
 - 낮: lead의 AskUserQuestion에만 답한다. 그 외는 자율.
 - 저녁: `/run`이 ship까지 끝내면 머지 정책대로. 주 1회 `/release`, 실패가 반복되면 `/retro`.
-- 사람의 네 가지 일: 기획서 브레인스토밍과 승인 / kickoff 질문과 에스컬레이션 답하기 / PR 머지(정책에 따라) / 회고 승인. 계획은 critic이 승인하고 사양서(docs/specs/)는 팀 것이다.
+- 사람의 세 가지 일: 기획서 브레인스토밍과 승인 / 제품을 보고 원하는 것을 말하기 / 에스컬레이션 답하고 `risk:high` PR 머지. 계획은 critic이 승인하고, `risk:low` 작업은 lead가 머지하고, 사양서(docs/specs/)는 팀 것이다.
 
 ## 작업 방식 — 순차가 기본, 병렬은 선택
 기본(/build)은 한 세션에서 계획 하나를 메인 체크아웃에서 단계별로 순차 구현한다. 기능을 여러 개 의뢰하면 lead는 /plan 을 여러 번 만들고 하나씩 /build 한다. worktree도 머지도 없고, 충돌도 구조적으로 없다. 개인 프로젝트 대부분은 이걸로 충분하다.
@@ -113,6 +114,6 @@
 - `memory: project`로 역할별 장기 기억이 생긴다. opencode에는 없는 기능이라 회사의 "경험 축적"에 해당한다.
 
 ## 주의
-- 워크플로우 스킬은 `disable-model-invocation: true`라 Claude가 임의로 호출하지 못한다. 예외는 다섯 개 — `build`·`review`·`ship`(`/run` 체인), `hire`(`/kickoff`·`/assess`의 마무리 단계), `roster`(읽기 전용). 모델 호출을 허용하고 프롬프트로 "CEO 호출 또는 해당 체인 안에서만"으로 묶는다. 나머지는 lead 가 "`/명령` 을 실행하세요"라고 문장으로 제안만 한다. 지식 스킬은 `user-invocable: false`라 메뉴에 안 보이고 에이전트가 필요할 때 로드한다.
+- CEO만 부르는 커맨드 스킬은 없다: CEO의 말이 요구하면(`instruction` 스킬의 분류) 또는 가동 루프(`deliver`)가 요구하면 lead가 절차로 실행하고, CEO가 직접 쳐도 된다. 지식 스킬은 `user-invocable: false`라 메뉴에 안 보이고 에이전트가 필요할 때 로드한다.
 - Pro/Max 기본 권한 모드(auto)에서는 subagent가 부모의 모드를 그대로 따른다. 팀의 안전장치는 프롬프트가 아니라 도구 목록·deny 규칙·훅이다. 허용된 도구 호출마다 멈추지 않는 모드로 세션을 연다(`claude --permission-mode acceptEdits`, 또는 도구 프롬프트를 한 번씩 수락). 아니면 implementer의 편집과 테스트 실행마다 당신을 기다린다.
 - 훅은 Node로 작성되어 Windows에서도 그대로 동작한다. 정규식은 초안이니 스택에 맞게 다듬을 것.

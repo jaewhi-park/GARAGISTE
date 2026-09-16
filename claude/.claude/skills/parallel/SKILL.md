@@ -2,7 +2,6 @@
 name: parallel
 description: Run several approved, independent plans concurrently — one team-builder per plan in its own isolated worktree. Integrate afterwards with /integrate
 argument-hint: "[plan file paths, space-separated]"
-disable-model-invocation: true
 ---
 Implement plans in parallel: $ARGUMENTS
 
