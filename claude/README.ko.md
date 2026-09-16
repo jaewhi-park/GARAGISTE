@@ -40,13 +40,13 @@
 ## 팀 (.claude/agents/)
 | 에이전트 | 역할 | 도구 | 특이사항 |
 |---|---|---|---|
-| team-lead | 테크리드/EM. 메인 세션 에이전트 | Agent(team-*, Explore), Read/Grep/Glob, Bash, Edit/Write, AskUserQuestion | Edit/Write는 docs/STATUS.md만(훅 강제). `settings.agent`로 기본 지정. 커밋 안 함(훅) |
-| team-planner | 아키텍트. 문서·계획·사양서·ADR | Read/Grep/Glob, Edit/Write, Bash, Web* | `memory: project` — 아키텍처 지식 축적 |
+| team-lead | 테크리드/EM. 메인 세션 에이전트 | Agent(team-*, Explore), Read/Grep/Glob, Bash, Edit/Write, AskUserQuestion | Edit/Write는 docs/STATUS.md만. 셸은 읽기 전용 + git 브랜치/머지/동기화 명령, 문서 경로만의 `git add`/`commit`(docs/, CLAUDE.md, .claude/, .gitignore, CHANGELOG), 브랜치 push, gh PR 명령, 스크립트. 코드 실행·셸 쓰기·코드 경로 커밋은 못 함(훅 강제). `settings.agent`로 기본 지정 |
+| team-planner | 아키텍트. 문서·계획·사양서·ADR | Read/Grep/Glob, Edit/Write, Bash, Web* | `memory: project` — 아키텍처 지식 축적. 셸은 읽기 전용(훅) |
 | team-critic | 설계 리뷰(pre-mortem) | Read/Grep/Glob | 읽기 전용 |
 | team-implementer | 시니어 엔지니어 (메인 체크아웃, 순차) | Read/Grep/Glob, Edit/Write, Bash | 커밋함, /ship 에서 브랜치 push·PR 생성 |
-| team-builder | 시니어 엔지니어 (병렬용) | 동일 | `isolation: worktree` — 계획 하나를 자기 worktree에서 통째로 구현, 자체 검증 |
-| team-reviewer | 렌즈별 코드 리뷰 | Read/Grep/Glob, Bash | `memory: project` — 반복 결함 패턴 축적 |
-| team-verifier | CI | Bash, Read/Grep/Glob | 훅의 빌드/테스트/lint 도구 allow-list와 읽기 전용 git만 실행; `npm run` 스크립트가 무엇을 실행하는지는 검사하지 않는다 — CLAUDE.md의 Commands 규칙은 프롬프트 수준 |
+| team-builder | 시니어 엔지니어 (병렬용) | 동일 | `isolation: worktree` — 계획 하나를 자기 worktree에서 통째로 구현, 자체 검증. 자기 브랜치 push 가능, merge·rebase·pull 불가(훅) |
+| team-reviewer | 렌즈별 코드 리뷰 | Read/Grep/Glob, Bash | `memory: project` — 반복 결함 패턴 축적. 셸은 읽기 전용 + 테스트 실행용 툴체인(훅) |
+| team-verifier | CI | Bash, Read/Grep/Glob | 훅 allow-list: 빌드/테스트/lint 도구, 읽기 전용 git, 그리고 CLAUDE.md "## Commands"에 적힌 모든 명령(훅이 파일을 읽는다); `npm run` 스크립트가 무엇을 실행하는지는 검사하지 않는다 |
 | Explore | 코드베이스 조사 (내장) | 읽기 전용 | |
 
 ## 에이전트 간 계약
@@ -106,13 +106,13 @@
 에이전트별 장기 기억은 `.claude/agent-memory/<name>/`에 쌓인다(planner·reviewer). auto memory가 꺼져 있으면 동작하지 않는다.
 
 ## opencode 버전과의 차이
-- 경로별 edit 권한은 훅이 강제하는 곳에만 있다: team-lead는 docs/STATUS.md만 수정할 수 있고(`guardrails.mjs`), 같은 훅이 `git add`/`git commit`도 막는다. planner의 "docs만 수정"은 프롬프트 규칙이고 리뷰어가 잡는다. 하드 차단이 필요하면 같은 훅에 경로 규칙을 추가한다.
+- 역할 규칙은 `guardrails.mjs`가 훅의 `agent_type`으로 강제한다. opencode의 permission 블록을 따르되 도구 이름 allow-list가 아니라 "상태를 바꾸는 것"의 deny-list라서 새 스택에 새 패턴이 필요 없다: team-lead는 docs/STATUS.md만 수정하고, 셸은 읽기 전용 + git 브랜치/머지/동기화, 문서 경로만의 `git add`/`commit`(코드 경로가 섞이면 훅이 거부), 브랜치 push, gh PR 명령 — 코드 실행과 셸 쓰기는 없다. team-planner(와 Explore)는 docs/**와 CLAUDE.md만 수정하고 셸은 읽기 전용(git status/diff/log/show, 목록, 버전·의존성 확인). team-reviewer는 읽기 전용 + 툴체인이라 주장을 확인하려고 테스트를 돌릴 수 있다. team-builder는 자기 브랜치를 push할 수 있지만 merge·rebase·pull·worktree는 못 한다. team-verifier는 CI이므로 allow-list다: 툴체인 + CLAUDE.md "## Commands"에 적힌 명령. team-implementer와 team-critic은 도구 목록과 공통 규칙으로만 묶이고, /recruit로 만든 역할은 공통 규칙만 받는다 — 하드 경계가 필요하면 훅에 `agent_type` 분기를 추가한다.
 - 비밀 파일 차단(`.env*`, `.envrc`, 키, 인증서, `credentials`, `.netrc`, `.npmrc`, `.git-credentials`)은 훅과 deny 규칙을 통해 Read/Edit/Write/Grep에 적용되고, 훅은 그런 파일을 이름으로 부르면서 출력·평가하는 셸 명령도 막는다 — `sudo`, `xargs`, `find -exec`, `$( )`, 파이프라인, `git show <rev>:.env`, `node -e`·`python -c` 한 줄까지. 최선의 방어일 뿐이다: 파일을 이름 없이 여는 프로그램(스크립트, `env`)은 잡지 못하니 비밀은 저장소 밖에 둔다.
-- `permissions.deny`는 세션 전체에 걸린다. force push와 main 직접 push를 deny와 훅으로 막고, 기능 브랜치 push는 허용한다.
+- `permissions.deny`는 세션 전체에 걸린다. force push, main 직접 push, 배포(`npm publish`, `cargo publish`, `docker push` …)를 deny와 훅으로 막고, 기능 브랜치 push는 허용한다. `permissions.allow`는 스택의 빌드/테스트 도구와 팀이 쓰는 git/gh 명령을 미리 승인해 두어, 기본 권한 모드에서 implementer가 테스트를 돌릴 때마다 묻지 않게 한다. 목록 밖의 명령은 여전히 묻는다.
 - 메인 세션 에이전트(`--agent`/`settings.agent`)의 `Agent(...)` 목록은 lead가 부를 수 있는 subagent 허용 목록이다. subagent 정의 안에서는 괄호 목록이 무시된다.
 - `memory: project`로 역할별 장기 기억이 생긴다. opencode에는 없는 기능이라 회사의 "경험 축적"에 해당한다.
 
 ## 주의
 - 워크플로우 스킬은 `disable-model-invocation: true`라 Claude가 임의로 호출하지 못한다. 예외는 다섯 개 — `build`·`review`·`ship`(`/run` 체인), `hire`(`/kickoff`·`/assess`의 마무리 단계), `roster`(읽기 전용). 모델 호출을 허용하고 프롬프트로 "CEO 호출 또는 해당 체인 안에서만"으로 묶는다. 나머지는 lead 가 "`/명령` 을 실행하세요"라고 문장으로 제안만 한다. 지식 스킬은 `user-invocable: false`라 메뉴에 안 보이고 에이전트가 필요할 때 로드한다.
-- Pro/Max 기본 권한 모드(auto)에서는 subagent가 부모의 모드를 그대로 따른다. 팀의 안전장치는 도구 목록·deny 규칙·훅이다.
+- Pro/Max 기본 권한 모드(auto)에서는 subagent가 부모의 모드를 그대로 따른다. 팀의 안전장치는 프롬프트가 아니라 도구 목록·deny 규칙·훅이다. 허용된 도구 호출마다 멈추지 않는 모드로 세션을 연다(`claude --permission-mode acceptEdits`, 또는 도구 프롬프트를 한 번씩 수락). 아니면 implementer의 편집과 테스트 실행마다 당신을 기다린다.
 - 훅은 Node로 작성되어 Windows에서도 그대로 동작한다. 정규식은 초안이니 스택에 맞게 다듬을 것.

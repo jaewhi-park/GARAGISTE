@@ -3,7 +3,7 @@ import { execSync } from "node:child_process"
 
 // Enforce "cannot" at the tool level instead of "please don't" in the prompt. Tune the patterns to your stack.
 // Role scoping (lead, planner, reviewer, verifier) lives in each agent's permission block; this plugin holds the rules that
-// hold for every role: destructive commands, secret files, gh api mutations and the push policy.
+// hold for every role: destructive commands, secret files, publishing, gh api mutations and the push policy.
 const CHAIN_SEP = /;|&&|\|\||\n/ // independent commands
 const unq = (t: string) => t.replace(/^["'`]+|["'`]+$/g, "") // strip surrounding quotes
 const words = (seg: string) => seg.trim().split(/\s+/).map(unq).filter(Boolean)
@@ -20,6 +20,7 @@ const BLOCKED_COMMANDS: RegExp[] = [
   /\bgit\s+stash\s+(drop|clear)\b/,
   /\b(DROP|TRUNCATE)\s+(TABLE|DATABASE|SCHEMA)\b/i,
   /\b(kubectl|helm|terraform|aws|gcloud|az)\s+\S*\s*(apply|delete|destroy|rm)\b/i,
+  /\b(npm|pnpm|yarn|cargo|gem)\s+publish\b/i, /\bgem\s+push\b/, /\btwine\s+upload\b/, /\bdocker\s+push\b/, // publishing is the CEO's
 ]
 // rm / Remove-Item / rd: recursive delete whose target is a root-like path (/, ~, .., $HOME, $PWD, a drive root, ., ./, ./*, :/, .git or *).
 const ROOTISH = /^(\/|~|\.\.(\/|\\|$)|\.(\/\*?|\\\*?)?$|:\/$|\.git$|\*|\$HOME\b|\$\{HOME\}|\$PWD\b|\$\{PWD\}|\$env:USERPROFILE\b|\$env:HOMEPATH\b|[A-Za-z]:[\\/]?$|\\\\)/

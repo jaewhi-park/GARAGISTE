@@ -1,16 +1,38 @@
 // PreToolUse hook: blocks destructive commands, secret-file access and out-of-role actions at the tool level.
 // exit 2 = block (the stderr message is shown to Claude). Tune the patterns to your stack.
-// Roles are read from `agent_type` (the hook input names the running agent): team-lead, team-planner, team-reviewer,
-// team-builder and team-verifier get role rules mirroring the opencode flavor's permission blocks; other agents
-// (team-implementer, team-critic, Explore, roles created by /recruit) get the generic rules only.
-import { readFileSync } from "node:fs";
+// The rules that hold for every role come first (destructive commands, secret files, publishing, gh api mutations, the
+// push policy). Then each role's boundary, read from `agent_type` (the hook input names the running agent). Role rules
+// are deny-lists of what changes state, not allow-lists of tool names, so a new stack needs no new pattern:
+//   team-lead      read-only commands, git branch/merge/sync commands, docs-only add/rm/commit, pushes, gh PR commands, the scripts;
+//                  never runs code and never writes a file through the shell
+//   team-planner   read-only commands (git status/diff/log/show, ls, cat, version and dependency listings); never runs code
+//   Explore        the same read-only boundary
+//   team-reviewer  read-only commands plus the toolchain (it may run the tests to check a claim); never edits or commits
+//   team-verifier  the toolchain plus every command listed under "## Commands" in CLAUDE.md (an allow-list: it is CI)
+//   team-builder   commits in its worktree and may push its branch; never merges, rebases, pulls or touches worktrees
+// Other agents (team-implementer, team-critic, roles created by /recruit) get the generic rules only.
+import { existsSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
+import { dirname, join, resolve } from "node:path";
 
 const CHAIN_SEP = /;|&&|\|\||\n/;                                   // independent commands
 const unq = (t) => t.replace(/^["'`]+|["'`]+$/g, "");                  // strip surrounding quotes
 const words = (seg) => seg.trim().split(/\s+/).map(unq).filter(Boolean);
 const stripEnv = (s) => s.trim().replace(/^(\w+=\S*\s+)+/, "");     // VAR=value prefixes
 const pipeline = (chain) => chain.split("|").map((s) => stripEnv(s)).filter(Boolean);
+// Shell-like tokens that keep a quoted string whole (a commit message is one token, not pathspecs).
+function tokens(seg) {
+  const out = []; let cur = "", q = null, has = false;
+  for (const ch of seg) {
+    if (q) { if (ch === q) q = null; else cur += ch; continue; }
+    if (ch === '"' || ch === "'") { q = ch; has = true; continue; }
+    if (/\s/.test(ch)) { if (cur || has) out.push(cur); cur = ""; has = false; continue; }
+    cur += ch;
+  }
+  if (cur || has) out.push(cur);
+  return out;
+}
+const base = (t) => t.replace(/^.*[\\/](?=[^\\/]+$)/, "");            // /usr/bin/git → git
 
 // ---------- destructive patterns (whole command line) ----------
 const BLOCKED_COMMANDS = [
@@ -22,6 +44,7 @@ const BLOCKED_COMMANDS = [
   /\bgit\s+stash\s+(drop|clear)\b/,
   /\b(DROP|TRUNCATE)\s+(TABLE|DATABASE|SCHEMA)\b/i,
   /\b(kubectl|helm|terraform|aws|gcloud|az)\s+\S*\s*(apply|delete|destroy|rm)\b/i,
+  /\b(npm|pnpm|yarn|cargo|gem)\s+publish\b/i, /\bgem\s+push\b/, /\btwine\s+upload\b/, /\bdocker\s+push\b/, // publishing is the CEO's
 ];
 // rm / Remove-Item / rd: recursive delete whose target is a root-like path (/, ~, .., $HOME, $PWD, a drive root, ., ./, ./*, :/, .git or *).
 const ROOTISH = /^(\/|~|\.\.(\/|\\|$)|\.(\/\*?|\\\*?)?$|:\/$|\.git$|\*|\$HOME\b|\$\{HOME\}|\$PWD\b|\$\{PWD\}|\$env:USERPROFILE\b|\$env:HOMEPATH\b|[A-Za-z]:[\\/]?$|\\\\)/;
@@ -60,37 +83,150 @@ function readsSecret(cmd) {
   return false;
 }
 
-// ---------- role rules ----------
-// team-verifier is CI: it may only run build/test/lint tools (plus read-only git), never anything else. Deny-by-default,
-// mirroring the opencode flavor's team-verifier permission block. This is a tool-name allow-list: what an `npm run` script
-// executes is not inspected — the CLAUDE.md Commands rule in the agent prompt is what limits that.
-const VERIFIER_ALLOWED_COMMANDS = [
-  /^make\s/, /^npm\s/, /^pnpm\s/, /^yarn\s/, /^bun\s/, /^npx\s/,
-  /^pytest\b/, /^uv\s+run\b/, /^poetry\s+run\b/,
-  /^python\s+-m\s/, /^python3\s+-m\s/,
-  /^ruff\b/, /^mypy\b/, /^pyright\b/,
-  /^mvn\s/, /^gradle\b/, /^(\.[\\/])?gradlew(\.bat)?\b/,
-  /^go\s/, /^cargo\s/, /^dotnet\s/,
-  /^git\s+(status|diff|log)\b/,                                // gen-commit checks (`git status --porcelain`)
-  /^(head|tail|grep|wc)\b/,                                    // output trimming only
-];
-// team-lead runs no code and writes no files through the shell: git branch/merge/sync commands, gh reads, the four
-// scripts and read-only helpers only — the opencode lead's allow-list. Commits, pushes, PR merges and shell writes are out.
-const LEAD_ALLOWED_COMMANDS = [
-  /^git\s+(status|diff|log|show|branch|fetch|merge|rebase|revert|worktree|switch|tag|remote|rev-parse|ls-files)\b/,
-  /^gh\s+(repo\s+view|pr\s+(view|list)|api)\b/,               // gh api: reads only (mutations blocked below for everyone)
-  /^node\s+"?[^"\s]*\.claude[\\/]scripts[\\/](apply-models|set-language|new-agent|set-profile)\.mjs\b/,
-  /^(ls|dir|pwd|cat|head|tail|wc|grep|rg|find|echo|printf|type|date|which|where|true)\b/,
-];
-// team-planner writes documents, team-reviewer judges: read-only git in the shell (their edits are scoped separately).
-const DOC_ROLE_ALLOWED_COMMANDS = [/^git\s+(status|diff|log|show)\b/];
-// team-builder implements one plan in its worktree: it commits there but never pushes, merges, rebases or touches worktrees.
-const BUILDER_BLOCKED = /\bgit\b(\s+-[cC]\s*\S+|\s+--\S+)*\s+(push|merge|rebase|worktree|pull)\b/;
-function everySegment(cmd, allowed) {
-  return cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every((s) => !s || /^cd\s+\S+$/.test(s) || allowed.some((re) => re.test(s))));
-}
 const GH_API_MUTATION = /\bgh\s+api\b[^|;&]*(\s(-X|--method)\s+(?!GET\b)\S+|\s(-f|-F|--field|--raw-field|--input)\b)/;
 const SHELL_WRITE = /(^|[^<>])>{1,2}(?!&|\s*(\/dev\/null|NUL)\b)|\btee\b|\b(sed|perl)\s+-[a-zA-Z]*i\b/; // redirection (except to /dev/null), tee, in-place edits
+
+// ---------- read-only shell: what a non-executing role may run ----------
+// Programs that change files or run other programs on the caller's behalf.
+const MUTATING_PROGRAMS = /^(sudo|doas|rm|rmdir|rd|del|erase|mv|move|cp|copy|mkdir|md|touch|chmod|chown|chgrp|ln|mklink|dd|truncate|shred|install|patch|tee|xargs|Remove-Item|ri|Move-Item|mi|Copy-Item|cpi|New-Item|ni|Set-Content|sc|Add-Content|ac|Out-File|Rename-Item|rni|Clear-Content|clc)$/i;
+// Programs that run code, builds or tests. A role without `runCode` may use them only for the read-only invocations below.
+const CODE_RUNNERS = /^(node|deno|bun|python|python3|py|ruby|perl|php|java|dotnet|go|cargo|rustc|mvn|gradle|gradlew|gradlew\.bat|make|npm|pnpm|yarn|npx|pip|pip3|pytest|uv|poetry|ruff|mypy|pyright|tsc|eslint|prettier|vitest|jest|mocha|playwright|docker|docker-compose|kubectl|helm|terraform|sh|bash|zsh|pwsh|powershell|cmd)$/i;
+// Version and dependency listings — the opencode flavor's explore allow-list.
+const RUNNER_READ_ONLY = [
+  /^\S+\s+(--version|-v|-V|version|--help|-h)$/,
+  /^(npm|pnpm|yarn|bun)\s+(ls|list|view|show|info|why|outdated|root|prefix|config\s+get|pkg\s+get)\b/i, /^npm\s+audit(?!\s+fix)\b/i,
+  /^pip3?\s+(list|show|freeze|check)\b/i, /^uv\s+pip\s+(list|show|freeze)\b/i, /^poetry\s+(show|env\s+info)\b/i,
+  /^go\s+(version|list|env)\b/i, /^cargo\s+(tree|metadata)\b/i, /^dotnet\s+(--list-sdks|--list-runtimes|list)\b/i,
+  /^mvn\s+(dependency:tree|help:)/i, /^gradle\s+(dependencies|projects|tasks)\b/i, /^make\s+-n\b/,
+  /^docker\s+(compose\s+config|ps|images|version|info)\b/i,
+];
+const GIT_READ_SUBS = /^(status|diff|log|show|rev-parse|ls-files|ls-tree|ls-remote|cat-file|blame|describe|shortlog|rev-list|name-rev|merge-base|diff-tree|for-each-ref|check-ignore|count-objects|grep|reflog|show-ref|whatchanged|var|version|help)$/;
+function gitSub(w) { let pi = 1; while (pi < w.length && w[pi].startsWith("-")) pi += /^-[cC]$/.test(w[pi]) ? 2 : 1; return pi; }   // global options: -c k=v, -C dir, --no-pager
+// A git segment that only reads: the listing forms of branch/tag/remote/stash/worktree/config, and the read-only subcommands.
+function gitReadOnly(w, pi) {
+  const sub = w[pi] ?? "", rest = w.slice(pi + 1);
+  const flags = rest.filter((a) => a.startsWith("-")), pos = rest.filter((a) => !a.startsWith("-"));
+  const has = (re) => flags.some((f) => re.test(f));
+  if (GIT_READ_SUBS.test(sub)) return true;
+  switch (sub) {
+    case "branch": return !has(/^(-[a-zA-Z]*[dDmMcCfu][a-zA-Z]*|--delete|--move|--copy|--force|--set-upstream-to(=.*)?|--unset-upstream|--edit-description|--track|--no-track)$/)
+      && (pos.length === 0 || has(/^(-[a-zA-Z]*[rlav][a-zA-Z]*|--list|--all|--remotes|--show-current|--contains|--no-contains|--merged|--no-merged|--points-at|--verbose)$/));
+    case "tag": return !has(/^(-[a-zA-Z]*[adfmsuF][a-zA-Z]*|--delete|--force|--annotate|--sign|--message(=.*)?|--file(=.*)?|--edit)$/)
+      && (pos.length === 0 || has(/^(-[a-zA-Z]*[ln][a-zA-Z]*|--list|--contains|--no-contains|--points-at|--merged|--no-merged|--sort(=.*)?)$/));
+    case "remote": return pos.length === 0 || /^(show|get-url)$/.test(pos[0]);
+    case "stash": return /^(list|show)$/.test(pos[0] ?? "");
+    case "worktree": return pos[0] === "list";
+    case "config": return has(/^(--get|--get-all|--get-regexp|-l|--list|--show-origin|--show-scope)$/) && !has(/^(--unset|--unset-all|--add|--replace-all|--edit|-e|--rename-section|--remove-section)$/) && pos.length <= 1;
+    case "notes": return /^(show|list)$/.test(pos[0] ?? "");
+    default: return false;
+  }
+}
+const GH_READ = /^(repo\s+view|pr\s+(view|list|checks|diff|status)|issue\s+(view|list)|run\s+(view|list)|release\s+(view|list)|api|auth\s+status|search)\b/;
+// One pipeline segment. `runCode`: the role may run builds and tests (reviewer); otherwise only the read-only invocations.
+function readOnlySegment(seg, runCode) {
+  const s = stripEnv(seg).trim();
+  if (!s || /^cd(\s|$)/.test(s)) return true;
+  const w = words(s), name = base(w[0] ?? "");
+  if (MUTATING_PROGRAMS.test(name)) return false;
+  if (name === "git") return gitReadOnly(w, gitSub(w));
+  if (name === "gh") return GH_READ.test(w.slice(1).join(" "));
+  if (CODE_RUNNERS.test(name)) return runCode || RUNNER_READ_ONLY.some((re) => re.test([name, ...w.slice(1)].join(" ")));
+  return true;   // ls, cat, grep, find, wc, jq, … — anything that neither writes nor runs code
+}
+const readOnly = (cmd, runCode) => !SHELL_WRITE.test(cmd) && cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every((s) => readOnlySegment(s, runCode)));
+
+// ---------- team-lead ----------
+// Branch/merge/sync work the skills give the lead; -D, force switches, force pushes and pushes to main are blocked above and below.
+const LEAD_GIT = /^(fetch|merge|rebase|revert|worktree|switch|tag|branch|remote|push)$/;
+const DOCS_ONLY = /^(\.[\\/])?(docs[\\/]|CLAUDE\.md$|\.claude[\\/]|\.gitignore$|CHANGELOG[^\\/]*$)/;
+const GH_LEAD = /^(repo\s+view|pr\s+(view|list|checks|diff|status|create|merge|close|ready|edit|comment)|issue\s+(view|list)|run\s+(view|list)|api|auth\s+status|search)\b/;
+const LEAD_SCRIPT = /\.claude[\\/]scripts[\\/](apply-models|set-language|new-agent|set-profile)\.mjs$/;
+// A git segment the lead may run: read-only, LEAD_GIT, or add/rm/commit touching docs-only paths (docs/, CLAUDE.md, .claude/, .gitignore, CHANGELOG*).
+function leadGit(seg) {
+  const t = tokens(stripEnv(seg)), pi = gitSub(t), sub = t[pi] ?? "", rest = t.slice(pi + 1);
+  if (gitReadOnly(t, pi) || LEAD_GIT.test(sub)) return true;
+  if (sub === "add" || sub === "rm") {
+    const dd = rest.indexOf("--");
+    const flags = rest.filter((a, i) => a.startsWith("-") && a !== "--" && (dd < 0 || i < dd));
+    const pos = rest.filter((a, i) => a !== "--" && (!a.startsWith("-") || (dd >= 0 && i > dd)));
+    if (sub === "add" && flags.some((f) => /^(-[a-zA-Z]*[Aupi][a-zA-Z]*|--all|--update|--patch|--interactive)$/.test(f))) return false;
+    return pos.length > 0 && pos.every((p) => DOCS_ONLY.test(p));
+  }
+  if (sub === "commit") {
+    const specs = []; let after = false;
+    for (let i = 0; i < rest.length; i++) {
+      const a = rest[i];
+      if (after) { specs.push(a); continue; }
+      if (a === "--") { after = true; continue; }
+      if (/^(-m|-F|-t|-C|-c|--author|--date|--cleanup|--trailer|--fixup|--squash|--reuse-message|--reedit-message|--file|--message|--template)$/.test(a)) { i++; continue; }
+      if (/^(-[mFtCc].|--(message|file|template|author|date|cleanup|trailer|fixup|squash|reuse-message|reedit-message)=)/.test(a)) continue;
+      if (/^(-[a-zA-Z]*[aipno][a-zA-Z]*|--all|--amend|--include|--interactive|--patch|--no-verify|--only)$/.test(a)) return false;   // -a/--all and --amend commit code; --no-verify skips hooks
+      if (a.startsWith("-")) continue;
+      specs.push(a);
+    }
+    return specs.every((p) => DOCS_ONLY.test(p));
+  }
+  return false;
+}
+function leadSegment(seg) {
+  const s = stripEnv(seg).trim();
+  if (!s || /^cd(\s|$)/.test(s)) return true;
+  const w = words(s), name = base(w[0] ?? "");
+  if (name === "git") return leadGit(s);
+  if (name === "gh") return GH_LEAD.test(w.slice(1).join(" "));
+  if (/^node$/i.test(name) && LEAD_SCRIPT.test(w[1] ?? "")) return true;
+  return readOnlySegment(s, false);
+}
+const leadOk = (cmd) => !SHELL_WRITE.test(cmd) && cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every(leadSegment));
+
+// ---------- team-verifier ----------
+// It is CI: an allow-list of build/test/lint tools (plus read-only git and output trimming), extended by whatever CLAUDE.md's
+// "## Commands" section lists — the rules file is the contract, so a stack-specific runner needs no new pattern here.
+// What an `npm run` script executes is not inspected.
+const VERIFIER_TOOLCHAIN = [
+  /^make\s/, /^npm\s/, /^pnpm\s/, /^yarn\s/, /^bun\s/, /^npx\s/, /^deno\s/,
+  /^pytest\b/, /^uv\s+run\b/, /^poetry\s+run\b/, /^python\s+-m\s/, /^python3\s+-m\s/, /^ruff\b/, /^mypy\b/, /^pyright\b/,
+  /^mvn\s/, /^gradle\b/, /^(\.[\\/])?gradlew(\.bat)?\b/, /^go\s/, /^cargo\s/, /^dotnet\s/,
+  /^(jest|vitest|mocha|tsc|eslint|prettier|playwright|composer|rspec|rake|flutter|dart|swift|xcodebuild|nx|turbo|just)\b/, /^php\s+(artisan|vendor)\b/, /^bundle\s+exec\b/,
+  /^git\s+(status|diff|log)\b/,                                // gen-commit checks (`git status --porcelain`)
+  /^(head|tail|grep|wc|cat|ls)\b/,                             // output trimming and looking at results only
+];
+function rulesFileCommands(cwd) {
+  let dir = resolve(cwd || process.cwd());
+  for (let i = 0; i < 8; i++) {
+    const p = join(dir, "CLAUDE.md");
+    if (existsSync(p)) { try { return parseCommands(readFileSync(p, "utf8")); } catch { return []; } }
+    const up = dirname(dir); if (up === dir) break; dir = up;
+  }
+  return [];
+}
+// "## Commands" entries: `- label: cmd` bullets (the text after the first ": "; a bare `- cmd` too) and fenced lines; chains split.
+function parseCommands(text) {
+  const out = []; let inSection = false, fenced = false;
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (/^(```|~~~)/.test(line)) { fenced = !fenced; continue; }
+    if (!fenced && /^##\s/.test(line)) { inSection = /^##\s+Commands\b/i.test(line); continue; }
+    if (!inSection || !line) continue;
+    let body = line;
+    if (!fenced) {
+      const m = /^[-*]\s+(.*)$/.exec(body); if (!m) continue;
+      body = m[1]; const c = body.indexOf(": ");
+      if (c >= 0) body = body.slice(c + 2); else if (/:$/.test(body)) continue;
+    }
+    body = body.replace(/\s+—\s+unverified\s*$/, "").replace(/`/g, "").trim();
+    for (const chain of body.split(CHAIN_SEP)) for (const seg of pipeline(chain)) { const s = seg.trim(); if (s && !/^cd(\s|$)/.test(s)) out.push(s); }
+  }
+  return out;
+}
+const verifierOk = (cmd, listed) => cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every((seg) => {
+  const s = stripEnv(seg).trim();
+  return !s || /^cd\s+\S+$/.test(s) || VERIFIER_TOOLCHAIN.some((re) => re.test(s)) || listed.some((l) => s === l || s.startsWith(l + " "));
+}));
+
+// ---------- team-builder ----------
+// It implements one plan in its worktree: commits there, may push its own branch (main and force are blocked below), never merges, rebases, pulls or touches worktrees.
+const BUILDER_BLOCKED = /\bgit\b(\s+-[cC]\s*\S+|\s+--\S+)*\s+(merge|rebase|worktree|pull)\b/;
 
 function deny(msg) { process.stderr.write(`[guardrail] ${msg}\n`); process.exit(2); }
 
@@ -99,20 +235,24 @@ try { input = JSON.parse(readFileSync(0, "utf8")); } catch { deny("blocked: the 
 const tool = input.tool_name ?? "";
 const ti = input.tool_input ?? {};
 const role = input.agent_type ?? "";
+const cwd = input.cwd ?? process.cwd();
 
 if (tool === "Bash" || tool === "PowerShell") {
   const cmd = String(ti.command ?? "");
-  if (role === "team-verifier" && !everySegment(cmd, VERIFIER_ALLOWED_COMMANDS)) {
-    deny(`blocked command (team-verifier only runs build/test/lint tools from CLAUDE.md's Commands section): ${cmd}`);
+  if (role === "team-verifier" && !verifierOk(cmd, rulesFileCommands(cwd))) {
+    deny(`blocked command (team-verifier runs build/test/lint tools and the commands listed under "## Commands" in CLAUDE.md, nothing else): ${cmd}`);
   }
-  if (role === "team-lead" && (!everySegment(cmd, LEAD_ALLOWED_COMMANDS) || SHELL_WRITE.test(cmd))) {
-    deny(`blocked command (team-lead runs only git branch/merge/sync commands, gh reads, the scripts and read-only helpers; code goes to team-implementer, docs to team-planner, checks to team-verifier): ${cmd}`);
+  if (role === "team-lead" && !leadOk(cmd)) {
+    deny(`blocked command (team-lead runs read-only commands, git branch/merge/sync commands, docs-only commits, pushes and gh PR commands; code goes to team-implementer, checks to team-verifier; no shell writes): ${cmd}`);
   }
-  if ((role === "team-planner" || role === "team-reviewer") && !everySegment(cmd, DOC_ROLE_ALLOWED_COMMANDS)) {
-    deny(`blocked command (${role} uses the shell only for git status/diff/log/show): ${cmd}`);
+  if ((role === "team-planner" || /^explore$/i.test(role)) && !readOnly(cmd, false)) {
+    deny(`blocked command (${role} uses the shell read-only: git status/diff/log/show, listings, version checks; it never runs code or writes files): ${cmd}`);
+  }
+  if (role === "team-reviewer" && !readOnly(cmd, true)) {
+    deny(`blocked command (team-reviewer uses the shell read-only, plus the toolchain to run tests; it never edits, commits or writes files): ${cmd}`);
   }
   if (role === "team-builder" && BUILDER_BLOCKED.test(cmd)) {
-    deny(`blocked command (team-builder never pushes, merges, rebases or touches worktrees -- /integrate does that): ${cmd}`);
+    deny(`blocked command (team-builder never merges, rebases, pulls or touches worktrees -- /integrate does that): ${cmd}`);
   }
   if (BLOCKED_COMMANDS.some((re) => re.test(cmd)) || recursiveDeleteOfRoot(cmd)) {
     deny(`blocked command: ${cmd}`);
@@ -123,15 +263,8 @@ if (tool === "Bash" || tool === "PowerShell") {
   if (GH_API_MUTATION.test(cmd)) {
     deny(`blocked: gh api may only read (merges, branch protection and refs are changed by the CEO on GitHub): ${cmd}`);
   }
-  // team-lead never commits: milestone commits (brief, plan, spec, kickoff/assess docs, hire output) and step commits alike go to
-  // team-implementer, mirroring the opencode flavor's team-lead, which has no git commit permission. Global options before the
-  // subcommand (`git -c k=v commit`, `git -C <dir> add`) are tolerated by the pattern; `rm` covers `git rm --cached` (staging too).
-  if (role === "team-lead" && /\bgit\b(\s+-[cC]\s*\S+|\s+--\S+)*\s+(add|rm|commit|stash|cherry-pick|am|apply|reset)\b/.test(cmd)) {
-    deny(`blocked (team-lead never commits or rewrites history -- milestone and step commits go to team-implementer): ${cmd}`);
-  }
-  // Push policy: feature-branch pushes allowed; force push, mirror/all/delete pushes and any push to main/master blocked
-  // (merge via PR only). team-lead never pushes anything at all -- ship/integrate/release delegate pushes to team-implementer
-  // or present the command for the CEO to run themselves. Each `git push` segment is tokenised with quotes stripped.
+  // Push policy, every role: feature-branch pushes allowed; force push, mirror/all/delete pushes and any push to main/master blocked
+  // (main changes only through a PR or the lead's approved local merge). Each `git push` segment is tokenised with quotes stripped.
   for (const chain of cmd.split(CHAIN_SEP)) for (const seg of pipeline(chain)) {
     const w = words(seg);
     const gi = w.indexOf("git");
@@ -139,7 +272,6 @@ if (tool === "Bash" || tool === "PowerShell") {
     let pi = gi + 1;
     while (pi < w.length && w[pi].startsWith("-")) pi += /^-[cC]$/.test(w[pi]) ? 2 : 1;   // global options: -c k=v, -C dir, --no-pager
     if (w[pi] !== "push") continue;
-    if (role === "team-lead") deny(`blocked push (team-lead never pushes -- delegate to team-implementer, or present the command for the CEO to run): ${cmd}`);
     const args = w.slice(pi + 1);
     const flags = args.filter((a) => a.startsWith("-"));
     const pos = args.filter((a) => !a.startsWith("-"));
@@ -149,7 +281,7 @@ if (tool === "Bash" || tool === "PowerShell") {
     const toMain = refspecs.some((r) => /^(main|master)$/i.test((r.includes(":") ? r.split(":").pop() : r).replace(/^refs\/heads\//, "")));
     let onMain = false;
     if (refspecs.length === 0 || refspecs.some((r) => /^HEAD$/.test(r))) {
-      try { onMain = /^(main|master)$/.test(execSync("git rev-parse --abbrev-ref HEAD", { cwd: input.cwd ?? process.cwd(), stdio: ["ignore", "pipe", "ignore"] }).toString().trim()); } catch {}
+      try { onMain = /^(main|master)$/.test(execSync("git rev-parse --abbrev-ref HEAD", { cwd, stdio: ["ignore", "pipe", "ignore"] }).toString().trim()); } catch {}
     }
     if (force || toMain || onMain) deny(`blocked push (force push and direct push to main are not allowed; merge via PR): ${cmd}`);
   }

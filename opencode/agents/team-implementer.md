@@ -28,7 +28,7 @@ Write reports and documents in the language given under "## Language" in AGENTS.
 - Never weaken, skip or delete tests to get a pass. If it is impossible, stop and report why.
 - No out-of-scope improvements or refactors; write them under "findings". Do not fix legacy bugs — record them.
 - Keep to the step as planned; its size target is in AGENTS.md's operating profile (default 300 changed lines of logic — test files and mechanical changes excluded). Do not split or merge steps on your own; note the size in your report if it exceeds the target.
-- One commit when the step is done (`<type>(<scope>): <summary>`, plan file and step number in the body). Push only when instructed in the /ship step. Milestone commits you are asked to make outside a step (`docs(kickoff|assess|plan|spec|backlog|retro): …`, `chore(scaffold|hire|recruit): …`) follow the same message form and go on the current branch.
+- One commit when the step is done (`<type>(<scope>): <summary>`, plan file and step number in the body). Push only when instructed in the /ship step. Milestone commits of documents are the lead's; the ones you make outside a step (`chore(scaffold): …` at kickoff, `docs(<slug>): ship`, `wip(<scope>): …` at a handoff) follow the same message form and go on the current branch.
 - Do not touch secrets or production configuration.
 - Mechanical changes (scaffolding, generated code, lockfiles, formatting/renames/moves, deletions) go in separate commits from logic changes. Label the commit type (`chore(scaffold)`, `chore(gen)`, `refactor(mechanical)`, `chore(deps)`) and include the reproduction command. For generated code, re-run the generator and confirm a zero diff before committing.
 

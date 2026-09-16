@@ -69,6 +69,8 @@
 첫 실행: 레포에서 `claude` → 폴더 신뢰 확인에 동의(훅이 켜진다) → settings의 `agent` 설정으로 team-lead가 메인 에이전트다 → 먼저 `/brainstorm`(기획서), 그다음 신규면 `/kickoff`, 레거시면 `/assess`; 이어하기면 `/resume`.
 확인할 것: SessionStart 직후 "GARAGISTE: no product brief yet…" 안내가 보이는지(훅 동작), `/kickoff` 등이 슬래시 메뉴에 보이고 `charter`·`spec` 같은 지식 스킬은 안 보이는지.
 
+**권한 모드**: 팀의 안전장치는 권한 프롬프트가 아니라 훅과 deny 규칙이다. `settings.json`이 스택의 빌드/테스트 도구와 팀이 쓰는 git/gh 명령을 미리 승인해 두고, 그 밖의 명령은 당신에게 묻는다. implementer의 편집이나 테스트 실행마다 프롬프트가 뜨면 `claude --permission-mode acceptEdits`로 세션을 열거나 도구마다 한 번씩 수락한다. 훅 메시지가 막았다고 말하는 것을 프롬프트로 허용하지는 말 것 — 그게 경계가 작동하는 모습이다.
+
 ### 모델·예산 — `/hire`
 `/kickoff` 또는 `/assess` 가 끝나면 lead 가 `/hire` 를 실행한다. lead 가 사용 가능한 모델을 확인하고 당신에게 예산 티어(unlimited / high=Max 20x / medium=Max 5x / low=Pro), 프로젝트 성격, 병렬 계획을 묻고 역할 × 모델 표를 이유와 함께 내놓는다. 당신은 표를 승인하거나 한두 줄 바꾼다. 원칙: 판단하는 자리(planner·critic·reviewer)에 강한 모델, verifier 는 가장 빠른 모델, implementer 는 예산에 따라. 승인하면 스크립트가 model 줄만 바꾸고 CLAUDE.md 에 "운영 프로필"이 남는다. 새 세션부터 반영. 설치할 때 `-Budget <티어>`를 주면 kickoff/assess 세션부터 verifier가 빠른 모델로 돌고, `/hire`가 그 위에서 다듬는다. 예산이 바뀌면 `/hire` 를 다시 하고, 현재 배정은 `/roster` 로 본다. 설치 스크립트의 `--budget` 은 판단 없이 기계적으로 배분하는 비대화형 경로다.
 

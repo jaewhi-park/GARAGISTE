@@ -9,14 +9,121 @@ permission:
   question: deny
   bash:
     "*": deny
+    "git status*": allow
     "git diff*": allow
     "git log*": allow
     "git show*": allow
+    "git rev-parse*": allow
+    "git ls-files*": allow
+    "git blame*": allow
+    "git describe*": allow
+    "git branch --list*": allow
+    "git branch -a*": allow
+    "git branch -r*": allow
+    "git branch --show-current": allow
+    "git tag -l*": allow
+    "git remote -v": allow
+    "git worktree list*": allow
+    "git config --get *": allow
+    "pwd": allow
+    "ls *": allow
+    "dir *": allow
+    "tree *": allow
+    "find *": allow
+    "cat *": allow
+    "head *": allow
+    "tail *": allow
+    "wc *": allow
+    "stat *": allow
+    "file *": allow
+    "du *": allow
+    "grep *": allow
+    "rg *": allow
+    "sort *": allow
+    "uniq *": allow
+    "cut *": allow
+    "awk *": allow
+    "jq *": allow
+    "which *": allow
+    "where *": allow
+    "echo *": allow
+    "Get-ChildItem *": allow
+    "gci *": allow
+    "Get-Content *": allow
+    "gc *": allow
+    "Select-String *": allow
+    "sls *": allow
+    "Test-Path *": allow
+    "node --version": allow
+    "npm --version": allow
+    "npm ls *": allow
+    "npm view *": allow
+    "pnpm ls *": allow
+    "python --version": allow
+    "python3 --version": allow
+    "pip list *": allow
+    "pip show *": allow
+    "uv pip list *": allow
+    "poetry show *": allow
+    "go version": allow
+    "go list *": allow
+    "cargo --version": allow
+    "cargo tree *": allow
+    "dotnet --version": allow
+    "dotnet list *": allow
+    "java -version": allow
+    "mvn --version": allow
+    "mvn dependency:tree *": allow
+    "gradle --version": allow
+    "gradle dependencies *": allow
+    "docker --version": allow
+    "docker compose config *": allow
+    "make *": allow
+    "npm *": allow
+    "pnpm *": allow
+    "yarn *": allow
+    "bun *": allow
+    "npx *": allow
+    "deno *": allow
+    "pytest*": allow
+    "uv run*": allow
+    "poetry run*": allow
+    "python -m *": allow
+    "python3 -m *": allow
+    "ruff*": allow
+    "mypy*": allow
+    "pyright*": allow
+    "mvn *": allow
+    "gradle*": allow
+    "gradlew*": allow
+    "./gradlew*": allow
+    ".\\gradlew*": allow
+    "go *": allow
+    "cargo *": allow
+    "dotnet *": allow
+    "jest*": allow
+    "vitest*": allow
+    "mocha*": allow
+    "tsc*": allow
+    "eslint*": allow
+    "prettier*": allow
+    "playwright*": allow
+    "composer *": allow
+    "php artisan *": allow
+    "bundle exec *": allow
+    "rspec*": allow
+    "rake*": allow
+    "flutter *": allow
+    "dart *": allow
+    "swift *": allow
+    "xcodebuild *": allow
+    "nx *": allow
+    "turbo *": allow
   task:
     "*": deny
     "explore": allow
 ---
-You are a senior reviewer. If no lens is given, use correctness. Review only the specified diff range.
+You are a senior reviewer. If no lens is given, use correctness. Review only the specified diff range. The shell is read-only for you (git diff/show/log), plus the toolchain to run a test when a claim needs checking; never edit, commit, stash or change branches.
 Write reports and documents in the language given under "## Language" in AGENTS.md (or the CEO's language if absent).
 
 ## Lenses

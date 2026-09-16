@@ -89,7 +89,7 @@ Keep the strongest model where judgment happens (planning, design review, code r
 Change: re-run `./install.sh opencode -Budget <tier> -Strong <id> -Fast <id>`, per-agent with `-Set team-reviewer=<id>`, back to inheritance with `-Budget inherit`. `/roster` shows the current assignment.
 
 ## Customization points
-- `agents/team-verifier.md` — trim the bash allow-list to your stack (it restricts which tools run, not what their scripts execute).
+- `agents/team-verifier.md` — the bash allow-list of build/test/lint tools; add your stack's runner when it is missing (it restricts which tools run, not what their scripts execute). The Claude Code flavor reads the rules file's "## Commands" instead; opencode's permission blocks cannot, so the list is explicit here.
 - `agents/team-lead.md` — escalation criteria (the charter's "Additional escalation items" are added).
 - `plugins/guardrails.ts` — blocked-command patterns.
 - `opencode.json` — `instructions` auto-injects docs/CHARTER*.md and docs/STATUS*.md every session. No model = inherit. `subagent_depth: 2` lets team-planner/implementer/reviewer/critic (subagents) each call the explore subagent themselves — opencode's default of 1 would block that and fail the call silently. docs/STATUS.md is local (git-ignored by the project installer; after a global install add the line yourself) and never committed.
@@ -97,7 +97,7 @@ Change: re-run `./install.sh opencode -Budget <tier> -Strong <id> -Fast <id>`, p
 - `temperature` and `steps` per agent are role-based starting values.
 
 ## Known caveats
-- Edit-permission patterns are matched against the path relative to the repo root (`docs/plans/x.md`, `AGENTS.md`) and `*` is a plain `.*`. Write `docs/*`, never `**/docs/**`: the `**/` form demands a leading slash and matches nothing. On first use, check that the planner can write inside docs/ but not outside.
+- Edit-permission patterns are matched against the path relative to the repo root (`docs/plans/x.md`, `AGENTS.md`) and `*` is a plain `.*`. Write `docs/*`, never `**/docs/**`: the `**/` form demands a leading slash and matches nothing. On first use, check that the planner can write inside docs/ but not outside. The same `.*` applies to the lead's `git add docs/*`: it is a prefix match, so a code path appended after a docs path is not caught here — the lead's prompt carries that rule (the Claude Code hook checks every path).
 - The built-in explore agent has bash and would inherit the global `ask`, so every `ls` or `git rev-parse` during research prompted. `opencode.json` gives it a read-only allowlist under `agent.explore.permission.bash`; anything else is denied without a prompt and explore falls back to grep/glob/read. Extend the list for your stack.
 - Agents may not load skills on their own, so commands name the skills to load explicitly.
 - In headless runs (`opencode run`) permission prompts cannot appear. Team agents use explicit allow/deny; the built-in build/plan agents follow the global default (ask).

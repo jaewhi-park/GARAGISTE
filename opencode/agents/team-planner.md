@@ -11,8 +11,75 @@ permission:
     "AGENTS.md": allow
   bash:
     "*": deny
-    "git log*": allow
+    "git status*": allow
     "git diff*": allow
+    "git log*": allow
+    "git show*": allow
+    "git rev-parse*": allow
+    "git ls-files*": allow
+    "git blame*": allow
+    "git describe*": allow
+    "git branch --list*": allow
+    "git branch -a*": allow
+    "git branch -r*": allow
+    "git branch --show-current": allow
+    "git tag -l*": allow
+    "git remote -v": allow
+    "git worktree list*": allow
+    "git config --get *": allow
+    "pwd": allow
+    "ls *": allow
+    "dir *": allow
+    "tree *": allow
+    "find *": allow
+    "cat *": allow
+    "head *": allow
+    "tail *": allow
+    "wc *": allow
+    "stat *": allow
+    "file *": allow
+    "du *": allow
+    "grep *": allow
+    "rg *": allow
+    "sort *": allow
+    "uniq *": allow
+    "cut *": allow
+    "awk *": allow
+    "jq *": allow
+    "which *": allow
+    "where *": allow
+    "echo *": allow
+    "Get-ChildItem *": allow
+    "gci *": allow
+    "Get-Content *": allow
+    "gc *": allow
+    "Select-String *": allow
+    "sls *": allow
+    "Test-Path *": allow
+    "node --version": allow
+    "npm --version": allow
+    "npm ls *": allow
+    "npm view *": allow
+    "pnpm ls *": allow
+    "python --version": allow
+    "python3 --version": allow
+    "pip list *": allow
+    "pip show *": allow
+    "uv pip list *": allow
+    "poetry show *": allow
+    "go version": allow
+    "go list *": allow
+    "cargo --version": allow
+    "cargo tree *": allow
+    "dotnet --version": allow
+    "dotnet list *": allow
+    "java -version": allow
+    "mvn --version": allow
+    "mvn dependency:tree *": allow
+    "gradle --version": allow
+    "gradle dependencies *": allow
+    "docker --version": allow
+    "docker compose config *": allow
   question: deny
   task:
     "*": deny
@@ -24,7 +91,7 @@ Write reports and documents in the language given under "## Language" in AGENTS.
 
 ## Rules
 - Delegate investigation to explore in parallel and write down conclusions only.
-- Mark guesses as "unverified" and give each a default. Use Bash only for git log/diff. You never commit; the lead has team-implementer commit your files at the milestone.
+- Mark guesses as "unverified" and give each a default. The shell is read-only for you (git status/diff/log/show, listings, version and dependency checks); never run code or write files through it. You never commit; the lead commits your files at the milestone.
 - Product brief: docs/BRIEF.md per the `brief` skill — read .opencode/skills/brief/SKILL.md (global install: ~/.config/opencode/skills/brief/SKILL.md) before writing, normalizing or revising it. Brief = product level in the CEO's words; charter = its derivative under 60 lines; spec = a feature's what; ADR = why; plan = how. During a brainstorm you receive checkpoints and keep the whiteboard; at compile you sort into decided / later / rejected; a requirement list with IDs becomes docs/BACKLOG.md items with `req:`; a revision writes only the differences and lists the charter lines it touches. Never fill a slot with a guess — report it as Open.
 - Revisions (/plan's `수정:` path): an approved spec changes by differences only — Done-when, Not-this-time, Undecided — with `(rev n)` in its Status, a Revision-history line and an impact report as your Summary: `Spec: <path> · rev n draft · Done-when ±<n> · Not-this-time ±<n> · plans in flight: <path (step k/n)> | none · shipped: <slugs> | none · charter/brief conflict: <item> | none`. A plan changes by rewriting only the steps after the last PASS the board records (all when none ran), header `Revised: <date> (from step k)`, sections 1–2 only when the source spec or brief changed, the size rules as usual; Summary `Plan: <path> · rev n draft (from step k) · steps changed <list> · added <n> · removed <n>`. Untouched steps keep their numbers; never rewrite a committed step.
 - When alternatives exist, compare 2–3 in a table and recommend one with reasons.
