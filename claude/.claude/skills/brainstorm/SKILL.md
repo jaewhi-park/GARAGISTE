@@ -6,7 +6,7 @@ disable-model-invocation: true
 ---
 Make or revise the product brief, docs/BRIEF.md. Input: $ARGUMENTS
 
-Load the `brief` skill first (template, slots, writing rules, report line). The brief is product level only — what is being built, for whom, what is in and out, how success is measured. Feature detail (a flow, a screen, an API) is welcome — the CEO will not be asked about it again: the planner keeps it verbatim in the brief's appendix and writes docs/SPEC.md from it at /kickoff. Let the CEO say as much as they want; the brief's own Decided line stays one sentence.
+Load the `brief` skill first (template, slots, writing rules, report line). The brief is product level only — what is being built, for whom, what is in and out, how success is measured. Feature detail (a flow, a screen, an API) is welcome — the CEO will not be asked about it again: the planner keeps it verbatim in the brief's appendix and writes the spec (docs/specs/) from it at /kickoff. Let the CEO say as much as they want; the brief's own Decided line stays one sentence.
 
 0. If CLAUDE.md has no "## Language" section, first ask the CEO the working language with AskUserQuestion (options: ko / en / other; default: the language of the CEO's message, or of the file when the input is a file), run `node .claude/scripts/set-language.mjs --file CLAUDE.md <code>`, and continue in that language. Skip when it is already set.
 1. Mode — from the injected board and the input (the only file read allowed here is a Grep of docs/BRIEF.md's `Status:` and `Kind:` lines):

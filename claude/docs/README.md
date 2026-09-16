@@ -7,7 +7,7 @@ If the code is the product, this directory is the company. Agents forget when a 
 | BRIEF.md | Product — the brief (기획서): direction, decided / later / rejected, non-goals, success metric, sketches | /brainstorm (via the planner) | before kickoff or assess; revised on a pivot |
 | CHARTER.md | Governance — the constitution, derived from BRIEF.md | /kickoff, /assess | at kickoff or assess; when the brief is revised |
 | BACKLOG.md | Product — what and why | /backlog (seeded by /brainstorm `req:` items and /kickoff) | when ideas or requests appear |
-| SPEC.md | Product — what exactly and when done, one section (F<n>) per feature; the team's expansion of the brief | /kickoff (via the planner); /plan adds a section for a new feature | at kickoff; extended when a feature arrives; revised via `/plan F<n> 수정:` (rev n) |
+| specs/F<nn>-*.md, SPEC.md | Product — what exactly and when done: one file (F<n>) per feature and the index; the team's expansion of the brief | /kickoff (via the planner); /plan adds a file for a new feature | at kickoff; extended when a feature arrives; revised via `/plan F<n> 수정:` (rev n) |
 | plans/NNNN-*.md | Engineering — how (sections 1–2 from the spec section) | /plan | every piece of work except a /hotfix (its commit body carries the why); amended via `/plan <plan> 수정:` (rev n, from the step after the last PASS) |
 | adr/NNNN-*.md | Architecture decisions — why this design | planner | every hard-to-reverse decision |
 | DECISIONS.md | Autonomous decision log | planner | whenever the lead decides without the CEO |

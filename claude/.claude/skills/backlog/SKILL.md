@@ -6,7 +6,7 @@ disable-model-invocation: true
 ---
 Groom the backlog. Input: $ARGUMENTS
 
-1. Have team-planner update docs/BACKLOG.md. Item format: title / one-sentence user value / completion criteria (verifiable) / size (S·M·L) / priority (P0–P2) / dependencies / spec (F<n> of docs/SPEC.md, or —) / req (the requirement ID the item came from, or —). Also sweep docs/BRIEF.md (its Later lines and appendix) and the sections of docs/SPEC.md for candidates: their "Not this time" items and any "Done when" line no shipped plan covers.
+1. Have team-planner update docs/BACKLOG.md. Item format: title / one-sentence user value / completion criteria (verifiable) / size (S·M·L) / priority (P0–P2) / dependencies / spec (F<n>, or —) / req (the requirement ID the item came from, or —). Also sweep docs/BRIEF.md (its Later lines and appendix) and the spec sections (docs/specs/) for candidates: their "Not this time" items and any "Done when" line no shipped plan covers.
 2. Prioritize against the charter's success metrics and non-goals; move anything that hits a non-goal to an "Excluded" section.
 3. If the `gh` CLI is available and the CEO wants it, create GitHub Issues for P0/P1 items (issue body = completion criteria).
 4. Propose the top three with reasons and one candidate to `/plan` this week (an item with a `spec:` field is planned from its section; one without gets a section written by the planner first — no questions either way).

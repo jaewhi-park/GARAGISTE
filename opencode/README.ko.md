@@ -30,7 +30,7 @@
 | `/brainstorm <아이디어 또는 파일>` | 기획서(docs/BRIEF.md): lead와 자유 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인 → 커밋. 피벗이면 다시 실행해 개정 |
 | `/kickoff` | 신규 프로젝트, 승인된 기획서에서. 헌장 → 스택 ADR → 골격 → AGENTS.md → 첫 계획 → /hire |
 | `/assess <대상>` | 레거시, 승인된 기획서에서. 인벤토리(docs/ASSESSMENT.md) → 보존/수정 방침 → 리빌드 전략 ADR → docs/REBUILD_PLAN.md → AGENTS.md → 첫 seam의 parity harness 계획 → /hire |
-| `/plan <항목>` | 질문 없음: planner가 docs/SPEC.md 절·버그 줄·당신 말에서 작성(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지) → critic이 모든 계획을 리뷰하고 APPROVE가 곧 승인; `/plan <F<n> 또는 계획> 수정: …`은 사양서 절 개정·진행 중 계획 수정(차이만, 계획 정리, 같은 브랜치) |
+| `/plan <항목>` | 질문 없음: planner가 사양서 절(docs/specs/)·버그 줄·당신 말에서 작성(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지) → critic이 모든 계획을 리뷰하고 APPROVE가 곧 승인; `/plan <F<n> 또는 계획> 수정: …`은 사양서 절 개정·진행 중 계획 수정(차이만, 계획 정리, 같은 브랜치) |
 | `/build <계획파일>` | 단계별로: implementer가 단계마다 빨강 → 초록으로 증명(테스트는 그 단계 커밋에); verifier는 끝에 전체 판정 |
 | `/hotfix <무엇을 왜>` | 계획 없는 작고 명확한 수정: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → hotfix/<slug>에서 PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과나 Risk path면 멈추고 /plan을 가리킨다; docs/METRICS.md에 `hotfix:` 한 줄 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |

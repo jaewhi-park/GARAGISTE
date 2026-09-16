@@ -16,9 +16,9 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 ## CEO console (skills = slash commands)
 | Loop | Command | Artifact |
 |---|---|---|
-| Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | docs/BRIEF.md (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then docs/CHARTER.md, docs/adr/, docs/SPEC.md, docs/BACKLOG.md, CLAUDE.md, (legacy) docs/ASSESSMENT.md · docs/REBUILD_PLAN.md · parity-harness plan; /hire in the closing step, then the board |
+| Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | docs/BRIEF.md (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then docs/CHARTER.md, docs/adr/, docs/specs/, docs/BACKLOG.md, CLAUDE.md, (legacy) docs/ASSESSMENT.md · docs/REBUILD_PLAN.md · parity-harness plan; /hire in the closing step, then the board |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
-| Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <F<n> or plan> 수정: …` | no questions: docs/plans/*.md from the docs/SPEC.md section (one to four `proves` lines per logic step, at most 4 logic steps per plan), the critic's APPROVE is the approval, one commit per step with its tests first (red → green); a revision writes only the differences, sorts the plans, and a running plan continues on its branch |
+| Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <F<n> or plan> 수정: …` | no questions: docs/plans/*.md from its spec section (docs/specs/) (one to four `proves` lines per logic step, at most 4 logic steps per plan), the critic's APPROVE is the approval, one commit per step with its tests first (red → green); a revision writes only the differences, sorts the plans, and a running plan continues on its branch |
 | Hotfix | `/hotfix <what and why>` | one pass on hotfix/<slug>, no plan file: implement + regression test → full verification → one correctness lens → PR (never auto-merged) or local merge; over 3 files / 50 logic lines or on a Risk path it stops and points at /plan; one docs/METRICS.md line marked `hotfix:` |
 | Parallel | `/parallel <plans>` → `/integrate` → `/ship` | one branch per worktree → serial merge queue into `integrate/<date>` → one PR |
 | Quality | `/review` | test-file floor (a logic commit with no test file stops it), then risk-proportional review (2 lenses by default, 4 for high risk) → fix loop |
@@ -51,7 +51,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 - Morning: confirm today's items with `/backlog` → approve `/plan` → `/run` (see parallelism below)
 - Day: answer only the lead's AskUserQuestion prompts. Everything else is autonomous.
 - Evening: `/run` finishes with ship → merge per policy. Weekly `/release`; `/retro` when failures repeat.
-- The human's four jobs: brainstorm and approve the brief / answer the kickoff question and escalations / merge PRs (per policy) / approve retro rules. Plans are approved by the critic; the spec (docs/SPEC.md) is the team's.
+- The human's four jobs: brainstorm and approve the brief / answer the kickoff question and escalations / merge PRs (per policy) / approve retro rules. Plans are approved by the critic; the spec (docs/specs/) is the team's.
 
 ## Workflow — sequential by default, parallel by choice
 The default (`/build`, inside `/run`) implements one plan in one session, step by step, in the main checkout. Ask for several features and the lead makes several `/plan`s and runs them one after another. No worktrees, no merges, no conflicts by construction. Most personal projects need nothing more.
