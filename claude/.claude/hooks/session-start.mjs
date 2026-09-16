@@ -1,12 +1,21 @@
-// SessionStart hook: stdout is injected into the session context. Loads the charter and the status board every session and
-// says where to start: a board -> /resume; only a charter -> /plan or /backlog (never /resume); neither -> /brainstorm, or
-// /kickoff | /assess when docs/BRIEF.md is already approved (the brief itself is never injected).
-import { existsSync, readFileSync } from "node:fs";
+// SessionStart hook: stdout is injected into the session context. Loads the charter and the status board every session,
+// resets the session's compaction counter (.claude/session/compactions — the PreCompact hook increments it, the lead's
+// compaction rule reads it) and says where to start: a board -> the lead reconciles it first (the resume procedure; the CEO
+// types nothing); a linked worktree -> the board belongs to the main checkout; only a charter -> /plan or /backlog; neither
+// -> /brainstorm, or /kickoff | /assess when docs/BRIEF.md is already approved (the brief itself is never injected).
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 let input = {};
 try { input = JSON.parse(readFileSync(0, "utf8")); } catch {}
 const cwd = input.cwd ?? process.cwd();
+
+// Compaction counter: a new session starts at 0. Best effort — a read-only checkout only loses the counter.
+try { mkdirSync(join(cwd, ".claude/session"), { recursive: true }); writeFileSync(join(cwd, ".claude/session/compactions"), "0\n"); } catch {}
+
+// A linked worktree (`claude --worktree`, a /parallel checkout) has a `.git` file, not a directory.
+let linked = false;
+try { linked = statSync(join(cwd, ".git")).isFile(); } catch {}
 
 const hasCharter = existsSync(join(cwd, "docs/CHARTER.md"));
 const hasStatus = existsSync(join(cwd, "docs/STATUS.md"));
@@ -20,10 +29,21 @@ for (const f of ["docs/CHARTER.md", "docs/STATUS.md"]) {
   }
 }
 if (hasCharter || hasStatus) {
-  // docs/STATUS.md is local and never committed: a fresh clone or a new worktree has a charter but no board.
-  const tail = hasStatus
-    ? "Start with /resume."
-    : "No status board (fresh clone, new worktree, or nothing in progress): start with /plan <backlog item> or /backlog. /resume is not needed.";
+  let tail;
+  if (hasStatus && linked) {
+    // The board is committed, so a linked worktree carries the main checkout's copy: it describes that checkout, not this branch.
+    tail = "This is a linked worktree: the board above belongs to the main checkout. Do not edit or commit docs/STATUS.md here — this branch's commits are its record. Start with /plan or `/run <plan>` on this branch; integration happens from the main checkout.";
+  } else if (hasStatus) {
+    // The board is a pointer and may be stale (a session that died mid-turn, a PR merged since): the repository is the truth. Its Mode line says what to do after reconciling.
+    const mode = (readFileSync(join(cwd, "docs/STATUS.md"), "utf8").match(/^Mode:\s*(.+)$/m) ?? [])[1]?.trim() ?? "";
+    const next = /^running/.test(mode) ? "The board says Mode: running — answer the CEO's message, then continue the iteration (the `deliver` skill) in the same turn; do not wait for a go."
+      : /iteration review/.test(mode) ? "The board says Mode: paused — iteration review: give the iteration review again (from the board) and wait for the CEO."
+      : /waiting on CEO/.test(mode) ? "The board says Mode: waiting on CEO: ask the open question again in one line, with its default."
+      : /^paused/.test(mode) ? `The board says Mode: ${mode}: say why in one line and wait.` : "Continue from the board's next action.";
+    tail = `Reconcile first: run the \`resume\` procedure (the Skill tool) before answering the CEO — compare the board with git, worktrees and PR state, trust the repository. ${next} The CEO does not type /resume.`;
+  } else {
+    tail = "No status board (a project from before the board was committed, or nothing in progress): start with /plan <backlog item> or /backlog.";
+  }
   process.stdout.write(`# GARAGISTE context (SessionStart auto-injection)\n${parts.join("\n\n")}\n\n${tail}\n`);
 } else {
   // No charter and no board: the product brief decides the first command. Only its Status and Kind lines are read.

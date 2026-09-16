@@ -28,27 +28,27 @@
 
 <!-- /run bracket and line titles -->
 <path class="bracket" d="M432,232 V226 H768 V232"/>
-<text x="600" y="220" text-anchor="middle" class="role">/run — build · review · ship 을 한 번에, 멈추는 곳은 에스컬레이션 · 수정 루프 3회 초과 · 머지 승인뿐</text>
+<text x="600" y="220" text-anchor="middle" class="role">/run — build · review · ship · 머지를 한 번에, 멈추는 곳은 에스컬레이션 · 수정 루프 3회 초과 · risk:high 머지뿐</text>
 <text x="78" y="92" class="title">시작 · 한 번</text>
 <text x="316" y="142" class="title">핫픽스 · 계획 없이 한 번에 — 파일 3개·논리 50줄까지, Risk path 면 멈춤</text>
-<text x="600" y="192" text-anchor="middle" class="role">머지 뒤 다음 백로그 항목으로 → /plan</text>
+<text x="600" y="192" text-anchor="middle" class="role">머지 뒤 다음 백로그 항목으로 → /plan (이터레이션: 계획 2~4개, 그다음 리뷰)</text>
 <text x="62" y="332" class="title">기본 경로 · 작업마다</text>
 <text x="350" y="390" class="title">병렬 — 파일이 겹치지 않는 계획들</text>
 <text x="330" y="480" class="title">출하 뒤 · 릴리즈와 회고</text>
 
 <!-- start line -->
 <circle cx="60" cy="120" r="9" class="ceo"/><text x="80" y="124"><tspan class="name">/brainstorm</tspan><tspan class="role" dx="8">기획서 승인</tspan></text>
-<circle cx="60" cy="180" r="9" class="ceo"/><text x="80" y="184"><tspan class="name">/kickoff · /assess</tspan><tspan class="role" dx="8">신규 · 레거시, 확인 1회</tspan></text>
-<circle cx="60" cy="240" r="9" class="ceo"/><text x="80" y="244"><tspan class="name">/hire</tspan><tspan class="role" dx="8">배정 승인</tspan></text>
+<circle cx="60" cy="180" r="9" class="ceo"/><text x="80" y="184"><tspan class="name">/kickoff · /assess</tspan><tspan class="role" dx="8">신규 · 레거시 · 질문 1회</tspan></text>
+<circle cx="60" cy="240" r="6.5" class="st st-feeder"/><text x="80" y="244"><tspan class="name">/hire</tspan><tspan class="role" dx="8">바로 적용 · 배정표</tspan></text>
 
 <!-- main line -->
 <circle cx="150" cy="300" r="9" class="ceo"/><text x="150" y="262" text-anchor="middle" class="role">상위 3개 순서만</text><text x="150" y="280" text-anchor="middle" class="name">/backlog</text>
-<circle cx="300" cy="300" r="9" class="ceo"/><text x="300" y="248" text-anchor="middle" class="role">접수 1회 · 증명 줄</text><text x="300" y="262" text-anchor="middle" class="role">단계 4개까지 · 승인</text><text x="300" y="280" text-anchor="middle" class="name">/plan</text>
+<circle cx="300" cy="300" r="6.5" class="st st-main"/><text x="300" y="248" text-anchor="middle" class="role">사양서 절에서</text><text x="300" y="262" text-anchor="middle" class="role">단계 4개까지 · critic 승인</text><text x="300" y="280" text-anchor="middle" class="name">/plan</text>
 <circle cx="450" cy="300" r="6.5" class="st st-main"/><text x="450" y="248" text-anchor="middle" class="role">단계마다 테스트 먼저</text><text x="450" y="262" text-anchor="middle" class="role">빨강 → 초록 → 커밋</text><text x="450" y="280" text-anchor="middle" class="name">/build</text>
 <circle cx="525" cy="300" r="4.5" class="st st-main"/><text x="525" y="324" text-anchor="middle" class="role">verifier · 끝에 전체 검증 한 번</text>
 <circle cx="600" cy="300" r="6.5" class="st st-main"/><text x="600" y="248" text-anchor="middle" class="role">테스트 파일 바닥, 그다음</text><text x="600" y="262" text-anchor="middle" class="role">2 | 4 렌즈 → 수정 루프</text><text x="600" y="280" text-anchor="middle" class="name">/review</text>
 <circle cx="750" cy="300" r="6.5" class="st st-main"/><text x="750" y="248" text-anchor="middle" class="role">정책 판정 → PR · METRICS</text><text x="750" y="262" text-anchor="middle" class="role">PR 은 증명 절로 시작</text><text x="750" y="280" text-anchor="middle" class="name">/ship</text>
-<circle cx="900" cy="300" r="9" class="ceo"/><text x="900" y="248" text-anchor="middle" class="role">증명 테스트를 돌려 보고</text><text x="900" y="262" text-anchor="middle" class="role">직접 확인 후 머지</text><text x="900" y="280" text-anchor="middle" class="name">머지</text>
+<circle cx="900" cy="300" r="9" class="ceo"/><text x="900" y="248" text-anchor="middle" class="role">risk:low 는 lead 가</text><text x="900" y="262" text-anchor="middle" class="role">risk:high 는 당신이 diff 를 읽고</text><text x="900" y="280" text-anchor="middle" class="name">머지</text>
 
 <!-- hotfix line -->
 <circle cx="300" cy="120" r="9" class="ceo"/><text x="300" y="82" text-anchor="middle" class="role">한 문장으로 말할 수 있는 수정</text><text x="300" y="100" text-anchor="middle" class="name">/hotfix</text>

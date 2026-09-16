@@ -15,6 +15,7 @@ permission:
     "yarn *": allow
     "bun *": allow
     "npx *": allow
+    "deno *": allow
     "pytest*": allow
     "uv run*": allow
     "poetry run*": allow
@@ -28,12 +29,36 @@ permission:
     "gradlew*": allow
     "./gradlew*": allow
     ".\\gradlew*": allow
-    "git status*": allow
-    "git diff*": allow
-    "git log*": allow
     "go *": allow
     "cargo *": allow
     "dotnet *": allow
+    "jest*": allow
+    "vitest*": allow
+    "mocha*": allow
+    "tsc*": allow
+    "eslint*": allow
+    "prettier*": allow
+    "playwright*": allow
+    "composer *": allow
+    "php artisan *": allow
+    "bundle exec *": allow
+    "rspec*": allow
+    "rake*": allow
+    "flutter *": allow
+    "dart *": allow
+    "swift *": allow
+    "xcodebuild *": allow
+    "nx *": allow
+    "turbo *": allow
+    "git status*": allow
+    "git diff*": allow
+    "git log*": allow
+    "head *": allow
+    "tail *": allow
+    "grep *": allow
+    "wc *": allow
+    "cat *": allow
+    "ls *": allow
 ---
 You are CI. Report results only; add no judgment.
 Write reports and documents in the language given under "## Language" in AGENTS.md (or the CEO's language if absent).

@@ -40,13 +40,19 @@ node scripts/parity-check.mjs
 ```
 It pairs every `claude/` file with its `opencode/` counterpart, translates the claude side into opencode vocabulary (CLAUDE.md → AGENTS.md, AskUserQuestion → the question tool, `/parallel` → `/spawn`, …) and reports where the remaining difference moved away from the accepted divergence recorded in `scripts/parity-baseline.txt`. It also checks that the flavor READMEs name the same commands and artifacts, that the four `scripts/*.mjs` are identical, and that each `.ko.md` keeps the section structure of its English original. A reported line is either a fix owed to the other flavor or a deliberate difference; for the latter, `--update` records it, and the baseline's diff shows reviewers what diverged.
 
-`node scripts/hook-check.mjs` is the companion for the guardrails: it feeds a matrix of commands, paths and roles to the Claude Code hook and the opencode plugin (destructive commands, secret files, the push policy, gh api mutations, the role allow-lists) and fails on any verdict that differs from the expected one. Run it after touching `guardrails.mjs` or `guardrails.ts`.
+`node scripts/hook-check.mjs` is the companion for the guardrails: it feeds a matrix of commands, paths and roles to the Claude Code hook and the opencode plugin (destructive commands, secret files, publishing, the push policy, gh api mutations, the role boundaries, the verifier's CLAUDE.md-listed commands) and fails on any verdict that differs from the expected one. Run it after touching `guardrails.mjs` or `guardrails.ts`.
+
+## The CEO's contract
+- The CEO approves one document, the brief; the team writes and decides the rest (spec, plans, defaults) and logs it in docs/DECISIONS.md.
+- The team runs in iterations of 2–4 plans, merges low-risk work itself, and stops after each iteration to show what can be tried; it asks only for what is expensive to reverse — money, security or user data, a non-goal conflict, `risk:high` merges.
+- Ambiguity is confirmed in one line, never guessed into action; a remark is not an order.
+- Main is always runnable; the status board (docs/STATUS.md) is the CEO's window, and the product is the demo.
 
 ## Six principles
 1. Separate judgment from execution — the implementer does not grade its own work, the reviewer does not fix, the lead does not write code.
 2. Without a verification oracle the team is a plausible-code generator — the first task is a test suite that runs in under a minute.
-3. State lives in the repository, not the session — commits and plan files; a local status board (`docs/STATUS.md`, git-ignored) only points at them.
-4. Gates are enforced by the repository, not the prompt — the merge policy is derived from remote, branch protection and auto-merge settings.
+3. State lives in the repository, not the session — commits, plan files and the status board (`docs/STATUS.md`, committed at every cut point); the board only points at the commits, and git wins when they disagree.
+4. Gates are enforced by the repository where it can — the merge policy is derived from remote, branch protection and auto-merge settings; the lead's `risk:low` merge is a prompt gate, so turn branch protection on once there is a remote.
 5. Mechanical changes and logic changes never share a commit.
 6. Failures flow back into rules, skills and hooks through `/retro`. The repository remembers, not the human.
 

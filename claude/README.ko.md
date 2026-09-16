@@ -5,7 +5,7 @@
 
 사람용 사용법은 **GUIDE.md**(설치·상황별 역할), 산출물 지도는 docs/README.md. 이 파일은 설정 레퍼런스다.
 
-레포 하나를 작은 소프트웨어 회사처럼 돌린다. 사람은 CEO(전략·승인·머지), 에이전트는 팀.
+레포 하나를 작은 소프트웨어 회사처럼 돌린다. 사람은 CEO(방향, 제품 수용, `risk:high` 머지), 에이전트는 팀이고, 팀은 이터레이션 단위로 스스로 돈다.
 회사는 조직도가 아니라 다섯 루프다: 제품(백로그) → 엔지니어링(계획·구현) → 품질(검증·리뷰) → 운영(출하·릴리즈) → 경영(결정 기록·회고).
 각 루프는 `/스킬` 하나와 `docs/` 산출물 하나로 구현된다.
 
@@ -25,14 +25,15 @@
 | 루프 | 커맨드 | 산출물 |
 |---|---|---|
 | 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | docs/BRIEF.md(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 docs/CHARTER.md, docs/adr/, CLAUDE.md, (레거시) docs/ASSESSMENT.md·docs/REBUILD_PLAN.md·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
+| 가동 모드 | (커맨드 없음 — "계속") / `deliver` | 이터레이션 하나: 계획 2~4개를 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md에 Mode·Iteration·써 볼 수 있는 것. `instruction`(지식 스킬)은 lead가 CEO의 말을 맞는 절차로 바꾸는 규칙 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
-| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <사양서 또는 계획> 수정: …` | 접수 질문 1회(선택: 사양서 라운드 → docs/specs/*.md) → docs/plans/*.md(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지), 단계별 커밋에 테스트 먼저(빨강 → 초록); 개정은 차이만 쓰고 진행 중 계획은 같은 브랜치에서 이어진다 |
+| 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <F<n> 또는 계획> 수정: …` | 질문 없음: 사양서 절(docs/specs/)에서 docs/plans/*.md(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지), critic의 APPROVE가 승인, 단계별 커밋에 테스트 먼저(빨강 → 초록); 개정은 차이만 쓰고 계획을 정리하며 진행 중 계획은 같은 브랜치에서 이어진다 |
 | 핫픽스 | `/hotfix <무엇을 왜>` | hotfix/<slug>에서 한 번에, 계획 파일 없음: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과나 Risk path면 멈추고 /plan을 가리킨다; docs/METRICS.md에 `hotfix:` 한 줄 |
 | 병렬 | `/parallel <계획들>` → `/integrate` → `/ship` | worktree별 브랜치 → `integrate/<날짜>`로 직렬 머지 큐 → PR 하나 |
 | 품질 | `/review` | 테스트 파일 바닥(테스트 파일이 없는 논리 커밋은 멈춤), 그다음 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
 | 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨; 맨 앞에 "증명" 절 — 테스트, 빨강 → 초록, 돌리는 명령; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
 | 경영 | `/retro <대상>` | CLAUDE.md 규칙 / 스킬 / 훅 갱신 |
-| 인수인계 | `/handoff`(단계 도중에만) / `/resume` | docs/STATUS.md(로컬, git-ignore) |
+| 인수인계 | `/handoff`(단계 도중에만) / `/resume`(세션 시작 때 lead가 스스로 실행) | docs/STATUS.md(끊는 지점마다 커밋) |
 | 팀 관리 | `/hire` / `/roster` | 역할별 모델·effort 배정과 운영 프로필(둘 다 스크립트); 로스터 표 |
 | 언어 | `/lang [code]` | 스크립트로 CLAUDE.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
 | 채용 | `/recruit <gap>` | 권한 프리셋과 형제 역할의 모델·effort로 새 역할 생성(승인 후 스크립트) |
@@ -40,18 +41,18 @@
 ## 팀 (.claude/agents/)
 | 에이전트 | 역할 | 도구 | 특이사항 |
 |---|---|---|---|
-| team-lead | 테크리드/EM. 메인 세션 에이전트 | Agent(team-*, Explore), Read/Grep/Glob, Bash, Edit/Write, AskUserQuestion | Edit/Write는 docs/STATUS.md만(훅 강제). `settings.agent`로 기본 지정. 커밋 안 함(훅) |
-| team-planner | 아키텍트. 문서·계획·사양서·ADR | Read/Grep/Glob, Edit/Write, Bash, Web* | `memory: project` — 아키텍처 지식 축적 |
+| team-lead | 테크리드/EM. 메인 세션 에이전트 | Agent(team-*, Explore), Read/Grep/Glob, Bash, Edit/Write, AskUserQuestion | Edit/Write는 docs/STATUS.md만. 셸은 읽기 전용 + git 브랜치/머지/동기화 명령, 문서 경로만의 `git add`/`commit`(docs/, CLAUDE.md, .claude/, .gitignore, CHANGELOG), 브랜치 push, gh PR 명령, 스크립트. 코드 실행·셸 쓰기·코드 경로 커밋은 못 함(훅 강제). `settings.agent`로 기본 지정 |
+| team-planner | 아키텍트. 문서·계획·사양서·ADR | Read/Grep/Glob, Edit/Write, Bash, Web* | `memory: project` — 아키텍처 지식 축적. 셸은 읽기 전용(훅) |
 | team-critic | 설계 리뷰(pre-mortem) | Read/Grep/Glob | 읽기 전용 |
 | team-implementer | 시니어 엔지니어 (메인 체크아웃, 순차) | Read/Grep/Glob, Edit/Write, Bash | 커밋함, /ship 에서 브랜치 push·PR 생성 |
-| team-builder | 시니어 엔지니어 (병렬용) | 동일 | `isolation: worktree` — 계획 하나를 자기 worktree에서 통째로 구현, 자체 검증 |
-| team-reviewer | 렌즈별 코드 리뷰 | Read/Grep/Glob, Bash | `memory: project` — 반복 결함 패턴 축적 |
-| team-verifier | CI | Bash, Read/Grep/Glob | 훅의 빌드/테스트/lint 도구 allow-list와 읽기 전용 git만 실행; `npm run` 스크립트가 무엇을 실행하는지는 검사하지 않는다 — CLAUDE.md의 Commands 규칙은 프롬프트 수준 |
+| team-builder | 시니어 엔지니어 (병렬용) | 동일 | `isolation: worktree` — 계획 하나를 자기 worktree에서 통째로 구현, 자체 검증. 자기 브랜치 push 가능, merge·rebase·pull 불가(훅) |
+| team-reviewer | 렌즈별 코드 리뷰(correctness · security · performance · maintainability · ux) | Read/Grep/Glob, Bash | `memory: project` — 반복 결함 패턴 축적. 셸은 읽기 전용 + 테스트 실행용 툴체인(훅) |
+| team-verifier | CI | Bash, Read/Grep/Glob | 훅 allow-list: 빌드/테스트/lint 도구, 읽기 전용 git, 그리고 CLAUDE.md "## Commands"에 적힌 모든 명령(훅이 파일을 읽는다); `npm run` 스크립트가 무엇을 실행하는지는 검사하지 않는다 |
 | Explore | 코드베이스 조사 (내장) | 읽기 전용 | |
 
 ## 에이전트 간 계약
 - 모든 subagent는 고정된 보고 형식으로 lead에 답한다 (implementer: proves 줄마다 Proven 줄, 빨강 → 초록; verifier: PASS/FAIL, reviewer/critic: 마지막 줄 APPROVE/REVISE).
-- lead만 CEO에게 질문한다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값. 예외는 /plan의 사양서 라운드로, 여기서는 열린 질문과 자유 서술 답이 허용된다.
+- lead만 CEO에게 질문한다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값. 예외는 /brainstorm과 수정 논의로, 여기서는 열린 질문과 자유 서술 답이 허용된다.
 - 수정 루프는 3회 상한. 넘으면 멈추고 보고한다.
 - 자율 결정은 docs/DECISIONS.md, 아키텍처 결정은 docs/adr/.
 
@@ -59,7 +60,7 @@
 - 아침: `/backlog`로 오늘 할 항목 확정 → `/plan` 승인 → `/run` (병렬이면 아래 참고)
 - 낮: lead의 AskUserQuestion에만 답한다. 그 외는 자율.
 - 저녁: `/run`이 ship까지 끝내면 머지 정책대로. 주 1회 `/release`, 실패가 반복되면 `/retro`.
-- 사람의 네 가지 일: 기획서 브레인스토밍과 접수·사양서 질문에 답하기 / 계획 승인·에스컬레이션 결정 / PR 머지(정책에 따라) / 회고 승인.
+- 사람의 세 가지 일: 기획서 브레인스토밍과 승인 / 제품을 보고 원하는 것을 말하기 / 에스컬레이션 답하고 `risk:high` PR 머지. 계획은 critic이 승인하고, `risk:low` 작업은 lead가 머지하고, 사양서(docs/specs/)는 팀 것이다.
 
 ## 작업 방식 — 순차가 기본, 병렬은 선택
 기본(/build)은 한 세션에서 계획 하나를 메인 체크아웃에서 단계별로 순차 구현한다. 기능을 여러 개 의뢰하면 lead는 /plan 을 여러 번 만들고 하나씩 /build 한다. worktree도 머지도 없고, 충돌도 구조적으로 없다. 개인 프로젝트 대부분은 이걸로 충분하다.
@@ -101,18 +102,18 @@
 변경: `./install.sh claude -Budget <tier>` 재실행, 개별은 `--set team-implementer=sonnet:high`, 복귀는 `--budget inherit`. `/roster` 가 현재 배정을 보여주고, 세션 모델만은 Claude Code 의 `/model`, 대화식 편집은 `/agents`.
 
 ## 세션 수명주기
-세션은 작업 기억, 레포가 장기 기억. 상태는 세 곳 — 단계마다의 커밋, 계획 파일(승인 시 커밋), `docs/STATUS.md`(로컬, git-ignore, SessionStart 훅으로 자동 주입; 전역 설치면 .gitignore에 직접 추가).
-한 세션 = 한 계획(PR). `/ship`이나 `/plan`이 끝나면 상태판과 커밋이 이미 남아 있으니, 다음 세션은 상태판이 있으면 `/resume`으로, 없으면 제안받은 커맨드로 바로 시작한다. `/handoff`는 단계 도중에 멈출 때만. 짧게 끊긴 경우만 `claude --continue`.
+세션은 작업 기억, 레포가 장기 기억. 상태는 세 곳 — 단계마다의 커밋, 계획 파일(승인 시 커밋), `docs/STATUS.md`(상태판: SessionStart 훅으로 자동 주입, 끊는 지점 — 승인 커밋, 출하, CEO 대기 질문, handoff, 컴팩션 정지 — 마다 커밋되고 그 사이엔 미커밋으로 바뀐다; 저장소가 진실이고 상태판은 포인터).
+한 세션 = 한 계획(PR). `/ship`이나 `/plan`이 끝나면 상태판과 커밋이 이미 남아 있다. 상태판이 있으면 lead가 첫 턴에 스스로 `resume`을 돌리니(상태판을 git·worktree·PR 상태와 대조, 저장소가 이긴다) CEO는 그냥 말하면 된다. `/handoff`는 단계 도중에 멈출 때만. 끊김(Esc, 오류, 사용량 한도)의 비용은 최대 진행 중이던 한 단계다: 단계 커밋이 체크포인트이고, /build는 끊긴 단계를 미커밋 변경에서 이어가며 /parallel은 끊긴 builder를 그 브랜치에서 다시 띄운다. 컴팩션은 PreCompact 훅이 센다(`.claude/session/compactions`). 1 이상이면 lead가 단계를 마치고 상태판을 커밋하고 세션을 끝낸다. 짧게 끊긴 경우만 `claude --continue`.
 에이전트별 장기 기억은 `.claude/agent-memory/<name>/`에 쌓인다(planner·reviewer). auto memory가 꺼져 있으면 동작하지 않는다.
 
 ## opencode 버전과의 차이
-- 경로별 edit 권한은 훅이 강제하는 곳에만 있다: team-lead는 docs/STATUS.md만 수정할 수 있고(`guardrails.mjs`), 같은 훅이 `git add`/`git commit`도 막는다. planner의 "docs만 수정"은 프롬프트 규칙이고 리뷰어가 잡는다. 하드 차단이 필요하면 같은 훅에 경로 규칙을 추가한다.
+- 역할 규칙은 `guardrails.mjs`가 훅의 `agent_type`으로 강제한다. opencode의 permission 블록을 따르되 도구 이름 allow-list가 아니라 "상태를 바꾸는 것"의 deny-list라서 새 스택에 새 패턴이 필요 없다: team-lead는 docs/STATUS.md만 수정하고, 셸은 읽기 전용 + git 브랜치/머지/동기화, 문서 경로만의 `git add`/`commit`(코드 경로가 섞이면 훅이 거부), 브랜치 push, gh PR 명령 — 코드 실행과 셸 쓰기는 없다. team-planner(와 Explore)는 docs/**와 CLAUDE.md만 수정하고 셸은 읽기 전용(git status/diff/log/show, 목록, 버전·의존성 확인). team-reviewer는 읽기 전용 + 툴체인이라 주장을 확인하려고 테스트를 돌릴 수 있다. team-builder는 자기 브랜치를 push할 수 있지만 merge·rebase·pull·worktree는 못 한다. team-verifier는 CI이므로 allow-list다: 툴체인 + CLAUDE.md "## Commands"에 적힌 명령. team-implementer와 team-critic은 도구 목록과 공통 규칙으로만 묶이고, /recruit로 만든 역할은 공통 규칙만 받는다 — 하드 경계가 필요하면 훅에 `agent_type` 분기를 추가한다.
 - 비밀 파일 차단(`.env*`, `.envrc`, 키, 인증서, `credentials`, `.netrc`, `.npmrc`, `.git-credentials`)은 훅과 deny 규칙을 통해 Read/Edit/Write/Grep에 적용되고, 훅은 그런 파일을 이름으로 부르면서 출력·평가하는 셸 명령도 막는다 — `sudo`, `xargs`, `find -exec`, `$( )`, 파이프라인, `git show <rev>:.env`, `node -e`·`python -c` 한 줄까지. 최선의 방어일 뿐이다: 파일을 이름 없이 여는 프로그램(스크립트, `env`)은 잡지 못하니 비밀은 저장소 밖에 둔다.
-- `permissions.deny`는 세션 전체에 걸린다. force push와 main 직접 push를 deny와 훅으로 막고, 기능 브랜치 push는 허용한다.
+- `permissions.deny`는 세션 전체에 걸린다. force push, main 직접 push, 배포(`npm publish`, `cargo publish`, `docker push` …)를 deny와 훅으로 막고, 기능 브랜치 push는 허용한다. `permissions.allow`는 스택의 빌드/테스트 도구와 팀이 쓰는 git/gh 명령을 미리 승인해 두어, 기본 권한 모드에서 implementer가 테스트를 돌릴 때마다 묻지 않게 한다. 목록 밖의 명령은 여전히 묻는다.
 - 메인 세션 에이전트(`--agent`/`settings.agent`)의 `Agent(...)` 목록은 lead가 부를 수 있는 subagent 허용 목록이다. subagent 정의 안에서는 괄호 목록이 무시된다.
 - `memory: project`로 역할별 장기 기억이 생긴다. opencode에는 없는 기능이라 회사의 "경험 축적"에 해당한다.
 
 ## 주의
-- 워크플로우 스킬은 `disable-model-invocation: true`라 Claude가 임의로 호출하지 못한다. 예외는 다섯 개 — `build`·`review`·`ship`(`/run` 체인), `hire`(`/kickoff`·`/assess`의 마무리 단계), `roster`(읽기 전용). 모델 호출을 허용하고 프롬프트로 "CEO 호출 또는 해당 체인 안에서만"으로 묶는다. 나머지는 lead 가 "`/명령` 을 실행하세요"라고 문장으로 제안만 한다. 지식 스킬은 `user-invocable: false`라 메뉴에 안 보이고 에이전트가 필요할 때 로드한다.
-- Pro/Max 기본 권한 모드(auto)에서는 subagent가 부모의 모드를 그대로 따른다. 팀의 안전장치는 도구 목록·deny 규칙·훅이다.
+- CEO만 부르는 커맨드 스킬은 없다: CEO의 말이 요구하면(`instruction` 스킬의 분류) 또는 가동 루프(`deliver`)가 요구하면 lead가 절차로 실행하고, CEO가 직접 쳐도 된다. 지식 스킬은 `user-invocable: false`라 메뉴에 안 보이고 에이전트가 필요할 때 로드한다.
+- Pro/Max 기본 권한 모드(auto)에서는 subagent가 부모의 모드를 그대로 따른다. 팀의 안전장치는 프롬프트가 아니라 도구 목록·deny 규칙·훅이다. 허용된 도구 호출마다 멈추지 않는 모드로 세션을 연다(`claude --permission-mode acceptEdits`, 또는 도구 프롬프트를 한 번씩 수락). 아니면 implementer의 편집과 테스트 실행마다 당신을 기다린다.
 - 훅은 Node로 작성되어 Windows에서도 그대로 동작한다. 정규식은 초안이니 스택에 맞게 다듬을 것.

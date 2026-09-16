@@ -2,10 +2,9 @@
 name: policy
 description: Show/set the merge policy — current automatic verdict (local / manual / auto-low-risk) with its reason; with an argument, record an override in the rules file
 argument-hint: "[auto-low-risk | manual | auto]"
-disable-model-invocation: true
 ---
 Handle the merge policy. Input: $ARGUMENTS
 
-1. Inspect the current state using the resolution rules of /ship: remote present (`git remote`), `gh` available, auto-merge allowed, default-branch protection with required status checks. Report "verdict — reason" in one line, plus one line on what repository change would alter the verdict.
+1. Inspect the current state using the resolution rules of /ship: remote present (`git remote`), `gh` available, auto-merge allowed, default-branch protection with required status checks. Report "verdict — reason" in one line, plus one line on what repository change would alter the verdict, and one on lead-merge (in every verdict the lead merges `risk:low` once verification, review and checks are green; `risk:high` is the CEO's).
 2. If CLAUDE.md "## Merge policy" holds an override, show it too.
 3. If an argument is given, have team-planner write that value into the CLAUDE.md "## Merge policy" line. `auto` clears it and returns to automatic resolution. If `auto-low-risk` is requested without branch protection on the remote, warn in one line (merges could happen without verification) and proceed only after CEO confirmation.

@@ -4,7 +4,7 @@ agent: team-lead
 ---
 Prepare plans to run in parallel in separate worktrees: $ARGUMENTS (plan file paths, space-separated)
 
-0. Apply the branches-and-sync rule (on main, synced); if not on main, or in a linked worktree, stop and ask the CEO (worktrees must branch from main so /integrate stays simple). Precondition: each plan is approved and committed on main (`git status --porcelain <path>` prints nothing — `??` means untracked, ` M`/`A ` uncommitted; an uncommitted plan is committed first by team-implementer as `docs(plan): NNNN-<slug>`, because worktrees are cut from HEAD and would not see it).
+0. Apply the branches-and-sync rule (on main, synced); if not on main, or in a linked worktree, stop and ask the CEO (worktrees must branch from main so /integrate stays simple). Precondition: each plan is approved and committed on main (`git status --porcelain <path>` prints nothing — `??` means untracked, ` M`/`A ` uncommitted; commit an uncommitted plan yourself first as `docs(plan): NNNN-<slug>`, because worktrees are cut from HEAD and would not see it).
 
 For each plan:
 1. Check that the plan's "files touched" set does not overlap with other plans in progress. If it does, do not create the worktree; report to the CEO.

@@ -24,7 +24,8 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/kickoff` | New project, from the approved brief. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
 | `/assess <target>` | Legacy, from the approved brief. Inventory (docs/ASSESSMENT.md) → preserve/fix policy → rebuild strategy ADR → docs/REBUILD_PLAN.md → AGENTS.md → parity-harness plan for the first seam → /hire |
 | `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
-| `/plan <item>` | One intake call (optional spec rounds → docs/specs/) → planner writes (one to four `proves` lines per logic step, at most 4 logic steps per plan) → critic reviews (risk:high, over the plan-size target, or the first part of a split) → approval requested; `/plan <spec or plan> 수정: …` revises an approved spec or amends a running plan (differences only, same branch) |
+| `/plan <item>` | No questions: planner writes from the spec section (docs/specs/), the bug line or your words (one to four `proves` lines per logic step, at most 4 logic steps per plan) → critic reviews every plan and its APPROVE is the approval; `/plan <F<n> or plan> 수정: …` revises a spec section or amends a running plan (differences only, the plans sorted, same branch) |
+| (no command — say "계속") / `/deliver` | One iteration: 2–4 plans through plan → run → merge, then an iteration review; docs/STATUS.md carries Mode, Iteration, Tryable now. The lead turns what the CEO says into the right procedure per the `instruction` skill |
 | `/run <plan file>` | Default path: build → review → ship in one go, stopping only at gates |
 | `/build <plan>` | Step by step: the implementer proves each step red → green (tests in the step's commit); the verifier gives the full verdict at the end |
 | `/hotfix <what and why>` | Small, well-specified change without a plan: implement + regression test → full verification → one correctness lens → PR (never auto-merged) or local merge on hotfix/<slug>; over 3 files / 50 logic lines or on a Risk path it stops and points at /plan; one docs/METRICS.md line marked `hotfix:` |
@@ -32,15 +33,15 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/ship` | Full verification · docs · risk label · a "Proven" section first (the tests, red → green, and the command to run them) · a "Try it" section for user-facing plans (never auto-merged) · automatic merge-policy resolution → PR or local merge |
 | `/release [version]` | Operations: version, CHANGELOG, release notes (docs/releases/*.md), tag commands |
 | `/policy [value]` | Show the current merge-policy verdict and reason; optionally override |
-| `/hire [note]` | Assign models per role and the operating profile from available models, budget and project character (CEO approves; both via script) |
+| `/hire [note]` | Assign models per role and the operating profile from available models, budget and project character (applied from the kickoff/assess budget answer, no approval question; both via script) |
 | `/roster` | Table of agents, models and permissions, plus how to change them |
 | `/lang [code]` | Set the working language: rewrites the `## Language` section of AGENTS.md via script, effective immediately |
 | `/recruit <gap>` | Propose a new role (preset permissions, model taken from the sibling role in the roster); created by script on CEO approval |
 | `/spawn <plans>` | Parallel: create a worktree and branch per plan, print the new-session command |
 | `/integrate [branches]` | Merge queue into `integrate/<date>`: per-branch review → merge → conflict resolution → verifier, serially; `/ship` then ships that branch as one PR |
 | `/retro <subject>` | Feed failures back into AGENTS.md rules, skills or guardrails |
-| `/handoff [note]` | Wrap up a session that stops mid-flight: write STATUS.md (local), commit WIP, list pending decisions |
-| `/resume [note]` | First command of a new session when a board exists: reconcile STATUS.md, plan and git, then continue |
+| `/handoff [note]` | Wrap up a session that stops mid-flight: write and commit STATUS.md, commit WIP, list pending decisions |
+| `/resume [note]` | Reconcile STATUS.md, plan, worktrees and git, then continue; the lead does it itself at the first turn when a board exists, and after any interruption |
 
 ## Team
 | Agent | mode | Can | Cannot |
@@ -49,18 +50,18 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | team-planner | subagent | write docs/**, AGENTS.md | edit code |
 | team-critic | subagent | plan pre-mortem | edit anything |
 | team-implementer | subagent (hidden) | implement, test, commit; push and open PR in /ship | force push, push to main, ask the CEO |
-| team-reviewer | subagent | per-lens review (git diff) | edit |
+| team-reviewer | subagent | per-lens review (correctness · security · performance · maintainability · ux; git diff, tests, screenshots) | edit |
 | team-verifier | subagent | run tests, lint, build | edit, delegate |
 | explore | built-in | codebase and dependency research (bash limited to a read-only allowlist via opencode.json) | edit, anything not on the allowlist |
 
 ## Contracts between agents
 - Every subagent reports in a fixed format (implementer: a Proven line per proves line, red → green; verifier: PASS/FAIL; reviewer/critic: last line APPROVE/REVISE).
-- Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered — except the spec rounds of /plan, where open questions and free-text answers are allowed.
+- Only the lead asks the CEO. Format: one-sentence decision / options / recommendation / default if unanswered — except /brainstorm and the revision discussions, where open questions and free-text answers are allowed.
 - Fix loops are capped at 3 rounds; past that, stop and report.
 - Autonomous decisions go to docs/DECISIONS.md, architecture decisions to docs/adr/.
 
 ## Session lifecycle
-The session is working memory; the repo is long-term memory. State lives in three places — one commit per step, the plan file (committed at approval), `docs/STATUS.md` (the board — local, git-ignored, auto-injected every session; after a global install add it to .gitignore yourself).
+The session is working memory; the repo is long-term memory. State lives in three places — one commit per step, the plan file (committed at approval), `docs/STATUS.md` (the board — auto-injected every session, committed at the cut points: the approval commits, ship, a question waiting on the CEO, handoff, a compaction stop; changed uncommitted between them, and the repository is the truth). When a board exists the lead reconciles it at the first turn, so the CEO just talks; an interruption costs at most the step in progress (step commits are the checkpoints). A compaction summary in the lead's context is its signal to finish the step, commit the board and end the session.
 - One session = one plan (PR). Start other work in a new session.
 - Ending: a finished `/ship` or `/plan` already leaves the board and the commits in place — just close. `/handoff` only when stopping mid-step, after two or more compactions, or when the team is going in circles.
 - Continuing: with a board, new session → `/resume`; without one (fresh clone, worktree, nothing in progress) go straight to `/plan <backlog item>`. Use `opencode -c` (continue the last session) only for a short interruption the same day. Long sessions stack summaries on summaries and degrade.
@@ -89,7 +90,7 @@ Keep the strongest model where judgment happens (planning, design review, code r
 Change: re-run `./install.sh opencode -Budget <tier> -Strong <id> -Fast <id>`, per-agent with `-Set team-reviewer=<id>`, back to inheritance with `-Budget inherit`. `/roster` shows the current assignment.
 
 ## Customization points
-- `agents/team-verifier.md` — trim the bash allow-list to your stack (it restricts which tools run, not what their scripts execute).
+- `agents/team-verifier.md` — the bash allow-list of build/test/lint tools; add your stack's runner when it is missing (it restricts which tools run, not what their scripts execute). The Claude Code flavor reads the rules file's "## Commands" instead; opencode's permission blocks cannot, so the list is explicit here.
 - `agents/team-lead.md` — escalation criteria (the charter's "Additional escalation items" are added).
 - `plugins/guardrails.ts` — blocked-command patterns.
 - `opencode.json` — `instructions` auto-injects docs/CHARTER*.md and docs/STATUS*.md every session. No model = inherit. `subagent_depth: 2` lets team-planner/implementer/reviewer/critic (subagents) each call the explore subagent themselves — opencode's default of 1 would block that and fail the call silently. docs/STATUS.md is local (git-ignored by the project installer; after a global install add the line yourself) and never committed.
@@ -97,7 +98,7 @@ Change: re-run `./install.sh opencode -Budget <tier> -Strong <id> -Fast <id>`, p
 - `temperature` and `steps` per agent are role-based starting values.
 
 ## Known caveats
-- Edit-permission patterns are matched against the path relative to the repo root (`docs/plans/x.md`, `AGENTS.md`) and `*` is a plain `.*`. Write `docs/*`, never `**/docs/**`: the `**/` form demands a leading slash and matches nothing. On first use, check that the planner can write inside docs/ but not outside.
+- Edit-permission patterns are matched against the path relative to the repo root (`docs/plans/x.md`, `AGENTS.md`) and `*` is a plain `.*`. Write `docs/*`, never `**/docs/**`: the `**/` form demands a leading slash and matches nothing. On first use, check that the planner can write inside docs/ but not outside. The same `.*` applies to the lead's `git add docs/*`: it is a prefix match, so a code path appended after a docs path is not caught here — the lead's prompt carries that rule (the Claude Code hook checks every path).
 - The built-in explore agent has bash and would inherit the global `ask`, so every `ls` or `git rev-parse` during research prompted. `opencode.json` gives it a read-only allowlist under `agent.explore.permission.bash`; anything else is denied without a prompt and explore falls back to grep/glob/read. Extend the list for your stack.
 - Agents may not load skills on their own, so commands name the skills to load explicitly.
 - In headless runs (`opencode run`) permission prompts cannot appear. Team agents use explicit allow/deny; the built-in build/plan agents follow the global default (ask).

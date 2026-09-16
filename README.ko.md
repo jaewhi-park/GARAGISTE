@@ -41,13 +41,19 @@ node scripts/parity-check.mjs
 ```
 `claude/` 의 파일마다 `opencode/` 의 짝을 찾아 claude 쪽을 opencode 어휘로 바꾼 뒤(CLAUDE.md → AGENTS.md, AskUserQuestion → the question tool, `/parallel` → `/spawn`, …) 남는 차이를 `scripts/parity-baseline.txt` 에 기록된 허용 차이와 비교해, 달라진 곳만 보고한다. 두 판의 README 가 같은 커맨드·산출물을 언급하는지, `scripts/*.mjs` 넷이 동일한지, 각 `.ko.md` 가 영어 원본의 절 구조를 유지하는지도 본다. 보고된 줄은 다른 판에 빚진 수정이거나 의도한 차이다. 후자면 `--update` 로 기록하고, 기준선 파일의 diff 가 리뷰어에게 무엇이 갈라졌는지 보여 준다.
 
-`node scripts/hook-check.mjs` 는 가드레일 쪽 짝이다. 명령·경로·역할의 매트릭스를 Claude Code 훅과 opencode 플러그인에 넣어(파괴적 명령, 비밀 파일, push 정책, gh api 변경, 역할별 allow-list) 기대한 판정과 다른 것이 하나라도 있으면 실패한다. `guardrails.mjs` 나 `guardrails.ts` 를 고친 뒤 실행한다.
+`node scripts/hook-check.mjs` 는 가드레일 쪽 짝이다. 명령·경로·역할의 매트릭스를 Claude Code 훅과 opencode 플러그인에 넣어(파괴적 명령, 비밀 파일, 배포, push 정책, gh api 변경, 역할별 경계, verifier의 CLAUDE.md 명령 허용) 기대한 판정과 다른 것이 하나라도 있으면 실패한다. `guardrails.mjs` 나 `guardrails.ts` 를 고친 뒤 실행한다.
+
+## CEO와의 계약
+- CEO가 승인하는 문서는 기획서 하나다. 나머지(사양서, 계획, 기본값)는 팀이 쓰고 정하고 docs/DECISIONS.md에 남긴다.
+- 팀은 계획 2~4개 이터레이션으로 돌고, 저위험 작업은 스스로 머지하고, 이터레이션마다 멈춰 써 볼 수 있는 것을 보여 준다. 묻는 건 되돌리기 비싼 것뿐이다 — 돈, 보안·사용자 데이터, 비목표 충돌, `risk:high` 머지.
+- 애매하면 한 줄로 확인하지 추측해서 실행하지 않는다. 감상은 지시가 아니다.
+- main은 항상 실행 가능하다. 상태판(docs/STATUS.md)이 CEO의 창이고 제품이 데모다.
 
 ## 원칙 여섯 줄
 1. 판단하는 자와 실행하는 자를 분리한다 — implementer 는 자기 결과를 판정하지 않고, reviewer 는 고치지 않고, lead 는 코드를 쓰지 않는다.
 2. 검증 수단이 없으면 팀은 "그럴듯한 코드" 생산기다 — 첫 작업은 1분 안에 도는 테스트다.
-3. 상태는 세션이 아니라 레포에 산다 — 커밋과 계획 파일. 로컬 상태판(`docs/STATUS.md`, git-ignore)은 그것을 가리킬 뿐이다.
-4. 게이트는 프롬프트가 아니라 저장소가 강제한다 — 머지 정책은 원격·브랜치 보호·auto-merge 에서 추론된다.
+3. 상태는 세션이 아니라 레포에 산다 — 커밋, 계획 파일, 그리고 상태판(`docs/STATUS.md`, 끊는 지점마다 커밋). 상태판은 커밋을 가리킬 뿐이고, 어긋나면 git이 이긴다.
+4. 게이트는 가능한 한 저장소가 강제한다 — 머지 정책은 원격·브랜치 보호·auto-merge 에서 추론된다. lead의 `risk:low` 머지는 프롬프트 게이트이니 원격이 생기면 브랜치 보호를 켠다.
 5. 기계적 변경과 논리 변경을 한 커밋에 섞지 않는다.
 6. 실패는 `/retro` 로 규칙·스킬·훅에 환류한다. 기억하는 것은 사람이 아니라 저장소다.
 
