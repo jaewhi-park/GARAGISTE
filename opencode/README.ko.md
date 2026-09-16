@@ -57,7 +57,7 @@
 | team-planner | subagent | docs/**, AGENTS.md 작성 | 코드 수정 |
 | team-critic | subagent | 계획 pre-mortem | 모든 수정 |
 | team-implementer | subagent(hidden) | 구현·테스트·커밋, /ship 에서 push·PR | force push, main push, 질문 |
-| team-reviewer | subagent | 렌즈별 리뷰 (git diff) | 수정 |
+| team-reviewer | subagent | 렌즈별 리뷰(correctness · security · performance · maintainability · ux; git diff, 테스트, 스크린샷) | 수정 |
 | team-verifier | subagent | 테스트·lint·빌드 실행 | 수정, 위임 |
 | explore | 내장 | 코드베이스·의존성 조사 (bash는 opencode.json의 읽기 전용 allowlist로 제한) | 수정, allowlist 밖 명령 |
 

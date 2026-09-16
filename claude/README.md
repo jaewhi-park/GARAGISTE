@@ -38,7 +38,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 | team-critic | design review (pre-mortem) | Read/Grep/Glob | read-only |
 | team-implementer | senior engineer (main checkout, sequential) | Read/Grep/Glob, Edit/Write, Bash | commits; pushes and opens the PR in /ship |
 | team-builder | senior engineer (parallel) | same | `isolation: worktree` — implements a whole plan in its own worktree, self-verifies; may push its branch, never merges, rebases or pulls (hook) |
-| team-reviewer | per-lens code review | Read/Grep/Glob, Bash | `memory: project` — accumulates recurring defect patterns; shell read-only plus the toolchain to run a test (hook) |
+| team-reviewer | per-lens code review (correctness · security · performance · maintainability · ux) | Read/Grep/Glob, Bash | `memory: project` — accumulates recurring defect patterns; shell read-only plus the toolchain to run a test (hook) |
 | team-verifier | CI | Bash, Read/Grep/Glob | hook allow-list: build/test/lint tools, read-only git, and every command listed under CLAUDE.md "## Commands" (the hook reads the file); what an `npm run` script executes is not inspected |
 | Explore | codebase research (built-in) | read-only | |
 

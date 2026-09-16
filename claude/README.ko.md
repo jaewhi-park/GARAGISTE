@@ -46,7 +46,7 @@
 | team-critic | 설계 리뷰(pre-mortem) | Read/Grep/Glob | 읽기 전용 |
 | team-implementer | 시니어 엔지니어 (메인 체크아웃, 순차) | Read/Grep/Glob, Edit/Write, Bash | 커밋함, /ship 에서 브랜치 push·PR 생성 |
 | team-builder | 시니어 엔지니어 (병렬용) | 동일 | `isolation: worktree` — 계획 하나를 자기 worktree에서 통째로 구현, 자체 검증. 자기 브랜치 push 가능, merge·rebase·pull 불가(훅) |
-| team-reviewer | 렌즈별 코드 리뷰 | Read/Grep/Glob, Bash | `memory: project` — 반복 결함 패턴 축적. 셸은 읽기 전용 + 테스트 실행용 툴체인(훅) |
+| team-reviewer | 렌즈별 코드 리뷰(correctness · security · performance · maintainability · ux) | Read/Grep/Glob, Bash | `memory: project` — 반복 결함 패턴 축적. 셸은 읽기 전용 + 테스트 실행용 툴체인(훅) |
 | team-verifier | CI | Bash, Read/Grep/Glob | 훅 allow-list: 빌드/테스트/lint 도구, 읽기 전용 git, 그리고 CLAUDE.md "## Commands"에 적힌 모든 명령(훅이 파일을 읽는다); `npm run` 스크립트가 무엇을 실행하는지는 검사하지 않는다 |
 | Explore | 코드베이스 조사 (내장) | 읽기 전용 | |
 

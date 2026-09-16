@@ -139,7 +139,7 @@ fi
 
 # 4. .gitignore (the status board docs/STATUS.md is committed; an older install git-ignored it — that line is removed)
 GI="$ROOT/.gitignore"
-for line in ".claude/worktrees/" ".claude/agent-memory-local/" ".claude/session/"; do
+for line in ".claude/worktrees/" ".claude/agent-memory-local/" ".claude/session/" "docs/screens/"; do
   grep -qxF "$line" "$GI" 2>/dev/null || { [ "$DRY" = 1 ] && echo "+ append $line >> .gitignore" || { [ -s "$GI" ] && [ -n "$(tail -c1 "$GI")" ] && echo >> "$GI"; echo "$line" >> "$GI"; }; }
 done
 if grep -qxF "docs/STATUS.md" "$GI" 2>/dev/null; then

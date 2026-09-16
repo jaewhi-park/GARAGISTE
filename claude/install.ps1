@@ -137,7 +137,7 @@ if ($Budget -ne "inherit" -or $Set.Count -gt 0) {
 
 # .gitignore (the status board docs/STATUS.md is committed; an older install git-ignored it — that line is removed)
 $Gi = Join-Path $Root ".gitignore"
-foreach ($line in ".claude/worktrees/", ".claude/agent-memory-local/", ".claude/session/") {
+foreach ($line in ".claude/worktrees/", ".claude/agent-memory-local/", ".claude/session/", "docs/screens/") {
   $has = (Test-Path $Gi) -and ((Get-Content $Gi) -contains $line)
   if (-not $has) { if ($DryRun) { Write-Host "+ append $line >> .gitignore" } else { if ((Test-Path $Gi) -and (Get-Item $Gi).Length -gt 0 -and -not ([IO.File]::ReadAllText($Gi)).EndsWith("`n")) { Add-Content $Gi "" }; Add-Content $Gi $line } }
 }

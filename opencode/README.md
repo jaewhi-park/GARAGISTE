@@ -50,7 +50,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | team-planner | subagent | write docs/**, AGENTS.md | edit code |
 | team-critic | subagent | plan pre-mortem | edit anything |
 | team-implementer | subagent (hidden) | implement, test, commit; push and open PR in /ship | force push, push to main, ask the CEO |
-| team-reviewer | subagent | per-lens review (git diff) | edit |
+| team-reviewer | subagent | per-lens review (correctness · security · performance · maintainability · ux; git diff, tests, screenshots) | edit |
 | team-verifier | subagent | run tests, lint, build | edit, delegate |
 | explore | built-in | codebase and dependency research (bash limited to a read-only allowlist via opencode.json) | edit, anything not on the allowlist |
 

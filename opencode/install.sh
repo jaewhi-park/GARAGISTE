@@ -95,6 +95,9 @@ if [ "$MODE" = project ]; then
   [ -f "$DEST/../docs/README.md" ] || { run mkdir -p "$(dirname "$DEST")/docs"; run cp "$SRC/docs/README.md" "$(dirname "$DEST")/docs/README.md"; }
   # .gitignore (the status board docs/STATUS.md is committed; an older install git-ignored it — that line is removed)
   GI="$(dirname "$DEST")/.gitignore"
+  for line in "docs/screens/"; do
+    grep -qxF "$line" "$GI" 2>/dev/null || { [ "$DRY" = 1 ] && echo "+ append $line >> .gitignore" || { [ -s "$GI" ] && [ -n "$(tail -c1 "$GI")" ] && echo >> "$GI"; echo "$line" >> "$GI"; }; }
+  done
   if grep -qxF "docs/STATUS.md" "$GI" 2>/dev/null; then
     [ "$DRY" = 1 ] && echo "- remove docs/STATUS.md from .gitignore (the board is committed now)" || { grep -vxF "docs/STATUS.md" "$GI" > "$GI.tmp" && mv "$GI.tmp" "$GI"; echo "→ docs/STATUS.md removed from .gitignore: the board is committed from now on (the next milestone commit adds it)"; }
   fi
