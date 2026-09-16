@@ -9,7 +9,7 @@ CLAUDE.md is injected into every session and every subagent. It must be short an
 
 ## Principles
 - Under 300 lines. Procedures go in skills; facts go here.
-- List only commands that were actually run and passed (confirmed by team-verifier). At kickoff and at assess each command line ends with ` — unverified` until team-verifier has run it: /assess step 4 removes the marker; after a kickoff, the full verification at the end of plan 0001's build does (the planner drops the marker from what passed and the commands that failed, per the `build` skill). The guardrail strips the marker when it reads the list; the implementer and the verifier run the command without it.
+- List only commands that were actually run and passed (confirmed by team-verifier). At kickoff and at assess each command line ends with ` — unverified` until team-verifier has run it: at assess the verifier runs them at once and the planner removes the marker before the rebuild plan is written; after a kickoff, the full verification at the end of plan 0001's build does (the planner drops the marker from what passed and the commands that failed, per the `build` skill). The guardrail strips the marker when it reads the list; the implementer and the verifier run the command without it.
 - Add rules only when something actually went wrong (retro output). No generalities.
 - Always separate quick verification (under one minute) from full verification.
 - "## Risk paths" is the one judgment-free input to risk, and "## UI paths" the one to the ux lens: a path match, not an opinion. Keep both short and concrete.
