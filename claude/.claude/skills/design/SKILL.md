@@ -30,7 +30,7 @@ Nobody on the team is a designer, so the design is a checklist and a foundation,
 - The plan's "Try it" section names the same screens, so the CEO tries what the team looked at.
 
 ## Where it plugs in
-- /kickoff: the stack ADR gets a "Design foundation" section (library or primitives, tokens, shell, the screenshots command); the skeleton includes the shell and the tokens; the rules file gets "## UI paths" (the globs of screens, components and styles) and the `screenshots:` command.
+- /kickoff: the stack ADR gets a "Design foundation" section (library or primitives, tokens, shell, the screenshots command); plan 0001's scaffold step includes the shell and the tokens; the rules file gets "## UI paths" (the globs of screens, components and styles) and the `screenshots:` command.
 - /plan: a plan whose files hit "## UI paths" loads this skill; every UI step gets `shows:` lines; the critic blocks a UI step without them.
 - /review: a "## UI paths" hit adds the ux lens to the review — mechanically, like risk.
 - The rules file's Definition of Done: a UI step is done when its `shows:` lines have screenshots and the ux lens said APPROVE.

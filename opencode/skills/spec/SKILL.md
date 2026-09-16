@@ -19,7 +19,7 @@ Source: docs/BRIEF.md (approved <date>) · Sections: F1–F<n>
 
 | ID | Feature | Status | Rev | File |
 |---|---|---|---|---|
-| F1 | <name> | planned · in progress — plans: … · done · dropped | 1 | docs/specs/F01-<slug>.md |
+| F1 | <name> | pending · planned · in progress — plans: … · done · dropped | 1 | docs/specs/F01-<slug>.md (— while pending) |
 ````
 
 ## Template — docs/specs/F<nn>-<slug>.md (one per feature; the ID is two digits in the file name, `F3` in prose)
@@ -49,14 +49,14 @@ Backlog: <item title(s)>
 - Section IDs are permanent: a dropped feature keeps its number with `Status: dropped`; a new feature takes the next free number. A file is never renamed (the slug is only a reading aid). Plans reference the ID (`Source: spec F3`), BACKLOG items carry `spec: F3`, METRICS lines carry `(F3)`; the index row's Status and Rev mirror the file's Status line and are updated together with it.
 - Report line (the Summary of the planner's report): `Spec: F1–F<n> (docs/specs/, index docs/SPEC.md) · not ready: <ids> | none · escalated: <items> | none · defaults: <n> (in DECISIONS.md)`; for one section: `Spec: F<n> · rev n · <file> · …`.
 
-## Extending — a feature that arrives after kickoff
-A new capability from the CEO (in chat, a backlog item without a section, a `/plan <feature>` request) gets a new section file from the planner, written from the CEO's words verbatim plus defaults, before any plan is written from it — with an index row; creating docs/specs/ and docs/SPEC.md when they do not exist yet (a legacy project has none until its first new feature). Reported with the same line; the critic reviews the new section with the plan.
+## Extending — a section written after kickoff
+An index row the kickoff left `pending` (a Decided line outside the core flow: it has an ID and a backlog item, no file yet) gets its file from the planner when the item's turn comes — at /plan, before the plan is written from it, keeping the row's ID and turning its Status to `planned`. A new capability from the CEO (in chat, a backlog item without a section, a `/plan <feature>` request) gets a new section file the same way, written from the CEO's words verbatim plus defaults — with a new index row; creating docs/specs/ and docs/SPEC.md when they do not exist yet (a legacy project has none until its first new feature). Reported with the same line; the critic reviews the new section with the plan.
 
 ## Revision — `/plan F<n> 수정: <what changed>`
 The lead discusses the change with the CEO (brainstorm mode, short: what changed, the options, what it touches and costs), then hands the discussion to the planner verbatim. The planner rewrites only the section's differences (Done-when, Not-this-time, Screens, Undecided), bumps `rev n` (in the file and the index row), appends a Revision-history line, and reports the impact as its Summary: `Spec: F<n> · rev n · Done-when ±<k> · plans in flight: <path (step k/n)> | none · shipped: <slugs from docs/METRICS.md lines carrying (F<n>)> | none · charter/brief conflict: <item> | none`. From that report the lead sorts the plans: shipped work that the change invalidates becomes a BACKLOG rework item; the plan in flight is amended from the step after its last PASS; unstarted plans are re-planned. The critic checks the changed section and the sort. The CEO is asked only when shipped work is discarded (the one expensive step); otherwise the team proceeds.
 
 ## Lifecycle
-- /kickoff: the planner writes every section file and the index from the brief; the critic reviews the whole spec (findings to the planner; escalated items to the CEO through the lead); BACKLOG gets one item per section (`spec: F<n>`).
+- /kickoff: the planner writes the index with a row per Decided line of the brief and a section file only for the rows the brief's core flow touches (the rest `pending`, written at /plan); the critic reviews the spec as written (findings to the planner; escalated items to the CEO through the lead); BACKLOG gets one item per row (`spec: F<n>`).
 - /plan: sections 1–2 of a plan are the section's Done-when and Not-this-time verbatim; the section's Status becomes `in progress — plans: …` (file and index).
 - /ship: a section is `done` when every Done-when line is covered by a shipped plan (the `(F<n>)` lines in docs/METRICS.md); otherwise `remaining: <uncovered lines>` is appended to its Status.
 - /backlog sweeps the sections for uncovered Done-when lines and Not-this-time candidates.

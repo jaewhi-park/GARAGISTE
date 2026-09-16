@@ -16,7 +16,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 ## CEO console (skills = slash commands)
 | Loop | Command | Artifact |
 |---|---|---|
-| Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | docs/BRIEF.md (the product brief: brainstorm or your document → open slots → critic pre-mortem → approval), then docs/CHARTER.md, docs/adr/, docs/specs/, docs/BACKLOG.md, CLAUDE.md, (legacy) docs/ASSESSMENT.md · docs/REBUILD_PLAN.md · parity-harness plan; /hire in the closing step, then the board |
+| Governance | `/brainstorm <idea or file>` → `/kickoff` / `/assess <target>` | docs/BRIEF.md (the product brief: brainstorm or your document → one round of non-goals, defaults and the critic's pre-mortem → approval), then docs/CHARTER.md, docs/adr/, docs/specs/, docs/BACKLOG.md, CLAUDE.md, (legacy) docs/ASSESSMENT.md · docs/REBUILD_PLAN.md · parity-harness plan; /hire in the closing step, then the board |
 | Running mode | (no command — say "계속") / `deliver` | one iteration: 2–4 plans through plan → run → merge, then an iteration review; docs/STATUS.md carries Mode, Iteration, Tryable now; `instruction` (a knowledge skill) is how the lead turns what the CEO says into the right procedure |
 | Product | `/backlog [idea]` | docs/BACKLOG.md (+ GitHub Issues) |
 | Engineering | `/plan <item>` → `/run <plan>` (or `/build`); `/plan <F<n> or plan> 수정: …` | no questions: docs/plans/*.md from its spec section (docs/specs/) (one to four `proves` lines per logic step, at most 4 logic steps per plan), the critic's APPROVE is the approval, one commit per step with its tests first (red → green); a revision writes only the differences, sorts the plans, and a running plan continues on its branch |
