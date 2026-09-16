@@ -17,6 +17,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 - Never weaken, skip or delete tests to get a pass.
 - Mechanical changes (scaffolding, generated code, lockfiles, formatting/renames/moves, deletions) go in separate commits from logic changes. Label the commit type (`chore(scaffold)`, `chore(gen)`, `refactor(mechanical)`, `chore(deps)`) and include the reproduction command. For generated code, re-run the generator and confirm a zero diff before committing.
 - No merge, rebase, pull or worktree removal (the guardrail hook blocks them); push your branch only when the lead says so. The lead integrates via /integrate.
+- A relaunch after an interruption: when the lead names an existing branch plan/<slug>, `git switch plan/<slug>` in your worktree, find the last step commit (`git log --format=%s%n%b main..HEAD` names plan and step) and continue from the next step. The interrupted step's uncommitted work went with its worktree — redo that step.
 
 - Reports use only the format below. No preamble, no narration, no apologies. Five lines max per item (except failure logs).
 ## Report format

@@ -32,7 +32,7 @@
 | 품질 | `/review` | 테스트 파일 바닥(테스트 파일이 없는 논리 커밋은 멈춤), 그다음 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
 | 운영 | `/ship` → `/release [ver]` · `/policy` | PR(위험도 라벨; 맨 앞에 "증명" 절 — 테스트, 빨강 → 초록, 돌리는 명령; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) 또는 로컬 머지, CHANGELOG, docs/releases/*.md |
 | 경영 | `/retro <대상>` | CLAUDE.md 규칙 / 스킬 / 훅 갱신 |
-| 인수인계 | `/handoff`(단계 도중에만) / `/resume` | docs/STATUS.md(로컬, git-ignore) |
+| 인수인계 | `/handoff`(단계 도중에만) / `/resume`(세션 시작 때 lead가 스스로 실행) | docs/STATUS.md(끊는 지점마다 커밋) |
 | 팀 관리 | `/hire` / `/roster` | 역할별 모델·effort 배정과 운영 프로필(둘 다 스크립트); 로스터 표 |
 | 언어 | `/lang [code]` | 스크립트로 CLAUDE.md의 `## Language` 절만 고쳐 쓰고 즉시 적용 |
 | 채용 | `/recruit <gap>` | 권한 프리셋과 형제 역할의 모델·effort로 새 역할 생성(승인 후 스크립트) |
@@ -101,8 +101,8 @@
 변경: `./install.sh claude -Budget <tier>` 재실행, 개별은 `--set team-implementer=sonnet:high`, 복귀는 `--budget inherit`. `/roster` 가 현재 배정을 보여주고, 세션 모델만은 Claude Code 의 `/model`, 대화식 편집은 `/agents`.
 
 ## 세션 수명주기
-세션은 작업 기억, 레포가 장기 기억. 상태는 세 곳 — 단계마다의 커밋, 계획 파일(승인 시 커밋), `docs/STATUS.md`(로컬, git-ignore, SessionStart 훅으로 자동 주입; 전역 설치면 .gitignore에 직접 추가).
-한 세션 = 한 계획(PR). `/ship`이나 `/plan`이 끝나면 상태판과 커밋이 이미 남아 있으니, 다음 세션은 상태판이 있으면 `/resume`으로, 없으면 제안받은 커맨드로 바로 시작한다. `/handoff`는 단계 도중에 멈출 때만. 짧게 끊긴 경우만 `claude --continue`.
+세션은 작업 기억, 레포가 장기 기억. 상태는 세 곳 — 단계마다의 커밋, 계획 파일(승인 시 커밋), `docs/STATUS.md`(상태판: SessionStart 훅으로 자동 주입, 끊는 지점 — 승인 커밋, 출하, CEO 대기 질문, handoff, 컴팩션 정지 — 마다 커밋되고 그 사이엔 미커밋으로 바뀐다; 저장소가 진실이고 상태판은 포인터).
+한 세션 = 한 계획(PR). `/ship`이나 `/plan`이 끝나면 상태판과 커밋이 이미 남아 있다. 상태판이 있으면 lead가 첫 턴에 스스로 `resume`을 돌리니(상태판을 git·worktree·PR 상태와 대조, 저장소가 이긴다) CEO는 그냥 말하면 된다. `/handoff`는 단계 도중에 멈출 때만. 끊김(Esc, 오류, 사용량 한도)의 비용은 최대 진행 중이던 한 단계다: 단계 커밋이 체크포인트이고, /build는 끊긴 단계를 미커밋 변경에서 이어가며 /parallel은 끊긴 builder를 그 브랜치에서 다시 띄운다. 컴팩션은 PreCompact 훅이 센다(`.claude/session/compactions`). 1 이상이면 lead가 단계를 마치고 상태판을 커밋하고 세션을 끝낸다. 짧게 끊긴 경우만 `claude --continue`.
 에이전트별 장기 기억은 `.claude/agent-memory/<name>/`에 쌓인다(planner·reviewer). auto memory가 꺼져 있으면 동작하지 않는다.
 
 ## opencode 버전과의 차이

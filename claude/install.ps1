@@ -135,10 +135,14 @@ if ($Budget -ne "inherit" -or $Set.Count -gt 0) {
   } else { Write-Host "! node not found; skipping model assignment." }
 }
 
+# .gitignore (the status board docs/STATUS.md is committed; an older install git-ignored it — that line is removed)
 $Gi = Join-Path $Root ".gitignore"
-foreach ($line in ".claude/worktrees/", ".claude/agent-memory-local/", "docs/STATUS.md") {
+foreach ($line in ".claude/worktrees/", ".claude/agent-memory-local/", ".claude/session/") {
   $has = (Test-Path $Gi) -and ((Get-Content $Gi) -contains $line)
   if (-not $has) { if ($DryRun) { Write-Host "+ append $line >> .gitignore" } else { if ((Test-Path $Gi) -and (Get-Item $Gi).Length -gt 0 -and -not ([IO.File]::ReadAllText($Gi)).EndsWith("`n")) { Add-Content $Gi "" }; Add-Content $Gi $line } }
+}
+if ((Test-Path $Gi) -and ((Get-Content $Gi) -contains "docs/STATUS.md")) {
+  if ($DryRun) { Write-Host "- remove docs/STATUS.md from .gitignore (the board is committed now)" } else { (Get-Content $Gi) | Where-Object { $_ -ne "docs/STATUS.md" } | Set-Content $Gi; Write-Host "→ docs/STATUS.md removed from .gitignore: the board is committed from now on (the next milestone commit adds it)" }
 }
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { Write-Host "! 'claude' not found on PATH." }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Host "! node not found. Hooks require Node.js." }

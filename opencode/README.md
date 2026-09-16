@@ -39,8 +39,8 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/spawn <plans>` | Parallel: create a worktree and branch per plan, print the new-session command |
 | `/integrate [branches]` | Merge queue into `integrate/<date>`: per-branch review → merge → conflict resolution → verifier, serially; `/ship` then ships that branch as one PR |
 | `/retro <subject>` | Feed failures back into AGENTS.md rules, skills or guardrails |
-| `/handoff [note]` | Wrap up a session that stops mid-flight: write STATUS.md (local), commit WIP, list pending decisions |
-| `/resume [note]` | First command of a new session when a board exists: reconcile STATUS.md, plan and git, then continue |
+| `/handoff [note]` | Wrap up a session that stops mid-flight: write and commit STATUS.md, commit WIP, list pending decisions |
+| `/resume [note]` | Reconcile STATUS.md, plan, worktrees and git, then continue; the lead does it itself at the first turn when a board exists, and after any interruption |
 
 ## Team
 | Agent | mode | Can | Cannot |
@@ -60,7 +60,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 - Autonomous decisions go to docs/DECISIONS.md, architecture decisions to docs/adr/.
 
 ## Session lifecycle
-The session is working memory; the repo is long-term memory. State lives in three places — one commit per step, the plan file (committed at approval), `docs/STATUS.md` (the board — local, git-ignored, auto-injected every session; after a global install add it to .gitignore yourself).
+The session is working memory; the repo is long-term memory. State lives in three places — one commit per step, the plan file (committed at approval), `docs/STATUS.md` (the board — auto-injected every session, committed at the cut points: the approval commits, ship, a question waiting on the CEO, handoff, a compaction stop; changed uncommitted between them, and the repository is the truth). When a board exists the lead reconciles it at the first turn, so the CEO just talks; an interruption costs at most the step in progress (step commits are the checkpoints). A compaction summary in the lead's context is its signal to finish the step, commit the board and end the session.
 - One session = one plan (PR). Start other work in a new session.
 - Ending: a finished `/ship` or `/plan` already leaves the board and the commits in place — just close. `/handoff` only when stopping mid-step, after two or more compactions, or when the team is going in circles.
 - Continuing: with a board, new session → `/resume`; without one (fresh clone, worktree, nothing in progress) go straight to `/plan <backlog item>`. Use `opencode -c` (continue the last session) only for a short interruption the same day. Long sessions stack summaries on summaries and degrade.

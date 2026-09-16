@@ -123,6 +123,16 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/pre-compact.mjs"
+          }
+        ]
+      }
     ]
   },
   "worktree": {

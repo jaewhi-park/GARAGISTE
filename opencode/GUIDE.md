@@ -47,7 +47,7 @@ Three install targets. Give the flavor (opencode) to the entry point at the repo
 ```
 `opencode/install.sh` does the same without the flavor argument.
 - If the path is a subfolder of a repo, the script walks up to the git root and tells you. If it is not a git repository, it offers `git init`.
-- `-Global` → ~/.config/opencode (every repo). A global install cannot touch a project's .gitignore: add `docs/STATUS.md` there yourself (the first milestone commit does it when you forget).
+- `-Global` → ~/.config/opencode (every repo). A global install cannot touch a project's .gitignore; if an older install git-ignored `docs/STATUS.md` there, remove that line yourself — the board is committed.
 
 **Windows execution policy**: if `.\install.ps1` is blocked with "cannot be loaded because running scripts is disabled", either
 - once: `powershell -ExecutionPolicy Bypass -File .\install.ps1 …`
@@ -151,10 +151,10 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: approving a symptom-suppressing patch. If the cause is in data or interfaces, an escalation question arrives — decide then.
 
 ### 2.10 Troubleshooting (when the team spins)
-- Signals: the same failure three times, repeated questions, a diff growing beyond the plan, compaction two or more times.
+- Signals: the same failure three times, repeated questions, a diff growing beyond the plan. (A compaction is not a signal for you: the lead stops itself after the step in progress and asks for a new session.)
 - What you do, in order:
   1. Stop. Do not try to talk it back on track.
-  2. `/handoff` to save state, then drop the session. `/resume` in a fresh one.
+  2. `/handoff` to save state, then drop the session. Open a fresh one and say anything — the lead reconciles the board with git before answering.
   3. If it stalls at the same place again, the plan is wrong. Redo `/plan` with finer steps.
   4. Environment problems (dependencies, permissions, mismatched commands) show up in the verifier report as "environmental" — fix those yourself.
   5. On the second recurrence, `/retro`. If speed or cost is the problem, `/hire` to reassign.
@@ -177,15 +177,15 @@ Every entry has the same shape: when / command / what the team does / **what you
 - Common mistakes: release notes written from the team's view (what changed) — they must be the user's view (what is different, known issues, rollback).
 
 ### 2.13 Ending a session
-- When: a session that stops mid-step, after two or more compactions, when the team spins, at the end of a day with work in flight — not after a finished `/ship` or `/plan` (board and commits are already in place).
+- When: a session that stops mid-step, when the team spins, at the end of a day with work in flight — not after a finished `/ship` or `/plan` (board and commits are already in place), and not after a compaction (the lead does this itself: it finishes the step, commits the board and asks for a new session).
 - Command: `/handoff [note]`
-- Team: an open brainstorm, spec round or revision discussion is checkpointed to the planner → docs/STATUS.md written (local, never committed; including a spec in progress and its round) → `wip:` commit of uncommitted code, `docs:` commit of uncommitted documents → report "finished / waiting / first action next session".
+- Team: an open brainstorm, spec round or revision discussion is checkpointed to the planner → docs/STATUS.md written and committed (including a spec in progress and its round) → `wip:` commit of uncommitted code, `docs:` commit of uncommitted documents → report "finished / waiting / first action next session".
 - You: check that the **first next action** matches your view. If not, correct it right there (the team fixes STATUS). Answer waiting decisions now or at the start of the next session.
-- Common mistakes: closing the window mid-step without `/handoff` — uncommitted changes and reasoning are lost.
-- Upgrading a project that committed docs/STATUS.md under the old flow: re-run the installer (adds the .gitignore line); the next milestone commit removes the file from the repository.
+- Common mistakes: closing the window mid-step without `/handoff` — the step's uncommitted changes are at risk and the reasoning is lost. Not fatal: every finished step is a commit and the board is committed at each cut point, so the next session recovers from git and redoes at most that one step.
+- Upgrading a project that git-ignored docs/STATUS.md under the old flow: re-run the installer (it removes the .gitignore line); the next milestone commit adds the board to the repository. From then on the board travels with the repo — a fresh clone, another machine or a web session all resume from it.
 
 ### 2.14 Resuming in a new session
-- Command: new session → `/resume [note]` when the injected files include a board; with only a charter, start with `/plan` (nothing is in progress). Use `opencode -c` only for a short interruption. Long sessions stack summaries on summaries and degrade; the default is a fresh session.
+- Command: none. Open a new session and say anything ("어디까지 됐어?", "계속"): when the injected files include a board the lead does the resume procedure first — board against git, worktrees and PR state, the repository wins — and only then answers. With only a charter, start with `/plan` (nothing is in progress). `/resume [note]` still works by hand. Use `opencode -c` only for a short interruption. Long sessions stack summaries on summaries and degrade; the default is a fresh session.
 - Team: reconciles the status board (auto-injected), the plan and git → trusts the repo and fixes the board on disagreement → syncs local main with origin (fast-forward, or a rebase of the local milestone commits after a squash merge) → treats a board whose PR is merged as done (deletes the branch, next: `/plan`) → verifier first if the last result was FAIL → asks about waiting decisions → continues from the next action (for a stopped spec: `/plan docs/specs/NNNN-<slug>.md`).
 - You: answer waiting decisions. If the report says board and repo disagree, the repo is right.
 - Rule: one session = one plan. Another plan means another session.
@@ -265,12 +265,13 @@ Before merging a PR:
 - Repeatedly checking subagent status: forbidden by the lead's rules (synchronous calls, wait for completion). If you still see it, it is a `/retro` subject.
 - Progress narration ("I will now…"): forbidden by rule. Results and decisions only.
 - Auto-injected documents growing: CHARTER 60 lines, STATUS 30 lines. The lead keeps STATUS within the cap; the planner splits CHARTER when exceeded — there is no hard cap in opencode (unlike the Claude Code flavor's session-start hook), so a file that grows past this stays uncapped and is injected in full every session.
+- Compaction: the compaction plugin marks the summary and the lead treats a summary in its context as the signal — it finishes the step, commits the board and ends the session asking for a new one. You never have to notice a compaction yourself.
 - Critic and 4 lenses on small plans: at or under the plan-size target (4 logic steps) and risk:low the critic is skipped — it runs for high risk, a plan over the target and the first part of a split; review uses 2 lenses below 600 logic lines and risk:low.
 - Verifier per step: off by default — the implementer's red → green report carries each step and the verifier runs in full at the end of `/build`, after a review fix and at `/ship`; a four-step plan spawns it twice instead of seven times. Turn it on in the operating profile (/hire) when you want an independent quick run per step; high-risk and legacy plans get it regardless. Risk is a file match against the rules file's "Risk paths", not a judgment — the team may raise it, never lower a hit. Adjust via the operating profile (/hire).
 - Intake asks at most once per plan; if bug lines, re-plans or backlog items (beyond the one spec question for size L or a new page, screen, API or data model) still draw questions, it is a `/retro` subject.
 - Spec rounds are the exception to short chats: give paths and links, never paste documents (the planner reads them); the file is the memory, so after long spec rounds choose "approve, plan next session" (the spec is committed) and re-enter with `/plan docs/specs/NNNN-<slug>.md`.
 - The brainstorm lives in the lead's context: the planner checkpoints it every ten or so exchanges, and after a long one run `/kickoff` or `/assess` in a new session (the board points there).
-- On your side: do not re-ask the same question every session — record decisions in docs/DECISIONS.md and let the lead follow them. One plan per session. When the context gets heavy, `/handoff` and start fresh.
+- On your side: do not re-ask the same question every session — record decisions in docs/DECISIONS.md and let the lead follow them. One plan per session. When the context gets heavy, `/handoff` and start fresh — the board is committed, so nothing is lost between sessions.
 
 ## 6. Do not
 - Order large work in chat without a plan, or a complex feature with a one-liner and no spec
