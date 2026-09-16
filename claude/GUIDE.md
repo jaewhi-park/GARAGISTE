@@ -6,7 +6,7 @@ Configuration reference: README.md. Where artifacts live: docs/README.md. 한국
 ## 0. One-page summary
 
 You have three jobs: **set the direction / look at the product / say what you want.**
-The team does the rest — it writes the spec, plans, builds, reviews and merges low-risk work on its own, in iterations of 2–4 plans, and stops to look at you after each one. You never have to type a command: say it, and the lead runs the procedure. You read a diff only when the team asks you to merge `risk:high` work (data, interfaces, security).
+The team does the rest — it writes the spec, plans, builds, reviews and merges low-risk work on its own, in iterations of 2–4 plans, and stops to look at you after each one. You never have to type a command: say it, and the lead runs the procedure. You never read a diff: once the product is live, `risk:high` work (data, interfaces, security) waits for your merge or hold, said from the PR's Risk summary.
 
 ![The workflow in one picture: the start line joins the main line every piece of work takes; the hotfix line skips the plan; the parallel branch rejoins at /ship; the after-merge loop returns to /plan; double rings are where you answer or approve](../assets/workflow-map.svg)
 
@@ -21,7 +21,7 @@ The team does the rest — it writes the spec, plans, builds, reviews and merges
 | "이거 버그야" | A hotfix when it is one sentence with an obvious check, else a `bug:` plan at the head of the next iteration | Give the reproduction |
 | "이거 먼저" | Reorders the backlog and the next iteration | Nothing else |
 | "멈춰" | Finishes the step in progress, commits the board, waits (`Mode: paused`) | Say what you want next |
-| (the team asks) | An escalation: money, security or user data, a non-goal conflict, a fix loop past 3 rounds, `risk:high` work to merge | Answer in the decision / options / recommendation / default form; read the `risk:high` diff and merge |
+| (the team asks) | An escalation: money, security or user data, a non-goal conflict, a fix loop past 3 rounds, a `risk:high` merge once the product is live | Answer in the decision / options / recommendation / default form; for a `risk:high` merge, read the PR's Risk summary and say merge or hold |
 | (the team stops on its own) | The iteration review: tryable now · changed · check please · next iteration | Try it; then "계속" or an instruction |
 | (a session died mid-turn) | Reconciles the board with git at your first message and continues; at most one step is redone | Open a session and say anything |
 | `/parallel <plans>` → `/integrate` | Worktree per plan, serial integration, one PR | Only when files do not overlap; not in the first two weeks |
@@ -30,7 +30,7 @@ The team does the rest — it writes the spec, plans, builds, reviews and merges
 | `/hire`, `/roster`, `/recruit <gap>`, `/lang <code>` | Models and budget, the roster, a new role, the working language | Only when something is wrong or the budget changes |
 | any slash command | The same procedure the lead would run for your words | Optional — typing it is never required |
 
-What you will be asked, and nothing else: the stack and the budget once at kickoff; anything that costs money (a paid service, a new runtime dependency); anything that touches security, authentication or user data; a request that crosses the brief's non-goals; a change that discards shipped work; a fix loop the team could not close in three rounds; and `risk:high` work to merge. Everything else the team decides with a default and writes into docs/DECISIONS.md, where you can read it.
+What you will be asked, and nothing else: the stack and the budget once at kickoff; anything that costs money (a paid service, a new runtime dependency); anything that touches security, authentication or user data; a request that crosses the brief's non-goals; a change that discards shipped work; a fix loop the team could not close in three rounds; and, once the product is live, a `risk:high` merge — decided from the PR's Risk summary, not the diff. Everything else the team decides with a default and writes into docs/DECISIONS.md, where you can read it.
 
 ## 1. Install and first run
 
@@ -77,7 +77,7 @@ Agent prompts are English. Responses, questions and documents follow the `## Lan
 - **Work runs in iterations.** The lead picks 2–4 backlog items that add up to something you can try, and for each: a plan from the spec section (the critic reviews every plan; its APPROVE is the approval), then build → review → ship → merge. At the end it writes the iteration review and stops. A `risk:high` PR pauses the iteration until you merge it, because the next plan may build on it.
 - **Every step is proven before the next.** A logic step has one to four `proves:` lines in plain words; each becomes a test that is red before the change and green after. A UI step also has `shows:` lines — the screens and their four states (empty, loading, error, success) — proven by screenshots the reviewer looks at. The verifier runs the whole suite at the end of a build, after review fixes and before shipping.
 - **Review is by lens, and lenses are mechanical.** Correctness and security always; performance and maintainability when the risk is high or the diff is big; the ux lens whenever the diff touches a UI path. Risk is a file match against the rules file's "Risk paths", never an opinion; the team can raise it, never lower a hit.
-- **Merging follows the repository.** No remote → a local merge; a remote → a PR. In every case `risk:low` work whose verification, review and checks are green is merged by the lead; `risk:high` waits for you. Main is always runnable: the board's Run line is how you start the product.
+- **Merging follows the repository.** No remote → a local merge; a remote → a PR. In every case `risk:low` work whose verification, review and checks are green is merged by the lead — `risk:high` too while the product is pre-launch (recorded in the merge message and docs/DECISIONS.md, shown to you under Check please); once live, `risk:high` waits for your word, given from the PR's Risk summary. Main is always runnable: the board's Run line is how you start the product.
 - **The board is your window.** docs/STATUS.md (injected at every session start, committed at each cut point) carries Mode, the iteration, what is tryable now, what the team wants your eyes on, what waits on you and what comes next. Git is the truth when they disagree.
 - **Sessions end; the work does not.** The lead reconciles the board with git at the first message of every session and continues on its own when Mode is running. An interruption costs at most the step in progress. A compaction makes the lead finish the step, commit the board and ask for a new session.
 - **Failures feed back.** Metrics per plan (rework, questions, tests, duration) go to docs/METRICS.md; `/retro` turns repeated failures into one-line rules, skills or hooks — only the ones with an incident behind them.
@@ -129,16 +129,16 @@ Every entry has the same shape: when / what you say / what the team does / **wha
 - Watch for: keeping the backlog in your head instead of the team's — then nobody catches conflicts with the charter.
 
 ### 3.7 When the team asks you
-- When: an escalation — the list in section 0 — or a `risk:high` PR.
-- Team: one question at a time, in the form decision / 2–3 options / recommendation with reason / default if you do not answer; the board's Waiting-on-CEO line carries it, so a new session asks it again. For a `risk:high` PR: verification evidence, the review findings and how they were handled, risks and rollback, and the diff.
+- When: an escalation — the list in section 0 — or, once the product is live, a `risk:high` PR.
+- Team: one question at a time, in the form decision / 2–3 options / recommendation with reason / default if you do not answer; the board's Waiting-on-CEO line carries it, so a new session asks it again. For a `risk:high` PR: the Risk summary — the files on the Risk paths and what changed, what could break, what each lens checked, the negative-case tests, rollback — and two answers, merge or hold. You do not read the diff; the four lenses did.
 - You: follow the recommendation or change it with a reason. For the PR, use the checklist in section 4 and merge it yourself; the iteration waits for it.
 - Watch for: the same question twice — decisions live in docs/DECISIONS.md and the lead must follow them; if it asks again, that is a retro subject. A question outside the escalation list is one too.
 
 ### 3.8 Merging and releasing
-- Lead-merge: in every policy below, `risk:low` work whose verification, review and checks are green is merged by the lead without asking; only `risk:high` (a Risk-paths hit, an escalation item) waits for you — the one diff you read.
+- Lead-merge: in every policy below, `risk:low` work whose verification, review and checks are green is merged by the lead without asking; `risk:high` (a Risk-paths hit, an escalation item) as well while the board's Stage is `pre-launch`; once `live`, it waits for your merge or hold, said from the Risk summary. The lead does the merging in every case — you never open GitHub for it.
 - Main merges follow the repository state (`/ship` resolves it; `/policy` shows the verdict and why):
-  - No remote → `local`: the PR description is saved under docs/prs/NNNN-<slug>.md and the lead merges locally with `merge --no-ff` (`risk:high`: after your approval).
-  - Remote, no protection → `manual`: the team pushes, opens the PR and merges `risk:low` once checks pass; `risk:high` waits for you.
+  - No remote → `local`: the PR description is saved under docs/prs/NNNN-<slug>.md and the lead merges locally with `merge --no-ff` (a live `risk:high`: after your word).
+  - Remote, no protection → `manual`: the team pushes, opens the PR and merges by the rule above once checks pass; a live `risk:high` waits for your word.
   - Remote + main protected (required checks = CI) + auto-merge allowed → `auto-low-risk`: `risk:low` merges automatically when CI passes.
 - The team can never force-push or push directly to main (hooks). Every merge goes through a PR or a local merge on the rules above.
 - **The day you attach GitHub**: `git remote add origin …` and the first push; `/ship` switches to the PR flow by itself. Turn branch protection on: the lead's `risk:low` merge is a prompt rule, and protection with required checks is what makes it a repository rule.
@@ -208,12 +208,12 @@ What the critic holds every plan to (you do not approve plans — this is what i
 - [ ] a rollback method is written down
 - [ ] sections 1–2 are the spec section's Done-when and Not-this-time verbatim
 
-Before merging a `risk:high` PR (the only PRs you merge):
+Before saying merge on a live `risk:high` PR (the only merge decision that is yours):
 - [ ] the verification evidence lists the commands run and zero failures (refuse if the test count is zero)
 - [ ] the "Proven" section names a test per proves line with its red → green; run its command yourself if you doubt it
 - [ ] review findings and how they were handled are listed
-- [ ] you read the schema / interface / security diff yourself
-- [ ] the test-file diff contains no skip, deletion or weakening
+- [ ] the Risk summary names the files on the Risk paths and what could break, and you understood it
+- [ ] the correctness lens reports the tests real — none skipped, weakened or passing on the old code
 - [ ] mechanical commits (scaffold/gen/mechanical/deps) contain no logic change, and gen regenerates with a zero diff
 - [ ] a rollback method is written down
 
@@ -230,7 +230,7 @@ Before merging a `risk:high` PR (the only PRs you merge):
 
 ## 6. Do not
 - Order large work in chat without a plan (say `/plan <it>` — the team writes the section and the plan)
-- Merge a `risk:high` PR on a green light without reading the diff and the evidence
+- Say merge on a live `risk:high` PR without reading its Risk summary
 - Treat a remark as an order, or expect the team to (say "바꿔" when you mean it)
 - Change direction in chat while the team is working (say "멈춰", then say what changed)
 - Fix reviewer findings yourself (tell the lead; the implementer fixes)

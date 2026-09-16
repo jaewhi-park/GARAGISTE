@@ -2,7 +2,7 @@
 
 Human manual: **GUIDE.md** (install, what to do in each situation). Artifact map: docs/README.md. This file is the configuration reference. 한국어: README.ko.md, GUIDE.ko.md.
 
-Run one repository like a small software company. The human is the CEO (direction, the product's acceptance, `risk:high` merges); the agents are the team, and the team runs itself in iterations. A company is not an org chart but five loops: product (backlog) → engineering (plan, implement) → quality (verify, review) → operations (ship, release) → governance (decision records, retros). Each loop is one `/skill` and one `docs/` artifact.
+Run one repository like a small software company. The human is the CEO (direction, the product's acceptance, the word on `risk:high` merges once live); the agents are the team, and the team runs itself in iterations. A company is not an org chart but five loops: product (backlog) → engineering (plan, implement) → quality (verify, review) → operations (ship, release) → governance (decision records, retros). Each loop is one `/skill` and one `docs/` artifact.
 
 ## Install
 From the repository root: `./install.sh claude [-Project <path>|.] [-Global]` / `.\install.ps1 claude [-Project <path>] [-Global]`. Default is the current directory (its git repo root). `-Global` → ~/.claude (every repo; no default agent is forced, start with `claude --agent team-lead`). Running `claude/install.sh` directly works too.
@@ -52,7 +52,7 @@ Installs `.claude/{agents,skills,hooks,scripts}` and `docs/README.md`, and merge
 - Morning: confirm today's items with `/backlog` → approve `/plan` → `/run` (see parallelism below)
 - Day: answer only the lead's AskUserQuestion prompts. Everything else is autonomous.
 - Evening: `/run` finishes with ship → merge per policy. Weekly `/release`; `/retro` when failures repeat.
-- The human's three jobs: brainstorm and approve the brief / look at the product and say what they want / answer escalations and merge `risk:high` PRs. Plans are approved by the critic, `risk:low` work is merged by the lead, the spec (docs/specs/) is the team's.
+- The human's three jobs: brainstorm and approve the brief / look at the product and say what they want / answer escalations and say merge or hold on live `risk:high` PRs. Plans are approved by the critic, `risk:low` work is merged by the lead, the spec (docs/specs/) is the team's.
 
 ## Workflow — sequential by default, parallel by choice
 The default (`/build`, inside `/run`) implements one plan in one session, step by step, in the main checkout. Ask for several features and the lead makes several `/plan`s and runs them one after another. No worktrees, no merges, no conflicts by construction. Most personal projects need nothing more.
@@ -70,7 +70,7 @@ Rule: the unit of parallelism is a plan (feature), not a step. Run only plans wh
 |---|---|---|
 | no remote | `local` | PR description saved to docs/prs/, local `merge --no-ff` into main after approval |
 | remote, no main protection / auto-merge | `manual` | push branch + PR (risk label); human merges |
-| remote + protected main (required checks) + auto-merge allowed | `auto-low-risk` | `risk:low` → `gh pr merge --auto`; `risk:high` → human |
+| remote + protected main (required checks) + auto-merge allowed | `auto-low-risk` | `risk:low` → `gh pr merge --auto`; `risk:high` → the lead pre-launch, the CEO's word once live |
 "Turning on auto-merge" therefore means enabling protection and auto-merge on GitHub — which is exactly the safety condition. `/policy` shows the verdict and reason; write an override (`manual`/`auto-low-risk`) into CLAUDE.md only when you really need to. Hooks block force pushes and direct pushes to main under every verdict.
 
 ## Local-only (early build-up without a remote)

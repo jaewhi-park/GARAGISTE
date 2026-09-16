@@ -28,7 +28,7 @@
 
 <!-- /run bracket and line titles -->
 <path class="bracket" d="M432,232 V226 H768 V232"/>
-<text x="600" y="220" text-anchor="middle" class="role">/run — build · review · ship · merge in one go; it stops only for an escalation, a fix loop past 3 rounds, a risk:high merge</text>
+<text x="600" y="220" text-anchor="middle" class="role">/run — build · review · ship · merge in one go; it stops only for an escalation, a fix loop past 3 rounds, a live risk:high merge</text>
 <text x="78" y="92" class="title">start · once</text>
 <text x="316" y="142" class="title">hotfix · one pass, no plan — up to 3 files / 50 logic lines; a Risk path stops it</text>
 <text x="600" y="192" text-anchor="middle" class="role">after the merge, the next backlog item → /plan</text>
@@ -56,7 +56,7 @@
 <circle cx="450" cy="120" r="4.5" class="st st-express"/><text x="450" y="100" text-anchor="middle" class="role">implementer · red test first</text>
 <circle cx="600" cy="120" r="4.5" class="st st-express"/><text x="600" y="100" text-anchor="middle" class="role">verifier, full</text>
 <circle cx="750" cy="120" r="4.5" class="st st-express"/><text x="750" y="100" text-anchor="middle" class="role">reviewer, one lens</text>
-<circle cx="900" cy="120" r="9" class="ceo"/><text x="900" y="82" text-anchor="middle" class="role">risk:low: the lead · risk:high: you</text><text x="900" y="100" text-anchor="middle" class="name">merge the PR</text>
+<circle cx="900" cy="120" r="9" class="ceo"/><text x="900" y="82" text-anchor="middle" class="role">the lead · live risk:high: your word</text><text x="900" y="100" text-anchor="middle" class="name">merge the PR</text>
 
 <!-- parallel branch -->
 <circle cx="450" cy="400" r="9" class="ceo"/><text x="450" y="426" text-anchor="middle" class="name">/parallel · /spawn</text><text x="450" y="442" text-anchor="middle" class="role">worktree per plan, no overlap</text>
