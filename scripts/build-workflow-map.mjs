@@ -3,7 +3,8 @@
 // assets/workflow-map.ko.svg (Korean) — from one geometry and two label sets, so the two languages never drift.
 // Edit the labels or the geometry here and run `node scripts/build-workflow-map.mjs`; never edit the SVG files by hand.
 // The drawing is a transit map: the main line every piece of work takes, the hotfix line that skips the plan,
-// the parallel branch that rejoins at /ship, and the after-merge loop back to /plan. Double rings are the stops
+// the parallel branch that rejoins at /ship, and the after-merge loop back to /plan — with the iteration-review stop on the
+// return line, where the CEO tries the product every 2–4 plans. Double rings are the stops
 // where the CEO answers or approves; the small dot after /build is the verifier — since the TDD flow (PR #19)
 // it runs once, in full, at the end of /build instead of after every step, and each step is proven by its own
 // tests (red → green). A station's role may take two lines. Self-contained SVG (own colours and background,
@@ -17,40 +18,42 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const LABELS = {
   en: {
     file: "workflow-map.svg",
-    aria: "GARAGISTE workflow map. The start line (/brainstorm, /kickoff or /assess, /hire) joins the main line (/backlog, /plan, /build, the verifier's full verification, /review, /ship, merge); every /build step is proven by its own tests, red then green; the /hotfix line runs above it from /plan to a separate PR-merge stop with three team stops and no plan; the parallel branch leaves /plan through /parallel or /spawn and /integrate and rejoins at /ship; the after-merge loop goes through /release and /retro back to /plan. Double rings are the stops where the CEO answers or approves.",
+    aria: "GARAGISTE workflow map. The start line (/brainstorm, /kickoff or /assess, /hire) joins the main line (/backlog, /plan, /build, the verifier's full verification, /review, /ship, merge); every /build step is proven by its own tests, red then green; the /hotfix line runs above it from /plan to a separate PR-merge stop with three team stops and no plan; the parallel branch leaves /plan through /parallel or /spawn and /integrate and rejoins at /ship; the after-merge loop goes through /release and /retro back to /plan; on the return line, every 2–4 plans, the iteration-review stop where the CEO tries the product and says 계속 or gives an instruction. Double rings are the stops where the CEO answers or approves.",
     feederTitle: "start · once", expressTitle: "hotfix · one pass, no plan — up to 3 files / 50 logic lines; a Risk path stops it",
-    returnLabel: "after the merge, the next backlog item → /plan (an iteration: 2–4 plans, then a review)", mainTitle: "main line · every piece of work",
+    returnLabel: "after the merge, the next backlog item → /plan", mainTitle: "main line · every piece of work",
     branchTitle: "parallel — plans whose files do not overlap", loopTitle: "after the merge · release and retro",
     runLabel: "/run — build · review · ship · merge in one go; it stops only for an escalation, a fix loop past 3 rounds, a risk:high merge",
-    brainstorm: ["/brainstorm", "approve the brief"], kickoff: ["/kickoff · /assess", "new or legacy · one question"], hire: ["/hire", "applied · roster shown"],
-    backlog: ["/backlog", "order the top three"], plan: ["/plan", "from the spec section", "≤ 4 steps · critic approves"], build: ["/build", "per step: test first", "red → green → commit"],
+    brainstorm: ["/brainstorm", "approve the brief"], kickoff: ["/kickoff · /assess", "new or legacy · one question"], hire: ["/hire", "applied"],
+    backlog: ["/backlog", "the next 2–4 items"], plan: ["/plan", "from the spec section", "≤ 4 steps · critic approves"], build: ["/build", "per step: test first", "red → green → commit"],
     verifierStop: "verifier · full, once", review: ["/review", "test-file floor, then", "2 | 4 lenses → fix loop"], ship: ["/ship", "verdict → PR · METRICS", "PR opens with Proven"], merge: ["merge", "risk:low: the lead merges", "risk:high: you read the diff"],
     hotfix: ["/hotfix", "one sentence, obvious check"], impl: "implementer · red test first", verify: "verifier, full", review1: "reviewer, one lens",
-    prmerge: ["merge the PR", "read the diff · never auto-merged"],
+    prmerge: ["merge the PR", "risk:low: the lead · risk:high: you"],
     parallel: ["/parallel · /spawn", "worktree per plan, no overlap"], integrate: ["/integrate", "one at a time → /ship"],
+    iteration: ["iteration review", "every 2–4 plans: try it,", "then 계속 or an instruction"],
     release: ["/release", "weekly — you push the tag"], retro: ["/retro", "METRICS → causes → rules · skills · hooks"],
     legend: ["start (once)", "main line (every piece of work)", "/hotfix", "parallel", "after the merge", "CEO answers or approves", "team only"],
   },
   ko: {
     file: "workflow-map.ko.svg",
-    aria: "GARAGISTE 워크플로우 노선도. 시작 선(/brainstorm, /kickoff 또는 /assess, /hire)이 기본 경로(/backlog, /plan, /build, verifier 전체 검증, /review, /ship, 머지)에 합류하고, /build 의 단계마다 그 단계의 테스트가 빨강에서 초록으로 증명하며, /hotfix 선은 그 위에서 /plan부터 별도의 PR 머지 역까지 계획 없이 팀 역 셋만 거치고, 병렬 선은 /plan에서 /parallel 또는 /spawn과 /integrate를 거쳐 /ship에 합류하며, 출하 뒤 선은 /release와 /retro를 거쳐 /plan으로 돌아온다. 겹친 원은 CEO가 답하거나 승인하는 역이다.",
+    aria: "GARAGISTE 워크플로우 노선도. 시작 선(/brainstorm, /kickoff 또는 /assess, /hire)이 기본 경로(/backlog, /plan, /build, verifier 전체 검증, /review, /ship, 머지)에 합류하고, /build 의 단계마다 그 단계의 테스트가 빨강에서 초록으로 증명하며, /hotfix 선은 그 위에서 /plan부터 별도의 PR 머지 역까지 계획 없이 팀 역 셋만 거치고, 병렬 선은 /plan에서 /parallel 또는 /spawn과 /integrate를 거쳐 /ship에 합류하며, 출하 뒤 선은 /release와 /retro를 거쳐 /plan으로 돌아오며, 되돌아가는 선 위에 계획 2~4개마다 CEO가 제품을 써 보고 \"계속\"이나 지시를 말하는 이터레이션 리뷰 역이 있다. 겹친 원은 CEO가 답하거나 승인하는 역이다.",
     feederTitle: "시작 · 한 번", expressTitle: "핫픽스 · 계획 없이 한 번에 — 파일 3개·논리 50줄까지, Risk path 면 멈춤",
-    returnLabel: "머지 뒤 다음 백로그 항목으로 → /plan (이터레이션: 계획 2~4개, 그다음 리뷰)", mainTitle: "기본 경로 · 작업마다",
+    returnLabel: "머지 뒤 다음 백로그 항목으로 → /plan", mainTitle: "기본 경로 · 작업마다",
     branchTitle: "병렬 — 파일이 겹치지 않는 계획들", loopTitle: "출하 뒤 · 릴리즈와 회고",
     runLabel: "/run — build · review · ship · 머지를 한 번에, 멈추는 곳은 에스컬레이션 · 수정 루프 3회 초과 · risk:high 머지뿐",
-    brainstorm: ["/brainstorm", "기획서 승인"], kickoff: ["/kickoff · /assess", "신규 · 레거시 · 질문 1회"], hire: ["/hire", "바로 적용 · 배정표"],
-    backlog: ["/backlog", "상위 3개 순서만"], plan: ["/plan", "사양서 절에서", "단계 4개까지 · critic 승인"], build: ["/build", "단계마다 테스트 먼저", "빨강 → 초록 → 커밋"],
+    brainstorm: ["/brainstorm", "기획서 승인"], kickoff: ["/kickoff · /assess", "신규 · 레거시 · 질문 1회"], hire: ["/hire", "바로 적용"],
+    backlog: ["/backlog", "다음 항목 2~4개"], plan: ["/plan", "사양서 절에서", "단계 4개까지 · critic 승인"], build: ["/build", "단계마다 테스트 먼저", "빨강 → 초록 → 커밋"],
     verifierStop: "verifier · 끝에 전체 검증 한 번", review: ["/review", "테스트 파일 바닥, 그다음", "2 | 4 렌즈 → 수정 루프"], ship: ["/ship", "정책 판정 → PR · METRICS", "PR 은 증명 절로 시작"], merge: ["머지", "risk:low 는 lead 가", "risk:high 는 당신이 diff 를 읽고"],
     hotfix: ["/hotfix", "한 문장으로 말할 수 있는 수정"], impl: "implementer · 빨강 회귀 테스트", verify: "verifier 전체 검증", review1: "reviewer 1렌즈",
-    prmerge: ["PR 머지", "diff 읽고 머지 · 자동 머지 없음"],
+    prmerge: ["PR 머지", "risk:low 는 lead · risk:high 는 당신"],
     parallel: ["/parallel · /spawn", "계획별 worktree · 겹침만 확인"], integrate: ["/integrate", "하나씩 머지 → /ship"],
+    iteration: ["이터레이션 리뷰", "계획 2~4개마다: 써 보고", "\"계속\" 또는 지시"],
     release: ["/release", "주 1회 — 태그는 당신이 push"], retro: ["/retro", "METRICS → 원인 → 규칙 · 스킬 · 훅"],
     legend: ["시작 (한 번)", "기본 경로 (작업마다)", "/hotfix", "병렬", "출하 뒤 (릴리즈·회고)", "CEO 가 답하거나 승인하는 역", "팀만 거치는 역"],
   },
 };
 
 const C = { paper: "#FFFFFF", ink: "#1B1F24", muted: "#5C6570", main: "#1D5BBF", express: "#D2442C", branch: "#2A9D6A", loop: "#7A4FBF", feeder: "#2F8FA6" };
-const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 // rough advance widths for placing the legend: CJK ≈ 1 em, everything else ≈ 0.55 em at 11.5px
 const width = (s) => [...s].reduce((w, ch) => w + (/[ᄀ-ᇿ㄰-㆏가-힯　-〿]/.test(ch) ? 11.5 : 6.3), 0);
 
@@ -121,13 +124,14 @@ ${ceo(60, 180)}${side(60, 180, t.kickoff)}
 ${stop(60, 240, "feeder")}${side(60, 240, t.hire)}
 
 <!-- main line -->
-${ceo(150, 300)}${above(150, 300, t.backlog)}
+${stop(150, 300, "main")}${above(150, 300, t.backlog)}
 ${stop(300, 300, "main")}${above(300, 300, t.plan)}
 ${stop(450, 300, "main")}${above(450, 300, t.build)}
 ${stop(525, 300, "main", 4.5)}${text(525, 324, "role", t.verifierStop, "middle")}
 ${stop(600, 300, "main")}${above(600, 300, t.review)}
 ${stop(750, 300, "main")}${above(750, 300, t.ship)}
 ${ceo(900, 300)}${above(900, 300, t.merge)}
+${ceo(830, 200)}${above(830, 200, t.iteration)}
 
 <!-- hotfix line -->
 ${ceo(300, 120)}${above(300, 120, t.hotfix)}
