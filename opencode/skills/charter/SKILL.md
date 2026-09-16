@@ -1,6 +1,6 @@
 ---
 name: charter
-description: Slot list and template for the project charter (docs/CHARTER.md), derived from the product brief. Load at /kickoff and /assess when the charter is written, or whenever goals, scope or non-goals are unclear or drifting.
+description: Slot list and template for the project charter (docs/CHARTER.md), derived from the product brief. Read by team-planner at /kickoff and /assess when it writes the charter, or whenever goals, scope or non-goals are unclear or drifting; the lead names it in the call and never loads it.
 ---
 # charter
 
@@ -35,4 +35,4 @@ Source: docs/BRIEF.md (approved <date>)
 - Leave unanswered items as "undecided — <when>". Never fill them with guesses.
 - Derived, not re-asked: every line traces to a brief slot; a slot the brief leaves undecided stays "undecided — <when>". When /brainstorm revises the brief, the planner applies the charter lines it listed after approval.
 - Non-goals must be concrete (e.g. "no multi-tenancy", "not real-time").
-- If a success metric cannot be measured, ask again.
+- A success metric is a number or an observable fact; the brief's default stands until a number replaces it — never re-asked.

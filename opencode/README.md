@@ -20,8 +20,8 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 ## CEO console
 | Command | When |
 |---|---|
-| `/brainstorm <idea or file>` | Product brief (docs/BRIEF.md): free brainstorming with the lead, or a document you wrote → open slots → critic pre-mortem → approval → commit. Run it again to revise the brief (pivot) |
-| `/kickoff` | New project, from the approved brief. Charter → stack ADR → skeleton → AGENTS.md → first plan → /hire |
+| `/brainstorm <idea or file>` | Product brief (docs/BRIEF.md): free brainstorming with the lead, or a document you wrote → one round of non-goals, defaults and the critic's pre-mortem → approval → commit. Run it again to revise the brief (pivot) |
+| `/kickoff` | New project, from the approved brief, documents only. Charter → stack ADR → one question → AGENTS.md, core spec, backlog, plan 0001 (its first step is the scaffold) → one critic pass → /hire |
 | `/assess <target>` | Legacy, from the approved brief. Inventory (docs/ASSESSMENT.md) → preserve/fix policy → rebuild strategy ADR → docs/REBUILD_PLAN.md → AGENTS.md → parity-harness plan for the first seam → /hire |
 | `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
 | `/plan <item>` | No questions: planner writes from the spec section (docs/specs/), the bug line or your words (one to four `proves` lines per logic step, at most 4 logic steps per plan) → critic reviews every plan and its APPROVE is the approval; `/plan <F<n> or plan> 수정: …` revises a spec section or amends a running plan (differences only, the plans sorted, same branch) |

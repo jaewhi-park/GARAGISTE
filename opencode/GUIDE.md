@@ -12,7 +12,7 @@ The team does the rest — it writes the spec, plans, builds, reviews and merges
 
 | You say | What the team does | What you do, in one line |
 |---|---|---|
-| (first session) an idea, or the path of a document you wrote | Brainstorms with you, compiles docs/BRIEF.md, asks the open slots once, runs the pre-mortem | Talk freely; answer the slots honestly; approve the brief — the one document you approve |
+| (first session) an idea, or the path of a document you wrote | Brainstorms with you, compiles docs/BRIEF.md and runs the pre-mortem, asks one round (non-goals, defaults, findings) | Talk freely; answer the slots honestly; approve the brief — the one document you approve |
 | "진행해" after the brief | `/kickoff` (or `/assess` for legacy): one question — the stack and the budget — then charter, spec, backlog, first plan and hire; the board says `Mode: running` | Answer the one question; open a new session and say 계속 |
 | "어디까지 됐어?" | Reconciles the board with git and answers: what is tryable, what changed, what waits on you | Nothing; try the product from main (the board's Run line) |
 | "계속" | Runs the next iteration (2–4 plans: plan → build → review → ship → merge), then stops with an iteration review | Read the review, try what it lists, say what you want |
@@ -60,7 +60,7 @@ Three install targets. Give the flavor (opencode) to the entry point at the repo
 
 **Not a git repository**: the team relies on branches, commits and worktrees. The installer offers `git init` (default branch main); accept it.
 
-First run: run `opencode` in the repo → Tab to select `team-lead` → say your idea (or give the path of a document you wrote): the lead brainstorms with you, compiles the brief and asks you to approve it → say "진행해": one question (the stack and the budget), then the team writes the charter, the spec, the backlog and the first plan, and leaves the board at `Mode: running` → open a new session (model assignments load at session start) and say "계속".
+First run: run `opencode` in the repo → Tab to select `team-lead` → say your idea (or give the path of a document you wrote): the lead brainstorms with you, compiles the brief, asks you one round (three non-goals, the defaults it set, the critic's findings) and then to approve it → approval starts the kickoff: one question (the stack and the budget), then the team writes the charter, the stack ADR, the rules file, the core spec, the backlog and the first plan (its first step is the scaffold), and leaves the board at `Mode: running` → open a new session (model assignments load at session start) and say "계속".
 Check: `/kickoff` etc. appear in the command list, and once docs/CHARTER.md and docs/STATUS.md exist they are injected at session start (`instructions` in opencode.json).
 
 **Permissions**: the team's safety is the agents' permission blocks and the guardrail plugin, not a prompt. Team agents carry explicit allow/deny, so nothing inside the team asks you; the built-in build/plan agents follow the global default (ask). In headless runs (`opencode run`) prompts cannot appear. Never widen a permission block for something the guardrail message says is blocked — that is the boundary working.
@@ -89,9 +89,9 @@ Every entry has the same shape: when / what you say / what the team does / **wha
 ### 3.1 Starting a product
 - When: the repo is empty, or the idea precedes the code.
 - You say: your idea, in a first session — or "여기 문서 있어: <path>" for a document you wrote.
-- Team: brainstorms (the lead proposes and pushes back; no agenda) or normalizes your document → "기획서 만들어줘" → docs/BRIEF.md compiled (decided / later / rejected with reasons; your words about flows and screens kept verbatim in the appendix) → the slots the brainstorm left open are asked once → critic pre-mortem, presented to you as a correction round → your approval → docs commit. Then "진행해": `/kickoff` — charter derived (defaults logged), stack ADR with a design foundation and a security baseline (critic-reviewed), the one question (stack, budget, and only the undecided items that cost money or touch security), skeleton with one smoke test, AGENTS.md, the spec, the backlog, the walking-skeleton plan, critic review of spec and plan, the hire applied from your budget answer, the board at `Mode: running`.
-- You: talk the way you would in a chat, and say everything you have about features — it is kept and becomes the spec, and nobody asks you again. Answer the open slots honestly: **three non-goals**, a **measurable success metric** and the **kill criterion** are what brainstorms skip and what every later verdict is judged against. Read the pre-mortem findings (each comes with a default). Approve the brief. At kickoff read the ADR's "why not the alternatives" and answer the one question. Then open a new session and say "계속".
-- Watch for: a success metric that is not a number or an observable fact; a brief that does not say what was rejected and why; handing the stack decision to the team wholesale — it is the most expensive decision to reverse. When the direction changes later, say so: the lead revises the brief, and the charter and the spec follow.
+- Team: brainstorms (the lead proposes and pushes back; no agenda) or normalizes your document → "기획서 만들어줘" → docs/BRIEF.md compiled (decided / later / rejected with reasons; your words about flows and screens kept verbatim in the appendix; every slot you did not settle gets a default) and the critic's pre-mortem, in one go → one round of questions: the non-goals, the defaults for you to confirm, the findings → your approval → docs commit and, in the same turn, `/kickoff` — charter derived (defaults logged), stack ADR with a design foundation and a security baseline, the one question (stack, budget, and only the undecided items that cost money or touch security), AGENTS.md, the core spec, the backlog, the walking-skeleton plan whose first step is the scaffold, one critic pass over ADR, spec and plan, the hire applied from your budget answer, the board at `Mode: running`. No code is written before iteration 1.
+- You: talk the way you would in a chat, and say everything you have about features — it is kept and becomes the spec, and nobody asks you again. Answer the one round honestly: **three concrete non-goals** are the one thing only you can give, and what every later verdict is judged against; the success metric and the kill criterion come with defaults — confirm or change them. Approve the brief; approval is the go. At kickoff read the ADR's "why not the alternatives" and answer the one question. Then open a new session and say "계속".
+- Watch for: a success-metric default you let stand without reading it; a brief that does not say what was rejected and why; handing the stack decision to the team wholesale — it is the most expensive decision to reverse. When the direction changes later, say so: the lead revises the brief, and the charter and the spec follow.
 
 ### 3.2 Taking over legacy code
 - When: there is existing code to fix or replace.
@@ -192,8 +192,8 @@ Every slash command still works and runs the same procedure the lead would run f
 ## 4. Checklists
 
 Before approving the brief:
-- [ ] the success metric is a number or an observable fact
-- [ ] at least three concrete non-goals, and a kill criterion
+- [ ] the success metric is a number or an observable fact (a default is fine; read it)
+- [ ] at least three concrete non-goals; a kill criterion when you have one
 - [ ] "decided" holds capabilities one line each; the flows and screens you described are in the appendix, verbatim
 - [ ] every rejected idea has its reason
 - [ ] each undecided item says when it will be decided

@@ -9,3 +9,38 @@ Resume previous work. Extra note: $ARGUMENTS
 2. If the last verifier result was FAIL, or there is a wip commit touching anything beyond docs-only files, run team-verifier first to establish the current state.
 3. If decisions are waiting on the CEO, ask them first.
 4. Resume from the first "next action" (a Plan line marked `rev <n> draft`, or a Spec line `F<n> · rev <k> in progress`, resumes with `/plan <that path or F<n>> 수정:` — the planner reports the draft's state; a Plan line `hotfix — …` with `Shipped: —` resumes with `/hotfix <that line>` — it continues on hotfix/<slug>; a board whose only Now line is a Brief line resumes with `/brainstorm` while it is brainstorm, draft, correction or any `revision …` state, with `/kickoff` or `/assess <path>` once approved and docs/CHARTER.md does not exist yet, and with `/backlog` when it says `revised`). Then act on the board's Mode (the lead's rule): `running` → do the /deliver procedure (read .opencode/commands/deliver.md) (it re-enters at the plan and step the board names) after answering the CEO's message; `paused — iteration review` → the iteration review again, from the board, and wait; `paused — stopped by CEO` or `blocked` → one line on why, and wait; `waiting on CEO` → the open question again in one line; no Mode line (before kickoff) → do the next action's procedure (read its command file).
+
+## Branches and sync — the rule every command applies before starting on main
+plan, spec, brief, kickoff and assess commits land on main (or master — the default branch); step and ship commits on plan/<slug> (a hotfix's on hotfix/<slug>); integration merges on integrate/<date> (/integrate) — main receives them only through /ship; backlog, retro, recruit, hire, brief-revision and spec-revision commits go on whatever branch is checked out (a plan amendment on its plan branch) (on a plan branch they ship with its PR — never switch branches for them). Before /plan and before a plan starts (/run, /build, /spawn, /hotfix), be on main (unrelated uncommitted files may stay — only the rebase below needs a clean tree): from a plan/*, hotfix/* or integrate/* branch whose work is shipped (STATUS `Shipped:` is a PR link or merge commit) `git switch main`; from an unshipped one that is not the plan about to continue, ask the CEO; on the branch of the plan about to continue, stay and skip the rest. This applies to the main checkout only: in a linked worktree (your directory is not the first line of `git worktree list`, the main checkout — a /spawn worktree session) skip it entirely and stay on the worktree's branch; its commits reach main through its own PR or /integrate. With a remote: `git fetch origin`; if origin/main does not exist yet, skip the sync and tell the CEO in one line to push main first; else `git merge --ff-only origin/main`, and if the branches diverged `git rebase origin/main` (local main carries only milestone commits); if the merge or the rebase refuses to start, or the rebase stops on a conflict (`git rebase --abort`), ask the CEO — never stash or reset. Then `git branch -d` each plan/*, hotfix/* or integrate/* branch whose PR is MERGED (`gh pr view <branch> --json state -q .state`) — together with the plan/* branches the board lists as merged into that integrate/* branch — never without that check — a pushed branch has an upstream and `-d` deletes it even when unmerged.
+
+## Continuity — the repository is the truth, the board the pointer
+- Cut points: The session is working memory; the repo is long-term memory. docs/STATUS.md is committed at the cut points — the approval commits of /brainstorm, /kickoff, /assess and /plan, the board update that closes /ship and /hotfix (on main, `docs(status): <slug> shipped`), a question left waiting on the CEO (`docs(status): waiting on CEO`), /handoff, and a compaction stop — and changes uncommitted between them. The repository is the truth and the board the pointer: a stale board is rewritten from git, never the other way round. /handoff is for a session that stops mid-flight; a finished /ship or /plan already leaves the board and the commits in place. In a linked worktree (a /spawn worktree session — your directory is not the first line of `git worktree list`) the board belongs to the main checkout: never edit or commit docs/STATUS.md there; the branch's commits are its record.
+- Interrupted (Esc, an error, a session that died mid-turn, a usage cap): on the next turn, before continuing anything, do the /resume procedure — `git status --porcelain`, `git branch --show-current`, `git worktree list`, `git log -3` against the board; the repository wins. Step commits are the checkpoints, so at most the step in progress is redone: /build continues it from the uncommitted changes in the tree, a /spawn worktree session continues its plan on its branch from the step after its last commit.
+- Every command step is re-entrant: before doing it, check whether its output already exists — the file, the commit, the branch, the PR (`gh pr view <branch>`) — and skip it when it does. Recovery is re-running the command, not a separate procedure.
+- Compaction cut: a compaction summary in your context is the signal (the compaction plugin says so in the summary). When one has happened, finish the step in progress (never leave one half-verified), commit the board by path (`docs(status): compaction stop — step k/n`), report what is committed and end the turn: "start a new session and say 계속" — summaries stacked on summaries degrade the work, and the new session resumes from the board. /handoff is the same by hand.
+- A merge or rebase conflict on docs/STATUS.md alone is yours: rewrite the file from the repository state (Edit), `git add docs/STATUS.md`, then `git merge --continue` or `git rebase --continue`. Any other conflict: ask the CEO — never stash or reset.
+
+## Board format — docs/STATUS.md (the lead's only file; under 40 lines, injected into every session; Tryable now keeps the five latest lines)
+```
+# STATUS
+Updated: <time> · Stage: pre-launch | live · Run: <AGENTS.md build/run command → URL> | not yet
+Mode: running | paused — iteration review | paused — stopped by CEO | paused — blocked: <what> | waiting on CEO | none (before kickoff)
+## Iteration <k>
+- Plans: <item or plan path ✓ | ▶ step k/n | —> … · ends: <last> shipped
+- Tryable now: <what the CEO can try, plain words, the five latest>
+- Check please: <what the team wants the CEO's eyes on> | none
+- Next iteration: <the items it would take>
+## Now
+- Plan: docs/plans/NNNN-<slug>.md [· rev <n> [draft]] | parallel — <n> plans | integration of <n> plans | hotfix — <one line> · Branch: <name> | main | integrate/<date> | hotfix/<slug> | none yet · Shipped: PR <link> | PR pending — <branch> pushed | merge <hash> | —
+- Spec: F<n> · rev <k> in progress (only during a spec-section revision — /plan's `F<n> 수정:` path)
+- Brief: docs/BRIEF.md · brainstorm (checkpoint <k>) | draft | correction <k> | approved · Kind: 신규 | 레거시 (<path>) (until /kickoff or /assess has run) | revision (checkpoint <k>) | revision draft | revision correction <k> | revised (rev <n>) (a /brainstorm revision; /backlog clears it)
+- Step: <k>/<n> — <state> | none · Last verifier: proven (self-check) | PASS quick | PASS full @<hash> | FAIL(<summary>)
+- Open review findings: <lens: item> or none
+- Counts: verifier FAIL <n> · review blockers <n> · CEO questions <n> · corrections <k>
+## Waiting on CEO
+- <decision> — default: <if no answer>
+## Parallel in progress (from /spawn until /ship)
+- <plan path> · <branch> · <worktree path> · <result> | merged @<hash>
+## Next actions (in order on resume)
+1.
+```

@@ -38,7 +38,7 @@ A Risk-path plan with no negative-case proves line on an entry-point step is a c
 Findings carry the file:line and the input that exploits them; a finding without a reproduction is minor.
 
 ## Where it plugs in
-- /kickoff: the stack ADR's "Security baseline" section; the skeleton turns on the stack's standard protections; the rules file's full verification runs the audit command; "## Risk paths" is seeded from the baseline (auth, schema, public API, dependency manifests, CI/deploy).
+- /kickoff: the stack ADR's "Security baseline" section; plan 0001's scaffold step turns on the stack's standard protections; the rules file's full verification runs the audit command; "## Risk paths" is seeded from the baseline (auth, schema, public API, dependency manifests, CI/deploy).
 - /plan: a Risk-paths hit loads this skill; the planner writes the threat-model lines and the negative proves lines; the critic blocks a Risk-path plan without them.
 - /review: the security lens is always on (2-lens default) and works through the checklist above; a Risk-paths hit makes the review 4 lenses as before.
 - /retro: a `bug:` plan that is a security defect adds a line to the baseline or a glob to "## Risk paths".

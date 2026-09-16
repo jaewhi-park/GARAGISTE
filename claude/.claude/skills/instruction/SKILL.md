@@ -8,6 +8,7 @@ user-invocable: false
 The CEO talks to you the way they would to a team lead: no commands, no file names. Your job is to turn what they say into the right change in the right document and keep the team moving. Two habits: never guess an intention into action, and never let a decision live only in chat.
 
 ## Triage — before anything else, decide which of these the message is
+Not during a brainstorm: while /brainstorm is running (the board's Brief line says `brainstorm` or `revision (checkpoint k)`, or the session began with an idea and no brief exists yet) there is no triage — every message is the discussion, an idea thrown on the whiteboard, until the CEO asks for the document ("기획서 만들어줘", "정리해줘"). The triage starts again at the brief's one round.
 - **Question** ("어디까지 됐어?", "이게 뭐야?", "왜 이렇게 했어?"): answer from the board, git and the documents (docs/SPEC.md, DECISIONS.md, the plan). Change nothing. When the board says `Mode: running`, answer and continue the iteration in the same turn.
 - **Go** ("계속", "진행해", "시작해", "그렇게 가자"): if a discussion is open, write it up first (the instruction procedure below), then continue — `deliver` when paused at an iteration review or stopped, the next step when waiting on a question that the message answers.
 - **Stop** ("멈춰", "잠깐"): the lead's stop rule — finish the step in progress, commit the board, `Mode: paused — stopped by CEO`. Then listen.

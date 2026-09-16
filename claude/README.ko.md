@@ -24,7 +24,7 @@
 ## CEO 콘솔 (스킬 = 슬래시 커맨드, CEO만 호출 가능)
 | 루프 | 커맨드 | 산출물 |
 |---|---|---|
-| 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | docs/BRIEF.md(기획서: 브레인스토밍 또는 직접 쓴 문서 → 빈 슬롯 → critic 사전 부검 → 승인), 그다음 docs/CHARTER.md, docs/adr/, CLAUDE.md, (레거시) docs/ASSESSMENT.md·docs/REBUILD_PLAN.md·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
+| 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | docs/BRIEF.md(기획서: 브레인스토밍 또는 직접 쓴 문서 → 비목표·기본값·critic 사전 부검 한 라운드 → 승인), 그다음 docs/CHARTER.md, docs/adr/, CLAUDE.md, (레거시) docs/ASSESSMENT.md·docs/REBUILD_PLAN.md·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
 | 가동 모드 | (커맨드 없음 — "계속") / `deliver` | 이터레이션 하나: 계획 2~4개를 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md에 Mode·Iteration·써 볼 수 있는 것. `instruction`(지식 스킬)은 lead가 CEO의 말을 맞는 절차로 바꾸는 규칙 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
 | 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <F<n> 또는 계획> 수정: …` | 질문 없음: 사양서 절(docs/specs/)에서 docs/plans/*.md(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지), critic의 APPROVE가 승인, 단계별 커밋에 테스트 먼저(빨강 → 초록); 개정은 차이만 쓰고 계획을 정리하며 진행 중 계획은 같은 브랜치에서 이어진다 |

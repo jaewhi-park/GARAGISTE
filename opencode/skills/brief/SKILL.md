@@ -1,20 +1,21 @@
 ---
 name: brief
-description: Template, slots and writing rules for the product brief (docs/BRIEF.md, the 기획서) — product level, in the CEO's words, never injected. Loaded by /brainstorm; read by team-planner when writing, normalizing or revising the brief, and by /kickoff and /assess when they derive the charter from it.
+description: Template, slots and writing rules for the product brief (docs/BRIEF.md, the 기획서) — product level, in the CEO's words, never injected. Read by team-planner when writing, normalizing or revising the brief and when /kickoff or /assess has it derive the charter; the lead names it in the call and never loads it.
 ---
 # brief
 
 The brief is the product-level document: what is being built, for whom, what is in and out, how success is measured, and why the rejected ideas were rejected. team-planner writes it in the CEO's words from a brainstorm or from a document the CEO brought. It says what, never how (no stack, schema or library — ADR material) and feature detail (a flow, a screen, an API) only in the appendix, in the CEO's words verbatim — the spec (docs/specs/) is written from it at /kickoff, so nothing the CEO said about a feature is cut. 2–4 pages; link, never paste. It is not injected into sessions: docs/CHARTER.md (under 60 lines) is derived from it and is the injected yardstick.
 
 ## Slots — the completeness check, asked after the brainstorm, never before
+Only slot 5 (the non-goals) must come from the CEO: every other slot the brainstorm left open gets the planner's default with its reason (`default: <x> — <reason>`), shown to the CEO in the one round of /brainstorm for confirmation — an item the CEO does not mention keeps its default.
 1. Who has the problem, and how they cope today
 2. What changes for them when this exists; why now
 3. Decided — the MVP capabilities, one line each (3–7)
 4. Later, and Rejected with the reason
 5. Non-goals — at least three, concrete ("no multi-tenancy", "not real-time")
-6. First milestone, and the kill criterion (what would make the CEO stop)
+6. First milestone; the kill criterion (what would make the CEO stop) is optional — default `undecided — at the first iteration review`
 7. Constraints: language/runtime, deployment target, integrations, data/security/regulation, cost ceiling, deadline
-8. Success metric — a number or an observable fact; if it cannot be measured, ask again
+8. Success metric — a number, or an observable fact while there is no number (default: the brief's demo scene done end to end by someone who is not the CEO); a number replaces it at a brief revision after the first iteration review, never by re-asking
 9. Riskiest assumption and the cheapest way to test it; why existing tools do not solve it
 10. Quality bar stricter than the default; existing assets to reuse; areas the CEO decides personally
 11. Kind: 신규 (a new project → /kickoff) or 레거시 (<path> → /assess)
@@ -25,7 +26,7 @@ The brief is the product-level document: what is being built, for whom, what is 
 Status: whiteboard | draft | approved <date> | revised <date> (rev n) — a revision in progress keeps this line and appends ` (rev n draft)`; the original approval is rev 1
 Kind: 신규 | 레거시 (<path>)
 Source: brainstorm <date> (checkpoints: n) | <path of the CEO's document>
-Corrections: <k> (set at approval; the cap is 2)
+Corrections: <k> (set at approval; the one round of slots and findings, plus at most one correction at approval)
 ## Direction (who, the problem today, what changes, why now)
 ## Decided — MVP capabilities (one line each)
 ## Later
@@ -44,11 +45,11 @@ Corrections: <k> (set at approval; the cap is 2)
 
 ## Writing rules
 - Verbatim: sort the CEO's words, do not rephrase them; a lead proposal enters only when the CEO accepted it.
-- Never fill a slot with a guess: report it as Open and leave `undecided — <when>` in the file.
+- Never fill a slot with a guess presented as fact: a default is written as `default: <x> — <reason>` and reported, so the CEO can overrule it in the round; the non-goals stay Open until the CEO answers, and an item nobody can decide yet is `undecided — <when>`.
 - Decided items are one line each; when a line starts to describe a flow, a screen or an API, keep one line there and move the rest to the appendix verbatim — never cut it.
 - A requirement list with IDs (a requirements document, an RFP, a 과제 제안서) goes to docs/BACKLOG.md as items — title, value, completion criteria from the requirement text, size and priority `undecided — next /backlog`, `req: <ID>` — and the brief keeps the product-level summary and a pointer; the ID follows the item into the plan's Source line and the METRICS line.
-- Normalizing a document the CEO brought (entrance B): keep their wording and headings where they map, `Source:` = the path, never paste the original; what the document does not say stays Open (most such documents lack non-goals, the kill criterion and a measurable metric).
+- Normalizing a document the CEO brought (entrance B): keep their wording and headings where they map, `Source:` = the path, never paste the original; what the document does not say gets a default, the non-goals excepted (most such documents lack non-goals, the kill criterion and a measurable metric).
 - Whiteboard (during the brainstorm): append each checkpoint under "## Whiteboard" (create mode, `Status: whiteboard`) or "## Whiteboard (revision)" (revision mode; the Status line keeps its date and carries `(rev n draft)`) as decided / later / rejected (reason) / open, in order; the compile step replaces the whiteboard with the template or the differences.
 - Revision: write only the differences, add a Revision-history line, bump the rev (the original approval is rev 1, the first revision rev 2), and list every charter line the change touches (Users, Success metrics, Non-goals, Constraints); apply them to docs/CHARTER.md only after approval, when the Status becomes `revised <date> (rev n)`.
-- Report line (the Summary of the planner's report): `Brief: docs/BRIEF.md · Status: <s> · Kind: <k> · decided <n> · later <n> · rejected <n> · Open: <slots> · Undecided: <items>` — a revision adds `· changes <n> · charter: <lines> · plans affected: <paths or none>`.
+- Report line (the Summary of the planner's report): `Brief: docs/BRIEF.md · Status: <s> · Kind: <k> · decided <n> · later <n> · rejected <n> · Open: <slots> · defaults: <slot = x, …> · Undecided: <items>` — a revision adds `· changes <n> · charter: <lines> · plans affected: <paths or none>`.
 - Lifecycle: /brainstorm creates it (approved) and revises it (revised); /kickoff and /assess derive docs/CHARTER.md from it and settle its Undecided items at their confirmation question; /backlog sweeps Later and the appendix; /kickoff writes the spec (docs/specs/) from the Decided lines and the appendix; /hire reads it for the project's character.
