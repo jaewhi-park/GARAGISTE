@@ -33,7 +33,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | `/ship` | Full verification · docs · risk label · a "Proven" section first (the tests, red → green, and the command to run them) · a "Try it" section for user-facing plans (never auto-merged) · automatic merge-policy resolution → PR or local merge |
 | `/release [version]` | Operations: version, CHANGELOG, release notes (docs/releases/*.md), tag commands |
 | `/policy [value]` | Show the current merge-policy verdict and reason; optionally override |
-| `/hire [note]` | Assign models per role and the operating profile from available models, budget and project character (CEO approves; both via script) |
+| `/hire [note]` | Assign models per role and the operating profile from available models, budget and project character (applied from the kickoff/assess budget answer, no approval question; both via script) |
 | `/roster` | Table of agents, models and permissions, plus how to change them |
 | `/lang [code]` | Set the working language: rewrites the `## Language` section of AGENTS.md via script, effective immediately |
 | `/recruit <gap>` | Propose a new role (preset permissions, model taken from the sibling role in the roster); created by script on CEO approval |
