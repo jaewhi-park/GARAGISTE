@@ -48,7 +48,7 @@
 <circle cx="525" cy="300" r="4.5" class="st st-main"/><text x="525" y="324" text-anchor="middle" class="role">verifier · 끝에 전체 검증 한 번</text>
 <circle cx="600" cy="300" r="6.5" class="st st-main"/><text x="600" y="248" text-anchor="middle" class="role">테스트 파일 바닥, 그다음</text><text x="600" y="262" text-anchor="middle" class="role">2 | 4 렌즈 → 수정 루프</text><text x="600" y="280" text-anchor="middle" class="name">/review</text>
 <circle cx="750" cy="300" r="6.5" class="st st-main"/><text x="750" y="248" text-anchor="middle" class="role">정책 판정 → PR · METRICS</text><text x="750" y="262" text-anchor="middle" class="role">PR 은 증명 절로 시작</text><text x="750" y="280" text-anchor="middle" class="name">/ship</text>
-<circle cx="900" cy="300" r="9" class="ceo"/><text x="900" y="248" text-anchor="middle" class="role">risk:low 는 lead 가</text><text x="900" y="262" text-anchor="middle" class="role">risk:high 는 당신이 diff 를 읽고</text><text x="900" y="280" text-anchor="middle" class="name">머지</text>
+<circle cx="900" cy="300" r="9" class="ceo"/><text x="900" y="248" text-anchor="middle" class="role">risk:low 는 lead 가</text><text x="900" y="262" text-anchor="middle" class="role">risk:high 는 lead · 출시 뒤엔 당신</text><text x="900" y="280" text-anchor="middle" class="name">머지</text>
 <circle cx="830" cy="200" r="9" class="ceo"/><text x="830" y="148" text-anchor="middle" class="role">계획 2~4개마다: 써 보고</text><text x="830" y="162" text-anchor="middle" class="role">&quot;계속&quot; 또는 지시</text><text x="830" y="180" text-anchor="middle" class="name">이터레이션 리뷰</text>
 
 <!-- hotfix line -->

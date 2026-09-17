@@ -25,6 +25,7 @@ After an interruption (Esc mid-run), the interruption rule comes first — `resu
    - a new feature → a new spec section from the CEO's words (the `spec` skill's Extending rule) and a backlog item, through `/plan <feature>` when it should be planned now, `/backlog <feature>` when it should wait;
    - a defect with a reproduction → `/hotfix <it>` when it is one sentence with an obvious check, otherwise `/plan bug: <it>` as the head of the next iteration (or now, when the CEO says now);
    - a priority or order change → the backlog (`/backlog`, the planner reorders; no top-three question);
+   - the product going live — "출시했어", real users or data from now on → the board's Stage line becomes `live`, committed as `docs(status): live` (the lead's Stage rule), and one line back on what changes from now on;
    - a question about the team itself (models, cost, speed) → `/hire`, `/roster`, `/retro`;
    - something the charter forbids or a brief non-goal → say so in one sentence and offer the brief revision instead of planning around it.
 2. **Confirm only when ambiguous** — one line with your reading and the default. Not for a clear one-liner; always for a remark.
