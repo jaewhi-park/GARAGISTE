@@ -82,7 +82,7 @@
 `git remote`가 비어 있으면 `/ship`은 push·PR 대신 docs/prs/NNNN-<slug>.md 에 PR 설명을 남기고, 머지 정책대로 로컬 main에 `git merge --no-ff` 한다(manual이면 CEO 승인 후). 게이트는 그대로다 — 계획 하나 = 브랜치 하나, verifier, 4렌즈 리뷰, 위험도, 머지 커밋 단위 롤백(`git revert -m 1`). `/release`는 승인 후 로컬 태그를 만든다. GitHub를 붙이면(`git remote add origin …`) 다음 `/ship`부터 자동으로 PR 흐름이 되고, main 보호 + auto-merge를 켜면 자동으로 auto-low-risk가 된다. 설정 파일을 고칠 일은 없다.
 
 ## 모델과 예산
-**권장 경로는 `/hire`** 다. lead 가 사용 가능한 모델을 확인하고(opencode: `opencode models`, Claude Code: 별칭), 예산 티어·프로젝트 성격·병렬 계획을 묻고, 역할 × 모델 표를 이유와 함께 제안한다. 승인하면 `scripts/apply-models.mjs`(model 줄만 바꾸는 스크립트)로 적용하고 AGENTS.md 에 "운영 프로필"(기본 렌즈 수·병렬·critic 기준·단계별 verifier·단계 크기 목표)을 남긴다. `/kickoff`·`/assess` 끝에 자동으로 제안된다. 아래 `--budget` 프로필은 비대화형·스크립트용이다. 설치할 때 `-Budget <티어> -Strong <id> -Fast <id>`를 주면 첫(kickoff/assess) 세션부터 verifier가 빠른 모델로 돌고, `/hire`가 그 위에서 다듬는다.
+**권장 경로는 `/hire`** 다. lead 가 사용 가능한 모델을 확인하고(opencode: `opencode models`, Claude Code: 별칭), 예산 티어·프로젝트 성격·병렬 계획을 묻고, 역할 × 모델 표를 이유와 함께 제안한다. 승인하면 `scripts/apply-models.mjs`(model 줄만 바꾸는 스크립트)로 적용하고 AGENTS.md 에 "운영 프로필"(기본 렌즈 수·병렬·critic 기준·단계별 verifier·단계 크기 목표)을 남긴다. `/kickoff`·`/assess`가 마무리 단계에서 실행한다. 아래 `--budget` 프로필은 비대화형·스크립트용이다. 설치할 때 `-Budget <티어> -Strong <id> -Fast <id>`를 주면 첫(kickoff/assess) 세션부터 verifier가 빠른 모델로 돌고, `/hire`가 그 위에서 다듬는다.
 
 기본은 `inherit`(에이전트에 model 줄 없음 → 세션의 provider/model 상속). `--budget` 을 주면 두 모델(strong/fast)을 역할별로 배분한다. 설치 시 `opencode models` 로 사용 가능한 모델을 감지해 strong/fast 를 제안하고, 터미널이면 확인을 받는다.
 
@@ -97,10 +97,10 @@
 변경: `./install.sh opencode -Budget <tier> -Strong <id> -Fast <id>` 재실행, 개별은 `--set team-reviewer=<id>`, 복귀는 `--budget inherit`. `/roster` 가 현재 배정을 보여준다.
 
 ## 커스터마이즈 포인트
-- `agents/team-verifier.md` — bash allow-list를 실제 스택에 맞게 줄인다.
+- `agents/team-verifier.md` — bash allow-list를 실제 스택에 맞게 줄인다. 프로젝트 명령(`screenshots:` 포함)은 패키지 스크립트나 make 타깃으로 등록해 이 목록이 덮게 한다.
 - `agents/team-lead.md` — 에스컬레이션 기준. 헌장의 "에스컬레이션 추가 항목"이 여기에 더해진다.
 - `plugins/guardrails.ts` — 차단 명령 정규식.
-- `opencode.json` — `instructions`로 docs/CHARTER*.md, docs/STATUS*.md를 매 세션 자동 주입한다. model 미지정 = 상속. `subagent_depth: 2`는 team-planner/implementer/reviewer/critic(모두 subagent)이 각자 explore를 부를 수 있게 하는 값 — opencode 기본값 1이면 이 호출이 조용히 막힌다. docs/STATUS.md는 로컬 파일(프로젝트 설치가 git-ignore; 전역 설치면 직접 추가)이고 커밋하지 않는다.
+- `opencode.json` — `instructions`로 docs/CHARTER*.md, docs/STATUS*.md를 매 세션 자동 주입한다. model 미지정 = 상속. `subagent_depth: 2`는 team-planner/implementer/reviewer/critic(모두 subagent)이 각자 explore를 부를 수 있게 하는 값 — opencode 기본값 1이면 이 호출이 조용히 막힌다. docs/STATUS.md는 상태판이다. 끊는 지점마다 커밋되고(예전 설치가 남긴 `.gitignore` 줄은 설치 스크립트가 지운다) 매 세션 주입된다.
 - 역할별로 다른 모델을 쓰고 싶으면 해당 `agents/*.md` frontmatter에 `model: provider/id`만 추가한다. subagent는 미지정 시 호출한 primary의 모델을 따른다.
 - 각 에이전트의 `temperature`/`steps`는 역할 기준 초기값이다. 모델에 맞게 조정.
 
