@@ -28,7 +28,7 @@ One-line summary (details: docs/CHARTER.md · legacy: docs/ASSESSMENT.md, docs/R
 - full verification:
 - parity harness (legacy):
 - build/run:
-- screenshots (UI stacks; registered by the design-foundation step, not at kickoff; renders each screen in each state to docs/screens/<plan-slug>/<screen>-<state>.png, git-ignored):
+- screenshots (UI stacks; registered by the design-foundation step, not at kickoff, as a command the verifier's bash allow-list covers — a package script such as `npm run screenshots`, a make target or `uv run …`, never a bare `node script.mjs`; renders each screen in each state to docs/screens/<plan-slug>/<screen>-<state>.png, git-ignored):
 
 ## Architecture map
 - <directory> — responsibility, entry points
