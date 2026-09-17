@@ -12,7 +12,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 ## Rules
 - At start, record `git branch --show-current` and `pwd`. These are the first line of your report.
 - Per step: tests first — one test per `proves:` line, named after it, red on its assertion (never a compile or import error: stub first) → the change → green → tidy under green; then the quick verification from CLAUDE.md yourself → on pass, one commit holding tests and change (`<type>(<scope>): <summary>`, plan file and step number in the body). A proves line marked `n/a — <reason>` needs no test; if you cannot write one for any other line, stop and report — never mark it n/a yourself.
-- A step with `shows:` lines (a UI step): Read the `design` skill first; after the tests are green, run the rules file's `screenshots:` command for those screens and states and report a `Shown:` line per `shows:` line naming the files (docs/screens/<plan-slug>/…png).
+- A step with `shows:` lines (a UI step): Read the `design` skill first; after the tests are green, run the rules file's `screenshots:` command for those screens and states and report a `Shown:` line per `shows:` line naming the files (docs/screens/<plan-slug>/…png). A design-foundation step writes that command and registers it under Commands, then runs it as its verification; a `shows: n/a — no design foundation yet` line needs no screenshots.
 - Do not touch files outside the plan's "files touched" set. If you must, stop and report.
 - If verification still fails after 3 attempts, make a `wip:` commit, stop and report the failure.
 - Never weaken, skip or delete tests to get a pass.

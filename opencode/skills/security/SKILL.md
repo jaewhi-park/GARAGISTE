@@ -5,7 +5,7 @@ user-invocable: false
 ---
 # security
 
-A diff review cannot see what is missing — an endpoint with no authentication looks fine in a diff. So security lives in three places: a baseline decided once, threat-model lines on every plan that touches a Risk path (auth, data, public interfaces, dependencies, CI/deploy), and negative-case tests that prove the plan's entry points refuse what they should. The reviewer's lens checks the diff against all three.
+A diff review cannot see what is missing — an endpoint with no authentication looks fine in a diff. So security lives in three places: a baseline decided once, threat-model lines on every plan that touches a Risk path (auth, data, public interfaces; dependencies and CI/deploy once the product is live), and negative-case tests that prove the plan's entry points refuse what they should. The reviewer's lens checks the diff against all three.
 
 ## Baseline — decided at /kickoff, in the stack ADR's "Security baseline" section, one line each
 - Authentication and session model (who logs in how; token lifetime; where the session lives); authorization model (roles or ownership; where it is checked — one place, not per handler).
@@ -18,7 +18,7 @@ A diff review cannot see what is missing — an endpoint with no authentication 
 - Data: what personal data is stored, where, how it is deleted; backups if the brief names real users.
 What the brief does not need (no accounts, no personal data, a local tool) is written as "not applicable — <why>", so the reviewer knows it was decided, not forgotten.
 
-## Threat-model lines — on every plan whose files hit "## Risk paths" (section 5 of the plan, under "Threat model")
+## Threat-model lines — on every plan whose files hit "## Risk paths" (the "## Risk paths (live)" globs too once the board's Stage is live; section 5 of the plan, under "Threat model")
 For each entry point the plan adds or changes (a route, a command, a file the product reads, a message it consumes): who may call it · with what · what must be refused. Three to eight lines; the planner writes them from the baseline and the spec section's Data and interfaces. Each "must be refused" becomes one negative-case `proves:` line on the step that builds the entry point — plain words, as always:
 - `proves: an unauthenticated request to /api/orders is refused with 401`
 - `proves: a user cannot read another user's order (404, not 403)`
@@ -38,7 +38,7 @@ A Risk-path plan with no negative-case proves line on an entry-point step is a c
 Findings carry the file:line and the input that exploits them; a finding without a reproduction is minor.
 
 ## Where it plugs in
-- /kickoff: the stack ADR's "Security baseline" section; plan 0001's scaffold step turns on the stack's standard protections; the rules file's full verification runs the audit command; "## Risk paths" is seeded from the baseline (auth, schema, public API, dependency manifests, CI/deploy).
+- /kickoff: the stack ADR's "Security baseline" section; plan 0001's scaffold step turns on the stack's standard protections; the rules file's full verification runs the audit command; "## Risk paths" is seeded from the baseline (auth, schema, public API) and "## Risk paths (live)" with the dependency manifests and CI/deploy config, which count once the product is live.
 - /plan: a Risk-paths hit loads this skill; the planner writes the threat-model lines and the negative proves lines; the critic blocks a Risk-path plan without them.
-- /review: the security lens is always on (2-lens default) and works through the checklist above; a Risk-paths hit makes the review 4 lenses as before.
+- /review: the security lens is always on (2-lens default) and works through the checklist above; a Risk-paths hit makes the review 4 lenses once the board's Stage is live; pre-launch the two default lenses stay and the threat-model lines carry the check.
 - /retro: a `bug:` plan that is a security defect adds a line to the baseline or a glob to "## Risk paths".
