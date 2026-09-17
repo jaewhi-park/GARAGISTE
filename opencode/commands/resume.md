@@ -19,6 +19,7 @@ plan, spec, brief, kickoff and assess commits land on main (or master — the de
 - Every command step is re-entrant: before doing it, check whether its output already exists — the file, the commit, the branch, the PR (`gh pr view <branch>`) — and skip it when it does. Recovery is re-running the command, not a separate procedure.
 - Compaction cut: a compaction summary in your context is the signal (the compaction plugin says so in the summary). When one has happened, finish the step in progress (never leave one half-verified), commit the board by path (`docs(status): compaction stop — step k/n`), report what is committed and end the turn: "start a new session and say 계속" — summaries stacked on summaries degrade the work, and the new session resumes from the board. /handoff is the same by hand.
 - A merge or rebase conflict on docs/STATUS.md alone is yours: rewrite the file from the repository state (Edit), `git add docs/STATUS.md`, then `git merge --continue` or `git rebase --continue`. Any other conflict: ask the CEO — never stash or reset.
+- Stage: /kickoff writes `pre-launch`, /assess writes `live`; it flips to `live` once, when the CEO says the product has real users or data — the lead sets the line, commits `docs(status): live` and says what changes; it never flips back.
 
 ## Board format — docs/STATUS.md (the lead's only file; under 40 lines, injected into every session; Tryable now keeps the five latest lines)
 ```
