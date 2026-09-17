@@ -21,7 +21,7 @@ Then run `opencode` in the repo → Tab to select `team-lead`.
 | Command | When |
 |---|---|
 | `/brainstorm <idea or file>` | Product brief (docs/BRIEF.md): free brainstorming with the lead, or a document you wrote → one round of non-goals, defaults and the critic's pre-mortem → approval → commit. Run it again to revise the brief (pivot) |
-| `/kickoff` | New project, from the approved brief, documents only. Charter → stack ADR → one question → AGENTS.md, core spec, backlog, plan 0001 (its first step is the scaffold) → one critic pass → /hire |
+| `/kickoff` | New project, from the approved brief, documents only. Charter → stack ADR → one question → AGENTS.md, spec index (docs/SPEC.md; the docs/specs/ files come with /plan), backlog, plan 0001 (the scaffold and at most two steps) → one critic pass → /hire |
 | `/assess <target>` | Legacy, from the approved brief. Inventory (docs/ASSESSMENT.md) and AGENTS.md, its commands run by the verifier → preserve/fix policy → charter and strategy ADR → one question → docs/REBUILD_PLAN.md and the parity-harness plan for the first seam → one critic pass → /hire |
 | `/backlog [idea]` | Product: backlog items with completion criteria and priority (docs/BACKLOG.md, optional GitHub Issues) |
 | `/plan <item>` | No questions: planner writes from the spec section (docs/specs/), the bug line or your words (one to four `proves` lines per logic step, at most 4 logic steps per plan) → critic reviews every plan and its APPROVE is the approval; `/plan <F<n> or plan> 수정: …` revises a spec section or amends a running plan (differences only, the plans sorted, same branch) |

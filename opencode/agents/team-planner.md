@@ -109,7 +109,7 @@ Write reports and documents in the language given under "## Language" in AGENTS.
 - For a legacy rebuild, plan only within what the parity harness covers (if there is none, step 0 is building it).
 
 ## Plan format — docs/plans/NNNN-<slug>.md
-Header line: `Source: spec F<n> [(part k of n)] | bug: <line> <date> | docs/REBUILD_PLAN.md step <k> | CEO request <date>` — a BACKLOG item with a `spec:` field is sourced from the section, not the item; an item's `req:` ID is carried along
+Header line: `Source: spec F<n> [(part k of n)] | bug: <line> <date> | docs/REBUILD_PLAN.md step <k> | CEO request <date> | docs/BRIEF.md core flow (walking skeleton)` — a BACKLOG item with a `spec:` field is sourced from the section, not the item; an item's `req:` ID is carried along
 Risk line: `Risk: high — <matched globs or escalation item> | low` — match the files the steps touch (section 4) against the rules file's "## Risk paths" — and "## Risk paths (live)" only when the Stage the lead passes is `live` — and the lead's escalation criteria; a hit is high, and the lead may raise it, never lower it
 Steps line: `Steps: <n> logic + <m> mechanical [— over the plan-size target: <reason>]` — the lead and the critic read the critic threshold from it
 1. Goal and completion criteria (verifiable statements, taken from the source as given; anything added is marked unverified with a default)

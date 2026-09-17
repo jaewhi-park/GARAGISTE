@@ -29,7 +29,7 @@ One-line summary (details: docs/CHARTER.md · legacy: docs/ASSESSMENT.md, docs/R
 - full verification:
 - parity harness (legacy):
 - build/run:
-- screenshots (UI stacks; renders each screen in each state to docs/screens/<plan-slug>/<screen>-<state>.png, git-ignored):
+- screenshots (UI stacks; registered by the design-foundation step, not at kickoff; renders each screen in each state to docs/screens/<plan-slug>/<screen>-<state>.png, git-ignored):
 
 ## Architecture map
 - <directory> — responsibility, entry points

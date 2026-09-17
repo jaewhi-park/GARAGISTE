@@ -28,7 +28,7 @@
 | 커맨드 | 언제 |
 |---|---|
 | `/brainstorm <아이디어 또는 파일>` | 기획서(docs/BRIEF.md): lead와 자유 브레인스토밍 또는 직접 쓴 문서 → 비목표·기본값·critic 사전 부검 한 라운드 → 승인 → 커밋. 피벗이면 다시 실행해 개정 |
-| `/kickoff` | 신규 프로젝트, 승인된 기획서에서, 문서만. 헌장 → 스택 ADR → 질문 하나 → AGENTS.md·핵심 사양서·백로그·계획 0001(첫 단계가 골격) → critic 한 번 → /hire |
+| `/kickoff` | 신규 프로젝트, 승인된 기획서에서, 문서만. 헌장 → 스택 ADR → 질문 하나 → AGENTS.md·사양서 색인(docs/SPEC.md; docs/specs/ 파일은 /plan 때)·백로그·계획 0001(골격과 최대 두 단계) → critic 한 번 → /hire |
 | `/assess <대상>` | 레거시, 승인된 기획서에서. 인벤토리(docs/ASSESSMENT.md)와 AGENTS.md, 그 명령은 verifier가 바로 확인 → 보존/수정 방침 → 헌장과 전략 ADR → 질문 하나 → docs/REBUILD_PLAN.md와 첫 seam의 parity harness 계획 → critic 한 번 → /hire |
 | `/plan <항목>` | 질문 없음: planner가 사양서 절(docs/specs/)·버그 줄·당신 말에서 작성(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지) → critic이 모든 계획을 리뷰하고 APPROVE가 곧 승인; `/plan <F<n> 또는 계획> 수정: …`은 사양서 절 개정·진행 중 계획 수정(차이만, 계획 정리, 같은 브랜치) |
 | (커맨드 없음 — "계속") / `/deliver` | 이터레이션 하나: 계획 2~4개를 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md에 Mode·Iteration·써 볼 수 있는 것. lead는 CEO의 말을 `instruction` 스킬대로 맞는 절차로 바꾼다 |
