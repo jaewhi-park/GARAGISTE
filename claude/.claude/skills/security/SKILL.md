@@ -7,7 +7,7 @@ user-invocable: false
 
 A diff review cannot see what is missing — an endpoint with no authentication looks fine in a diff. So security lives in three places: a baseline decided once, threat-model lines on every plan that touches a Risk path (auth, data, public interfaces; dependencies and CI/deploy once the product is live), and negative-case tests that prove the plan's entry points refuse what they should. The reviewer's lens checks the diff against all three.
 
-## Baseline — decided at /kickoff, in the stack ADR's "Security baseline" section, one line each
+## Baseline — in the stack ADR's "Security baseline" section, one line each; at /kickoff only the scaffold lines are decided (secrets, the standard protections, the audit command, the lockfile) and the rest say `decided at the first Risk-path plan` — the planner decides them there, defaults logged and the escalation items (auth, personal data) asked through the lead, before it writes that plan's threat-model lines
 - Authentication and session model (who logs in how; token lifetime; where the session lives); authorization model (roles or ownership; where it is checked — one place, not per handler).
 - Secrets: never in the repository (the guardrail blocks reading them, not committing them — .gitignore covers `.env*`, keys, credentials); loaded from the environment; a documented list of which ones exist.
 - Input at every boundary validated with a schema (body, query, path, headers, file uploads: size and type); output encoded for its context (HTML, SQL through parameters, shell never).
@@ -38,7 +38,7 @@ A Risk-path plan with no negative-case proves line on an entry-point step is a c
 Findings carry the file:line and the input that exploits them; a finding without a reproduction is minor.
 
 ## Where it plugs in
-- /kickoff: the stack ADR's "Security baseline" section; plan 0001's scaffold step turns on the stack's standard protections; the rules file's full verification runs the audit command; "## Risk paths" is seeded from the baseline (auth, schema, public API) and "## Risk paths (live)" with the dependency manifests and CI/deploy config, which count once the product is live.
-- /plan: a Risk-paths hit loads this skill; the planner writes the threat-model lines and the negative proves lines; the critic blocks a Risk-path plan without them.
+- /kickoff: the stack ADR's "Security baseline" section — its scaffold lines decided, the rest deferred to the first Risk-path plan; plan 0001's scaffold step turns on the stack's standard protections; the rules file's full verification runs the audit command; "## Risk paths" is seeded from the baseline (auth, schema, public API) and "## Risk paths (live)" with the dependency manifests and CI/deploy config, which count once the product is live.
+- /plan: a Risk-paths hit loads this skill; the planner first completes the baseline lines still marked `decided at the first Risk-path plan` in the ADR (defaults logged; auth and personal data go to the CEO through the lead), then writes the threat-model lines and the negative proves lines; the critic blocks a Risk-path plan without them.
 - /review: the security lens is always on (2-lens default) and works through the checklist above; a Risk-paths hit makes the review 4 lenses once the board's Stage is live; pre-launch the two default lenses stay and the threat-model lines carry the check.
 - /retro: a `bug:` plan that is a security defect adds a line to the baseline or a glob to "## Risk paths".

@@ -29,7 +29,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 
 ## Target: spec (a section file and its index row; at kickoff every file written and the index)
 - Per section: is every Done-when line checkable by a test, a command or an observable fact (blocker if not); does a UI section list every screen with empty, loading, error and success (major); is Not-this-time non-empty; does the section stay inside the brief's Non-goals and Constraints (blocker); is there a how inside (stack, schema design, library — major); does every default under Undecided carry a reason and a DECISIONS.md line (Grep the ID); does every file have its index row with the same Status and Rev.
-- At kickoff: do the files and the `pending` rows together cover every Decided line of the brief and nothing the brief rejected; are the files exactly the sections the brief's core flow touches.
+- At kickoff: only the index exists — does a `pending` row cover every Decided line of the brief and nothing the brief rejected, one row per feature (a Decided line that is really two features gets two rows).
 - Findings go to the planner; an escalation item (money, security or user data, a non-goal conflict) is marked for the lead to take to the CEO.
 
 ## Target: brief (docs/BRIEF.md, from /brainstorm)
@@ -42,9 +42,9 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 - A plan amendment: are only the steps after the last PASS changed (blocker if a committed step changed), does each changed step keep a verification command and the size rules, is it consistent with the section's current rev.
 - Mark the findings only the CEO can settle (shipped work discarded); the lead asks about those alone.
 
-## Target: kickoff (the stack ADR, the spec as written, plan 0001 — one call)
-- The ADR: 2–3 alternatives compared with a recommendation; Context from the brief's constraints and risks; a "Design foundation" section when the brief has a UI and a "Security baseline" section with every line decided or "not applicable — <why>" (major if missing).
-- Then the spec target for the files and the index, and the plan target for plan 0001 — whose first step is the scaffold and the harness (the "no harness" blocker is satisfied by it) and whose remaining steps are the thinnest slice of the brief's core flow.
+## Target: kickoff (the stack ADR, the docs/SPEC.md index, plan 0001 — one call)
+- The ADR: the decision with its reason — 2–3 alternatives compared only when the brief's Constraints did not name the stack; Context from the brief's constraints and risks; a one-line "Design foundation" when the brief has a UI, and a "Security baseline" whose scaffold lines are decided and whose other lines say `decided at the first Risk-path plan` or "not applicable — <why>" (major if missing).
+- Then the spec target's kickoff line for the index alone, and the plan target for plan 0001 — Source the brief's core flow (no section: sections 1–2 are the brief's demo scene and Non-goals), first step the scaffold and the harness (the "no harness" blocker is satisfied by it), at most two logic steps that are the thinnest slice of the brief's core flow, UI steps `shows: n/a — no design foundation yet` (no foundation step here — the first UI plan after it carries that).
 
 ## Target: assess (the rebuild ADR, docs/REBUILD_PLAN.md, the parity-harness plan — one call)
 - The ADR: strangler fig / module-by-module / full rewrite compared with a recommendation and its evidence; the first seam named and small enough for one harness plan; the preserve/fix decisions carried into the charter's Constraints.

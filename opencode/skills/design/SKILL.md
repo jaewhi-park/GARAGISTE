@@ -1,13 +1,13 @@
 ---
 name: design
-description: What a user-facing change must have to be finished — screens and their four states, layout and hierarchy, copy, responsiveness, keyboard and focus, consistency with the design foundation — and how it is proven (the `shows:` lines of a UI step, screenshots from the rules file's screenshots command). Loaded by team-planner when a plan touches a UI path, by team-implementer and team-builder for a UI step, and by team-reviewer for the ux lens; at /kickoff for the design foundation.
+description: What a user-facing change must have to be finished — screens and their four states, layout and hierarchy, copy, responsiveness, keyboard and focus, consistency with the design foundation — and how it is proven (the `shows:` lines of a UI step, screenshots from the rules file's screenshots command). Loaded by team-planner when a plan touches a UI path, by team-implementer and team-builder for a UI step, and by team-reviewer for the ux lens; at /kickoff for the design foundation's one line.
 user-invocable: false
 ---
 # design
 
 Nobody on the team is a designer, so the design is a checklist and a foundation, not taste. A screen that passes the checklist looks like the rest of the product and does not embarrass the CEO in front of a user; that is the bar. Taste comes from the CEO's own words in the brief's appendix and from "이거 별로네" after they try it.
 
-## The design foundation (decided at /kickoff, in the stack ADR's "Design foundation" section; built by the foundation step — step 1 of the first UI plan after the walking skeleton)
+## The design foundation (named at /kickoff in the stack ADR's "Design foundation" section — one line, the component library or primitives; decided in full and built by the foundation step — step 1 of the first UI plan after the walking skeleton)
 - A component library or a small set of primitives (button, input, list, card, dialog, toast) — never one-off styling per screen.
 - Tokens: colour, spacing, type scale, radius — a single file the whole product reads. Dark mode only if the brief says so.
 - A layout shell: navigation, page frame, empty page — every screen lives inside it.
@@ -30,7 +30,7 @@ Nobody on the team is a designer, so the design is a checklist and a foundation,
 - The plan's "Try it" section names the same screens, so the CEO tries what the team looked at.
 
 ## Where it plugs in
-- /kickoff: the stack ADR gets a "Design foundation" section (library or primitives, tokens, shell, the screenshots command); plan 0001's scaffold step includes the shell and the tokens; the rules file gets "## UI paths" (the globs of screens, components and styles) and the `screenshots:` command.
+- /kickoff: the stack ADR names the foundation in one line (library or primitives); the rules file gets "## UI paths" (the globs of screens, components and styles) and no `screenshots:` command yet; plan 0001's scaffold carries no shell or tokens — the foundation step of the first UI plan after it does.
 - /plan: a plan whose files hit "## UI paths" loads this skill; without a working `screenshots:` command its first step is the foundation step (the walking skeleton excepted: `shows: n/a`); with it every UI step gets `shows:` lines; the critic blocks a UI step without them.
 - /review: a "## UI paths" hit adds the ux lens to the review once the `screenshots:` command is in — mechanically, like risk.
 - The rules file's Definition of Done: a UI step is done when its `shows:` lines have screenshots and the ux lens said APPROVE.
