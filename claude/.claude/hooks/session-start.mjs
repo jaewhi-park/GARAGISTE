@@ -1,5 +1,6 @@
-// SessionStart hook: stdout is injected into the session context. Loads the charter and the status board every session,
-// resets the session's compaction counter (.claude/session/compactions — the PreCompact hook increments it, the lead's
+// SessionStart hook: stdout is injected into the session context. Loads the charter and the board (the CEO's page and the
+// team's pointer) every session and after every compaction, keeps the session's compaction counter (.claude/session/compactions
+// — the PreCompact hook increments it, this hook resets it at a real start and leaves it alone after a compaction, the lead's
 // compaction rule reads it) and says where to start: a board -> the lead reconciles it first (the resume procedure; the CEO
 // types nothing); a linked worktree -> the board belongs to the main checkout; only a charter -> /plan or /backlog; neither
 // -> /brainstorm, or /kickoff | /assess when docs/BRIEF.md is already approved (the brief itself is never injected).
@@ -10,8 +11,14 @@ let input = {};
 try { input = JSON.parse(readFileSync(0, "utf8")); } catch {}
 const cwd = input.cwd ?? process.cwd();
 
-// Compaction counter: a new session starts at 0. Best effort — a read-only checkout only loses the counter.
-try { mkdirSync(join(cwd, ".claude/session"), { recursive: true }); writeFileSync(join(cwd, ".claude/session/compactions"), "0\n"); } catch {}
+// Compaction counter: a real start (startup, resume, clear) resets it to 0; after a compaction (source "compact") it keeps
+// the count the PreCompact hook wrote, so the lead can see how many summaries this session already stacks. Best effort —
+// a read-only checkout only loses the counter.
+const source = String(input.source ?? "startup");
+const counter = join(cwd, ".claude/session/compactions");
+let compactions = 0;
+if (source === "compact") { try { compactions = parseInt(readFileSync(counter, "utf8"), 10) || 0; } catch {} }
+else { try { mkdirSync(join(cwd, ".claude/session"), { recursive: true }); writeFileSync(counter, "0\n"); } catch {} }
 
 // A linked worktree (`claude --worktree`, a /parallel checkout) has a `.git` file, not a directory.
 let linked = false;
@@ -20,7 +27,7 @@ try { linked = statSync(join(cwd, ".git")).isFile(); } catch {}
 const hasCharter = existsSync(join(cwd, "docs/CHARTER.md"));
 const hasStatus = existsSync(join(cwd, "docs/STATUS.md"));
 const parts = [];
-for (const f of ["docs/CHARTER.md", "docs/STATUS.md"]) {
+for (const f of ["docs/CHARTER.md", "docs/STATUS.md", "docs/STATUS-team.md"]) {
   const p = join(cwd, f);
   if (existsSync(p)) {
     const lines = readFileSync(p, "utf8").trim().split("\n");
@@ -40,7 +47,9 @@ if (hasCharter || hasStatus) {
       : /iteration review/.test(mode) ? "The board says Mode: paused — iteration review: give the iteration review again (from the board) and wait for the CEO."
       : /waiting on CEO/.test(mode) ? "The board says Mode: waiting on CEO: ask the open question again in one line, with its default."
       : /^paused/.test(mode) ? `The board says Mode: ${mode}: say why in one line and wait.` : "Continue from the board's next action.";
-    tail = `Reconcile first: run the \`resume\` procedure (the Skill tool) before answering the CEO — compare the board with git, worktrees and PR state, trust the repository. ${next} The CEO does not type /resume.`;
+    tail = source === "compact"
+      ? `A compaction just happened — this session's count is ${compactions}. The board above is current: reconcile it with git (the \`resume\` procedure) and continue the step in progress; do not wait for the CEO. At 3 or more compactions the lead's compaction cut applies: finish the step, commit the board, end the turn and tell the CEO to start a new session.`
+      : `Reconcile first: run the \`resume\` procedure (the Skill tool) before answering the CEO — compare the board with git, worktrees and PR state, trust the repository. ${next} The CEO does not type /resume.`;
   } else {
     tail = "No status board (a project from before the board was committed, or nothing in progress): start with /plan <backlog item> or /backlog.";
   }

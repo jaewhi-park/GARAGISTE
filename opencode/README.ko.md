@@ -31,9 +31,9 @@
 | `/kickoff` | 신규 프로젝트, 승인된 기획서에서, 문서만. 헌장 → 스택 ADR → 질문 하나 → AGENTS.md·사양서 색인(docs/SPEC.md; docs/specs/ 파일은 /plan 때)·백로그·계획 0001(골격과 최대 두 단계) → critic 한 번 → /hire |
 | `/assess <대상>` | 레거시, 승인된 기획서에서. 인벤토리(docs/ASSESSMENT.md)와 AGENTS.md, 그 명령은 verifier가 바로 확인 → 보존/수정 방침 → 헌장과 전략 ADR → 질문 하나 → docs/REBUILD_PLAN.md와 첫 seam의 parity harness 계획 → critic 한 번 → /hire |
 | `/plan <항목>` | 질문 없음: planner가 사양서 절(docs/specs/)·버그 줄·당신 말에서 작성(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지) → critic이 모든 계획을 리뷰하고 APPROVE가 곧 승인; `/plan <F<n> 또는 계획> 수정: …`은 사양서 절 개정·진행 중 계획 수정(차이만, 계획 정리, 같은 브랜치) |
-| (커맨드 없음 — "계속") / `/deliver` | 이터레이션 하나: 계획 2~4개를 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md에 Mode·Iteration·써 볼 수 있는 것. lead는 CEO의 말을 `instruction` 스킬대로 맞는 절차로 바꾼다 |
+| (커맨드 없음 — "계속") / `/deliver` | 이터레이션 하나: 계획 2~4개를 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md(CEO 페이지: Mode·써 볼 것·당신이 할 일·기본값으로 정한 것)와 docs/STATUS-team.md(팀 포인터)에 상태. lead는 CEO의 말을 `instruction` 스킬대로 맞는 절차로 바꾼다 |
 | `/build <계획파일>` | 단계별로: implementer가 단계마다 빨강 → 초록으로 증명(테스트는 그 단계 커밋에); verifier는 끝에 전체 판정 |
-| `/hotfix <무엇을 왜>` | 계획 없는 작고 명확한 수정: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → hotfix/<slug>에서 PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과나 Risk path면 멈추고 /plan을 가리킨다; docs/METRICS.md에 `hotfix:` 한 줄 |
+| `/hotfix <무엇을 왜>` | 계획 없는 작고 명확한 수정: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → hotfix/<slug>에서 PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과면 /plan이 되고, Risk path면 security 렌즈와 risk:high 라벨이 붙는다; docs/METRICS.md에 `hotfix:` 한 줄 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |
 | `/review [기준브랜치]` | 위험도 비례 리뷰(2렌즈 기본, 4렌즈) → 수정 루프 |
 | `/ship` | 전체 검증 · 문서 · 브랜치 push · PR 생성(risk 라벨; 맨 앞에 "증명" 절 — 테스트, 빨강 → 초록, 돌리는 명령; 사용자 대면 계획은 "직접 확인" 절, 자동 머지 제외) · 머지는 정책대로 |
@@ -63,16 +63,16 @@
 
 ## 에이전트 간 계약
 - 모든 subagent는 고정된 보고 형식으로 lead에 답한다 (implementer: proves 줄마다 Proven 줄, 빨강 → 초록; verifier: PASS/FAIL, reviewer/critic: 마지막 줄 APPROVE/REVISE).
-- lead만 CEO에게 질문한다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값. 예외는 /brainstorm과 수정 논의로, 여기서는 열린 질문과 자유 서술 답이 허용된다.
-- 수정 루프는 3회 상한. 넘으면 멈추고 보고한다.
-- 자율 결정은 docs/DECISIONS.md, 아키텍처 결정은 docs/adr/.
+- lead만 CEO에게 질문하고, 되돌리기 비싼 넷(돈, 보안·사용자 데이터, 비목표 충돌, 머지된 작업 폐기; 출시 뒤 risk:high 머지)에만 묻는다. 형식: 결정 1문장 / 선택지 / 추천 / 무응답 시 기본값. 예외는 /brainstorm과 수정 논의로, 여기서는 열린 질문과 자유 서술 답이 허용된다.
+- 수정 루프는 3회 상한. 넘으면 루프 규칙이 마지막 통과 단계 뒤에서 계획을 자르고 나머지는 `rework:` 항목이 된다 — 질문하지 않는다.
+- 자율 결정은 이터레이션 동안 CEO 페이지(기본값으로 정한 것)에, 되돌리기 비싼 것은 docs/DECISIONS.md에; 아키텍처 결정은 docs/adr/; 기술 부채는 docs/DEBT.md.
 
 ## 세션 수명주기
-세션은 작업 기억, 레포가 장기 기억이다. 상태는 세 곳에 남는다: 단계마다의 커밋, 계획 파일(승인 시 커밋), `docs/STATUS.md`(상태판 — 매 세션 자동 주입, 끊는 지점 — 승인 커밋, 출하, CEO 대기 질문, handoff, 컴팩션 정지 — 마다 커밋되고 그 사이엔 미커밋으로 바뀐다; 저장소가 진실이다). 상태판이 있으면 lead가 첫 턴에 대조하니 CEO는 그냥 말하면 되고, 끊김의 비용은 최대 진행 중이던 한 단계다(단계 커밋이 체크포인트). lead 컨텍스트에 컴팩션 요약이 있으면 그것이 단계를 마치고 상태판을 커밋하고 세션을 끝내라는 신호다.
+세션은 작업 기억, 레포가 장기 기억이다. 상태는 세 곳에 남는다: 단계마다의 커밋, 계획 파일(승인 시 커밋), 상태판 — `docs/STATUS.md`(CEO 페이지)와 `docs/STATUS-team.md`(팀 포인터)(매 세션 자동 주입, 끊는 지점 — 승인 커밋, 출하, CEO 대기 질문, handoff, 컴팩션 정지 — 마다 커밋되고 그 사이엔 미커밋으로 바뀐다; 저장소가 진실이다). 상태판이 있으면 lead가 첫 턴에 대조하니 CEO는 그냥 말하면 되고, 끊김의 비용은 최대 진행 중이던 한 단계다(단계 커밋이 체크포인트). lead 컨텍스트의 컴팩션 요약에는 플러그인이 번호를 붙인다: 두 번째까지는 이어 가고, 세 번째에 단계를 마치고 상태판을 커밋하고 세션을 끝낸다. planner와 reviewer의 장기 기억은 `docs/memory/<name>.md`에 쌓인다 — 저장소 파일이라 두 판이 같은 기제를 쓰고 CEO도 읽을 수 있다.
 - 한 세션 = 한 계획(PR). 다른 작업은 새 세션에서 시작한다.
 - 끝낼 때: `/ship`이나 `/plan`이 끝났으면 상태판과 커밋이 이미 남아 있으니 그냥 닫는다. 단계 도중에 멈출 때, 컴팩션이 2회 이상일 때, 팀이 헛돌 때만 `/handoff`.
 - 이어갈 때: 상태판이 있으면 새 세션 → `/resume`, 없으면(새 클론·worktree·진행 중 없음) 바로 `/plan <백로그 항목>`. 같은 날 잠깐 끊긴 경우만 `opencode -c`(마지막 세션 이어서)를 쓴다. 길게 이어진 세션은 요약 위에 요약이 쌓여 품질이 떨어진다.
-- 중간 컴팩션은 `plugins/compaction.ts`가 상태판 항목을 요약에 강제로 남긴다.
+- 중간 컴팩션은 `plugins/compaction.ts`가 상태판 항목을 요약에 강제로 남기고 번호를 붙인다; `plugins/guardrails.ts`는 docs/STATUS.md를 1,800자 넘게 남기는 쓰기를 거부한다.
 
 ## 병렬과 머지
 - 병렬은 세션 단위다: `/spawn` 이 계획별 worktree(`../<레포>-<slug>`)와 브랜치를 만들고, 각 worktree에서 별도 `opencode` 세션이 `/build` 한다. 메인 세션의 `/integrate` 가 main에서 딴 통합 브랜치에 브랜치를 하나씩 리뷰·머지·검증하고(머지 큐), `/ship` 이 그 브랜치를 PR 하나(또는 로컬 머지 하나)로 출하한다. opencode subagent에는 worktree 격리가 없어 세션 내 병렬은 지원하지 않는다.

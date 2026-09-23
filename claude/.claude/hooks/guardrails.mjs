@@ -20,6 +20,31 @@ const unq = (t) => t.replace(/^["'`]+|["'`]+$/g, "");                  // strip 
 const words = (seg) => seg.trim().split(/\s+/).map(unq).filter(Boolean);
 const stripEnv = (s) => s.trim().replace(/^(\w+=\S*\s+)+/, "");     // VAR=value prefixes
 const pipeline = (chain) => chain.split("|").map((s) => stripEnv(s)).filter(Boolean);
+// Wrappers that only run another command: the inner command is what gets judged (`time npm test` is `npm test`,
+// `bash -c "npm test"` is its string). Without this a read-only role could run anything behind `time`.
+const WRAPPERS = /^(time|env|nice|nohup|command|exec|stdbuf|timeout|unbuffer|caffeinate)$/i;
+const SHELLS = /^(sh|bash|zsh|dash|ksh|fish|pwsh|powershell|cmd)$/i;
+function unwrap(seg) {
+  let s = stripEnv(seg).trim();
+  for (let i = 0; i < 8; i++) {
+    const w = words(s), name = base(w[0] ?? "");
+    if (SHELLS.test(name)) {
+      const t = tokens(s);
+      const ci = t.findIndex((a, k) => k > 0 && (/^-[a-zA-Z]*c[a-zA-Z]*$/.test(a) || /^(-Command|\/c|\/k)$/i.test(a)));
+      if (ci > 0 && t[ci + 1] !== undefined) { s = t.slice(ci + 1).join(" ").trim(); continue; }
+      return s;
+    }
+    if (!WRAPPERS.test(name)) return s;
+    const rest = w.slice(1);
+    while (rest.length && (rest[0].startsWith("-") || /^\w+=/.test(rest[0]) || (/^timeout$/i.test(name) && /^\d/.test(rest[0])))) {
+      const a = rest.shift();
+      if (/^-(n|k|s|u|C|i|o|e)$/.test(a) && rest.length) rest.shift();   // an option that takes a separate value
+    }
+    if (!rest.length) return s;
+    s = rest.join(" ");
+  }
+  return s;
+}
 // Shell-like tokens that keep a quoted string whole (a commit message is one token, not pathspecs).
 function tokens(seg) {
   const out = []; let cur = "", q = null, has = false;
@@ -124,7 +149,7 @@ function gitReadOnly(w, pi) {
 const GH_READ = /^(repo\s+view|pr\s+(view|list|checks|diff|status)|issue\s+(view|list)|run\s+(view|list)|release\s+(view|list)|api|auth\s+status|search)\b/;
 // One pipeline segment. `runCode`: the role may run builds and tests (reviewer); otherwise only the read-only invocations.
 function readOnlySegment(seg, runCode) {
-  const s = stripEnv(seg).trim();
+  const s = unwrap(seg);
   if (!s || /^cd(\s|$)/.test(s)) return true;
   const w = words(s), name = base(w[0] ?? "");
   if (MUTATING_PROGRAMS.test(name)) return false;
@@ -169,7 +194,7 @@ function leadGit(seg) {
   return false;
 }
 function leadSegment(seg) {
-  const s = stripEnv(seg).trim();
+  const s = unwrap(seg);
   if (!s || /^cd(\s|$)/.test(s)) return true;
   const w = words(s), name = base(w[0] ?? "");
   if (name === "git") return leadGit(s);
@@ -213,6 +238,7 @@ function parseCommands(text) {
       const m = /^[-*]\s+(.*)$/.exec(body); if (!m) continue;
       body = m[1]; const c = body.indexOf(": ");
       if (c >= 0) body = body.slice(c + 2); else if (/:$/.test(body)) continue;
+      const bt = /`([^`]+)`/.exec(body); if (bt) body = bt[1];   // `cmd` (a note after it is prose, not part of the command)
     }
     body = body.replace(/\s+—\s+unverified\s*$/, "").replace(/`/g, "").trim();
     for (const chain of body.split(CHAIN_SEP)) for (const seg of pipeline(chain)) { const s = seg.trim(); if (s && !/^cd(\s|$)/.test(s)) out.push(s); }
@@ -220,13 +246,39 @@ function parseCommands(text) {
   return out;
 }
 const verifierOk = (cmd, listed) => cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every((seg) => {
-  const s = stripEnv(seg).trim();
+  const s = unwrap(seg);
   return !s || /^cd\s+\S+$/.test(s) || VERIFIER_TOOLCHAIN.some((re) => re.test(s)) || listed.some((l) => s === l || s.startsWith(l + " "));
 }));
 
 // ---------- team-builder ----------
 // It implements one plan in its worktree: commits there, may push its own branch (main and force are blocked below), never merges, rebases, pulls or touches worktrees.
 const BUILDER_BLOCKED = /\bgit\b(\s+-[cC]\s*\S+|\s+--\S+)*\s+(merge|rebase|worktree|pull)\b/;
+
+// ---------- the board ----------
+// docs/STATUS.md is the CEO's page and stays short; docs/STATUS-team.md is the team's pointer. Both are the lead's.
+const BOARD_FILES = /(^|[\\/])docs[\\/]STATUS(-team)?\.md$/;
+const CEO_PAGE = /(^|[\\/])docs[\\/]STATUS\.md$/;
+const CEO_PAGE_MAX_CHARS = 1800, CEO_PAGE_MAX_LINE = 200;
+// The file as the tool call would leave it (Write: the content; Edit/MultiEdit: the replacement applied to the file).
+function afterWrite(tool, ti, p) {
+  if (tool === "Write") return String(ti.content ?? "");
+  let cur; try { cur = readFileSync(p, "utf8"); } catch { return null; }
+  const edits = tool === "MultiEdit" ? (ti.edits ?? []) : [ti];
+  for (const e of edits) {
+    const o = String(e.old_string ?? ""), n = String(e.new_string ?? "");
+    if (!o) continue;
+    cur = e.replace_all ? cur.split(o).join(n) : cur.replace(o, () => n);
+  }
+  return cur;
+}
+function ceoPageTooLong(text) {
+  const t = text.replace(/\r\n/g, "\n");
+  const chars = [...t.replace(/\n/g, "")].length;
+  if (chars > CEO_PAGE_MAX_CHARS) return `${chars} characters, max ${CEO_PAGE_MAX_CHARS}`;
+  const long = t.split("\n").find((l) => [...l].length > CEO_PAGE_MAX_LINE);
+  return long ? `a line of ${[...long].length} characters, max ${CEO_PAGE_MAX_LINE}` : "";
+}
+const REVIEWER_MEMORY = /(^|[\\/])docs[\\/]memory[\\/]team-reviewer\.md$/;
 
 function deny(msg) { process.stderr.write(`[guardrail] ${msg}\n`); process.exit(2); }
 
@@ -289,9 +341,19 @@ if (tool === "Bash" || tool === "PowerShell") {
 if (["Edit", "Write", "MultiEdit", "Read", "NotebookEdit"].includes(tool)) {
   const p = String(ti.file_path ?? ti.notebook_path ?? "");
   const writing = tool !== "Read";
-  // team-lead writes no code and no docs; its only editable file is the status board (mirrors opencode's `edit: docs/STATUS.md: allow`).
-  if (writing && role === "team-lead" && !/(^|[\\/])docs[\\/]STATUS\.md$/.test(p)) {
-    deny(`blocked edit (team-lead edits only docs/STATUS.md; code goes to team-implementer, docs to team-planner): ${p}`);
+  // team-lead writes no code and no docs; its only editable files are the two board files (mirrors opencode's `edit: docs/STATUS*.md: allow`).
+  if (writing && role === "team-lead" && !BOARD_FILES.test(p)) {
+    deny(`blocked edit (team-lead edits only docs/STATUS.md and docs/STATUS-team.md; code goes to team-implementer, docs to team-planner): ${p}`);
+  }
+  // The CEO's page stays readable in a minute: a write that would leave it over the cap is refused, whoever writes it.
+  if (writing && CEO_PAGE.test(p)) {
+    const after = afterWrite(tool, ti, resolve(cwd, p));
+    const why = after === null ? "" : ceoPageTooLong(after);
+    if (why) deny(`blocked edit (docs/STATUS.md is the CEO's page and stays short — ${why}; detail goes to docs/STATUS-team.md, a plan or git): ${p}`);
+  }
+  // team-reviewer writes only its own memory file.
+  if (writing && role === "team-reviewer" && !REVIEWER_MEMORY.test(p)) {
+    deny(`blocked edit (team-reviewer writes only docs/memory/team-reviewer.md; it never edits code or documents): ${p}`);
   }
   // team-planner writes documents only: docs/** and the rules file (mirrors opencode's `edit: docs/*, CLAUDE.md: allow`).
   if (writing && role === "team-planner" && !/(^|[\\/])docs[\\/]/.test(p) && !/(^|[\\/])CLAUDE\.md$/.test(p)) {
