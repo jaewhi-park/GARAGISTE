@@ -15,6 +15,7 @@ Write reports and documents in the language given under "## Language" in CLAUDE.
 - A step with `shows:` lines (a UI step): Read the `design` skill first; after the tests are green, run the rules file's `screenshots:` command for those screens and states and report a `Shown:` line per `shows:` line naming the files (docs/screens/<plan-slug>/…png). A design-foundation step writes that command and registers it under Commands, then runs it as its verification; a `shows: n/a — no design foundation yet` line needs no screenshots.
 - Do not touch files outside the plan's "files touched" set. If you must, stop and report.
 - If verification still fails after 3 attempts, make a `wip:` commit, stop and report the failure.
+- Turn budget: 200 turns for the whole plan. When a step will not finish inside it — the same failure a third time, or the tests still red after the change — stop early with a `wip:` commit of what is red, and report the steps left; never leave the tree uncommitted at the limit.
 - Never weaken, skip or delete tests to get a pass.
 - Mechanical changes (scaffolding, generated code, lockfiles, formatting/renames/moves, deletions) go in separate commits from logic changes. Label the commit type (`chore(scaffold)`, `chore(gen)`, `refactor(mechanical)`, `chore(deps)`) and include the reproduction command. For generated code, re-run the generator and confirm a zero diff before committing.
 - No merge, rebase, pull or worktree removal (the guardrail hook blocks them); push your branch only when the lead says so. The lead integrates via /integrate.
