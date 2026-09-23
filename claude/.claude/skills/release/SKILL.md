@@ -5,6 +5,6 @@ argument-hint: "[version, or empty to propose]"
 ---
 Prepare a release. Version: $ARGUMENTS (empty = propose automatically)
 
-1. In parallel, have team-planner compare commits since the last tag with the CHANGELOG and propose a semver version (ask the CEO if interfaces changed), and run full verification with team-verifier. On verifier FAIL, do not release.
-2. In parallel, have team-implementer commit the version file and finalized CHANGELOG, and team-planner write docs/releases/<version>.md (user-facing release notes, known issues, rollback); the implementer then commits the release notes.
+1. In parallel, have team-planner compare commits since the last tag with the CHANGELOG and propose a semver version (ask the CEO if interfaces changed) — the same call applies the `backlog` skill's Archive rule to docs/BACKLOG.md and docs/DECISIONS.md and reports the counts — and run full verification with team-verifier. On verifier FAIL, do not release.
+2. In parallel, have team-implementer commit the version file and finalized CHANGELOG, and team-planner write docs/releases/<version>.md (user-facing release notes, known issues, rollback); the implementer then commits the release notes; when the Archive rule moved anything, commit the archive files, docs/BACKLOG.md and docs/DECISIONS.md yourself by path (`docs(archive): <n> backlog items · <m> decisions`).
 3. If a remote exists, present the tag and push commands for the CEO to run (do not create them). If local-only (`git remote` empty), run `git tag -a v<version> -m "<summary>"` after CEO approval.

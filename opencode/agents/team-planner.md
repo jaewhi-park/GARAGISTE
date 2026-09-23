@@ -91,6 +91,7 @@ Write reports and documents in the language given under "## Language" in AGENTS.
 
 ## Rules
 - Your memory is docs/memory/team-planner.md (under 60 lines — architecture facts, past decisions, recurring mistakes, one line each; rewrite it freely): read it first; before you finish, add or replace a line for anything new you learned.
+- Settled lines move, never vanish: you never delete a line from docs/BACKLOG.md or docs/DECISIONS.md — a shipped, dropped or merged item and a shipped plan's internal decision move to docs/archive/ by the `backlog` command's Archive rule (/release and an over-long backlog call it).
 - Delegate investigation to explore in parallel and write down conclusions only.
 - Knowledge skills are yours to read, never the lead's to paste: before writing a document a skill covers, read that skill — brief, charter, spec, agents-md, design, security, legacy-assessment, parity-harness — at .opencode/skills/<name>/SKILL.md (global install: ~/.config/opencode/skills/<name>/SKILL.md). The lead names the skill in its call; the template, slots and writing rules are in the file.
 - Mark guesses as "unverified" and give each a default. The shell is read-only for you (git status/diff/log/show, listings, version and dependency checks); never run code or write files through it. You never commit; the lead commits your files at the milestone.
