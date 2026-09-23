@@ -133,6 +133,8 @@ const ROLES = [
   ["team-reviewer", "Write", { file_path: "C:/repo/docs/memory/team-reviewer.md", content: "- pattern" }, A], ["team-reviewer", "Edit", { file_path: "C:/repo/docs/memory/team-reviewer.md" }, A],
   ["team-reviewer", "Edit", { file_path: "C:/repo/docs/memory/team-planner.md" }, B], ["team-reviewer", "Write", { file_path: "C:/repo/docs/DEBT.md", content: "x" }, B], ["team-reviewer", "Edit", { file_path: "C:/repo/src/a.ts" }, B],
   ["team-planner", "Edit", { file_path: "C:/repo/docs/memory/team-planner.md" }, A],
+  // the archive files are docs: the planner writes them, the lead (board only) does not
+  ["team-planner", "Write", { file_path: "C:/repo/docs/archive/BACKLOG-2026.md", content: "## 2026-09-23\n" }, A], ["team-lead", "Write", { file_path: "C:/repo/docs/archive/BACKLOG-2026.md", content: "x" }, B],
   // team-builder: commits in its worktree and may push its branch; never merges, rebases, pulls or touches worktrees
   rb("team-builder", "git add src/x.ts && git commit -m \"step 1\"", A), rb("team-builder", "npm test", A), rb("team-builder", "git status", A), rb("team-builder", "git push -u origin plan/foo", A),
   rb("team-builder", "git push --force origin plan/foo", B), rb("team-builder", "git push origin main", B),

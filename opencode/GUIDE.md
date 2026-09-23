@@ -125,7 +125,7 @@ Every entry has the same shape: when / what you say / what the team does / **wha
 ### 3.6 Priorities and the backlog
 - When: you know what matters next.
 - You say: "이거 먼저", "이건 나중에", "이건 빼" — or nothing: the team takes the backlog in its own order (rework and bug items first, then priority against the charter).
-- Team: docs/BACKLOG.md holds every item with completion criteria and a `spec:` link; the planner grooms it (sweeping the brief's Later lines and the spec sections for uncovered Done-when lines), and the board's Next iteration line says what comes next.
+- Team: docs/BACKLOG.md holds every item with completion criteria and a `spec:` link; the planner grooms it (sweeping the brief's Later lines and the spec sections for uncovered Done-when lines), and the board's Next iteration line says what comes next. Settled items and a shipped plan's internal decisions move to docs/archive/ at /release and whenever the backlog passes 300 lines, so the files the planner reads every time stay short; nothing is deleted — name an archived item to revive it.
 - You: change the order by saying so. If an item looks bigger than a day, say "split it" — the planner cuts by what can be tried, never by layer.
 - Watch for: keeping the backlog in your head instead of the team's — then nobody catches conflicts with the charter.
 
