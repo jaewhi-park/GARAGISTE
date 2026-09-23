@@ -1,5 +1,7 @@
 import type { Plugin } from "@opencode-ai/plugin"
 import { execSync } from "node:child_process"
+import { readFileSync } from "node:fs"
+import { isAbsolute, join } from "node:path"
 
 // Enforce "cannot" at the tool level instead of "please don't" in the prompt. Tune the patterns to your stack.
 // Role scoping (lead, planner, reviewer, verifier) lives in each agent's permission block; this plugin holds the rules that
@@ -58,6 +60,27 @@ function readsSecret(cmd: string): boolean {
 }
 const GH_API_MUTATION = /\bgh\s+api\b[^|;&]*(\s(-X|--method)\s+(?!GET\b)\S+|\s(-f|-F|--field|--raw-field|--input)\b)/
 
+// The CEO's page of the board (docs/STATUS.md) stays readable in a minute: a write or edit that would leave it over the cap
+// is refused, whoever writes it (the team's pointer, docs/STATUS-team.md, has no cap here).
+const CEO_PAGE = /(^|[\\/])docs[\\/]STATUS\.md$/
+const CEO_PAGE_MAX_CHARS = 1800
+const CEO_PAGE_MAX_LINE = 200
+function ceoPageAfter(tool: string, args: Record<string, unknown>, path: string): string | null {
+  if (tool === "write") return String(args.content ?? "")
+  let cur: string
+  try { cur = readFileSync(path, "utf8") } catch { return null }
+  const oldS = String(args.oldString ?? ""), newS = String(args.newString ?? "")
+  if (!oldS) return cur
+  return args.replaceAll ? cur.split(oldS).join(newS) : cur.replace(oldS, () => newS)
+}
+function ceoPageTooLong(text: string): string {
+  const t = text.replace(/\r\n/g, "\n")
+  const chars = [...t.replace(/\n/g, "")].length
+  if (chars > CEO_PAGE_MAX_CHARS) return `${chars} characters, max ${CEO_PAGE_MAX_CHARS}`
+  const long = t.split("\n").find((l) => [...l].length > CEO_PAGE_MAX_LINE)
+  return long ? `a line of ${[...long].length} characters, max ${CEO_PAGE_MAX_LINE}` : ""
+}
+
 export const Guardrails: Plugin = async ({ directory }) => ({
   "tool.execute.before": async (input, output) => {
     if (input.tool === "bash") {
@@ -98,6 +121,11 @@ export const Guardrails: Plugin = async ({ directory }) => ({
     if (input.tool === "read" || input.tool === "edit" || input.tool === "write") {
       const p = String(output.args?.filePath ?? "")
       if (SECRET_PATHS.test(p)) throw new Error(`[guardrail] blocked secret path: ${p}`)
+      if (input.tool !== "read" && CEO_PAGE.test(p)) {
+        const after = ceoPageAfter(input.tool, (output.args ?? {}) as Record<string, unknown>, isAbsolute(p) ? p : join(directory, p))
+        const why = after === null ? "" : ceoPageTooLong(after)
+        if (why) throw new Error(`[guardrail] blocked edit (docs/STATUS.md is the CEO's page and stays short — ${why}; detail goes to docs/STATUS-team.md, a plan or git): ${p}`)
+      }
     }
     if (input.tool === "grep") {
       const p = String(output.args?.path ?? "")

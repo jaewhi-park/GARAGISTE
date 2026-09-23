@@ -65,6 +65,11 @@ const GENERIC = [
   bash("rm -rf \"$PWD\"", B), bash("rd /s /q C:\\", B), bash("git stash drop", B), bash("git branch -D x", B),
   bash("rm -rf build", A), bash("rm -rf node_modules", A), bash("git checkout -- src/app.ts", A), bash("git stash list", A), bash("rm -rf ./build", A), bash("git branch -d x", A),
   bash("git switch -c integrate/2026-09-12", A),
+  // the CEO's page of the board stays short (both flavors); the team's pointer has no cap
+  ["write", { filePath: "C:/repo/docs/STATUS.md", content: "# STATUS\nMode: running\n## Try it\n- npm run dev → open the page\n" }, A],
+  ["write", { filePath: "C:/repo/docs/STATUS.md", content: "# STATUS\n" + "x".repeat(1900) }, B],
+  ["write", { filePath: "C:/repo/docs/STATUS.md", content: "# STATUS\n- " + "y".repeat(250) + "\n" }, B],
+  ["write", { filePath: "C:/repo/docs/STATUS-team.md", content: "# STATUS (team)\n" + "x".repeat(3000) }, A],
 ];
 // ---- role rules, Claude Code hook only: [role, tool, args, expected] in claude shape (Bash/Edit/Write/Read, file_path).
 const rb = (role, command, exp) => [role, "Bash", { command }, exp];
@@ -97,12 +102,22 @@ const ROLES = [
   rb("team-lead", "git stash", B), rb("team-lead", "git checkout src/app.ts", B), rb("team-lead", "git config user.name x", B),
   rb("team-lead", "npm test", B), rb("team-lead", "npm install", B), rb("team-lead", "node -e \"1\"", B), rb("team-lead", "node x.js", B), rb("team-lead", "python x.py", B), rb("team-lead", "bash scripts/x.sh", B),
   rb("team-lead", "git log | tee out.txt", B), rb("team-lead", "cat docs/STATUS.md > /tmp/x", B), rb("team-lead", "git branch -D plan/x", B), rb("team-lead", "sudo ls", B), rb("team-lead", "ls | xargs rm", B),
-  ["team-lead", "Edit", { file_path: "C:/repo/docs/STATUS.md" }, A], ["team-lead", "Write", { file_path: "C:/repo/docs/BRIEF.md" }, B], ["team-lead", "Edit", { file_path: "C:/repo/src/a.ts" }, B],
+  rb("team-lead", "time npm test", B), rb("team-lead", "bash -c \"npx vitest run\"", B), rb("team-lead", "env FOO=1 git status", A), rb("team-lead", "gh pr merge 1 --merge --delete-branch", A),
+  // the board is two files; nothing else — and the CEO's page has a size cap (checked below, CEO_PAGE cases)
+  ["team-lead", "Edit", { file_path: "C:/repo/docs/STATUS.md" }, A], ["team-lead", "Edit", { file_path: "C:/repo/docs/STATUS-team.md" }, A], ["team-lead", "Write", { file_path: "C:/repo/docs/BRIEF.md" }, B], ["team-lead", "Edit", { file_path: "C:/repo/src/a.ts" }, B],
+  ["team-lead", "Write", { file_path: "C:/repo/docs/STATUS.md", content: "# STATUS\nMode: running\n## Try it\n- npm run dev → open the page\n" }, A],
+  ["team-lead", "Write", { file_path: "C:/repo/docs/STATUS.md", content: "# STATUS\n" + "x".repeat(1900) }, B],
+  ["team-lead", "Write", { file_path: "C:/repo/docs/STATUS.md", content: "# STATUS\n- " + "y".repeat(250) + "\n" }, B],
+  ["team-lead", "Write", { file_path: "C:/repo/docs/STATUS-team.md", content: "# STATUS (team)\n" + "x".repeat(3000) }, A],
   // team-planner: documents only, read-only shell (listings and version checks included), no code runs
   rb("team-planner", "git log -5", A), rb("team-planner", "git diff main..HEAD", A), rb("team-planner", "git show abc", A), rb("team-planner", "git status", A),
   rb("team-planner", "ls docs", A), rb("team-planner", "find . -name '*.test.ts' | head", A), rb("team-planner", "cat package.json", A), rb("team-planner", "wc -l docs/SPEC.md", A), rb("team-planner", "tree -L 2 src", A),
   rb("team-planner", "node --version", A), rb("team-planner", "npm ls --depth=0", A), rb("team-planner", "pip list", A), rb("team-planner", "go list ./...", A), rb("team-planner", "git branch -a", A), rb("team-planner", "git tag -l", A), rb("team-planner", "git remote -v", A),
   rb("team-planner", "rm -rf src", B), rb("team-planner", "npm install left-pad", B), rb("team-planner", "npm test", B), rb("team-planner", "node x.js", B), rb("team-planner", "python -m pytest", B),
+  // wrappers do not hide a code runner: the inner command is judged
+  rb("team-planner", "time npm test", B), rb("team-planner", "time npx vitest run", B), rb("team-planner", "bash -c \"npm test\"", B), rb("team-planner", "sh -c 'node x.js'", B),
+  rb("team-planner", "nice -n 10 uv run pytest", B), rb("team-planner", "timeout 30s npm test", B), rb("team-planner", "env FOO=1 python x.py", B), rb("team-planner", "nohup node x.js", B),
+  rb("team-planner", "time ls", A), rb("team-planner", "env FOO=1 git status", A), rb("team-planner", "time git log -3", A),
   rb("team-planner", "git add docs/x.md", B), rb("team-planner", "git commit -m x", B), rb("team-planner", "git switch -c x", B), rb("team-planner", "git stash", B), rb("team-planner", "git fetch", B),
   rb("team-planner", "echo x > docs/x.md", B), rb("team-planner", "mkdir docs/adr", B), rb("team-planner", "git branch x", B), rb("team-planner", "git tag v1", B), rb("team-planner", "git remote add o x", B),
   ["team-planner", "Edit", { file_path: "C:/repo/docs/plans/0001.md" }, A], ["team-planner", "Edit", { file_path: "C:/repo/CLAUDE.md" }, A], ["team-planner", "Write", { file_path: "docs/specs/0001-x.md" }, A],
@@ -114,12 +129,17 @@ const ROLES = [
   rb("team-reviewer", "npm test", A), rb("team-reviewer", "npx vitest run src/x.test.ts", A), rb("team-reviewer", "pytest tests/test_x.py", A), rb("team-reviewer", "node -e \"console.log(1)\"", A), rb("team-reviewer", "cat src/app.ts", A),
   rb("team-reviewer", "rm -rf src", B), rb("team-reviewer", "git checkout -- .", B), rb("team-reviewer", "git checkout src/app.ts", B), rb("team-reviewer", "git add src/x.ts", B), rb("team-reviewer", "git commit -m x", B),
   rb("team-reviewer", "git stash", B), rb("team-reviewer", "git switch main", B), rb("team-reviewer", "echo x > src/app.ts", B), rb("team-reviewer", "sed -i 's/a/b/' src/app.ts", B), rb("team-reviewer", "mv a b", B),
+  // the reviewer's only writable file is its memory
+  ["team-reviewer", "Write", { file_path: "C:/repo/docs/memory/team-reviewer.md", content: "- pattern" }, A], ["team-reviewer", "Edit", { file_path: "C:/repo/docs/memory/team-reviewer.md" }, A],
+  ["team-reviewer", "Edit", { file_path: "C:/repo/docs/memory/team-planner.md" }, B], ["team-reviewer", "Write", { file_path: "C:/repo/docs/DEBT.md", content: "x" }, B], ["team-reviewer", "Edit", { file_path: "C:/repo/src/a.ts" }, B],
+  ["team-planner", "Edit", { file_path: "C:/repo/docs/memory/team-planner.md" }, A],
   // team-builder: commits in its worktree and may push its branch; never merges, rebases, pulls or touches worktrees
   rb("team-builder", "git add src/x.ts && git commit -m \"step 1\"", A), rb("team-builder", "npm test", A), rb("team-builder", "git status", A), rb("team-builder", "git push -u origin plan/foo", A),
   rb("team-builder", "git push --force origin plan/foo", B), rb("team-builder", "git push origin main", B),
   rb("team-builder", "git merge main", B), rb("team-builder", "git rebase main", B), rb("team-builder", "git worktree remove .", B), rb("team-builder", "git pull", B),
   // team-verifier: build/test/lint tools and read-only git only (what CLAUDE.md lists is added below, WITH_RULES)
   rb("team-verifier", "npm test", A), rb("team-verifier", "git status --porcelain", A), rb("team-verifier", "git diff --stat", A), rb("team-verifier", "cd packages/a && npm test", A), rb("team-verifier", "npm test | tail -20", A),
+  rb("team-verifier", "time npm test", A), rb("team-verifier", "AX_LIVE=1 npx playwright test e2e/x.spec.ts", A),
   rb("team-verifier", "npx vitest run", A), rb("team-verifier", "vitest run", A), rb("team-verifier", "tsc --noEmit", A), rb("team-verifier", "eslint .", A), rb("team-verifier", "cargo test", A), rb("team-verifier", "cat test-output.txt", A),
   rb("team-verifier", "rm -rf build", B), rb("team-verifier", "node -e 1", B), rb("team-verifier", "git push", B), rb("team-verifier", "bash scripts/test.sh", B), rb("team-verifier", "docker compose up -d", B), rb("team-verifier", "curl localhost:3000", B),
 ];
@@ -132,6 +152,7 @@ const RULES_FILE = `# demo
 - run one test file: npx vitest run <file>
 - parity harness (legacy): python tools/parity.py --all — unverified
 - build/run: \`npm run dev\`
+- bench (a note after the command is prose): \`uvx pip-audit -r req.txt\` (about a minute)
 \`\`\`
 make -C tools smoke
 \`\`\`
@@ -141,6 +162,7 @@ make -C tools smoke
 const WITH_RULES = [
   rb("team-verifier", "bash scripts/test.sh", A), rb("team-verifier", "docker compose up -d", A), rb("team-verifier", "curl -f localhost:3000/health", A), rb("team-verifier", "python tools/parity.py --all", A),
   rb("team-verifier", "make -C tools smoke", A), rb("team-verifier", "npm run dev", A), rb("team-verifier", "bash scripts/test.sh --ci && npm test", A), rb("team-verifier", "npm ci", A),
+  rb("team-verifier", "uvx pip-audit -r req.txt", A),   // listed with a note after the backtick span: the note is prose
   rb("team-verifier", "bash scripts/other.sh", B), rb("team-verifier", "docker compose down -v", B), rb("team-verifier", "curl -X POST localhost:3000/reset", B), rb("team-verifier", "python tools/other.py", B),
   rb("team-verifier", "node -e 1", B), rb("team-verifier", "rm -rf build", B),
   rb("team-lead", "bash scripts/test.sh", B), rb("team-planner", "bash scripts/test.sh", B),   // the listing widens the verifier only
