@@ -103,6 +103,12 @@ const ROLES = [
   rb("team-lead", "npm test", B), rb("team-lead", "npm install", B), rb("team-lead", "node -e \"1\"", B), rb("team-lead", "node x.js", B), rb("team-lead", "python x.py", B), rb("team-lead", "bash scripts/x.sh", B),
   rb("team-lead", "git log | tee out.txt", B), rb("team-lead", "cat docs/STATUS.md > /tmp/x", B), rb("team-lead", "git branch -D plan/x", B), rb("team-lead", "sudo ls", B), rb("team-lead", "ls | xargs rm", B),
   rb("team-lead", "time npm test", B), rb("team-lead", "bash -c \"npx vitest run\"", B), rb("team-lead", "env FOO=1 git status", A), rb("team-lead", "gh pr merge 1 --merge --delete-branch", A),
+  // quoted text and a trailing <placeholder> are not shell writes (the shell rejects the placeholder itself); real redirections, also behind a wrapper or in a code span, still are
+  rb("team-lead", "git fetch origin <branch-name>", A), rb("team-lead", "git push -u origin <branch>", A), rb("team-lead", "git commit -m \"docs: <file>:<line> -> coords\" docs/x.md", A),
+  rb("team-lead", "echo \"a -> b\"", A), rb("team-lead", "git commit -m \"docs: add tee note\" docs/x.md", A), rb("team-planner", "git show <commit>", A),
+  rb("Explore", "grep -rn \"<dialog>\" web/src", A), rb("team-reviewer", "grep -rn '<dialog>' web/src", A), rb("team-reviewer", "git log --format=\"%h>%s\" -3", A),
+  rb("team-lead", "cat <a> b", B), rb("team-lead", "cat x <a>>b", B), rb("team-lead", "bash -c \"echo x > f\"", B), rb("team-lead", "bash -c \"a; b > c\"", B), rb("team-lead", "bash -c \"cat x | tee y\"", B),
+  rb("team-lead", "time ls > out", B), rb("team-planner", "echo \"$(date > out.txt)\"", B), rb("team-reviewer", "echo '>' > x", B), rb("team-reviewer", "git log --format=%h>%s -3", B),
   // the board is two files; nothing else — and the CEO's page has a size cap (checked below, CEO_PAGE cases)
   ["team-lead", "Edit", { file_path: "C:/repo/docs/STATUS.md" }, A], ["team-lead", "Edit", { file_path: "C:/repo/docs/STATUS-team.md" }, A], ["team-lead", "Write", { file_path: "C:/repo/docs/BRIEF.md" }, B], ["team-lead", "Edit", { file_path: "C:/repo/src/a.ts" }, B],
   ["team-lead", "Write", { file_path: "C:/repo/docs/STATUS.md", content: "# STATUS\nMode: running\n## Try it\n- npm run dev → open the page\n" }, A],
