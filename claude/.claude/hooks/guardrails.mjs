@@ -109,7 +109,22 @@ function readsSecret(cmd) {
 }
 
 const GH_API_MUTATION = /\bgh\s+api\b[^|;&]*(\s(-X|--method)\s+(?!GET\b)\S+|\s(-f|-F|--field|--raw-field|--input)\b)/;
-const SHELL_WRITE = /(^|[^<>])>{1,2}(?!&|\s*(\/dev\/null|NUL)\b)|\btee\b|\b(sed|perl)\s+-[a-zA-Z]*i\b/; // redirection (except to /dev/null), tee, in-place edits
+// A shell write: a redirection (except to /dev/null), tee, an in-place edit — judged per segment on what the shell would see.
+// Quoted text is not a redirection (`grep "<dialog>"`, a commit message with `->`), except a double-quoted span that runs
+// code ($( ) or backticks: a redirection inside it is real). A `<name>` placeholder that ends the segment is not one either:
+// the shell rejects `git fetch origin <branch>` before running anything, so the model gets the shell's error, not a wrong
+// reason (`<a> b` is `< a > b`, a write, and stays blocked). A quote a chain separator cut through is kept as it is.
+const WRITE = /(^|[^<>])>{1,2}(?!&|\s*(\/dev\/null|NUL)\b)|\btee\b|\b(sed|perl)\s+-[a-zA-Z]*i\b/;
+function unquoted(s) {
+  let out = "", q = null, span = "";
+  for (const ch of s) {
+    if (q) { if (ch === q) { if (q === '"' && /\$\(|`/.test(span)) out += span; q = null; span = ""; } else span += ch; continue; }
+    if (ch === '"' || ch === "'") { q = ch; continue; }
+    out += ch;
+  }
+  return q ? out + q + span : out;
+}
+const shellWrite = (s) => WRITE.test(unquoted(s).replace(/(^|\s)(<[^\s<>]+>\s*)+$/, "$1"));
 
 // ---------- read-only shell: what a non-executing role may run ----------
 // Programs that change files or run other programs on the caller's behalf.
@@ -150,6 +165,7 @@ const GH_READ = /^(repo\s+view|pr\s+(view|list|checks|diff|status)|issue\s+(view
 // One pipeline segment. `runCode`: the role may run builds and tests (reviewer); otherwise only the read-only invocations.
 function readOnlySegment(seg, runCode) {
   const s = unwrap(seg);
+  if (shellWrite(s)) return false;
   if (!s || /^cd(\s|$)/.test(s)) return true;
   const w = words(s), name = base(w[0] ?? "");
   if (MUTATING_PROGRAMS.test(name)) return false;
@@ -158,7 +174,7 @@ function readOnlySegment(seg, runCode) {
   if (CODE_RUNNERS.test(name)) return runCode || RUNNER_READ_ONLY.some((re) => re.test([name, ...w.slice(1)].join(" ")));
   return true;   // ls, cat, grep, find, wc, jq, … — anything that neither writes nor runs code
 }
-const readOnly = (cmd, runCode) => !SHELL_WRITE.test(cmd) && cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every((s) => readOnlySegment(s, runCode)));
+const readOnly = (cmd, runCode) => cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every((s) => readOnlySegment(s, runCode)));
 
 // ---------- team-lead ----------
 // Branch/merge/sync work the skills give the lead; -D, force switches, force pushes and pushes to main are blocked above and below.
@@ -195,6 +211,7 @@ function leadGit(seg) {
 }
 function leadSegment(seg) {
   const s = unwrap(seg);
+  if (shellWrite(s)) return false;
   if (!s || /^cd(\s|$)/.test(s)) return true;
   const w = words(s), name = base(w[0] ?? "");
   if (name === "git") return leadGit(s);
@@ -202,7 +219,7 @@ function leadSegment(seg) {
   if (/^node$/i.test(name) && LEAD_SCRIPT.test(w[1] ?? "")) return true;
   return readOnlySegment(s, false);
 }
-const leadOk = (cmd) => !SHELL_WRITE.test(cmd) && cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every(leadSegment));
+const leadOk = (cmd) => cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every(leadSegment));
 
 // ---------- team-verifier ----------
 // It is CI: an allow-list of build/test/lint tools (plus read-only git and output trimming), extended by whatever CLAUDE.md's
