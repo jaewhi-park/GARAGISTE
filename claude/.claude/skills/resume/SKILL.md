@@ -41,7 +41,8 @@ docs/STATUS-team.md
 ```
 # STATUS (team)
 ## Iteration <k>
-- Plans: <item or plan path ✓ | ▶ step k/n | —> … · ends: <last> shipped
+- Plans: <item or plan path ✓ | ▶ step k/n | parked — <question> | —> … · cap: <n> plans | <m> sections
+- Tried (last review): ok | <issue> | not tried | —
 - Next iteration: <the items it would take>
 ## Now
 - Plan: docs/plans/NNNN-<slug>.md [· rev <n> [draft]] | parallel — <n> plans | integration of <n> plans | hotfix — <one line> · Branch: <name> | main | integrate/<date> | hotfix/<slug> | none yet · Shipped: PR <link> | PR pending — <branch> pushed | merge <hash> | —

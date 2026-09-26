@@ -7,7 +7,7 @@ description: How to write and update the repository's AGENTS.md (commands, archi
 AGENTS.md is injected into every session. It must be short and true.
 
 ## Principles
-- Under 150 lines and 8 KB — it is injected into every session and every subagent spawn. Procedures go in skills; facts go here; the architecture map lives in docs/ARCHITECTURE.md with a one-line pointer here.
+- Under 150 lines and 8 KB — the guardrail refuses a write over 8 KB — it is injected into every session and every subagent spawn. Procedures go in skills; facts go here; the architecture map lives in docs/ARCHITECTURE.md with a one-line pointer here; history (what a plan changed, what a measurement found) lives in docs/, never here.
 - Commands are one line each — `- <label>: \`<command>\`` — with nothing after the closing backtick but the ` — unverified` marker; a note about a command (what it covers, how long it takes) goes to docs/ARCHITECTURE.md. The verifier runs the backtick span as the command; a note after it is prose, never part of the command.
 - List only commands that were actually run and passed (confirmed by team-verifier). At kickoff and at assess each command line ends with ` — unverified` until team-verifier has run it: at assess the verifier runs them at once and the planner removes the marker before the rebuild plan is written; after a kickoff, the full verification at the end of plan 0001's build does (the planner drops the marker from what passed and the commands that failed, per the `build` command). The guardrail strips the marker when it reads the list; the implementer and the verifier run the command without it.
 - Add rules only when something actually went wrong (retro output). No generalities.
@@ -40,6 +40,7 @@ One-line summary (details: docs/CHARTER.md · legacy: docs/ASSESSMENT.md, docs/R
 
 ## Definition of Done
 - quick verification passes; every logic step's `proves:` lines have a test that was red before the change and green after (the implementer's Proven lines; `n/a` only where the plan says so)
+- the product starts: the full verification runs a runtime smoke that starts the real entry point from the build/run line and asserts one round trip through it (plan 0001 registers it; every later plan keeps it green)
 - a logic-change step diff is within the operating profile's step-size target (default 300 changed lines of logic: `git diff --stat` insertions + deletions, test files and mechanical changes excluded); a larger step states why, never beyond 2×
 - a plan holds at most the plan-size target of logic steps (default 4) or says why; bigger work is split by tryable outcome, the later parts in BACKLOG
 - mechanical changes (scaffold/gen/mechanical/deps) are separate commits with kind and reproduction command; regeneration diff is zero
@@ -48,7 +49,7 @@ One-line summary (details: docs/CHARTER.md · legacy: docs/ASSESSMENT.md, docs/R
 - a UI step's `shows:` lines have screenshots (the `screenshots:` command) and the ux lens saw them — once that command is in; before it, the first UI plan after the walking skeleton starts with the design-foundation step; a Risk-path plan's threat-model lines each have a negative-case test
 
 ## Operating profile
-- (filled by /hire via set-profile.mjs: budget tier / default review lenses 2|4 / parallelism none|session / plan-size target (logic steps, default 4) / per-step verifier on|off / step-size target / iteration cap (plans per "계속", default 4) / hire date)
+- (filled by /hire via set-profile.mjs: budget tier / default review lenses 2|4 / parallelism none|session / plan-size target (logic steps, default 4) / per-step verifier on|off / step-size target / unattended cap (plans shipped or spec sections done per "계속", default 8 plans | 2 sections) / hire date)
 
 ## Merge policy
 - (leave empty for automatic resolution by /ship: no remote→local, protection+auto-merge→auto-low-risk, otherwise→manual. Write manual | auto-low-risk to force)
