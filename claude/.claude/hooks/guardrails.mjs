@@ -11,9 +11,14 @@
 //   team-verifier  the toolchain plus every command listed under "## Commands" in CLAUDE.md (an allow-list: it is CI)
 //   team-builder   commits in its worktree and may push its branch; never merges, rebases, pulls or touches worktrees
 // Other agents (team-implementer, team-critic, roles created by /recruit) get the generic rules only.
-import { existsSync, readFileSync } from "node:fs";
+// Document budgets hold for every role: the files every session or every spawn reads (the board, the rules file, the charter,
+// a plan) stay within a byte or line budget (DOC_BUDGETS) — a write that would leave one over it is refused.
+// Every refusal is one line in .claude/session/denies.jsonl (git-ignored): the count the next retro reads.
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
+
+const GARAGISTE_VERSION = "2026-09-26";   // the template release this hook came from; session-start.mjs compares it with a second install
 
 const CHAIN_SEP = /;|&&|\|\||\n/;                                   // independent commands
 const unq = (t) => t.replace(/^["'`]+|["'`]+$/g, "");                  // strip surrounding quotes
@@ -231,7 +236,7 @@ const VERIFIER_TOOLCHAIN = [
   /^mvn\s/, /^gradle\b/, /^(\.[\\/])?gradlew(\.bat)?\b/, /^go\s/, /^cargo\s/, /^dotnet\s/,
   /^(jest|vitest|mocha|tsc|eslint|prettier|playwright|composer|rspec|rake|flutter|dart|swift|xcodebuild|nx|turbo|just)\b/, /^php\s+(artisan|vendor)\b/, /^bundle\s+exec\b/,
   /^git\s+(status|diff|log)\b/,                                // gen-commit checks (`git status --porcelain`)
-  /^(head|tail|grep|wc|cat|ls)\b/,                             // output trimming and looking at results only
+  /^(head|tail|grep|rg|wc|cat|ls)\b/,                          // output trimming and looking at results only
 ];
 function rulesFileCommands(cwd) {
   let dir = resolve(cwd || process.cwd());
@@ -271,11 +276,27 @@ const verifierOk = (cmd, listed) => cmd.split(CHAIN_SEP).every((chain) => pipeli
 // It implements one plan in its worktree: commits there, may push its own branch (main and force are blocked below), never merges, rebases, pulls or touches worktrees.
 const BUILDER_BLOCKED = /\bgit\b(\s+-[cC]\s*\S+|\s+--\S+)*\s+(merge|rebase|worktree|pull)\b/;
 
-// ---------- the board ----------
+// ---------- the board and the document budgets ----------
 // docs/STATUS.md is the CEO's page and stays short; docs/STATUS-team.md is the team's pointer. Both are the lead's.
 const BOARD_FILES = /(^|[\\/])docs[\\/]STATUS(-team)?\.md$/;
-const CEO_PAGE = /(^|[\\/])docs[\\/]STATUS\.md$/;
-const CEO_PAGE_MAX_CHARS = 1800, CEO_PAGE_MAX_LINE = 200;
+// The documents every session or every spawn reads stay small, whoever writes them: the CEO's page by characters and line
+// length, the team's pointer and the charter by lines, the rules file and a plan by UTF-8 bytes (a line rule is gamed by long
+// lines; bytes track tokens across languages). A write or edit that would leave a file over its budget is refused.
+const DOC_BUDGETS = [
+  { name: "docs/STATUS.md (the CEO's page)", test: /(^|[\\/])docs[\\/]STATUS\.md$/, chars: 1800, line: 200, where: "detail goes to docs/STATUS-team.md, a plan or git" },
+  { name: "docs/STATUS-team.md (the team's pointer)", test: /(^|[\\/])docs[\\/]STATUS-team\.md$/, lines: 40, where: "detail goes to the plan, docs/DECISIONS.md or git" },
+  { name: "the rules file (CLAUDE.md / AGENTS.md)", test: /(^|[\\/])(CLAUDE|AGENTS)\.md$/, bytes: 8 * 1024, where: "procedures go to skills, the map to docs/ARCHITECTURE.md, history to docs/" },
+  { name: "docs/CHARTER.md", test: /(^|[\\/])docs[\\/]CHARTER\.md$/, lines: 60, where: "detail goes to the spec or an ADR" },
+  { name: "a plan (docs/plans/*.md)", test: /(^|[\\/])docs[\\/]plans[\\/][^\\/]+\.md$/, bytes: 12 * 1024, where: "sections 3 and 5 are a few lines each, the source section holds the rest, and a bigger job is split by tryable outcome" },
+];
+function overBudget(text, b) {
+  const t = text.replace(/\r\n/g, "\n");
+  if (b.chars !== undefined) { const n = [...t.replace(/\n/g, "")].length; if (n > b.chars) return `${n} characters, max ${b.chars}`; }
+  if (b.line !== undefined) { const long = t.split("\n").find((l) => [...l].length > b.line); if (long) return `a line of ${[...long].length} characters, max ${b.line}`; }
+  if (b.bytes !== undefined) { const n = Buffer.byteLength(t, "utf8"); if (n > b.bytes) return `${n} bytes, max ${b.bytes}`; }
+  if (b.lines !== undefined) { const n = t.replace(/\n+$/, "").split("\n").length; if (n > b.lines) return `${n} lines, max ${b.lines}`; }
+  return "";
+}
 // The file as the tool call would leave it (Write: the content; Edit/MultiEdit: the replacement applied to the file).
 function afterWrite(tool, ti, p) {
   if (tool === "Write") return String(ti.content ?? "");
@@ -288,16 +309,22 @@ function afterWrite(tool, ti, p) {
   }
   return cur;
 }
-function ceoPageTooLong(text) {
-  const t = text.replace(/\r\n/g, "\n");
-  const chars = [...t.replace(/\n/g, "")].length;
-  if (chars > CEO_PAGE_MAX_CHARS) return `${chars} characters, max ${CEO_PAGE_MAX_CHARS}`;
-  const long = t.split("\n").find((l) => [...l].length > CEO_PAGE_MAX_LINE);
-  return long ? `a line of ${[...long].length} characters, max ${CEO_PAGE_MAX_LINE}` : "";
-}
 const REVIEWER_MEMORY = /(^|[\\/])docs[\\/]memory[\\/]team-reviewer\.md$/;
 
-function deny(msg) { process.stderr.write(`[guardrail] ${msg}\n`); process.exit(2); }
+// A refusal: the reason goes to Claude (exit 2) and one line to the project's deny log — .claude/session/denies.jsonl, git-ignored,
+// written only when the call runs inside a project (a .claude/ folder at cwd). The log is the count the next retro reads; a failure
+// to write it never changes the verdict.
+let logCtx = {};
+function deny(msg) {
+  try {
+    const dir = logCtx.cwd ? join(logCtx.cwd, ".claude") : "";
+    if (dir && existsSync(dir)) {
+      mkdirSync(join(dir, "session"), { recursive: true });
+      appendFileSync(join(dir, "session", "denies.jsonl"), JSON.stringify({ ts: new Date().toISOString(), role: logCtx.role || null, tool: logCtx.tool || null, reason: msg.slice(0, 200) }) + "\n");
+    }
+  } catch {}
+  process.stderr.write(`[guardrail] ${msg}\n`); process.exit(2);
+}
 
 let input;
 try { input = JSON.parse(readFileSync(0, "utf8")); } catch { deny("blocked: the hook could not read its input (fail closed)"); }
@@ -305,6 +332,7 @@ const tool = input.tool_name ?? "";
 const ti = input.tool_input ?? {};
 const role = input.agent_type ?? "";
 const cwd = input.cwd ?? process.cwd();
+logCtx = { cwd, role, tool };
 
 if (tool === "Bash" || tool === "PowerShell") {
   const cmd = String(ti.command ?? "");
@@ -362,11 +390,12 @@ if (["Edit", "Write", "MultiEdit", "Read", "NotebookEdit"].includes(tool)) {
   if (writing && role === "team-lead" && !BOARD_FILES.test(p)) {
     deny(`blocked edit (team-lead edits only docs/STATUS.md and docs/STATUS-team.md; code goes to team-implementer, docs to team-planner): ${p}`);
   }
-  // The CEO's page stays readable in a minute: a write that would leave it over the cap is refused, whoever writes it.
-  if (writing && CEO_PAGE.test(p)) {
+  // The documents every session or spawn reads stay within their budgets: a write that would leave one over is refused, whoever writes it.
+  const budget = writing ? DOC_BUDGETS.find((b) => b.test.test(p)) : undefined;
+  if (budget) {
     const after = afterWrite(tool, ti, resolve(cwd, p));
-    const why = after === null ? "" : ceoPageTooLong(after);
-    if (why) deny(`blocked edit (docs/STATUS.md is the CEO's page and stays short — ${why}; detail goes to docs/STATUS-team.md, a plan or git): ${p}`);
+    const why = after === null ? "" : overBudget(after, budget);
+    if (why) deny(`blocked edit (${budget.name} stays within its budget — ${why}; ${budget.where}): ${p}`);
   }
   // team-reviewer writes only its own memory file.
   if (writing && role === "team-reviewer" && !REVIEWER_MEMORY.test(p)) {
