@@ -122,6 +122,25 @@
             "command": "node .claude/hooks/guardrails.mjs"
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/spawn-log.mjs"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/hooks/spawn-log.mjs"
+          }
+        ]
       }
     ],
     "PreCompact": [

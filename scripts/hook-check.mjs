@@ -65,11 +65,24 @@ const GENERIC = [
   bash("rm -rf \"$PWD\"", B), bash("rd /s /q C:\\", B), bash("git stash drop", B), bash("git branch -D x", B),
   bash("rm -rf build", A), bash("rm -rf node_modules", A), bash("git checkout -- src/app.ts", A), bash("git stash list", A), bash("rm -rf ./build", A), bash("git branch -d x", A),
   bash("git switch -c integrate/2026-09-12", A),
-  // the CEO's page of the board stays short (both flavors); the team's pointer has no cap
+  // document budgets (both flavors, whoever writes): the CEO's page by characters and line length, the team's pointer and the charter by lines,
+  // the rules file and a plan by UTF-8 bytes
   ["write", { filePath: "C:/repo/docs/STATUS.md", content: "# STATUS\nMode: running\n## Try it\n- npm run dev → open the page\n" }, A],
   ["write", { filePath: "C:/repo/docs/STATUS.md", content: "# STATUS\n" + "x".repeat(1900) }, B],
   ["write", { filePath: "C:/repo/docs/STATUS.md", content: "# STATUS\n- " + "y".repeat(250) + "\n" }, B],
-  ["write", { filePath: "C:/repo/docs/STATUS-team.md", content: "# STATUS (team)\n" + "x".repeat(3000) }, A],
+  ["write", { filePath: "C:/repo/docs/STATUS-team.md", content: "# STATUS (team)\n" + "x".repeat(3000) }, A],   // two long lines: the pointer is capped by lines, not characters
+  ["write", { filePath: "C:/repo/docs/STATUS-team.md", content: "# STATUS (team)\n" + "- x\n".repeat(45) }, B],
+  ["write", { filePath: "C:/repo/docs/STATUS-team.md", content: "# STATUS (team)\n" + "- x\n".repeat(30) }, A],
+  ["write", { filePath: "C:/repo/docs/CHARTER.md", content: "# Charter\n" + "- goal\n".repeat(70) }, B],
+  ["write", { filePath: "C:/repo/docs/CHARTER.md", content: "# Charter\n" + "- goal\n".repeat(50) }, A],
+  ["write", { filePath: "C:/repo/CLAUDE.md", content: "# X\n## Commands\n- test: `npm test`\n" + "- rule\n".repeat(1200) }, B],   // 8.4 KB
+  ["write", { filePath: "C:/repo/CLAUDE.md", content: "# X\n## Commands\n- test: `npm test`\n" + "- rule\n".repeat(600) }, A],
+  ["write", { filePath: "C:/repo/AGENTS.md", content: "# X\n" + "- rule\n".repeat(1200) }, B],
+  ["write", { filePath: "C:/repo/docs/plans/0002-x.md", content: "# plan\n" + "z".repeat(13000) }, B],
+  ["write", { filePath: "C:/repo/docs/plans/0002-x.md", content: "# plan\n" + "z".repeat(6000) }, A],
+  ["write", { filePath: "C:/repo/docs/plans/0003-x.md", content: "# 계획\n" + "가".repeat(4200) }, B],   // 12.6 KB in UTF-8: bytes count, not characters
+  ["write", { filePath: "C:/repo/docs/plans/0003-x.md", content: "# 계획\n" + "가".repeat(3000) }, A],
+  ["write", { filePath: "C:/repo/docs/specs/F01-x.md", content: "# spec\n" + "z".repeat(20000) }, A],   // no budget on a spec section
 ];
 // ---- role rules, Claude Code hook only: [role, tool, args, expected] in claude shape (Bash/Edit/Write/Read, file_path).
 const rb = (role, command, exp) => [role, "Bash", { command }, exp];
@@ -149,6 +162,7 @@ const ROLES = [
   rb("team-verifier", "npm test", A), rb("team-verifier", "git status --porcelain", A), rb("team-verifier", "git diff --stat", A), rb("team-verifier", "cd packages/a && npm test", A), rb("team-verifier", "npm test | tail -20", A),
   rb("team-verifier", "time npm test", A), rb("team-verifier", "AX_LIVE=1 npx playwright test e2e/x.spec.ts", A),
   rb("team-verifier", "npx vitest run", A), rb("team-verifier", "vitest run", A), rb("team-verifier", "tsc --noEmit", A), rb("team-verifier", "eslint .", A), rb("team-verifier", "cargo test", A), rb("team-verifier", "cat test-output.txt", A),
+  rb("team-verifier", "rg -n TODO src", A), rb("team-verifier", "npm test 2>&1 | rg -c FAIL", A),
   rb("team-verifier", "rm -rf build", B), rb("team-verifier", "node -e 1", B), rb("team-verifier", "git push", B), rb("team-verifier", "bash scripts/test.sh", B), rb("team-verifier", "docker compose up -d", B), rb("team-verifier", "curl localhost:3000", B),
 ];
 // ---- cases that read the rules file: run in a directory whose CLAUDE.md lists commands: [role, command, expected], Claude Code hook only.

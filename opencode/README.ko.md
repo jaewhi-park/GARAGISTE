@@ -31,7 +31,7 @@
 | `/kickoff` | 신규 프로젝트, 승인된 기획서에서, 문서만. 헌장 → 스택 ADR → 질문 하나 → AGENTS.md·사양서 색인(docs/SPEC.md; docs/specs/ 파일은 /plan 때)·백로그·계획 0001(골격과 최대 두 단계) → critic 한 번 → /hire |
 | `/assess <대상>` | 레거시, 승인된 기획서에서. 인벤토리(docs/ASSESSMENT.md)와 AGENTS.md, 그 명령은 verifier가 바로 확인 → 보존/수정 방침 → 헌장과 전략 ADR → 질문 하나 → docs/REBUILD_PLAN.md와 첫 seam의 parity harness 계획 → critic 한 번 → /hire |
 | `/plan <항목>` | 질문 없음: planner가 사양서 절(docs/specs/)·버그 줄·당신 말에서 작성(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지) → critic이 모든 계획을 리뷰하고 APPROVE가 곧 승인; `/plan <F<n> 또는 계획> 수정: …`은 사양서 절 개정·진행 중 계획 수정(차이만, 계획 정리, 같은 브랜치) |
-| (커맨드 없음 — "계속") / `/deliver` | 이터레이션 하나: 계획 2~4개를 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md(CEO 페이지: Mode·써 볼 것·당신이 할 일·기본값으로 정한 것)와 docs/STATUS-team.md(팀 포인터)에 상태. lead는 CEO의 말을 `instruction` 스킬대로 맞는 절차로 바꾼다 |
+| (커맨드 없음 — "계속") / `/deliver` | 이터레이션 하나: 무인 상한(기본 계획 8개 또는 사양서 절 2개)까지 계획을 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md(CEO 페이지: Mode·써 볼 것·당신이 할 일·기본값으로 정한 것)와 docs/STATUS-team.md(팀 포인터)에 상태. lead는 CEO의 말을 `instruction` 스킬대로 맞는 절차로 바꾼다 |
 | `/build <계획파일>` | 단계별로: implementer가 단계마다 빨강 → 초록으로 증명(테스트는 그 단계 커밋에); verifier는 끝에 전체 판정 |
 | `/hotfix <무엇을 왜>` | 계획 없는 작고 명확한 수정: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → hotfix/<slug>에서 PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과면 /plan이 되고, Risk path면 security 렌즈와 risk:high 라벨이 붙는다; docs/METRICS.md에 `hotfix:` 한 줄 |
 | `/run <계획파일>` | 기본 경로: build → review → ship 한 번에, 게이트에서만 정지 |
