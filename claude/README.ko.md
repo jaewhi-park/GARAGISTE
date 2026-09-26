@@ -25,7 +25,7 @@
 | 루프 | 커맨드 | 산출물 |
 |---|---|---|
 | 경영 | `/brainstorm <아이디어 또는 파일>` → `/kickoff` / `/assess <대상>` | docs/BRIEF.md(기획서: 브레인스토밍 또는 직접 쓴 문서 → 비목표·기본값·critic 사전 부검 한 라운드 → 승인), 그다음 docs/CHARTER.md, docs/adr/, docs/SPEC.md(색인; docs/specs/ 파일은 /plan 때), docs/BACKLOG.md, CLAUDE.md, (레거시) docs/ASSESSMENT.md·docs/REBUILD_PLAN.md·parity harness 계획; 마무리 단계에서 /hire, 그다음 상태판 |
-| 가동 모드 | (커맨드 없음 — "계속") / `deliver` | 이터레이션 하나: 계획 2~4개를 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md(CEO 페이지: Mode·써 볼 것·당신이 할 일·기본값으로 정한 것)와 docs/STATUS-team.md(팀 포인터)에 상태. `instruction`(지식 스킬)은 lead가 CEO의 말을 맞는 절차로 바꾸는 규칙 |
+| 가동 모드 | (커맨드 없음 — "계속") / `deliver` | 이터레이션 하나: 무인 상한(기본 계획 8개 또는 사양서 절 2개)까지 계획을 plan → run → 머지로 돌고 이터레이션 리뷰. docs/STATUS.md(CEO 페이지: Mode·써 볼 것·당신이 할 일·기본값으로 정한 것)와 docs/STATUS-team.md(팀 포인터)에 상태. `instruction`(지식 스킬)은 lead가 CEO의 말을 맞는 절차로 바꾸는 규칙 |
 | 제품 | `/backlog [아이디어]` | docs/BACKLOG.md (+ GitHub Issues) |
 | 엔지니어링 | `/plan <항목>` → `/run <계획>` (또는 `/build`); `/plan <F<n> 또는 계획> 수정: …` | 질문 없음: 사양서 절(docs/specs/)에서 docs/plans/*.md(논리 단계마다 `proves` 줄 하나에서 넷, 계획당 논리 단계 4개까지), critic의 APPROVE가 승인, 단계별 커밋에 테스트 먼저(빨강 → 초록); 개정은 차이만 쓰고 계획을 정리하며 진행 중 계획은 같은 브랜치에서 이어진다 |
 | 핫픽스 | `/hotfix <무엇을 왜>` | hotfix/<slug>에서 한 번에, 계획 파일 없음: 구현 + 회귀 테스트 → 전체 검증 → correctness 1렌즈 → PR(자동 머지 없음) 또는 로컬 머지; 파일 3개·논리 50줄 초과면 /plan이 되고, Risk path면 security 렌즈와 risk:high 라벨이 붙는다; docs/METRICS.md에 `hotfix:` 한 줄 |
