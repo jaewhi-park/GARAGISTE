@@ -6,9 +6,10 @@
 // -> /brainstorm, or /kickoff | /assess when docs/BRIEF.md is already approved (the brief itself is never injected).
 // The tail is written in the team's language — the "## Language" code in CLAUDE.md (ko has its own strings; any other code gets
 // English plus one line naming the code): it is the last thing before the CEO's first word, so it decides the reply's language.
-// It also warns when two guardrails installs run at once (the user's ~/.claude and this project's .claude): every tool call
-// runs both hooks and the older one decides what is refused.
-import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+// It also warns when an older GARAGISTE install is still under the user's ~/.claude: a same-named skill there is loaded in
+// preference to this project's, a guardrails hook registered there runs on every tool call next to this project's, and the
+// older one decides what is refused. The template has no global install any more; `install.sh <flavor> -Global -Uninstall` removes one.
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
@@ -40,7 +41,8 @@ const EN = {
   briefApproved: (status, kind, next) => `GARAGISTE: docs/BRIEF.md is ${status} (Kind: ${kind}) and docs/CHARTER.md is missing. Start with ${next}.`,
   briefUnfinished: (status) => `GARAGISTE: docs/BRIEF.md is still ${status || "unfinished"}. Start with /brainstorm to continue it.`,
   language: (code) => `Reply, ask and write documents in the team's language — "## Language" in CLAUDE.md says ${code} — never in the English of these instructions.`,
-  twoHooks: (list) => `Two guardrails hooks are installed — ${list}: every tool call runs both and the older one decides what is refused. Keep one (remove the other settings file's PreToolUse entry) or update both to the same release; tell the CEO in one line.`,
+  twoHooks: (list) => `Two guardrails hooks are installed — ${list}: every tool call runs both and the older one decides what is refused. Remove the global one — \`./install.sh claude -Global -Uninstall\` from the template checkout — and tell the CEO in one line.`,
+  staleGlobal: (list) => `An older GARAGISTE install is still under ~/.claude — ${list}: Claude Code loads a same-named skill from ~/.claude in preference to this project's, and a guardrails hook registered there runs too. Remove it — \`./install.sh claude -Global -Uninstall\` from the template checkout — and tell the CEO in one line.`,
 };
 const KO = {
   worktree: "이 체크아웃은 linked worktree다: 위의 보드는 main 체크아웃의 것이다. 여기서 docs/STATUS.md를 고치거나 커밋하지 않는다 — 이 브랜치의 커밋이 기록이다. 이 브랜치에서 /plan 또는 `/run <plan>`으로 시작한다; 통합은 main 체크아웃에서 한다.",
@@ -57,7 +59,8 @@ const KO = {
   briefApproved: (status, kind, next) => `GARAGISTE: docs/BRIEF.md는 ${status}(Kind: ${kind})이고 docs/CHARTER.md가 없다. ${next}으로 시작한다.`,
   briefUnfinished: (status) => `GARAGISTE: docs/BRIEF.md는 아직 ${status || "미완성"}이다. /brainstorm으로 이어 간다.`,
   language: (code) => `응답 · 질문 · 문서는 팀의 언어로 쓴다 — CLAUDE.md의 "## Language"는 ${code}다 — 이 지시문의 영어가 아니라.`,
-  twoHooks: (list) => `guardrails 훅이 둘 설치돼 있다 — ${list}: 모든 도구 호출에 둘 다 돌고 더 낡은 쪽이 거부를 정한다. 하나만 남기거나(다른 settings 파일의 PreToolUse 항목을 지운다) 둘을 같은 릴리스로 맞춘다; CEO에게 한 줄로 알린다.`,
+  twoHooks: (list) => `guardrails 훅이 둘 설치돼 있다 — ${list}: 모든 도구 호출에 둘 다 돌고 더 낡은 쪽이 거부를 정한다. 전역 쪽을 지운다 — 템플릿 체크아웃에서 \`./install.sh claude -Global -Uninstall\` — 그리고 CEO에게 한 줄로 알린다.`,
+  staleGlobal: (list) => `~/.claude 에 옛 GARAGISTE 설치가 남아 있다 — ${list}: 같은 이름의 스킬은 이 프로젝트 것보다 ~/.claude 쪽이 먼저 로드되고, 거기 등록된 guardrails 훅도 함께 돈다. 지운다 — 템플릿 체크아웃에서 \`./install.sh claude -Global -Uninstall\` — 그리고 CEO에게 한 줄로 알린다.`,
 };
 const lang = languageCode(cwd);
 const T = /^ko\b/i.test(lang) ? KO : EN;
@@ -81,7 +84,20 @@ function guardrailInstalls(dir) {
   return out;
 }
 const installs = guardrailInstalls(cwd);
-const warning = installs.length >= 2 ? `${T.twoHooks(installs.join(", "))}\n` : "";
+// Skills, agents and hooks of this project that also exist under ~/.claude (the same names: an older global install of the
+// template, or a copy). Skills matter most — Claude Code loads the personal one — so they are listed first.
+function staleGlobal(dir) {
+  const home = join(homedir(), ".claude");
+  const names = (d, re) => { try { return readdirSync(d).filter((f) => re.test(f)); } catch { return []; } };
+  const out = [];
+  for (const [kind, sub, re, probe] of [["skills", "skills", /^[\w-]+$/, (n) => join(home, "skills", n, "SKILL.md")], ["agents", "agents", /\.md$/, (n) => join(home, "agents", n)], ["hooks", "hooks", /\.mjs$/, (n) => join(home, "hooks", n)]]) {
+    const both = names(join(dir, ".claude", sub), re).filter((n) => existsSync(probe(n)));
+    if (both.length) out.push(`${kind}: ${both.slice(0, 3).join(", ")}${both.length > 3 ? ` (+${both.length - 3})` : ""}`);
+  }
+  return out;
+}
+const stale = staleGlobal(cwd);
+const warning = (installs.length >= 2 ? `${T.twoHooks(installs.join(", "))}\n` : "") + (stale.length ? `${T.staleGlobal(stale.join(" · "))}\n` : "");
 
 // ---------- compaction counter ----------
 // A real start (startup, resume, clear) resets it to 0; after a compaction (source "compact") it keeps the count the PreCompact
