@@ -3,7 +3,7 @@ GARAGISTE / opencode — installs .opencode\ and opencode.json into a git reposi
 Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|high|medium|low] [-Strong id] [-Fast id] [-Set agent=model,...] [-Model id] [-Uninstall] [-DryRun]
   -Project <path>  Install into that path (its git repo root). Default: current directory
   default   Install only into the current repo's .opencode\ and root opencode.json (global config untouched)
-  -Global   Install into $HOME\.config\opencode instead, applying to every repo
+  -Global   Only with -Uninstall: removes an older global install from $HOME\.config\opencode (the team lives in the repository)
   -Budget   Per-role model assignment profile (default inherit). unlimited/high/medium/low distribute -Strong/-Fast across roles
   -Strong/-Fast  Actual model IDs (required with -Budget; prefer /hire after installing if judgment is needed)
   -Set      Per-agent override, e.g. -Set team-reviewer=anthropic/claude-opus-4
@@ -15,8 +15,9 @@ Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|hi
 if ($Help) { Get-Content $MyInvocation.MyCommand.Path -TotalCount 13 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }; exit 0 }
 $ErrorActionPreference = "Stop"
 $Src = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ($Global -and -not $Uninstall) { Write-Host "! No global install: the team lives in the repository (.opencode\ and opencode.json are committed with the project). Install into a project — .\install.ps1 opencode -Project <path>; an older global install is removed with -Global -Uninstall"; exit 1 }
 
-if ($Global) {
+if ($Global) {   # only reached with -Uninstall
   $Dest = Join-Path $HOME ".config\opencode"; $Cfg = Join-Path $Dest "opencode.json"; $BkBase = "$Dest.bak"
 } else {
   if ($Project) {
@@ -127,14 +128,6 @@ foreach ($d in "agents","commands","skills","plugins","scripts") {
   if ($DryRun) { Write-Host "+ copy $d -> $to"; continue }
   New-Item -ItemType Directory -Force -Path $to | Out-Null
   Copy-Item (Join-Path $Src "$d\*") $to -Recurse -Force
-}
-if ($Global -and -not $DryRun) {  # commands and the lead's bash allow-list name the scripts by a project-relative path; point them at $Dest
-  $DestFwd = $Dest -replace '\\','/'
-  foreach ($f in @(Get-ChildItem (Join-Path $Dest "commands") -Filter *.md) + @(Get-Item (Join-Path $Dest "agents\team-lead.md"))) {
-    $t = [IO.File]::ReadAllText($f.FullName)
-    $t = [regex]::Replace($t, 'node \.opencode/scripts/(apply-models|set-language|new-agent|set-profile)\.mjs', "node `"$DestFwd/scripts/`$1.mjs`"")
-    [IO.File]::WriteAllText($f.FullName, $t, (New-Object System.Text.UTF8Encoding $false))
-  }
 }
 
 if (-not $Global) {

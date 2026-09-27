@@ -3,7 +3,7 @@
 # Usage: ./install.sh [--project <path>|.] [--global] [--budget inherit|unlimited|high|medium|low] [--strong id] [--fast id] [--set agent=model]... [--uninstall] [--dry-run]
 #   default      Install only into the current git repo's .opencode/ and root opencode.json (global config untouched)
 #   --project    Install into that path (its git repo root). Default: current directory.
-#   --global     Install into ~/.config/opencode instead, applying to every repo
+#   --global     Only with --uninstall: removes an older global install from ~/.config/opencode (the team lives in the repository)
 #   --budget     Per-role model assignment profile, scripted path. Default inherit (no model lines = session model).
 #                The recommended path is /hire in the first session: the lead looks at the model list, budget and
 #                project character and proposes an assignment. unlimited/high/medium/low distribute --strong/--fast
@@ -35,7 +35,10 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-if [ "$MODE" = global ]; then
+if [ "$MODE" = global ] && [ "$UNINSTALL" = 0 ]; then
+  echo "! No global install: the team lives in the repository (.opencode/ and opencode.json are committed with the project). Install into a project — ./install.sh opencode -Project <path>; an older global install is removed with -Global -Uninstall." >&2; exit 1
+fi
+if [ "$MODE" = global ]; then   # only reached with --uninstall
   DEST="${XDG_CONFIG_HOME:-$HOME/.config}/opencode"; CFG="$DEST/opencode.json"; BKBASE="$DEST.bak"
 else
   if [ -n "$PROJECT" ]; then
@@ -146,12 +149,6 @@ for d in agents commands skills plugins scripts; do
   run mkdir -p "$DEST/$d"
   run cp -R "$SRC/$d/." "$DEST/$d/"
 done
-# Commands and the lead's bash allow-list name the scripts by a project-relative path; in a global install they live under $DEST.
-if [ "$MODE" = global ] && [ "$DRY" = 0 ]; then
-  for f in "$DEST"/commands/*.md "$DEST"/agents/team-lead.md; do
-    sed -i.bak -E "s#node \\.opencode/scripts/(apply-models|set-language|new-agent|set-profile)\\.mjs#node \"$DEST/scripts/\\1.mjs\"#g" "$f" && rm -f "$f.bak"
-  done
-fi
 
 # 2.5 Per-role model assignment (budget profile)
 if [ "$BUDGET" != inherit ] || [ ${#SETS[@]} -gt 0 ]; then

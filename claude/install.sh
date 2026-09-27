@@ -2,8 +2,8 @@
 # GARAGISTE / Claude Code — installs .claude/ and docs/README.md into a git repository (macOS / Linux / WSL)
 # Usage: ./install.sh [--project <path>|.] [--global] [--budget inherit|unlimited|high|medium|low] [--set agent=model[:effort]]... [--uninstall] [--dry-run]
 #   --project <path>  Install into that path (its git repo root). Default: current directory.
-#   --global          Install into ~/.claude so the team is available in every repo. No default agent is forced;
-#                     start with `claude --agent team-lead`.
+#   --global          Only with --uninstall: removes an older global install from ~/.claude. There is no global install —
+#                     the team lives in the repository (.claude/ is committed with the project), so install into a project.
 #   --budget          Per-role model (opus/sonnet/haiku aliases) and effort assignment, scripted path. Default inherit
 #                     (no model lines = session model). The recommended path is /hire in the first session.
 #                     unlimited (API/in-house) · high (Max 20x) · medium (Max 5x) · low (Pro).
@@ -27,6 +27,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 run() { if [ "$DRY" = 1 ]; then echo "+ $*"; else "$@"; fi; }
+if [ "$MODE" = global ] && [ "$UNINSTALL" = 0 ]; then
+  echo "! No global install: the team lives in the repository (.claude/ is committed with the project). Install into a project — ./install.sh claude -Project <path>; an older global install is removed with -Global -Uninstall." >&2; exit 1
+fi
 
 # ---------- uninstall (project or global) ----------
 # Removes only what the installer put there — the template's agents, skills, hooks and scripts, the hook and permission
@@ -125,52 +128,6 @@ PY
   done
   [ "$MODE" = project ] && echo "→ docs/, .gitignore (the installer added .claude/worktrees/, .claude/session/, docs/screens/) and .claude/worktrees/ stay; commit the removal yourself."
   [ "$MODE" = global ] && echo "→ From now on a project's own .claude/ is all Claude Code loads (a same-named skill under ~/.claude used to win over the project's)."
-  exit 0
-fi
-
-# ---------- global install ----------
-if [ "$MODE" = global ]; then
-  DEST="$HOME/.claude"; CFG="$DEST/settings.json"
-  echo "→ Global install: $DEST"
-  for d in agents skills hooks scripts; do run mkdir -p "$DEST/$d"; done
-  for d in agents skills hooks; do run cp -R "$SRC/.claude/$d/." "$DEST/$d/"; done
-  for f in apply-models.mjs set-language.mjs new-agent.mjs set-profile.mjs; do run cp "$SRC/scripts/$f" "$DEST/scripts/$f"; done
-  # Skills call the scripts by a project-relative path; in a global install they live under $DEST, so point them there.
-  if [ "$DRY" = 0 ]; then
-    for f in "$DEST"/skills/*/SKILL.md; do
-      sed -i.bak -E "s#node \\.claude/scripts/(apply-models|set-language|new-agent|set-profile)\\.mjs#node \"$DEST/scripts/\\1.mjs\"#g" "$f" && rm -f "$f.bak"
-    done
-  fi
-  if [ "$DRY" = 0 ]; then
-python3 - "$CFG" "$SRC/.claude/settings.json" "$DEST" << 'PY'
-import json, sys, pathlib
-dst, src, dest = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
-d = json.loads(dst.read_text()) if dst.exists() else {}
-s = json.loads(src.read_text())
-for entries in s["hooks"].values():
-    for e in entries:
-        for h in e["hooks"]:
-            h["command"] = h["command"].replace("node .claude/hooks/", f'node "{dest}/hooks/') + '"'  # quoted: $HOME may contain spaces
-s["permissions"]["allow"] = [a.replace("node .claude/scripts/", f'node "{dest}/scripts/').replace(".mjs:*", '.mjs":*') if a.startswith("Bash(node .claude/scripts/") else a for a in s["permissions"]["allow"]]
-perm = d.setdefault("permissions", {})
-for k in ("allow", "deny"):
-    perm[k] = list(dict.fromkeys(list(perm.get(k, [])) + s["permissions"][k]))
-# Hooks: keep the repo's own hooks and add ours when absent (an existing PreToolUse hook, e.g. a formatter, must not hide the guardrails).
-hooks = d.setdefault("hooks", {})
-for ev, entries in s["hooks"].items():
-    cur = hooks.setdefault(ev, [])
-    have = {h["command"] for e in cur for h in e.get("hooks", [])}
-    cur.extend(e for e in entries if not all(h["command"] in have for h in e["hooks"]))
-# Global install does not force a default agent (avoids team-lead appearing in every repo).
-dst.parent.mkdir(parents=True, exist_ok=True)
-dst.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
-print("→ Merged:", dst, "(hook paths absolute, no default agent)")
-PY
-  fi
-  if [ "$BUDGET" != inherit ] || [ ${#SETS[@]} -gt 0 ]; then
-    command -v node >/dev/null 2>&1 && run node "$SRC/scripts/apply-models.mjs" --flavor claude --dest "$DEST/agents" --settings "$CFG" --budget "$BUDGET" ${SETS[@]+"${SETS[@]}"}
-  fi
-  echo; echo "Next: in any repo run \`claude --agent team-lead\` → /brainstorm, then /kickoff or /assess. (To make it the default for one repo, set \"agent\": \"team-lead\" in that repo's .claude/settings.json.)"
   exit 0
 fi
 

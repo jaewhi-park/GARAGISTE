@@ -2,7 +2,7 @@
 GARAGISTE / Claude Code — installs .claude\ and docs\README.md into a git repository (Windows PowerShell)
 Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|high|medium|low] [-Set agent=model[:effort],...] [-Uninstall] [-DryRun]
   -Project <path>  Install into that path (its git repo root). Default: current directory
-  -Global          Install into $HOME\.claude for every repo. No default agent is forced; start with `claude --agent team-lead`
+  -Global          Only with -Uninstall: removes an older global install from $HOME\.claude (the team lives in the repository — install into a project)
   -Budget  Per-role model (opus/sonnet/haiku) and effort assignment. unlimited (API) · high (Max 20x) · medium (Max 5x) · low (Pro)
   -Set     Per-agent override, e.g. -Set team-implementer=sonnet:high
   -Uninstall  Remove what this installer put there (the project's .claude\ or, with -Global, $HOME\.claude): the team's agents, skills, hooks, scripts and settings entries; yours stay. -DryRun previews
@@ -11,6 +11,7 @@ Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|hi
 if ($Help) { Get-Content $MyInvocation.MyCommand.Path -TotalCount 9 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }; exit 0 }
 $ErrorActionPreference = "Stop"
 $Src = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ($Global -and -not $Uninstall) { Write-Host "! No global install: the team lives in the repository (.claude\ is committed with the project). Install into a project — .\install.ps1 claude -Project <path>; an older global install is removed with -Global -Uninstall"; exit 1 }
 function Set-Prop($obj, $name, $value) {
   if ($obj.PSObject.Properties[$name]) { $obj.$name = $value } else { $obj | Add-Member -NotePropertyName $name -NotePropertyValue $value }
 }
@@ -107,49 +108,6 @@ if ($Uninstall) {
   }
   if ($Mode -eq "project") { Write-Host "→ docs\, .gitignore (the installer added .claude/worktrees/, .claude/session/, docs/screens/) and .claude\worktrees\ stay; commit the removal yourself." }
   else { Write-Host "→ From now on a project's own .claude\ is all Claude Code loads (a same-named skill under ~\.claude used to win over the project's)." }
-  exit 0
-}
-
-# ---------- global install ----------
-if ($Global) {
-  $Dest = Join-Path $HOME ".claude"; $Cfg = Join-Path $Dest "settings.json"
-  Write-Host "→ Global install: $Dest"
-  if (-not $DryRun) {
-    foreach ($d in "agents","skills","hooks") { $to = Join-Path $Dest $d; New-Item -ItemType Directory -Force -Path $to | Out-Null; Copy-Item (Join-Path $Src ".claude\$d\*") $to -Recurse -Force }
-    New-Item -ItemType Directory -Force -Path (Join-Path $Dest "scripts") | Out-Null; foreach ($f in "apply-models.mjs","set-language.mjs","new-agent.mjs","set-profile.mjs") { Copy-Item (Join-Path $Src "scripts\$f") (Join-Path $Dest "scripts\$f") -Force }
-    $DestFwd = $Dest -replace '\\','/'
-    # Skills call the scripts by a project-relative path; in a global install they live under $Dest, so point them there.
-    foreach ($f in Get-ChildItem (Join-Path $Dest "skills") -Recurse -Filter SKILL.md) {
-      $t = [IO.File]::ReadAllText($f.FullName)
-      $t = [regex]::Replace($t, 'node \.claude/scripts/(apply-models|set-language|new-agent|set-profile)\.mjs', "node `"$DestFwd/scripts/`$1.mjs`"")
-      [IO.File]::WriteAllText($f.FullName, $t, (New-Object System.Text.UTF8Encoding $false))
-    }
-    $s = Get-Content (Join-Path $Src ".claude\settings.json") -Raw | ConvertFrom-Json
-    foreach ($ev in $s.hooks.PSObject.Properties) { foreach ($e in $ev.Value) { foreach ($h in $e.hooks) { $h.command = $h.command.Replace("node .claude/hooks/", "node `"$DestFwd/hooks/") + '"' } } }  # quoted: $HOME may contain spaces
-    $s.permissions.allow = @($s.permissions.allow | ForEach-Object { if ($_ -like 'Bash(node .claude/scripts/*') { $_.Replace('node .claude/scripts/', "node `"$DestFwd/scripts/").Replace('.mjs:*', '.mjs":*') } else { $_ } })
-    $d = if (Test-Path $Cfg) { Get-Content $Cfg -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
-    if (-not $d.PSObject.Properties['permissions']) { Set-Prop $d 'permissions' ([pscustomobject]@{}) }
-    foreach ($k in "allow","deny") {
-      $cur = @(); if ($d.permissions.PSObject.Properties[$k]) { $cur += $d.permissions.$k }
-      foreach ($r in $s.permissions.$k) { if ($cur -notcontains $r) { $cur += $r } }
-      Set-Prop $d.permissions $k $cur
-    }
-    if (-not $d.PSObject.Properties['hooks']) { Set-Prop $d 'hooks' ([pscustomobject]@{}) }
-    foreach ($ev in $s.hooks.PSObject.Properties) {  # keep the repo's own hooks; add ours when absent
-      if (-not $d.hooks.PSObject.Properties[$ev.Name]) { Set-Prop $d.hooks $ev.Name $ev.Value; continue }
-      $cur = @($d.hooks.($ev.Name)); $have = @($cur | ForEach-Object { $_.hooks } | ForEach-Object { $_.command })
-      foreach ($e in $ev.Value) { if (@($e.hooks | Where-Object { $have -notcontains $_.command }).Count -gt 0) { $cur += $e } }
-      Set-Prop $d.hooks $ev.Name $cur
-    }
-    New-Item -ItemType Directory -Force -Path (Split-Path $Cfg) | Out-Null
-    [IO.File]::WriteAllText($Cfg, ($d | ConvertTo-Json -Depth 12), (New-Object System.Text.UTF8Encoding $false))
-    Write-Host "→ Merged: $Cfg (hook paths absolute, no default agent)"
-    if (($Budget -ne "inherit" -or $Set.Count -gt 0) -and (Get-Command node -ErrorAction SilentlyContinue)) {
-      $a = @("--flavor","claude","--dest",(Join-Path $Dest "agents"),"--settings",$Cfg,"--budget",$Budget); foreach ($x in $Set) { $a += @("--set",$x) }
-      node (Join-Path $Src "scripts\apply-models.mjs") @a
-    }
-  }
-  Write-Host "`nNext: in any repo run claude --agent team-lead → /brainstorm, then /kickoff or /assess. (To make it the default for one repo, set ""agent"": ""team-lead"" in that repo's .claude\settings.json.)"
   exit 0
 }
 

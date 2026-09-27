@@ -3,7 +3,7 @@
 # Usage: ./install.sh <opencode|claude> [options]
 #   Options are shared by both flavors; --project and -Project style are both accepted:
 #     -Project <path>|.   Install into that path (its git repo root). Default: current directory
-#     -Global             Global install
+#     -Global             Only with -Uninstall: remove an older global install (the team lives in the repository)
 #     -Budget <tier>      Model assignment profile (recommended: /hire after installing)
 #     -Set agent=model    Per-agent model override (repeatable)
 #     -Uninstall          Remove what the installer put there (project or -Global); -DryRun previews
