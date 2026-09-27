@@ -9,6 +9,9 @@ Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`
 - The verifier may use output and check-only words between commands — `echo`, `printf`, `test`, `[`, `true`, `false`, `set`, `pwd`, `date` — as long as nothing is redirected into a file, substituted or expanded from a secret-looking variable (the two test projects logged 28 refusals of `echo` banners around listed commands, each one a re-run). The lead may `gh label list` and `gh label create` (the risk labels /ship attaches); read-only roles may list labels. Both flavors.
 - `--uninstall` / `-Uninstall` on every installer (both flavors, sh and ps1, a project or `--global`): removes what the installer put there — the team's agents, skills, hooks and scripts (opencode: agents, commands, skills, plugins, scripts) and the entries it merged into settings.json / opencode.json — after backing each path up; your own files and settings, docs/ and .gitignore stay, and what is left in the team's folders is listed. `--dry-run` previews it.
 
+### Added (METRICS)
+- Two more columns on the METRICS line, written by /ship from the next ship on: `majors per 100 logic lines` (review blockers ÷ logic diff lines × 100) and `plan-budget refusals` (deny-log lines with rule `doc-budget` on a docs/plans path since the approval commit). /retro reads both: a rising density means the self-check and the reviewer memory are not biting; refusals above one per plan mean the plan budget binds.
+
 ### Fixed
 - The installer carries `worktree.baseRef: head` into the project's settings.json (both sh and ps1; kept when the project already sets `worktree`). The merge only copied `agent`, `permissions` and `hooks`, so no project ever had it: with Claude Code's default `fresh`, a /parallel builder branches from the remote default branch instead of the session HEAD, and the uninstall removes it again. Verified in the installer test runs.
 
