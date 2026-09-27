@@ -173,9 +173,12 @@ else {
     Set-Prop $d.permissions $k $cur
   }
   if (-not $d.PSObject.Properties['hooks']) { Set-Prop $d 'hooks' ([pscustomobject]@{}) }
-  foreach ($ev in $s.hooks.PSObject.Properties) {  # keep the repo's own hooks; add ours when absent
+  $hookNames = @(Get-ChildItem (Join-Path $Src ".claude\hooks") -Filter *.mjs | ForEach-Object { $_.Name })
+  function Test-OurHook($cmd) { foreach ($n in $hookNames) { if ("$cmd" -match ('[\\/]hooks[\\/]' + [regex]::Escape($n) + '(?![\w.-])')) { return $true } }; return $false }
+  foreach ($ev in $s.hooks.PSObject.Properties) {  # keep the repo's own hooks; an older entry of ours (any path form) is replaced, ours added when absent
     if (-not $d.hooks.PSObject.Properties[$ev.Name]) { Set-Prop $d.hooks $ev.Name $ev.Value; continue }
-    $cur = @($d.hooks.($ev.Name)); $have = @($cur | ForEach-Object { $_.hooks } | ForEach-Object { $_.command })
+    $cur = @($d.hooks.($ev.Name) | Where-Object { $inner = @($_.hooks); -not ($inner.Count -gt 0 -and @($inner | Where-Object { -not (Test-OurHook $_.command) }).Count -eq 0) })
+    $have = @($cur | ForEach-Object { $_.hooks } | ForEach-Object { $_.command })
     foreach ($e in $ev.Value) { if (@($e.hooks | Where-Object { $have -notcontains $_.command }).Count -gt 0) { $cur += $e } }
     Set-Prop $d.hooks $ev.Name $cur
   }

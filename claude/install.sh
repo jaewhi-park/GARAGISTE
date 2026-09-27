@@ -172,9 +172,9 @@ run mkdir -p "$ROOT/docs"
 CFG="$ROOT/.claude/settings.json"
 if [ "$DRY" = 1 ]; then echo "+ merge $SRC/.claude/settings.json -> $CFG"
 else
-python3 - "$CFG" "$SRC/.claude/settings.json" << 'PY'
-import json, sys, pathlib
-dst, src = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+python3 - "$CFG" "$SRC/.claude/settings.json" "$SRC/.claude/hooks" << 'PY'
+import json, re, sys, pathlib
+dst, src, hookdir = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3])
 d = json.loads(dst.read_text()) if dst.exists() else {}
 s = json.loads(src.read_text())
 d["agent"] = s["agent"]
@@ -182,10 +182,14 @@ if "worktree" in s: d.setdefault("worktree", s["worktree"])   # /parallel builde
 perm = d.setdefault("permissions", {})
 for k in ("allow", "deny"):
     perm[k] = list(dict.fromkeys(list(perm.get(k, [])) + s["permissions"][k]))
-# Hooks: keep the repo's own hooks and add ours when absent (an existing PreToolUse hook, e.g. a formatter, must not hide the guardrails).
+# Hooks: keep the repo's own hooks (an existing PreToolUse hook, e.g. a formatter, must not hide the guardrails); an entry that runs
+# only this template's hook files — an older install, whatever path form it used — is replaced by ours, never kept next to it.
+names = sorted(q.name for q in hookdir.glob("*.mjs"))
+ours = lambda c: any(re.search(r"[\\/]hooks[\\/]" + re.escape(n) + r"(?![\w.-])", str(c)) for n in names)
 hooks = d.setdefault("hooks", {})
 for ev, entries in s["hooks"].items():
     cur = hooks.setdefault(ev, [])
+    cur[:] = [e for e in cur if not (e.get("hooks") and all(ours(h.get("command", "")) for h in e["hooks"]))]
     have = {h["command"] for e in cur for h in e.get("hooks", [])}
     cur.extend(e for e in entries if not all(h["command"] in have for h in e["hooks"]))
 dst.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")

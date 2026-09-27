@@ -8,7 +8,7 @@ import { join } from "node:path";
 
 let input = {};
 try { input = JSON.parse(readFileSync(0, "utf8")); } catch {}
-const cwd = input.cwd ?? process.cwd();
+const cwd = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();   // the project root: Claude Code sets CLAUDE_PROJECT_DIR; the event's cwd can be elsewhere after a cd
 const dir = join(cwd, ".claude/session"), file = join(dir, "compactions");
 try {
   mkdirSync(dir, { recursive: true });

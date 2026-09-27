@@ -340,7 +340,7 @@ try { input = JSON.parse(readFileSync(0, "utf8")); } catch { deny("input", "bloc
 const tool = input.tool_name ?? "";
 const ti = input.tool_input ?? {};
 const role = input.agent_type ?? "";
-const cwd = input.cwd ?? process.cwd();
+const cwd = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();   // the project root: Claude Code sets CLAUDE_PROJECT_DIR; the event's cwd can be elsewhere after a cd
 logCtx = { cwd, role, tool };
 
 if (tool === "Bash" || tool === "PowerShell") {

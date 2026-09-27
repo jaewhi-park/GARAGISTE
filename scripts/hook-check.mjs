@@ -213,7 +213,8 @@ function toClaude(tool, args) {
   return [TOOL_NAMES[tool], ti];
 }
 function runClaude(role, tool, input, cwd) {
-  const r = spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ agent_type: role, tool_name: tool, tool_input: input, cwd }), encoding: "utf8" });
+  const env = { ...process.env }; if (cwd) env.CLAUDE_PROJECT_DIR = cwd; else delete env.CLAUDE_PROJECT_DIR;   // the hook takes its root from CLAUDE_PROJECT_DIR, as under Claude Code
+  const r = spawnSync(process.execPath, [HOOK], { input: JSON.stringify({ agent_type: role, tool_name: tool, tool_input: input, cwd }), encoding: "utf8", env });
   return r.status === 0 ? A : r.status === 2 ? B : `exit ${r.status}${r.stderr ? ` (${r.stderr.trim().slice(0, 80)})` : ""}`;
 }
 async function loadPlugin() {
