@@ -105,6 +105,8 @@ if isinstance(perm, dict):
     if not perm: del d["permissions"]
 if mode == "project" and "agent" in d and d.get("agent") == s.get("agent"):
     del d["agent"]; changed.append(f"agent: {s.get('agent')}")
+if mode == "project" and "worktree" in d and d.get("worktree") == s.get("worktree"):
+    del d["worktree"]; changed.append("worktree")
 if not changed:
     print(f"→ {cfg}: nothing of ours in it"); sys.exit(0)
 for c in changed: print(f"- {'remove' if dry == '1' else 'removed'} from {cfg.name}: {c}")
@@ -176,6 +178,7 @@ dst, src = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
 d = json.loads(dst.read_text()) if dst.exists() else {}
 s = json.loads(src.read_text())
 d["agent"] = s["agent"]
+if "worktree" in s: d.setdefault("worktree", s["worktree"])   # /parallel builders branch from the session HEAD, not the remote default branch
 perm = d.setdefault("permissions", {})
 for k in ("allow", "deny"):
     perm[k] = list(dict.fromkeys(list(perm.get(k, [])) + s["permissions"][k]))

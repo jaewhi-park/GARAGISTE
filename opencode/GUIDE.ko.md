@@ -141,7 +141,7 @@
 ### 3.8 병합과 릴리즈
 - lead 머지: 아래 어느 정책이든 검증·리뷰·체크가 초록인 `risk:low` 작업은 lead가 묻지 않고 머지한다. 상태판의 Stage가 `pre-launch`인 동안은 `risk:high`(Risk path 적중, 에스컬레이션 항목)도 그렇다. `live`가 되면 리스크 요약을 보고 말하는 당신의 머지 또는 보류를 기다린다. 머지는 어느 경우든 lead가 한다 — 당신이 GitHub를 열 일은 없다.
 - main 머지는 저장소 상태를 따른다(`/ship`이 판정하고 `/policy`가 판정과 근거를 보여 준다):
-  - 원격 없음 → `local`: PR 설명이 docs/prs/NNNN-<slug>.md로 남고 lead가 `merge --no-ff`로 로컬 머지한다(출시 뒤의 `risk:high`는 당신 한마디 뒤).
+  - 원격 없음 → `local`: lead가 `merge --no-ff`로 로컬 머지한다(PR 설명은 원격 유무와 상관없이 매 ship 마다 docs/prs/NNNN-<slug>.md로 남는다)(출시 뒤의 `risk:high`는 당신 한마디 뒤).
   - 원격 있음, 보호 없음 → `manual`: 팀이 push하고 PR을 열고 체크 통과 후 위 규칙대로 머지한다. 출시 뒤의 `risk:high`는 당신 한마디를 기다린다.
   - 원격 + main 보호(필수 체크 = CI) + auto-merge 허용 → `auto-low-risk`: `risk:low`는 CI 통과 시 자동 머지.
 - 팀은 어느 판정에서도 force push와 main 직접 push를 못 한다(훅). 머지는 항상 PR 또는 위 규칙의 로컬 머지를 통과한다.

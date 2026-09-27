@@ -83,6 +83,7 @@ if ($Uninstall) {
       if (@($d.permissions.PSObject.Properties).Count -eq 0) { $d.PSObject.Properties.Remove('permissions') }
     }
     if ($Mode -eq "project" -and $d.PSObject.Properties['agent'] -and $d.agent -eq $s.agent) { $d.PSObject.Properties.Remove('agent'); $changed += "agent: $($s.agent)" }
+    if ($Mode -eq "project" -and $d.PSObject.Properties['worktree'] -and $s.PSObject.Properties['worktree'] -and (($d.worktree | ConvertTo-Json -Compress) -eq ($s.worktree | ConvertTo-Json -Compress))) { $d.PSObject.Properties.Remove('worktree'); $changed += "worktree" }
     if ($changed.Count -eq 0) { Write-Host "→ $($Cfg): nothing of ours in it" }
     else {
       foreach ($c in $changed) { Write-Host "- $(if ($DryRun) {'remove'} else {'removed'}) from settings.json: $c" }
@@ -164,6 +165,7 @@ else {
   $s = Get-Content (Join-Path $Src ".claude\settings.json") -Raw | ConvertFrom-Json
   $d = if (Test-Path $Cfg) { Get-Content $Cfg -Raw | ConvertFrom-Json } else { [pscustomobject]@{} }
   Set-Prop $d 'agent' $s.agent
+  if ($s.PSObject.Properties['worktree'] -and -not $d.PSObject.Properties['worktree']) { Set-Prop $d 'worktree' $s.worktree }   # /parallel builders branch from the session HEAD
   if (-not $d.PSObject.Properties['permissions']) { Set-Prop $d 'permissions' ([pscustomobject]@{}) }
   foreach ($k in "allow","deny") {
     $cur = @(); if ($d.permissions.PSObject.Properties[$k]) { $cur += $d.permissions.$k }

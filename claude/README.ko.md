@@ -76,13 +76,13 @@
 `/ship`이 저장소 상태를 보고 정한다. 설정 파일을 고칠 일은 없다.
 | 저장소 상태 | 판정 | 동작 |
 |---|---|---|
-| 원격 없음 | `local` | PR 설명을 docs/prs/에 저장, 승인 후 로컬 main에 `merge --no-ff` |
+| 원격 없음 | `local` | 승인 후 로컬 main에 `merge --no-ff` (PR 설명은 매 ship 마다 docs/prs/ 에 남는다) |
 | 원격 있음, main 보호·auto-merge 없음 | `manual` | 브랜치 push + PR(risk 라벨). 사람이 머지 |
 | 원격 있음 + main 보호(필수 체크) + auto-merge 허용 | `auto-low-risk` | `risk:low`는 `gh pr merge --auto`, `risk:high`는 출시 전 lead·출시 뒤 CEO 한마디 |
 즉 "자동 머지를 켠다" = GitHub에서 main 보호와 auto-merge를 켜는 것이고, 그게 곧 안전 조건이다. `/policy`로 현재 판정과 근거를 확인하고, 정말 필요할 때만 CLAUDE.md에 override(`manual`/`auto-low-risk`)를 적는다. 훅은 어느 판정에서도 force push와 main 직접 push를 막는다.
 
 ## 로컬 전용 (원격 없는 초기 빌드업)
-`git remote`가 비어 있으면 `/ship`은 push·PR 대신 docs/prs/NNNN-<slug>.md 에 PR 설명을 남기고, 머지 정책대로 로컬 main에 `git merge --no-ff` 한다(manual이면 CEO 승인 후). 게이트는 그대로다 — 계획 하나 = 브랜치 하나, verifier, 4렌즈 리뷰, 위험도, 머지 커밋 단위 롤백. `/release`는 승인 후 로컬 태그를 만든다. GitHub를 붙이면(`git remote add origin …`) 다음 `/ship`부터 자동으로 PR 흐름이 되고, main 보호 + auto-merge를 켜면 자동으로 auto-low-risk가 된다. 설정 파일을 고칠 일은 없다.
+`/ship`은 매 ship 마다 PR 설명을 docs/prs/NNNN-<slug>.md 에 남긴다(원격이 있으면 그 파일이 `--body-file` 로 PR 본문이 되고, 머지는 merge commit 이라 로컬 main 이 fast-forward 된다). `git remote`가 비어 있으면 push·PR 대신 머지 정책대로 로컬 main에 `git merge --no-ff` 한다(manual이면 CEO 승인 후). 게이트는 그대로다 — 계획 하나 = 브랜치 하나, verifier, 4렌즈 리뷰, 위험도, 머지 커밋 단위 롤백. `/release`는 승인 후 로컬 태그를 만든다. GitHub를 붙이면(`git remote add origin …`) 다음 `/ship`부터 자동으로 PR 흐름이 되고, main 보호 + auto-merge를 켜면 자동으로 auto-low-risk가 된다. 설정 파일을 고칠 일은 없다.
 
 ## 모델과 예산
 **권장 경로는 `/hire`** 다. lead 가 사용 가능한 모델을 확인하고(opencode: `opencode models`, Claude Code: 별칭), 예산 티어·프로젝트 성격·병렬 계획을 묻고, 역할 × 모델 표를 이유와 함께 제안한다. 승인하면 `scripts/apply-models.mjs`(model 줄만 바꾸는 스크립트)로 적용하고 CLAUDE.md 에 "운영 프로필"(기본 렌즈 수·병렬·critic 기준·단계별 verifier·단계 크기 목표)을 남긴다. `/kickoff`·`/assess`의 마무리 단계에서 실행된다. 아래 `--budget` 프로필은 비대화형·스크립트용이다. 설치할 때 `-Budget <티어>`를 주면 첫(kickoff/assess) 세션부터 verifier가 haiku로 돌고, `/hire`가 그 위에서 다듬는다.

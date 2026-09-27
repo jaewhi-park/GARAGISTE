@@ -5,13 +5,22 @@ Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`
 ## Unreleased
 
 ### Added
+- The deny log (`.claude/session/denies.jsonl`) records the rule that fired and the command or path it refused (`rule`, `what`) instead of the prose reason, whose boilerplate alone exceeded the 200-character cut and hid the command — the next retro can see what was refused, not only how often.
+- The verifier may use output and check-only words between commands — `echo`, `printf`, `test`, `[`, `true`, `false`, `set`, `pwd`, `date` — as long as nothing is redirected into a file, substituted or expanded from a secret-looking variable (the two test projects logged 28 refusals of `echo` banners around listed commands, each one a re-run). The lead may `gh label list` and `gh label create` (the risk labels /ship attaches); read-only roles may list labels. Both flavors.
+- Two more columns on the METRICS line, written by /ship from the next ship on: `majors per 100 logic lines` (review blockers ÷ logic diff lines × 100) and `plan-budget refusals` (deny-log lines with rule `doc-budget` on a docs/plans path since the approval commit). /retro reads both: a rising density means the self-check and the reviewer memory are not biting; refusals above one per plan mean the plan budget binds.
 - `--uninstall` / `-Uninstall` on every installer (both flavors, sh and ps1, a project or `--global`): removes what the installer put there — the team's agents, skills, hooks and scripts (opencode: agents, commands, skills, plugins, scripts) and the entries it merged into settings.json / opencode.json — after backing each path up; your own files and settings, docs/ and .gitignore stay, and what is left in the team's folders is listed. `--dry-run` previews it.
+
+### Fixed
+- The installer carries `worktree.baseRef: head` into the project's settings.json (both sh and ps1; kept when the project already sets `worktree`). The merge only copied `agent`, `permissions` and `hooks`, so no project ever had it: with Claude Code's default `fresh`, a /parallel builder branches from the remote default branch instead of the session HEAD, and the uninstall removes it again. Verified in the installer test runs.
+
+### Changed
+- **The verifier's turn cap is 40** (was 20; `steps` in opencode) and it runs a rules-file command line as written — a chain is one call. At the cap Claude Code returns the report as partial; the test projects' lead had to split full verification into two or three calls to stay under it.
+- **/ship merges with a merge commit, never a squash** (both flavors, hotfix too): the plan and board commits the lead makes on local main are ancestors of the plan branch, so a merge commit lets local main fast-forward after every ship — a squash rewrote them and both test projects had to rebase or switch merge methods by hand. The PR description is saved to docs/prs/NNNN-<slug>.md at every ship and passed with `--body-file` (a long `--body` with `$(…)`, `->` or a word like credentials tripped the lead's shell guard), and the lead creates the two risk labels once when the repository lacks them (`gh label create`; before, `gh pr create --label` failed and both projects put the label in the title).
+- **The plan budget is 16 KB** (was 12 KB; both flavors). In the two test projects every plan written after the budget landed sat within 300 bytes of 12 KB and one iteration logged 22 refusals of plan writes — each one a planner rewriting the file to fit. The other budgets are unchanged; the plan-budget refusal count is now a METRICS column, so a binding budget shows up at the next retro.
+- Upgrade order for a running project, step (2): an older *global* install is removed with `./install.sh <flavor> -Global -Uninstall` before the project is re-installed — Claude Code loads a same-named skill from `~/.claude/skills` in preference to the project's, and a guardrails hook registered in both `~/.claude/settings.json` and the project's runs twice with the older one deciding.
 
 ### Removed
 - **The global install** (`--global` / `-Global`, both flavors): the team lives in the repository — `.claude/` (opencode: `.opencode/` and `opencode.json`) is committed with the project, so every checkout and collaborator runs the same release and nothing under the user's home can shadow it. `-Global` is accepted only together with `-Uninstall`, which removes an older global install; the installers' absolute-path rewriting of skills and commands went with it. `session-start.mjs` now also warns when a same-named skill, agent or hook of this project is still under `~/.claude`, and points at `-Global -Uninstall`.
-
-### Changed
-- Upgrade order for a running project, step (2): an older *global* install is removed with `./install.sh <flavor> -Global -Uninstall` before the project is re-installed — Claude Code loads a same-named skill from `~/.claude/skills` in preference to the project's, and a guardrails hook registered in both `~/.claude/settings.json` and the project's runs twice with the older one deciding.
 
 ## 2026-09-26
 

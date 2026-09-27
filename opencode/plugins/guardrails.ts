@@ -71,7 +71,7 @@ const DOC_BUDGETS: Budget[] = [
   { name: "docs/STATUS-team.md (the team's pointer)", test: /(^|[\\/])docs[\\/]STATUS-team\.md$/, lines: 40, where: "detail goes to the plan, docs/DECISIONS.md or git" },
   { name: "the rules file (AGENTS.md / CLAUDE.md)", test: /(^|[\\/])(CLAUDE|AGENTS)\.md$/, bytes: 8 * 1024, where: "procedures go to skills, the map to docs/ARCHITECTURE.md, history to docs/" },
   { name: "docs/CHARTER.md", test: /(^|[\\/])docs[\\/]CHARTER\.md$/, lines: 60, where: "detail goes to the spec or an ADR" },
-  { name: "a plan (docs/plans/*.md)", test: /(^|[\\/])docs[\\/]plans[\\/][^\\/]+\.md$/, bytes: 12 * 1024, where: "sections 3 and 5 are a few lines each, the source section holds the rest, and a bigger job is split by tryable outcome" },
+  { name: "a plan (docs/plans/*.md)", test: /(^|[\\/])docs[\\/]plans[\\/][^\\/]+\.md$/, bytes: 16 * 1024, where: "sections 3 and 5 are a few lines each, the source section holds the rest, and a bigger job is split by tryable outcome" },
 ]
 function overBudget(text: string, b: Budget): string {
   const t = text.replace(/\r\n/g, "\n")
