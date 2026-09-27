@@ -5,7 +5,7 @@ Human manual: **GUIDE.md** (install, what to do in each situation). Artifact map
 The team's *character* (roles, permissions, procedures) lives in this template; the project's *facts* (commands, structure, decisions) live in the repo's AGENTS.md and docs/. The team onboards itself into a new repo with /brainstorm, then /kickoff or /assess.
 
 ## Install
-From the repository root: `./install.sh opencode [-Project <path>|.] [-Global]` / `.\install.ps1 opencode [-Project <path>] [-Global]`. Default is the current directory (its git repo root). `-Global` → ~/.config/opencode (every repo). Running `opencode/install.sh` directly works too (without the flavor argument). `-Uninstall` removes what the installer put there — the team's agents, commands, skills, plugins and scripts and its `opencode.json` entries — backing them up first and leaving your own files and config; `-DryRun` previews it.
+From the repository root: `./install.sh opencode [-Project <path>|.]` / `.\install.ps1 opencode [-Project <path>]`. Default is the current directory (its git repo root). There is no global install — the team lives in the repository, so `.opencode/` and `opencode.json` are committed; `-Global` is accepted only with `-Uninstall`, to remove an older global install. Running `opencode/install.sh` directly works too (without the flavor argument). `-Uninstall` removes what the installer put there — the team's agents, commands, skills, plugins and scripts and its `opencode.json` entries — backing them up first and leaving your own files and config; `-DryRun` previews it.
 
 ```
 ./install.sh opencode -Project <repo path>        # macOS / Linux / WSL

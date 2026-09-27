@@ -19,7 +19,7 @@ Blue is the path every piece of work takes: `/backlog` → `/plan` → `/build` 
 ./install.sh opencode -Project <repo path>      # opencode flavor
 .\install.ps1 claude  -Project <repo path>      # Windows PowerShell
 ```
-Omit `-Project` for the current directory, use `-Global` for a global install. Options are identical across flavors; both `--project` and `-Project` spellings work. `-Uninstall` removes what the installer put there (the project's, or with `-Global` the global install) and leaves your own files and settings; `-DryRun` previews either.
+Omit `-Project` for the current directory. There is no global install: the team lives in the repository (`.claude/`, or `.opencode/` and `opencode.json`, committed with the project), so every checkout gets the same team. Options are identical across flavors; both `--project` and `-Project` spellings work. `-Uninstall` removes what the installer put there and leaves your own files and settings, `-Global -Uninstall` removes an older global install, and `-DryRun` previews either.
 In the first session, write the product brief with `/brainstorm` (talk it through with the lead, or bring a document you wrote), then start a new project with `/kickoff` or a legacy codebase with `/assess`; each is followed by `/hire`, which assigns models per role.
 
 ## Layout

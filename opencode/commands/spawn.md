@@ -13,4 +13,4 @@ For each plan:
 4. Give the CEO the command to run in a new terminal: `cd ../<repo>-<slug> && opencode`, then `/build <plan path>` in that session (it stays on plan/<slug>; the worktree has no board).
 
 A session inside a worktree is independent of this one. Finished branches are integrated here with /integrate.
-Precondition: .opencode/ and opencode.json must be committed so worktree sessions also have the team (or install with --global).
+Precondition: .opencode/ and opencode.json must be committed so worktree sessions also have the team.

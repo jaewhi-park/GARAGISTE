@@ -7,6 +7,9 @@ Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`
 ### Added
 - `--uninstall` / `-Uninstall` on every installer (both flavors, sh and ps1, a project or `--global`): removes what the installer put there — the team's agents, skills, hooks and scripts (opencode: agents, commands, skills, plugins, scripts) and the entries it merged into settings.json / opencode.json — after backing each path up; your own files and settings, docs/ and .gitignore stay, and what is left in the team's folders is listed. `--dry-run` previews it.
 
+### Removed
+- **The global install** (`--global` / `-Global`, both flavors): the team lives in the repository — `.claude/` (opencode: `.opencode/` and `opencode.json`) is committed with the project, so every checkout and collaborator runs the same release and nothing under the user's home can shadow it. `-Global` is accepted only together with `-Uninstall`, which removes an older global install; the installers' absolute-path rewriting of skills and commands went with it. `session-start.mjs` now also warns when a same-named skill, agent or hook of this project is still under `~/.claude`, and points at `-Global -Uninstall`.
+
 ### Changed
 - Upgrade order for a running project, step (2): an older *global* install is removed with `./install.sh <flavor> -Global -Uninstall` before the project is re-installed — Claude Code loads a same-named skill from `~/.claude/skills` in preference to the project's, and a guardrails hook registered in both `~/.claude/settings.json` and the project's runs twice with the older one deciding.
 

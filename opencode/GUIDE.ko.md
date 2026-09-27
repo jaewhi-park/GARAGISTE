@@ -39,16 +39,15 @@
 ## 1. 설치와 첫 실행
 
 
-설치 위치는 세 가지 중 하나. 저장소 루트의 진입점에 대상(opencode)을 먼저 준다:
+설치 위치는 둘 다 저장소 안이다. 저장소 루트의 진입점에 대상(opencode)을 먼저 준다:
 ```
 ./install.sh opencode                       # 현재 경로(가 속한 git 레포 루트)
 ./install.sh opencode -Project <경로>       # 그 경로에 설치 (--project 도 됨)
-./install.sh opencode -Global               # 전역
 .\install.ps1 opencode -Project <경로>      # Windows PowerShell — 옵션 표기는 동일
 ```
 `opencode/install.sh` 를 직접 실행해도 같다(대상 인자 없이).
 - 경로가 레포의 하위 폴더면 git 루트로 올라가 설치하고 알려준다. git 저장소가 아니면 `git init` 을 제안한다.
-- --global  → ~/.config/opencode (모든 레포). 전역 설치는 프로젝트의 .gitignore를 건드릴 수 없으니, 옛 설치가 `docs/STATUS.md`를 무시하게 해 두었다면 그 줄을 직접 지운다 — 상태판은 커밋된다.
+- 전역 설치는 없다: 팀은 저장소에 살고 `.opencode/` 와 `opencode.json` 을 프로젝트와 함께 커밋하니 어느 체크아웃 · 협업자든 같은 판을 받는다. ~/.config/opencode 에 남은 옛 전역 설치는 `-Global -Uninstall`(다음 줄)로 지운다.
 - --uninstall (`-Project` 또는 `-Global` 과 함께) → 그 대상에서 팀을 걷어낸다: 팀의 agents · commands · skills · plugins · scripts 와 설치기가 더한 `opencode.json` 항목만, 백업한 뒤. 당신의 파일과 설정, docs/, .gitignore 는 남고 팀 폴더에 남은 것은 목록으로 보여 준다. 옛 전역 설치는 프로젝트를 다시 설치하기 전에 이걸로 지워 팀이 한 판만 로드되게 한다.
 
 **Windows 실행 정책**: `.\install.ps1` 이 "스크립트를 실행할 수 없으므로" 로 막히면 둘 중 하나.
@@ -178,7 +177,7 @@
 - 언제: 파일 단위로 서로 독립적인 기능이 둘 이상 있고, 순차로는 시간이 아까울 때. **처음 2주는 쓰지 않는다.**
 - 한 가지 방식: `/spawn <계획 파일들>`이 승인된 계획마다 worktree와 브랜치를 만들고 거기서 세션을 여는 명령을 알려 준다. 그 세션에서 `/build <계획>`이 자기 브랜치에서 구현한다. 상태판은 메인 체크아웃 것이고 worktree 세션은 편집하지 않는다.
 - 그다음 메인 세션에서 `/integrate`가 끝난 브랜치를 통합 브랜치에 하나씩 리뷰·머지하고 `/ship`이 그 브랜치를 PR 하나로 출하한다. opencode에는 세션 내 builder가 없다. 병렬 계획은 각각 세션이고, 계획 도중 끊긴 세션은 그 브랜치에서 마지막 커밋 다음 단계부터 잇는다.
-- 전제: `.opencode/`와 `opencode.json`이 커밋되어 있어야 worktree 세션에도 팀이 있다(또는 전역 설치). `.env` 같은 미추적 파일은 직접 복사한다.
+- 전제: `.opencode/`와 `opencode.json`이 커밋되어 있어야 worktree 세션에도 팀이 있다. `.env` 같은 미추적 파일은 직접 복사한다.
 - 당신: 각 계획의 "변경 파일" 집합이 겹치지 않는지 확인하고, 통합 순서(의존이 있으면 먼저)를 정한다. 겹치는 파일이 0개여야 하고, 아니면 순차로 돌린다.
 - 조심할 것: 한 기능의 단계들을 병렬로 나누기(단계는 순차다). 통합을 여러 브랜치 동시에 하기(항상 하나씩).
 
