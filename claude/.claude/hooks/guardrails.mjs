@@ -13,7 +13,8 @@
 // Other agents (team-implementer, team-critic, roles created by /recruit) get the generic rules only.
 // Document budgets hold for every role: the files every session or every spawn reads (the board, the rules file, the charter,
 // a plan) stay within a byte or line budget (DOC_BUDGETS) — a write that would leave one over it is refused.
-// Every refusal is one line in .claude/session/denies.jsonl (git-ignored): the count the next retro reads.
+// Every refusal is one line in .claude/session/denies.jsonl (git-ignored) — the rule that fired and the command or path it
+// refused (200 characters): the count, and the patterns behind it, the next retro reads.
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { dirname, join, resolve } from "node:path";
@@ -166,7 +167,7 @@ function gitReadOnly(w, pi) {
     default: return false;
   }
 }
-const GH_READ = /^(repo\s+view|pr\s+(view|list|checks|diff|status)|issue\s+(view|list)|run\s+(view|list)|release\s+(view|list)|api|auth\s+status|search)\b/;
+const GH_READ = /^(repo\s+view|pr\s+(view|list|checks|diff|status)|issue\s+(view|list)|run\s+(view|list)|release\s+(view|list)|label\s+list|api|auth\s+status|search)\b/;
 // One pipeline segment. `runCode`: the role may run builds and tests (reviewer); otherwise only the read-only invocations.
 function readOnlySegment(seg, runCode) {
   const s = unwrap(seg);
@@ -185,7 +186,7 @@ const readOnly = (cmd, runCode) => cmd.split(CHAIN_SEP).every((chain) => pipelin
 // Branch/merge/sync work the skills give the lead; -D, force switches, force pushes and pushes to main are blocked above and below.
 const LEAD_GIT = /^(fetch|merge|rebase|revert|worktree|switch|tag|branch|remote|push)$/;
 const DOCS_ONLY = /^(\.[\\/])?(docs[\\/]|CLAUDE\.md$|\.claude[\\/]|\.gitignore$|CHANGELOG[^\\/]*$)/;
-const GH_LEAD = /^(repo\s+view|pr\s+(view|list|checks|diff|status|create|merge|close|ready|edit|comment)|issue\s+(view|list)|run\s+(view|list)|api|auth\s+status|search)\b/;
+const GH_LEAD = /^(repo\s+view|pr\s+(view|list|checks|diff|status|create|merge|close|ready|edit|comment)|issue\s+(view|list)|run\s+(view|list)|label\s+(list|create)|api|auth\s+status|search)\b/;
 const LEAD_SCRIPT = /\.claude[\\/]scripts[\\/](apply-models|set-language|new-agent|set-profile)\.mjs$/;
 // A git segment the lead may run: read-only, LEAD_GIT, or add/rm/commit touching docs-only paths (docs/, CLAUDE.md, .claude/, .gitignore, CHANGELOG*).
 function leadGit(seg) {
@@ -267,9 +268,14 @@ function parseCommands(text) {
   }
   return out;
 }
+// Output and check-only words between commands (a banner, `echo "EXIT=$?"`, `test -f` on a result file, `set -o pipefail`): allowed
+// as long as nothing is written to a file and nothing is substituted or expanded from a secret-looking variable — the verifier's
+// output lands in the lead's context.
+const VERIFIER_CHATTER = /^(echo|printf|test|\[|true|false|set|pwd|date)(\s|$)/;
+const chatterOk = (s) => VERIFIER_CHATTER.test(s) && !shellWrite(s) && !/\$\(|`/.test(s) && !/\$\{?\w*(KEY|TOKEN|SECRET|PASS|CREDENTIAL|AUTH)/i.test(s);
 const verifierOk = (cmd, listed) => cmd.split(CHAIN_SEP).every((chain) => pipeline(chain).every((seg) => {
   const s = unwrap(seg);
-  return !s || /^cd\s+\S+$/.test(s) || VERIFIER_TOOLCHAIN.some((re) => re.test(s)) || listed.some((l) => s === l || s.startsWith(l + " "));
+  return !s || /^cd\s+\S+$/.test(s) || VERIFIER_TOOLCHAIN.some((re) => re.test(s)) || chatterOk(s) || listed.some((l) => s === l || s.startsWith(l + " "));
 }));
 
 // ---------- team-builder ----------
@@ -312,22 +318,22 @@ function afterWrite(tool, ti, p) {
 const REVIEWER_MEMORY = /(^|[\\/])docs[\\/]memory[\\/]team-reviewer\.md$/;
 
 // A refusal: the reason goes to Claude (exit 2) and one line to the project's deny log — .claude/session/denies.jsonl, git-ignored,
-// written only when the call runs inside a project (a .claude/ folder at cwd). The log is the count the next retro reads; a failure
-// to write it never changes the verdict.
+// written only when the call runs inside a project (a .claude/ folder at cwd): the rule id and the command or path (`what`, 200
+// characters), so a retro can see what was refused, not only how often. A failure to write it never changes the verdict.
 let logCtx = {};
-function deny(msg) {
+function deny(rule, msg) {
   try {
     const dir = logCtx.cwd ? join(logCtx.cwd, ".claude") : "";
     if (dir && existsSync(dir)) {
       mkdirSync(join(dir, "session"), { recursive: true });
-      appendFileSync(join(dir, "session", "denies.jsonl"), JSON.stringify({ ts: new Date().toISOString(), role: logCtx.role || null, tool: logCtx.tool || null, reason: msg.slice(0, 200) }) + "\n");
+      appendFileSync(join(dir, "session", "denies.jsonl"), JSON.stringify({ ts: new Date().toISOString(), role: logCtx.role || null, tool: logCtx.tool || null, rule, what: String(logCtx.what ?? "").slice(0, 200) }) + "\n");
     }
   } catch {}
   process.stderr.write(`[guardrail] ${msg}\n`); process.exit(2);
 }
 
 let input;
-try { input = JSON.parse(readFileSync(0, "utf8")); } catch { deny("blocked: the hook could not read its input (fail closed)"); }
+try { input = JSON.parse(readFileSync(0, "utf8")); } catch { deny("input", "blocked: the hook could not read its input (fail closed)"); }
 const tool = input.tool_name ?? "";
 const ti = input.tool_input ?? {};
 const role = input.agent_type ?? "";
@@ -336,29 +342,30 @@ logCtx = { cwd, role, tool };
 
 if (tool === "Bash" || tool === "PowerShell") {
   const cmd = String(ti.command ?? "");
+  logCtx.what = cmd;
   if (role === "team-verifier" && !verifierOk(cmd, rulesFileCommands(cwd))) {
-    deny(`blocked command (team-verifier runs build/test/lint tools and the commands listed under "## Commands" in CLAUDE.md, nothing else): ${cmd}`);
+    deny("verifier-command", `blocked command (team-verifier runs build/test/lint tools and the commands listed under "## Commands" in CLAUDE.md, nothing else): ${cmd}`);
   }
   if (role === "team-lead" && !leadOk(cmd)) {
-    deny(`blocked command (team-lead runs read-only commands, git branch/merge/sync commands, docs-only commits, pushes and gh PR commands; code goes to team-implementer, checks to team-verifier; no shell writes): ${cmd}`);
+    deny("lead-command", `blocked command (team-lead runs read-only commands, git branch/merge/sync commands, docs-only commits, pushes and gh PR commands; code goes to team-implementer, checks to team-verifier; no shell writes): ${cmd}`);
   }
   if ((role === "team-planner" || /^explore$/i.test(role)) && !readOnly(cmd, false)) {
-    deny(`blocked command (${role} uses the shell read-only: git status/diff/log/show, listings, version checks; it never runs code or writes files): ${cmd}`);
+    deny("readonly-command", `blocked command (${role} uses the shell read-only: git status/diff/log/show, listings, version checks; it never runs code or writes files): ${cmd}`);
   }
   if (role === "team-reviewer" && !readOnly(cmd, true)) {
-    deny(`blocked command (team-reviewer uses the shell read-only, plus the toolchain to run tests; it never edits, commits or writes files): ${cmd}`);
+    deny("reviewer-command", `blocked command (team-reviewer uses the shell read-only, plus the toolchain to run tests; it never edits, commits or writes files): ${cmd}`);
   }
   if (role === "team-builder" && BUILDER_BLOCKED.test(cmd)) {
-    deny(`blocked command (team-builder never merges, rebases, pulls or touches worktrees -- /integrate does that): ${cmd}`);
+    deny("builder-git", `blocked command (team-builder never merges, rebases, pulls or touches worktrees -- /integrate does that): ${cmd}`);
   }
   if (BLOCKED_COMMANDS.some((re) => re.test(cmd)) || recursiveDeleteOfRoot(cmd)) {
-    deny(`blocked command: ${cmd}`);
+    deny("destructive", `blocked command: ${cmd}`);
   }
   if (readsSecret(cmd)) {
-    deny(`blocked: command reads a secret file: ${cmd}`);
+    deny("secret-read", `blocked: command reads a secret file: ${cmd}`);
   }
   if (GH_API_MUTATION.test(cmd)) {
-    deny(`blocked: gh api may only read (merges, branch protection and refs are changed by the CEO on GitHub): ${cmd}`);
+    deny("gh-api-mutation", `blocked: gh api may only read (merges, branch protection and refs are changed by the CEO on GitHub): ${cmd}`);
   }
   // Push policy, every role: feature-branch pushes allowed; force push, mirror/all/delete pushes and any push to main/master blocked
   // (main changes only through a PR or the lead's approved local merge). Each `git push` segment is tokenised with quotes stripped.
@@ -380,36 +387,38 @@ if (tool === "Bash" || tool === "PowerShell") {
     if (refspecs.length === 0 || refspecs.some((r) => /^HEAD$/.test(r))) {
       try { onMain = /^(main|master)$/.test(execSync("git rev-parse --abbrev-ref HEAD", { cwd, stdio: ["ignore", "pipe", "ignore"] }).toString().trim()); } catch {}
     }
-    if (force || toMain || onMain) deny(`blocked push (force push and direct push to main are not allowed; merge via PR): ${cmd}`);
+    if (force || toMain || onMain) deny("push-policy", `blocked push (force push and direct push to main are not allowed; merge via PR): ${cmd}`);
   }
 }
 if (["Edit", "Write", "MultiEdit", "Read", "NotebookEdit"].includes(tool)) {
   const p = String(ti.file_path ?? ti.notebook_path ?? "");
+  logCtx.what = p;
   const writing = tool !== "Read";
   // team-lead writes no code and no docs; its only editable files are the two board files (mirrors opencode's `edit: docs/STATUS*.md: allow`).
   if (writing && role === "team-lead" && !BOARD_FILES.test(p)) {
-    deny(`blocked edit (team-lead edits only docs/STATUS.md and docs/STATUS-team.md; code goes to team-implementer, docs to team-planner): ${p}`);
+    deny("lead-edit", `blocked edit (team-lead edits only docs/STATUS.md and docs/STATUS-team.md; code goes to team-implementer, docs to team-planner): ${p}`);
   }
   // The documents every session or spawn reads stay within their budgets: a write that would leave one over is refused, whoever writes it.
   const budget = writing ? DOC_BUDGETS.find((b) => b.test.test(p)) : undefined;
   if (budget) {
     const after = afterWrite(tool, ti, resolve(cwd, p));
     const why = after === null ? "" : overBudget(after, budget);
-    if (why) deny(`blocked edit (${budget.name} stays within its budget — ${why}; ${budget.where}): ${p}`);
+    if (why) deny("doc-budget", `blocked edit (${budget.name} stays within its budget — ${why}; ${budget.where}): ${p}`);
   }
   // team-reviewer writes only its own memory file.
   if (writing && role === "team-reviewer" && !REVIEWER_MEMORY.test(p)) {
-    deny(`blocked edit (team-reviewer writes only docs/memory/team-reviewer.md; it never edits code or documents): ${p}`);
+    deny("reviewer-edit", `blocked edit (team-reviewer writes only docs/memory/team-reviewer.md; it never edits code or documents): ${p}`);
   }
   // team-planner writes documents only: docs/** and the rules file (mirrors opencode's `edit: docs/*, CLAUDE.md: allow`).
   if (writing && role === "team-planner" && !/(^|[\\/])docs[\\/]/.test(p) && !/(^|[\\/])CLAUDE\.md$/.test(p)) {
-    deny(`blocked edit (team-planner writes only under docs/ and CLAUDE.md; code goes to team-implementer): ${p}`);
+    deny("planner-edit", `blocked edit (team-planner writes only under docs/ and CLAUDE.md; code goes to team-implementer): ${p}`);
   }
-  if (SECRET_PATHS.test(p)) deny(`blocked secret path: ${p}`);
+  if (SECRET_PATHS.test(p)) deny("secret-path", `blocked secret path: ${p}`);
 }
 if (tool === "Grep") {
   const p = String(ti.path ?? "");
   const g = String(ti.glob ?? "");
-  if (SECRET_PATHS.test(p) || (g && SECRET_TOKEN.test(g))) deny(`blocked: search inside a secret file: ${p || g}`);
+  logCtx.what = p || g;
+  if (SECRET_PATHS.test(p) || (g && SECRET_TOKEN.test(g))) deny("secret-grep", `blocked: search inside a secret file: ${p || g}`);
 }
 process.exit(0);

@@ -116,6 +116,9 @@ const ROLES = [
   rb("team-lead", "npm test", B), rb("team-lead", "npm install", B), rb("team-lead", "node -e \"1\"", B), rb("team-lead", "node x.js", B), rb("team-lead", "python x.py", B), rb("team-lead", "bash scripts/x.sh", B),
   rb("team-lead", "git log | tee out.txt", B), rb("team-lead", "cat docs/STATUS.md > /tmp/x", B), rb("team-lead", "git branch -D plan/x", B), rb("team-lead", "sudo ls", B), rb("team-lead", "ls | xargs rm", B),
   rb("team-lead", "time npm test", B), rb("team-lead", "bash -c \"npx vitest run\"", B), rb("team-lead", "env FOO=1 git status", A), rb("team-lead", "gh pr merge 1 --merge --delete-branch", A),
+  // the risk labels /ship attaches: the lead lists and creates them, never deletes; read-only roles may list
+  rb("team-lead", "gh label list --json name -q .[].name", A), rb("team-lead", "gh label create risk:high --color B60205 --description \"Risk path hit\"", A), rb("team-lead", "gh label delete risk:high --yes", B),
+  rb("team-lead", "gh pr create --title x --body-file docs/prs/0001-x.md --label risk:low", A), rb("team-planner", "gh label list", A), rb("team-reviewer", "gh label create x", B),
   // quoted text and a trailing <placeholder> are not shell writes (the shell rejects the placeholder itself); real redirections, also behind a wrapper or in a code span, still are
   rb("team-lead", "git fetch origin <branch-name>", A), rb("team-lead", "git push -u origin <branch>", A), rb("team-lead", "git commit -m \"docs: <file>:<line> -> coords\" docs/x.md", A),
   rb("team-lead", "echo \"a -> b\"", A), rb("team-lead", "git commit -m \"docs: add tee note\" docs/x.md", A), rb("team-planner", "git show <commit>", A),
@@ -164,6 +167,10 @@ const ROLES = [
   rb("team-verifier", "npx vitest run", A), rb("team-verifier", "vitest run", A), rb("team-verifier", "tsc --noEmit", A), rb("team-verifier", "eslint .", A), rb("team-verifier", "cargo test", A), rb("team-verifier", "cat test-output.txt", A),
   rb("team-verifier", "rg -n TODO src", A), rb("team-verifier", "npm test 2>&1 | rg -c FAIL", A),
   rb("team-verifier", "rm -rf build", B), rb("team-verifier", "node -e 1", B), rb("team-verifier", "git push", B), rb("team-verifier", "bash scripts/test.sh", B), rb("team-verifier", "docker compose up -d", B), rb("team-verifier", "curl localhost:3000", B),
+  // output and check-only words between commands are fine; not a redirection into a file, a substitution or a secret-looking variable
+  rb("team-verifier", "echo \"=== ruff ===\"; uv run ruff check .; echo \"EXIT=$?\"", A), rb("team-verifier", "set -o pipefail; npm test 2>&1 | tail -20", A),
+  rb("team-verifier", "test -f docs/measurements/0017.md && echo present", A), rb("team-verifier", "[ -f out.json ] && cat out.json", A), rb("team-verifier", "printf '%s\\n' done; date; pwd", A),
+  rb("team-verifier", "echo $ANTHROPIC_API_KEY", B), rb("team-verifier", "echo \"$(cat .env)\"", B), rb("team-verifier", "echo hi > out.txt", B), rb("team-verifier", "echo hi | tee out.txt", B), rb("team-verifier", "true; curl localhost:3000", B),
 ];
 // ---- cases that read the rules file: run in a directory whose CLAUDE.md lists commands: [role, command, expected], Claude Code hook only.
 const RULES_FILE = `# demo

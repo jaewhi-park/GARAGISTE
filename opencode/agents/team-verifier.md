@@ -58,6 +58,14 @@ permission:
     "grep *": allow
     "wc *": allow
     "cat *": allow
+    "echo *": allow
+    "printf *": allow
+    "test *": allow
+    "[ *": allow
+    "true": allow
+    "set *": allow
+    "pwd": allow
+    "date*": allow
     "ls *": allow
 ---
 You are CI. Report results only; add no judgment.

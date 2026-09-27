@@ -5,6 +5,8 @@ Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`
 ## Unreleased
 
 ### Added
+- The deny log (`.claude/session/denies.jsonl`) records the rule that fired and the command or path it refused (`rule`, `what`) instead of the prose reason, whose boilerplate alone exceeded the 200-character cut and hid the command — the next retro can see what was refused, not only how often.
+- The verifier may use output and check-only words between commands — `echo`, `printf`, `test`, `[`, `true`, `false`, `set`, `pwd`, `date` — as long as nothing is redirected into a file, substituted or expanded from a secret-looking variable (the two test projects logged 28 refusals of `echo` banners around listed commands, each one a re-run). The lead may `gh label list` and `gh label create` (the risk labels /ship attaches); read-only roles may list labels. Both flavors.
 - `--uninstall` / `-Uninstall` on every installer (both flavors, sh and ps1, a project or `--global`): removes what the installer put there — the team's agents, skills, hooks and scripts (opencode: agents, commands, skills, plugins, scripts) and the entries it merged into settings.json / opencode.json — after backing each path up; your own files and settings, docs/ and .gitignore stay, and what is left in the team's folders is listed. `--dry-run` previews it.
 
 ### Removed

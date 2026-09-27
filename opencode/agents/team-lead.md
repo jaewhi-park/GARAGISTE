@@ -51,6 +51,8 @@ permission:
     "gh pr merge*": allow
     "gh pr close*": allow
     "gh pr ready*": allow
+    "gh label list*": allow
+    "gh label create*": allow
     "opencode models*": allow
     "node .opencode/scripts/apply-models.mjs*": allow
     "node .opencode/scripts/set-language.mjs*": allow
