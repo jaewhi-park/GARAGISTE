@@ -72,6 +72,8 @@ const DOC_BUDGETS: Budget[] = [
   { name: "the rules file (AGENTS.md / CLAUDE.md)", test: /(^|[\\/])(CLAUDE|AGENTS)\.md$/, bytes: 8 * 1024, where: "procedures go to skills, the map to docs/ARCHITECTURE.md, history to docs/" },
   { name: "docs/CHARTER.md", test: /(^|[\\/])docs[\\/]CHARTER\.md$/, lines: 60, where: "detail goes to the spec or an ADR" },
   { name: "a plan (docs/plans/*.md)", test: /(^|[\\/])docs[\\/]plans[\\/][^\\/]+\.md$/, bytes: 16 * 1024, where: "sections 3 and 5 are a few lines each, the source section holds the rest, and a bigger job is split by tryable outcome" },
+  { name: "an agent's memory (docs/memory/*.md — read whole at every planner and reviewer spawn)", test: /(^|[\\/])docs[\\/]memory[\\/][^\\/]+\.md$/, bytes: 16 * 1024, where: "one pattern per line with a count, never a retelling; a line that stopped recurring moves to docs/archive/memory-<name>-<year>.md" },
+  { name: "docs/DEBT.md", test: /(^|[\\/])docs[\\/]DEBT\.md$/, lines: 300, where: "resolved lines move to docs/archive/DEBT-<year>.md (the backlog skill's Archive rule)" },
 ]
 function overBudget(text: string, b: Budget): string {
   const t = text.replace(/\r\n/g, "\n")

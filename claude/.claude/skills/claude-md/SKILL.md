@@ -50,7 +50,7 @@ One-line summary (details: docs/CHARTER.md · legacy: docs/ASSESSMENT.md, docs/R
 - a UI step's `shows:` lines have screenshots (the `screenshots:` command) and the ux lens saw them — once that command is in; before it, the first UI plan after the walking skeleton starts with the design-foundation step; a Risk-path plan's threat-model lines each have a negative-case test
 
 ## Operating profile
-- (filled by /hire via set-profile.mjs: budget tier / default review lenses 2|4 / parallelism none|session|parallel / plan-size target (logic steps, default 4) / per-step verifier on|off / step-size target / unattended cap (plans shipped or spec sections done per "계속", default 8 plans | 2 sections) / hire date)
+- (filled by /hire via set-profile.mjs: budget tier / default review lenses 2|4 / parallelism none|session|parallel / plan-size target (logic steps, default 4) / per-step verifier on|off / step-size target / unattended cap (plans shipped, spec sections done or hours since the iteration start per "계속", default 8 plans | 2 sections | 12 h) / hire date)
 
 ## Merge policy
 - (leave empty for automatic resolution by /ship: no remote→local, protection+auto-merge→auto-low-risk, otherwise→manual. Write manual | auto-low-risk to force)

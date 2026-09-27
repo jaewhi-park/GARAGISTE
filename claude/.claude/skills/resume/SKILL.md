@@ -41,7 +41,7 @@ docs/STATUS-team.md
 ```
 # STATUS (team)
 ## Iteration <k>
-- Plans: <item or plan path ✓ | ▶ step k/n | parked — <question> | —> … · cap: <n> plans | <m> sections
+- Plans: <item or plan path ✓ | ▶ step k/n | parked — <question> | —> … · cap: <n> plans | <m> sections | <h> h
 - Tried (last review): ok | <issue> | not tried | —
 - Next iteration: <the items it would take>
 ## Now

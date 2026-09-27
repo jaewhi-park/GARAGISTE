@@ -12,7 +12,8 @@
 //   team-builder   commits in its worktree and may push its branch; never merges, rebases, pulls or touches worktrees
 // Other agents (team-implementer, team-critic, roles created by /recruit) get the generic rules only.
 // Document budgets hold for every role: the files every session or every spawn reads (the board, the rules file, the charter,
-// a plan) stay within a byte or line budget (DOC_BUDGETS) — a write that would leave one over it is refused.
+// a plan, the agents' memory files, DEBT) stay within a byte or line budget (DOC_BUDGETS) — a write that would leave one over it
+// is refused.
 // Every refusal is one line in .claude/session/denies.jsonl (git-ignored) — the rule that fired and the command or path it
 // refused (200 characters): the count, and the patterns behind it, the next retro reads.
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
@@ -294,6 +295,8 @@ const DOC_BUDGETS = [
   { name: "the rules file (CLAUDE.md / AGENTS.md)", test: /(^|[\\/])(CLAUDE|AGENTS)\.md$/, bytes: 8 * 1024, where: "procedures go to skills, the map to docs/ARCHITECTURE.md, history to docs/" },
   { name: "docs/CHARTER.md", test: /(^|[\\/])docs[\\/]CHARTER\.md$/, lines: 60, where: "detail goes to the spec or an ADR" },
   { name: "a plan (docs/plans/*.md)", test: /(^|[\\/])docs[\\/]plans[\\/][^\\/]+\.md$/, bytes: 16 * 1024, where: "sections 3 and 5 are a few lines each, the source section holds the rest, and a bigger job is split by tryable outcome" },
+  { name: "an agent's memory (docs/memory/*.md — read whole at every planner and reviewer spawn)", test: /(^|[\\/])docs[\\/]memory[\\/][^\\/]+\.md$/, bytes: 16 * 1024, where: "one pattern per line with a count, never a retelling; a line that stopped recurring moves to docs/archive/memory-<name>-<year>.md" },
+  { name: "docs/DEBT.md", test: /(^|[\\/])docs[\\/]DEBT\.md$/, lines: 300, where: "resolved lines move to docs/archive/DEBT-<year>.md (the backlog skill's Archive rule)" },
 ];
 function overBudget(text, b) {
   const t = text.replace(/\r\n/g, "\n");
@@ -315,7 +318,7 @@ function afterWrite(tool, ti, p) {
   }
   return cur;
 }
-const REVIEWER_MEMORY = /(^|[\\/])docs[\\/]memory[\\/]team-reviewer\.md$/;
+const REVIEWER_MEMORY = /(^|[\\/])docs[\\/](memory[\\/]team-reviewer\.md|archive[\\/]memory-team-reviewer-[^\\/]+\.md)$/;   // its memory and the archive it retires lines to
 
 // A refusal: the reason goes to Claude (exit 2) and one line to the project's deny log — .claude/session/denies.jsonl, git-ignored,
 // written only when the call runs inside a project (a .claude/ folder at cwd): the rule id and the command or path (`what`, 200
@@ -405,9 +408,9 @@ if (["Edit", "Write", "MultiEdit", "Read", "NotebookEdit"].includes(tool)) {
     const why = after === null ? "" : overBudget(after, budget);
     if (why) deny("doc-budget", `blocked edit (${budget.name} stays within its budget — ${why}; ${budget.where}): ${p}`);
   }
-  // team-reviewer writes only its own memory file.
+  // team-reviewer writes only its own memory file and the archive it retires memory lines to.
   if (writing && role === "team-reviewer" && !REVIEWER_MEMORY.test(p)) {
-    deny("reviewer-edit", `blocked edit (team-reviewer writes only docs/memory/team-reviewer.md; it never edits code or documents): ${p}`);
+    deny("reviewer-edit", `blocked edit (team-reviewer writes only docs/memory/team-reviewer.md and docs/archive/memory-team-reviewer-<year>.md; it never edits code or documents): ${p}`);
   }
   // team-planner writes documents only: docs/** and the rules file (mirrors opencode's `edit: docs/*, CLAUDE.md: allow`).
   if (writing && role === "team-planner" && !/(^|[\\/])docs[\\/]/.test(p) && !/(^|[\\/])CLAUDE\.md$/.test(p)) {

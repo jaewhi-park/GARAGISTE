@@ -83,6 +83,10 @@ const GENERIC = [
   ["write", { filePath: "C:/repo/docs/plans/0003-x.md", content: "# 계획\n" + "가".repeat(5600) }, B],   // 16.8 KB in UTF-8: bytes count, not characters
   ["write", { filePath: "C:/repo/docs/plans/0003-x.md", content: "# 계획\n" + "가".repeat(5000) }, A],   // 15 KB
   ["write", { filePath: "C:/repo/docs/specs/F01-x.md", content: "# spec\n" + "z".repeat(20000) }, A],   // no budget on a spec section
+  ["write", { filePath: "C:/repo/docs/memory/team-reviewer.md", content: "# memory\n" + "- pattern\n".repeat(1800) }, B],   // 17.6 KB: memory files are read whole at every spawn
+  ["write", { filePath: "C:/repo/docs/memory/team-planner.md", content: "# memory\n" + "- pattern\n".repeat(1200) }, A],   // 11.7 KB
+  ["write", { filePath: "C:/repo/docs/DEBT.md", content: "# DEBT\n" + "- line\n".repeat(320) }, B],
+  ["write", { filePath: "C:/repo/docs/DEBT.md", content: "# DEBT\n" + "- line\n".repeat(250) }, A],
 ];
 // ---- role rules, Claude Code hook only: [role, tool, args, expected] in claude shape (Bash/Edit/Write/Read, file_path).
 const rb = (role, command, exp) => [role, "Bash", { command }, exp];
@@ -153,6 +157,7 @@ const ROLES = [
   rb("team-reviewer", "git stash", B), rb("team-reviewer", "git switch main", B), rb("team-reviewer", "echo x > src/app.ts", B), rb("team-reviewer", "sed -i 's/a/b/' src/app.ts", B), rb("team-reviewer", "mv a b", B),
   // the reviewer's only writable file is its memory
   ["team-reviewer", "Write", { file_path: "C:/repo/docs/memory/team-reviewer.md", content: "- pattern" }, A], ["team-reviewer", "Edit", { file_path: "C:/repo/docs/memory/team-reviewer.md" }, A],
+  ["team-reviewer", "Write", { file_path: "C:/repo/docs/archive/memory-team-reviewer-2026.md" }, A], ["team-reviewer", "Write", { file_path: "C:/repo/docs/archive/DEBT-2026.md" }, B],
   ["team-reviewer", "Edit", { file_path: "C:/repo/docs/memory/team-planner.md" }, B], ["team-reviewer", "Write", { file_path: "C:/repo/docs/DEBT.md", content: "x" }, B], ["team-reviewer", "Edit", { file_path: "C:/repo/src/a.ts" }, B],
   ["team-planner", "Edit", { file_path: "C:/repo/docs/memory/team-planner.md" }, A],
   // the archive files are docs: the planner writes them, the lead (board only) does not
