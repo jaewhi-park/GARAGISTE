@@ -2,6 +2,14 @@
 
 Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`, and `session-start.mjs` names it in the injected context. A running project keeps the release it was installed with until its CEO decides to upgrade — the "Breaking for running projects" list of a release is the migration checklist; re-run `install.sh <flavor> -Project <repo>` afterwards.
 
+## Unreleased
+
+### Added
+- `--uninstall` / `-Uninstall` on every installer (both flavors, sh and ps1, a project or `--global`): removes what the installer put there — the team's agents, skills, hooks and scripts (opencode: agents, commands, skills, plugins, scripts) and the entries it merged into settings.json / opencode.json — after backing each path up; your own files and settings, docs/ and .gitignore stay, and what is left in the team's folders is listed. `--dry-run` previews it.
+
+### Changed
+- Upgrade order for a running project, step (2): an older *global* install is removed with `./install.sh <flavor> -Global -Uninstall` before the project is re-installed — Claude Code loads a same-named skill from `~/.claude/skills` in preference to the project's, and a guardrails hook registered in both `~/.claude/settings.json` and the project's runs twice with the older one deciding.
+
 ## 2026-09-26
 
 ### Breaking for running projects

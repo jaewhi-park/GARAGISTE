@@ -10,7 +10,7 @@
 자기 자신을 새 레포에 온보딩한다.
 
 ## 설치
-저장소 루트에서 `./install.sh opencode [-Project <경로>|.] [-Global]` / `.\install.ps1 opencode [-Project <경로>] [-Global]`. (이 폴더의 install.sh 를 직접 실행하면 대상 인자 없이 동일) 기본은 현재 경로(가 속한 git 레포 루트). --global  → ~/.config/opencode (모든 레포).
+저장소 루트에서 `./install.sh opencode [-Project <경로>|.] [-Global]` / `.\install.ps1 opencode [-Project <경로>] [-Global]`. (이 폴더의 install.sh 를 직접 실행하면 대상 인자 없이 동일) 기본은 현재 경로(가 속한 git 레포 루트). --global  → ~/.config/opencode (모든 레포). `-Uninstall` 은 설치기가 넣은 것 — 팀의 agents · commands · skills · plugins · scripts 와 `opencode.json` 항목 — 만 백업한 뒤 걷어내고 당신의 파일과 설정은 남긴다. `-DryRun` 으로 미리 본다.
 
 ```
 ./install.sh opencode -Project <레포 경로>        # macOS / Linux / WSL

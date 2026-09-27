@@ -10,7 +10,7 @@
 각 루프는 `/스킬` 하나와 `docs/` 산출물 하나로 구현된다.
 
 ## 설치
-저장소 루트에서 `./install.sh claude [-Project <경로>|.] [-Global]` / `.\install.ps1 claude [-Project <경로>] [-Global]`. (이 폴더의 install.sh 를 직접 실행하면 대상 인자 없이 동일) 기본은 현재 경로(가 속한 git 레포 루트). --global → ~/.claude (모든 레포; 기본 에이전트는 강제하지 않아 `claude --agent team-lead` 로 시작).
+저장소 루트에서 `./install.sh claude [-Project <경로>|.] [-Global]` / `.\install.ps1 claude [-Project <경로>] [-Global]`. (이 폴더의 install.sh 를 직접 실행하면 대상 인자 없이 동일) 기본은 현재 경로(가 속한 git 레포 루트). --global → ~/.claude (모든 레포; 기본 에이전트는 강제하지 않아 `claude --agent team-lead` 로 시작). `-Uninstall` 은 설치기가 넣은 것 — 팀의 agents · skills · hooks · scripts 와 `settings.json` 항목 — 만 백업한 뒤 걷어내고 당신의 파일과 설정은 남긴다. `-DryRun` 으로 미리 본다.
 
 레포 루트에서:
 ```

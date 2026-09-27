@@ -49,6 +49,7 @@
 `claude/install.sh` 를 직접 실행해도 같다(대상 인자 없이).
 - 경로가 레포의 하위 폴더면 git 루트로 올라가 설치하고 알려준다. git 저장소가 아니면 `git init` 을 제안한다.
 - --global  → ~/.claude (모든 레포; 기본 에이전트는 강제하지 않아 `claude --agent team-lead` 로 시작). 전역 설치는 프로젝트의 .gitignore를 건드릴 수 없으니, 옛 설치가 `docs/STATUS.md`를 무시하게 해 두었다면 그 줄을 직접 지운다 — 상태판은 커밋된다.
+- --uninstall (`-Project` 또는 `-Global` 과 함께) → 그 대상에서 팀을 걷어낸다: 팀의 agents · skills · hooks · scripts 와 설치기가 더한 `settings.json` 항목만, 임시 폴더에 백업한 뒤. 당신의 파일과 설정, docs/, .gitignore 는 남고 팀 폴더에 남은 것은 목록으로 보여 준다. 옛 전역 설치는 프로젝트를 다시 설치하기 전에 이걸로 지운다: Claude Code 는 같은 이름의 스킬을 ~/.claude 쪽에서 먼저 쓰고, 두 곳에 등록된 가드레일 훅은 둘 다 돈다.
 
 **Windows 실행 정책**: `.\install.ps1` 이 "스크립트를 실행할 수 없으므로" 로 막히면 둘 중 하나.
 - 한 번만: `powershell -ExecutionPolicy Bypass -File .\install.ps1`

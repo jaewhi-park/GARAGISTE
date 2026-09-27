@@ -46,6 +46,7 @@ Three install targets. Give the flavor (claude) to the entry point at the reposi
 `claude/install.sh` does the same without the flavor argument.
 - If the path is a subfolder of a repo, the script walks up to the git root and tells you. If it is not a git repository, it offers `git init`.
 - `-Global` → ~/.claude (every repo; no default agent is forced, start with `claude --agent team-lead`). A global install cannot touch a project's .gitignore; if an older install git-ignored `docs/STATUS.md` there, remove that line yourself — the board is committed.
+- `-Uninstall` (with `-Project` or `-Global`) → removes the team from that target: its agents, skills, hooks and scripts and the `settings.json` entries the installer added, each backed up to a temp folder first; your own files and settings, docs/ and .gitignore stay, and what is left in the team's folders is listed. Run it on an older global install before re-installing a project: Claude Code prefers a same-named skill under ~/.claude to the project's, and a guardrails hook registered in both places runs twice.
 
 **Windows execution policy**: if `.\install.ps1` is blocked with "cannot be loaded because running scripts is disabled", either
 - once: `powershell -ExecutionPolicy Bypass -File .\install.ps1 …`

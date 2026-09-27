@@ -5,7 +5,7 @@ Human manual: **GUIDE.md** (install, what to do in each situation). Artifact map
 Run one repository like a small software company. The human is the CEO (direction, the product's acceptance, the word on `risk:high` merges once live); the agents are the team, and the team runs itself in iterations. A company is not an org chart but five loops: product (backlog) → engineering (plan, implement) → quality (verify, review) → operations (ship, release) → governance (decision records, retros). Each loop is one `/skill` and one `docs/` artifact.
 
 ## Install
-From the repository root: `./install.sh claude [-Project <path>|.] [-Global]` / `.\install.ps1 claude [-Project <path>] [-Global]`. Default is the current directory (its git repo root). `-Global` → ~/.claude (every repo; no default agent is forced, start with `claude --agent team-lead`). Running `claude/install.sh` directly works too.
+From the repository root: `./install.sh claude [-Project <path>|.] [-Global]` / `.\install.ps1 claude [-Project <path>] [-Global]`. Default is the current directory (its git repo root). `-Global` → ~/.claude (every repo; no default agent is forced, start with `claude --agent team-lead`). Running `claude/install.sh` directly works too. `-Uninstall` removes what the installer put there — the team's agents, skills, hooks and scripts and its `settings.json` entries — backing them up first and leaving your own files and settings; `-DryRun` previews it.
 
 ```
 ./install.sh claude -Project <repo path>        # macOS / Linux / WSL
