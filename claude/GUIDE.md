@@ -47,6 +47,8 @@ Two install targets, both inside the repository. Give the flavor (claude) to the
 - No global install: the team lives in the repository, so `.claude/` is committed with the project and every checkout and collaborator gets the same release. An older global install under ~/.claude is removed with `-Global -Uninstall` (next line); the session-start hook warns while one remains.
 - `-Uninstall` (with `-Project` or `-Global`) → removes the team from that target: its agents, skills, hooks and scripts and the `settings.json` entries the installer added, each backed up to a temp folder first; your own files and settings, docs/ and .gitignore stay, and what is left in the team's folders is listed. Run it on an older global install before re-installing a project: Claude Code prefers a same-named skill under ~/.claude to the project's, and a guardrails hook registered in both places runs twice.
 
+**Windows hooks**: Claude Code runs hook commands in Git Bash, or in PowerShell when Git Bash is not installed, from whatever directory the session is in — so the settings entries name the hook scripts by `${CLAUDE_PROJECT_DIR}`, never by a relative path. If the transcript shows `hook error — Failed with non-blocking status code` on every tool call, the hooks are not running at all and the team is unguarded: stop the session, re-run the installer (it replaces the older entries) and start again.
+
 **Windows execution policy**: if `.\install.ps1` is blocked with "cannot be loaded because running scripts is disabled", either
 - once: `powershell -ExecutionPolicy Bypass -File .\install.ps1 …`
 - permanently (recommended): `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned`, then `Unblock-File .\install.ps1` (removes the downloaded-file mark)

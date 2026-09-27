@@ -50,6 +50,8 @@
 - 전역 설치는 없다: 팀은 저장소에 살고 `.claude/` 를 프로젝트와 함께 커밋하니 어느 체크아웃 · 협업자든 같은 판을 받는다. ~/.claude 에 남은 옛 전역 설치는 `-Global -Uninstall`(다음 줄)로 지운다; 남아 있는 동안 session-start 훅이 경고한다.
 - --uninstall (`-Project` 또는 `-Global` 과 함께) → 그 대상에서 팀을 걷어낸다: 팀의 agents · skills · hooks · scripts 와 설치기가 더한 `settings.json` 항목만, 임시 폴더에 백업한 뒤. 당신의 파일과 설정, docs/, .gitignore 는 남고 팀 폴더에 남은 것은 목록으로 보여 준다. 옛 전역 설치는 프로젝트를 다시 설치하기 전에 이걸로 지운다: Claude Code 는 같은 이름의 스킬을 ~/.claude 쪽에서 먼저 쓰고, 두 곳에 등록된 가드레일 훅은 둘 다 돈다.
 
+**Windows 의 훅**: Claude Code 는 훅 명령을 Git Bash 에서, Git Bash 가 없으면 PowerShell 에서, 세션이 있는 디렉터리에서 돌린다. 그래서 settings 항목은 훅 스크립트를 상대 경로가 아니라 `${CLAUDE_PROJECT_DIR}` 로 가리킨다. 도구 호출마다 `hook error — Failed with non-blocking status code` 가 찍히면 훅이 전혀 돌지 않는 것이고 팀은 가드 없이 움직이는 중이다: 세션을 멈추고 설치기를 다시 돌린 뒤(옛 항목을 바꿔 넣는다) 새로 시작한다.
+
 **Windows 실행 정책**: `.\install.ps1` 이 "스크립트를 실행할 수 없으므로" 로 막히면 둘 중 하나.
 - 한 번만: `powershell -ExecutionPolicy Bypass -File .\install.ps1`
 - 영구(권장): `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` 후 `Unblock-File .\install.ps1` (인터넷에서 받은 파일 표식 제거)
