@@ -27,6 +27,8 @@ while [ $# -gt 0 ]; do
   esac
 done
 run() { if [ "$DRY" = 1 ]; then echo "+ $*"; else "$@"; fi; }
+PY=""; for c in python3 python; do command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(sys.version_info[0] != 3)' >/dev/null 2>&1 && { PY="$c"; break; }; done   # Windows Git Bash usually has python, not python3 (or a Store stub under that name)
+[ -n "$PY" ] || { echo "! Python 3 not found on PATH (python3 or python) — the settings merge needs it. On Windows, run install.ps1 from PowerShell instead." >&2; exit 1; }
 if [ "$MODE" = global ] && [ "$UNINSTALL" = 0 ]; then
   echo "! No global install: the team lives in the repository (.claude/ is committed with the project). Install into a project — ./install.sh claude -Project <path>; an older global install is removed with -Global -Uninstall." >&2; exit 1
 fi
@@ -62,7 +64,7 @@ if [ "$UNINSTALL" = 1 ]; then
   for f in apply-models.mjs set-language.mjs new-agent.mjs set-profile.mjs; do bk_rm "scripts/$f"; done
   [ "$MODE" = project ] && bk_rm "session"     # git-ignored runtime logs: compactions, denies.jsonl, spawns.jsonl
   if [ -f "$CFG" ]; then
-python3 - "$CFG" "$SRC/.claude/settings.json" "$SRC/.claude/hooks" "$DEST" "$MODE" "$DRY" "$BK" << 'PY'
+"$PY" - "$CFG" "$SRC/.claude/settings.json" "$SRC/.claude/hooks" "$DEST" "$MODE" "$DRY" "$BK" << 'PY'
 import json, pathlib, re, shutil, sys
 cfg, src, hookdir, dest, mode, dry, bk = sys.argv[1:8]
 cfg = pathlib.Path(cfg)
@@ -172,7 +174,7 @@ run mkdir -p "$ROOT/docs"
 CFG="$ROOT/.claude/settings.json"
 if [ "$DRY" = 1 ]; then echo "+ merge $SRC/.claude/settings.json -> $CFG"
 else
-python3 - "$CFG" "$SRC/.claude/settings.json" "$SRC/.claude/hooks" << 'PY'
+"$PY" - "$CFG" "$SRC/.claude/settings.json" "$SRC/.claude/hooks" << 'PY'
 import json, re, sys, pathlib
 dst, src, hookdir = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), pathlib.Path(sys.argv[3])
 d = json.loads(dst.read_text()) if dst.exists() else {}

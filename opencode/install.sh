@@ -34,6 +34,8 @@ while [ $# -gt 0 ]; do
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
+PY=""; for c in python3 python; do command -v "$c" >/dev/null 2>&1 && "$c" -c 'import sys; sys.exit(sys.version_info[0] != 3)' >/dev/null 2>&1 && { PY="$c"; break; }; done   # Windows Git Bash usually has python, not python3 (or a Store stub under that name)
+[ -n "$PY" ] || { echo "! Python 3 not found on PATH (python3 or python) — the settings merge needs it. On Windows, run install.ps1 from PowerShell instead." >&2; exit 1; }
 
 if [ "$MODE" = global ] && [ "$UNINSTALL" = 0 ]; then
   echo "! No global install: the team lives in the repository (.opencode/ and opencode.json are committed with the project). Install into a project — ./install.sh opencode -Project <path>; an older global install is removed with -Global -Uninstall." >&2; exit 1
@@ -81,7 +83,7 @@ if [ "$UNINSTALL" = 1 ]; then
   if [ -f "${CFG%.json}.jsonc" ]; then
     echo "! ${CFG%.json}.jsonc exists; the merge was by hand, so is the removal — drop these from it: instructions docs/CHARTER*.md · docs/STATUS*.md, subagent_depth, the permission block and the agent entries of $SRC/opencode.json"
   elif [ -f "$CFG" ]; then
-python3 - "$CFG" "$SRC/opencode.json" "$DRY" "$BK" << 'PY'
+"$PY" - "$CFG" "$SRC/opencode.json" "$DRY" "$BK" << 'PY'
 import json, pathlib, shutil, sys
 cfg, src, dry, bk = sys.argv[1:5]
 cfg = pathlib.Path(cfg)
@@ -185,7 +187,7 @@ if [ -f "${CFG%.json}.jsonc" ]; then
 elif [ "$DRY" = 1 ]; then
   echo "+ merge $SRC/opencode.json -> $CFG${MODEL:+ (model=$MODEL)}"
 else
-  python3 - "$CFG" "$SRC/opencode.json" "$MODEL" << 'PY'
+  "$PY" - "$CFG" "$SRC/opencode.json" "$MODEL" << 'PY'
 import json, sys, pathlib
 dst, src, model = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2]), sys.argv[3]
 d = json.loads(dst.read_text()) if dst.exists() else {}
