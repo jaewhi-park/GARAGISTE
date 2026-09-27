@@ -17,7 +17,7 @@ const GARAGISTE_VERSION = "2026-09-26";
 
 let input = {};
 try { input = JSON.parse(readFileSync(0, "utf8")); } catch {}
-const cwd = input.cwd ?? process.cwd();
+const cwd = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();   // the project root: Claude Code sets CLAUDE_PROJECT_DIR; the event's cwd can be elsewhere after a cd
 
 // ---------- the team's language ----------
 function languageCode(dir) {
@@ -75,7 +75,7 @@ function guardrailInstalls(dir) {
     for (const e of s.hooks?.PreToolUse ?? []) for (const h of e.hooks ?? []) {
       const m = /"([^"]*guardrails\.mjs)"|(\S*guardrails\.mjs)/.exec(String(h.command ?? ""));
       if (!m) continue;
-      const p = m[1] ?? m[2];
+      const p = (m[1] ?? m[2]).replace(/\$\{?CLAUDE_PROJECT_DIR\}?/g, dir);   // the project entry names its hook by the placeholder
       let version = "unreadable";
       try { version = (/GARAGISTE_VERSION\s*=\s*"([^"]+)"/.exec(readFileSync(isAbsolute(p) ? p : resolve(dir, p), "utf8")) ?? [])[1] ?? "before 2026-09-26"; } catch {}
       out.push(`${scope} (${version})`);

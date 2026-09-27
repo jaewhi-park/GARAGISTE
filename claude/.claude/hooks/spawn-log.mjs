@@ -11,7 +11,7 @@ const GARAGISTE_VERSION = "2026-09-26";
 
 let input = {};
 try { input = JSON.parse(readFileSync(0, "utf8")); } catch {}
-const cwd = input.cwd ?? process.cwd();
+const cwd = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();   // the project root: Claude Code sets CLAUDE_PROJECT_DIR; the event's cwd can be elsewhere after a cd
 const ts = new Date().toISOString();
 const dir = join(cwd, ".claude");
 function mainAgent() { try { return String(JSON.parse(readFileSync(join(dir, "settings.json"), "utf8")).agent ?? ""); } catch { return ""; } }
