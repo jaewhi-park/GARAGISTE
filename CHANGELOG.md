@@ -11,6 +11,7 @@ Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`
 - `--uninstall` / `-Uninstall` on every installer (both flavors, sh and ps1, a project or `--global`): removes what the installer put there — the team's agents, skills, hooks and scripts (opencode: agents, commands, skills, plugins, scripts) and the entries it merged into settings.json / opencode.json — after backing each path up; your own files and settings, docs/ and .gitignore stay, and what is left in the team's folders is listed. `--dry-run` previews it.
 
 ### Fixed
+- The spawn count is the `start` lines of `.claude/session/spawns.jsonl` (one per Agent call), and `spawn-log.mjs` no longer writes a stop line for a SubagentStop event that names no agent type or names the session's main agent: LACUNA logged 1,024 such stops next to 100 real spawns, so its METRICS carried spawns of 340, 256 and 865 for plans that spawned about 30 subagents each.
 - The installer carries `worktree.baseRef: head` into the project's settings.json (both sh and ps1; kept when the project already sets `worktree`). The merge only copied `agent`, `permissions` and `hooks`, so no project ever had it: with Claude Code's default `fresh`, a /parallel builder branches from the remote default branch instead of the session HEAD, and the uninstall removes it again. Verified in the installer test runs.
 
 ### Changed
