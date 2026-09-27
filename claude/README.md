@@ -68,13 +68,13 @@ Rule: the unit of parallelism is a plan (feature), not a step. Run only plans wh
 `/ship` decides from repository state. No config edits needed.
 | Repository state | Verdict | Behaviour |
 |---|---|---|
-| no remote | `local` | PR description saved to docs/prs/, local `merge --no-ff` into main after approval |
+| no remote | `local` | local `merge --no-ff` into main after approval (the PR description goes to docs/prs/ at every ship) |
 | remote, no main protection / auto-merge | `manual` | push branch + PR (risk label); human merges |
 | remote + protected main (required checks) + auto-merge allowed | `auto-low-risk` | `risk:low` → `gh pr merge --auto`; `risk:high` → the lead pre-launch, the CEO's word once live |
 "Turning on auto-merge" therefore means enabling protection and auto-merge on GitHub — which is exactly the safety condition. `/policy` shows the verdict and reason; write an override (`manual`/`auto-low-risk`) into CLAUDE.md only when you really need to. Hooks block force pushes and direct pushes to main under every verdict.
 
 ## Local-only (early build-up without a remote)
-When `git remote` is empty, `/ship` writes the PR description to docs/prs/NNNN-<slug>.md and merges into local main with `git merge --no-ff` per policy. The gates stay: one plan = one branch, verifier, review, risk label, merge-commit rollback. `/release` creates a local tag after approval. Adding GitHub switches the next `/ship` to the PR flow automatically.
+`/ship` writes the PR description to docs/prs/NNNN-<slug>.md at every ship (with a remote it is the PR body, via `--body-file`; the merge is a merge commit, so local main fast-forwards). When `git remote` is empty it merges into local main with `git merge --no-ff` per policy. The gates stay: one plan = one branch, verifier, review, risk label, merge-commit rollback. `/release` creates a local tag after approval. Adding GitHub switches the next `/ship` to the PR flow automatically.
 
 ## Models and budget
 **The recommended path is `/hire`.** The lead confirms candidates (aliases opus/sonnet/haiku, plus API model IDs you name), asks budget tier, project character and parallel plans, and proposes a role × model × effort table with reasons. On approval it applies via `scripts/apply-models.mjs` (which only changes model/effort lines) and leaves an "Operating profile" in CLAUDE.md. `/kickoff` and `/assess` run it in their closing step. The `--budget` profiles below are for non-interactive use; pass `-Budget <tier>` at install time so the first (kickoff/assess) session already runs the verifier on haiku, and `/hire` refines it.

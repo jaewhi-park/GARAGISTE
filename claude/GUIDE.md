@@ -138,7 +138,7 @@ Every entry has the same shape: when / what you say / what the team does / **wha
 ### 3.8 Merging and releasing
 - Lead-merge: in every policy below, `risk:low` work whose verification, review and checks are green is merged by the lead without asking; `risk:high` (a Risk-paths hit, an escalation item) as well while the board's Stage is `pre-launch`; once `live`, it waits for your merge or hold, said from the Risk summary. The lead does the merging in every case — you never open GitHub for it.
 - Main merges follow the repository state (`/ship` resolves it; `/policy` shows the verdict and why):
-  - No remote → `local`: the PR description is saved under docs/prs/NNNN-<slug>.md and the lead merges locally with `merge --no-ff` (a live `risk:high`: after your word).
+  - No remote → `local`: the lead merges locally with `merge --no-ff` (the PR description is saved under docs/prs/NNNN-<slug>.md at every ship, remote or not) (a live `risk:high`: after your word).
   - Remote, no protection → `manual`: the team pushes, opens the PR and merges by the rule above once checks pass; a live `risk:high` waits for your word.
   - Remote + main protected (required checks = CI) + auto-merge allowed → `auto-low-risk`: `risk:low` merges automatically when CI passes.
 - The team can never force-push or push directly to main (hooks). Every merge goes through a PR or a local merge on the rules above.
