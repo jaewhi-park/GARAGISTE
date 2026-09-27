@@ -6,6 +6,7 @@ Usage: .\install.ps1 <opencode|claude> [options]
     -Global             Global install
     -Budget <tier>      Model assignment profile (recommended: /hire after installing)
     -Set agent=model    Per-agent model override (comma-separated for several)
+    -Uninstall          Remove what the installer put there (project or -Global); -DryRun previews
     -DryRun             Preview without changes
   Examples: .\install.ps1 claude -Project C:\work\myapp
             .\install.ps1 opencode -Global
@@ -16,7 +17,7 @@ param(
 )
 $map = @{ opencode = "opencode"; oc = "opencode"; claude = "claude"; "claude-code" = "claude"; cc = "claude" }
 if (-not $Flavor -or -not $map.ContainsKey($Flavor.ToLower())) {
-  Get-Content $MyInvocation.MyCommand.Path -TotalCount 12 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }
+  Get-Content $MyInvocation.MyCommand.Path -TotalCount 13 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }
   if ($Flavor) { Write-Host "! Unknown target: $Flavor (use opencode or claude)"; exit 1 } else { exit 0 }
 }
 # Re-bind remaining tokens as named parameters (-Project x, --dry-run, -Global ...)

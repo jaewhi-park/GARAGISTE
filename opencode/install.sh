@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # GARAGISTE / opencode — installs .opencode/ and opencode.json into a git repository (macOS / Linux / WSL)
-# Usage: ./install.sh [--project <path>|.] [--global] [--budget inherit|unlimited|high|medium|low] [--strong id] [--fast id] [--set agent=model]... [--dry-run]
+# Usage: ./install.sh [--project <path>|.] [--global] [--budget inherit|unlimited|high|medium|low] [--strong id] [--fast id] [--set agent=model]... [--uninstall] [--dry-run]
 #   default      Install only into the current git repo's .opencode/ and root opencode.json (global config untouched)
 #   --project    Install into that path (its git repo root). Default: current directory.
 #   --global     Install into ~/.config/opencode instead, applying to every repo
@@ -11,12 +11,14 @@
 #   --strong / --fast   Actual model IDs (provider/model) for the profile's strong/fast slots
 #   --set        Per-agent override, e.g. --set team-reviewer=anthropic/claude-opus-4 (repeatable)
 #   --model      Only to overwrite the default model in opencode.json
+#   --uninstall  Remove what this installer put there (the project's .opencode/ and opencode.json entries, or with --global
+#                ~/.config/opencode): the team's agents, commands, skills, plugins, scripts and config entries. Yours stay.
 #   --dry-run    Print what would be done without changing anything
-#   Re-runnable. PowerShell-style flags (-Project, -Global, -Budget, ...) are accepted too.
+#   Re-runnable. PowerShell-style flags (-Project, -Global, -Budget, -Uninstall, ...) are accepted too.
 set -euo pipefail
 
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MODEL=""; MODE="project"; DRY=0; BUDGET="inherit"; STRONG=""; FAST=""; SETS=(); PROJECT=""
+MODEL=""; MODE="project"; DRY=0; BUDGET="inherit"; STRONG=""; FAST=""; SETS=(); PROJECT=""; UNINSTALL=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --model|-Model)     MODEL="$2"; shift 2 ;;
@@ -27,7 +29,8 @@ while [ $# -gt 0 ]; do
     --global|-Global)   MODE="global"; shift ;;
     --project|-Project) PROJECT="$2"; shift 2 ;;
     --dry-run|-DryRun)  DRY=1; shift ;;
-    -h|--help|-Help)    sed -n '2,14p' "$0"; exit 0 ;;
+    --uninstall|-Uninstall) UNINSTALL=1; shift ;;
+    -h|--help|-Help)    sed -n '2,16p' "$0"; exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
@@ -45,7 +48,7 @@ else
     ROOT="$PWD"
     echo "! Not a git repository: $ROOT"
     echo "  The team relies on branches, commits and worktrees, so git is required."
-    if [ "$DRY" = 0 ] && command -v git >/dev/null 2>&1 && [ -t 0 ]; then
+    if [ "$DRY" = 0 ] && [ "$UNINSTALL" = 0 ] && command -v git >/dev/null 2>&1 && [ -t 0 ]; then
       read -r -p "  Run git init here (default branch main)? [Y/n] " ans
       case "${ans:-Y}" in [Yy]*) git init -q && git symbolic-ref HEAD refs/heads/main && echo "→ git init done (main)";; esac
     fi
@@ -53,6 +56,81 @@ else
   DEST="$ROOT/.opencode"; CFG="$ROOT/opencode.json"; BKBASE="${TMPDIR:-/tmp}/garagiste-opencode-backup"
 fi
 run() { if [ "$DRY" = 1 ]; then echo "+ $*"; else "$@"; fi; }
+
+# ---------- uninstall (project or global) ----------
+# Removes only what the installer put there — the template's agents, commands, skills, plugins and scripts, and the entries it
+# merged into opencode.json (instructions, subagent_depth, permission keys, team agent entries) — and backs each removed path up
+# first. Your own agents, commands, skills, config keys, docs/ and .gitignore stay; what is left in the team's folders is listed.
+if [ "$UNINSTALL" = 1 ]; then
+  echo "→ Uninstall [$MODE]: $DEST  (config: $CFG)"
+  [ -d "$DEST" ] || [ -f "$CFG" ] || { echo "→ Nothing to remove: $DEST does not exist"; exit 0; }
+  BK="$BKBASE.$(date +%Y%m%d-%H%M%S)"; REMOVED=0
+  bk_rm() {   # $1 = path relative to $DEST — copied under $BK, then removed
+    local p="$DEST/$1"; { [ -e "$p" ] || [ -L "$p" ]; } || return 0
+    if [ "$DRY" = 1 ]; then echo "- remove $p"; else mkdir -p "$BK/$(dirname "$1")" && cp -R "$p" "$BK/$1" && rm -rf "$p" && echo "- removed $p"; fi
+    REMOVED=$((REMOVED + 1))
+  }
+  for f in "$SRC"/agents/*.md; do bk_rm "agents/$(basename "$f")"; done
+  for f in "$SRC"/commands/*.md; do bk_rm "commands/$(basename "$f")"; done
+  for d in "$SRC"/skills/*/; do bk_rm "skills/$(basename "$d")"; done
+  for f in "$SRC"/plugins/*; do bk_rm "plugins/$(basename "$f")"; done
+  for f in apply-models.mjs set-language.mjs new-agent.mjs set-profile.mjs; do bk_rm "scripts/$f"; done
+  if [ -f "${CFG%.json}.jsonc" ]; then
+    echo "! ${CFG%.json}.jsonc exists; the merge was by hand, so is the removal — drop these from it: instructions docs/CHARTER*.md · docs/STATUS*.md, subagent_depth, the permission block and the agent entries of $SRC/opencode.json"
+  elif [ -f "$CFG" ]; then
+python3 - "$CFG" "$SRC/opencode.json" "$DRY" "$BK" << 'PY'
+import json, pathlib, shutil, sys
+cfg, src, dry, bk = sys.argv[1:5]
+cfg = pathlib.Path(cfg)
+try:
+    d = json.loads(cfg.read_text(encoding="utf-8"))
+except Exception as e:
+    print(f"! {cfg} is not valid JSON ({e}); left as it is"); sys.exit(0)
+s = json.loads(pathlib.Path(src).read_text(encoding="utf-8"))
+changed = []
+ins = d.get("instructions")
+if isinstance(ins, list):
+    new = [i for i in ins if i not in s.get("instructions", [])]
+    if len(new) != len(ins): changed.append(f"instructions: {len(ins) - len(new)} entries")
+    if new: d["instructions"] = new
+    else: del d["instructions"]
+if "subagent_depth" in s and "subagent_depth" in d and d["subagent_depth"] == s["subagent_depth"]:
+    del d["subagent_depth"]; changed.append("subagent_depth")
+perm = d.get("permission")
+if isinstance(perm, dict):
+    for k, v in s.get("permission", {}).items():
+        if k in perm and perm[k] == v: del perm[k]; changed.append(f"permission.{k}")
+    if not perm: del d["permission"]
+ag = d.get("agent")
+if isinstance(ag, dict):
+    for name in s.get("agent", {}):
+        if name in ag: del ag[name]; changed.append(f"agent.{name}")
+    if not ag: del d["agent"]
+if changed and set(d) <= {"$schema"}: d = {}
+if not changed:
+    print(f"→ {cfg}: nothing of ours in it"); sys.exit(0)
+for c in changed: print(f"- {'remove' if dry == '1' else 'removed'} from {cfg.name}: {c}")
+if dry == "1": sys.exit(0)
+pathlib.Path(bk).mkdir(parents=True, exist_ok=True); shutil.copy2(cfg, pathlib.Path(bk) / cfg.name)
+if d:
+    cfg.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if "model" in d: print(f"→ Left in {cfg.name}: model — yours to keep or drop")
+else:
+    cfg.unlink(); print(f"- removed {cfg} (nothing else was in it)")
+PY
+  fi
+  if [ "$DRY" = 0 ]; then for d in agents commands skills plugins scripts; do rmdir "$DEST/$d" 2>/dev/null || true; done; rmdir "$DEST" 2>/dev/null || true; fi
+  [ "$REMOVED" = 0 ] && echo "→ No template files under $DEST"
+  [ "$DRY" = 0 ] && [ "$REMOVED" -gt 0 ] && echo "→ Backup of what was removed: $BK"
+  for d in agents commands skills plugins scripts; do
+    [ -d "$DEST/$d" ] || continue
+    left="$(ls -A "$DEST/$d" 2>/dev/null | tr '\n' ' ')"
+    [ -n "$left" ] && echo "→ Left in $d/ (yours, or an older GARAGISTE name — remove by hand if unwanted): $left"
+  done
+  [ "$MODE" = project ] && echo "→ docs/ and .gitignore (the installer added docs/screens/) stay; commit the removal yourself."
+  [ "$MODE" = global ] && echo "→ From now on a project's own .opencode/ and opencode.json are all opencode loads from the team."
+  exit 0
+fi
 
 echo "→ Install location [$MODE]: $DEST  (config: $CFG)"
 

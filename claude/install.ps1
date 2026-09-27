@@ -1,17 +1,113 @@
 ﻿<#
 GARAGISTE / Claude Code — installs .claude\ and docs\README.md into a git repository (Windows PowerShell)
-Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|high|medium|low] [-Set agent=model[:effort],...] [-DryRun]
+Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|high|medium|low] [-Set agent=model[:effort],...] [-Uninstall] [-DryRun]
   -Project <path>  Install into that path (its git repo root). Default: current directory
   -Global          Install into $HOME\.claude for every repo. No default agent is forced; start with `claude --agent team-lead`
   -Budget  Per-role model (opus/sonnet/haiku) and effort assignment. unlimited (API) · high (Max 20x) · medium (Max 5x) · low (Pro)
   -Set     Per-agent override, e.g. -Set team-implementer=sonnet:high
+  -Uninstall  Remove what this installer put there (the project's .claude\ or, with -Global, $HOME\.claude): the team's agents, skills, hooks, scripts and settings entries; yours stay. -DryRun previews
 #>
-[CmdletBinding()]param([string]$Project = "", [switch]$Global, [string]$Budget = "inherit", [string[]]$Set = @(), [switch]$DryRun, [switch]$Help)
-if ($Help) { Get-Content $MyInvocation.MyCommand.Path -TotalCount 8 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }; exit 0 }
+[CmdletBinding()]param([string]$Project = "", [switch]$Global, [string]$Budget = "inherit", [string[]]$Set = @(), [switch]$DryRun, [switch]$Uninstall, [switch]$Help)
+if ($Help) { Get-Content $MyInvocation.MyCommand.Path -TotalCount 9 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }; exit 0 }
 $ErrorActionPreference = "Stop"
 $Src = Split-Path -Parent $MyInvocation.MyCommand.Path
 function Set-Prop($obj, $name, $value) {
   if ($obj.PSObject.Properties[$name]) { $obj.$name = $value } else { $obj | Add-Member -NotePropertyName $name -NotePropertyValue $value }
+}
+
+# ---------- uninstall (project or global) ----------
+# Removes only what the installer put there — the template's agents, skills, hooks and scripts, the hook and permission
+# entries it merged into settings.json, the project's default agent — and backs each removed path up first. Your own
+# agents, skills, hooks and settings, docs\ and .gitignore stay; what is left in the team's folders is listed at the end.
+if ($Uninstall) {
+  if ($Global) { $Mode = "global"; $Dest = Join-Path $HOME ".claude" }
+  else {
+    $Mode = "project"
+    if ($Project) { if (-not (Test-Path $Project -PathType Container)) { throw "Path not found: $Project" }; Set-Location (Resolve-Path $Project).Path }
+    $Root = $null
+    if (Get-Command git -ErrorAction SilentlyContinue) { $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"; $out = & git rev-parse --show-toplevel 2>&1; $ErrorActionPreference = $prev; if ($LASTEXITCODE -eq 0) { $Root = "$out".Trim() } }
+    if (-not $Root) { $Root = (Get-Location).Path }
+    $Dest = Join-Path $Root ".claude"
+  }
+  $Cfg = Join-Path $Dest "settings.json"
+  Write-Host "→ Uninstall [$Mode]: $Dest"
+  if (-not (Test-Path $Dest)) { Write-Host "→ Nothing to remove: $Dest does not exist"; exit 0 }
+  $InPlace = ($Mode -eq "project") -and ((Resolve-Path $Src).Path.TrimEnd('\') -eq (Resolve-Path $Root).Path.TrimEnd('\'))
+  if ($InPlace) { Write-Host "→ Template is extracted directly in the repo root; its files stay, settings only." }
+  $Bk = Join-Path $env:TEMP "garagiste-claude-backup.$(Get-Date -Format yyyyMMdd-HHmmss)"; $script:Removed = 0
+  function Remove-Ours($rel) {   # $rel is relative to $Dest — copied under $Bk, then removed
+    $p = Join-Path $Dest $rel
+    if (-not (Test-Path $p)) { return }
+    if ($DryRun) { Write-Host "- remove $p" }
+    else { $to = Join-Path $Bk $rel; New-Item -ItemType Directory -Force -Path (Split-Path $to) | Out-Null; Copy-Item $p $to -Recurse -Force; Remove-Item $p -Recurse -Force; Write-Host "- removed $p" }
+    $script:Removed++
+  }
+  if (-not $InPlace) {
+    foreach ($f in Get-ChildItem (Join-Path $Src ".claude\agents") -Filter *.md) { Remove-Ours "agents\$($f.Name)" }
+    foreach ($d in Get-ChildItem (Join-Path $Src ".claude\skills") -Directory) { Remove-Ours "skills\$($d.Name)" }
+    foreach ($f in Get-ChildItem (Join-Path $Src ".claude\hooks") -Filter *.mjs) { Remove-Ours "hooks\$($f.Name)" }
+  }
+  foreach ($f in "apply-models.mjs","set-language.mjs","new-agent.mjs","set-profile.mjs") { Remove-Ours "scripts\$f" }
+  if ($Mode -eq "project") { Remove-Ours "session" }   # git-ignored runtime logs: compactions, denies.jsonl, spawns.jsonl
+  if (Test-Path $Cfg) {
+    $s = Get-Content (Join-Path $Src ".claude\settings.json") -Raw | ConvertFrom-Json
+    $d = Get-Content $Cfg -Raw | ConvertFrom-Json
+    $changed = @()
+    $hookNames = @(Get-ChildItem (Join-Path $Src ".claude\hooks") -Filter *.mjs | ForEach-Object { $_.Name })
+    function Test-OurHook($cmd) { foreach ($n in $hookNames) { if ("$cmd" -match ('[\\/]hooks[\\/]' + [regex]::Escape($n) + '(?![\w.-])')) { return $true } }; return $false }
+    if ($d.PSObject.Properties['hooks']) {
+      foreach ($ev in @($d.hooks.PSObject.Properties)) {
+        $keep = @()
+        foreach ($e in @($ev.Value)) {
+          $inner = @($e.hooks); $rest = @($inner | Where-Object { -not (Test-OurHook $_.command) })
+          if ($inner.Count -gt 0 -and $rest.Count -eq 0) { $changed += "hooks.$($ev.Name): $($inner[0].command)"; continue }
+          if ($rest.Count -ne $inner.Count) { $changed += "hooks.$($ev.Name): $($inner.Count - $rest.Count) of ours out of a mixed entry"; $e.hooks = $rest }
+          $keep += $e
+        }
+        if ($keep.Count -gt 0) { $d.hooks.($ev.Name) = $keep } else { $d.hooks.PSObject.Properties.Remove($ev.Name) }
+      }
+      if (@($d.hooks.PSObject.Properties).Count -eq 0) { $d.PSObject.Properties.Remove('hooks') }
+    }
+    $DestFwd = $Dest -replace '\\','/'
+    if ($d.PSObject.Properties['permissions']) {
+      foreach ($k in "allow","deny") {
+        $tpl = @($s.permissions.$k)   # the global install writes the script permissions with absolute paths: match both forms
+        $mine = $tpl + @($tpl | ForEach-Object { if ($_ -like 'Bash(node .claude/scripts/*') { $_.Replace('node .claude/scripts/', "node `"$DestFwd/scripts/").Replace('.mjs:*', '.mjs":*') } else { $_ } })
+        if ($d.permissions.PSObject.Properties[$k]) {
+          $cur = @($d.permissions.$k); $new = @($cur | Where-Object { $mine -notcontains $_ })
+          if ($new.Count -ne $cur.Count) { $changed += "permissions.$($k): $($cur.Count - $new.Count) entries" }
+          if ($new.Count -gt 0) { $d.permissions.$k = $new } else { $d.permissions.PSObject.Properties.Remove($k) }
+        }
+      }
+      if (@($d.permissions.PSObject.Properties).Count -eq 0) { $d.PSObject.Properties.Remove('permissions') }
+    }
+    if ($Mode -eq "project" -and $d.PSObject.Properties['agent'] -and $d.agent -eq $s.agent) { $d.PSObject.Properties.Remove('agent'); $changed += "agent: $($s.agent)" }
+    if ($changed.Count -eq 0) { Write-Host "→ $($Cfg): nothing of ours in it" }
+    else {
+      foreach ($c in $changed) { Write-Host "- $(if ($DryRun) {'remove'} else {'removed'}) from settings.json: $c" }
+      if (-not $DryRun) {
+        New-Item -ItemType Directory -Force -Path $Bk | Out-Null; Copy-Item $Cfg (Join-Path $Bk "settings.json") -Force
+        if (@($d.PSObject.Properties).Count -gt 0) {
+          [IO.File]::WriteAllText($Cfg, ($d | ConvertTo-Json -Depth 12), (New-Object System.Text.UTF8Encoding $false))
+          $left = @("model","language" | Where-Object { $d.PSObject.Properties[$_] })
+          if ($left.Count -gt 0) { Write-Host "→ Left in settings.json: $($left -join ', ') — Claude Code settings written by /hire or /lang; yours to keep or drop" }
+        } else { Remove-Item $Cfg; Write-Host "- removed $Cfg (nothing else was in it)" }
+      }
+    }
+  }
+  if (-not $DryRun) {
+    foreach ($dir in "agents","skills","hooks","scripts") { $p = Join-Path $Dest $dir; if ((Test-Path $p) -and -not (Get-ChildItem $p -Force | Select-Object -First 1)) { Remove-Item $p } }
+    if ((Test-Path $Dest) -and -not (Get-ChildItem $Dest -Force | Select-Object -First 1)) { Remove-Item $Dest }
+  }
+  if ($script:Removed -eq 0) { Write-Host "→ No template files under $Dest" }
+  if (-not $DryRun -and $script:Removed -gt 0) { Write-Host "→ Backup of what was removed: $Bk" }
+  foreach ($dir in "agents","skills","hooks","scripts") {
+    $p = Join-Path $Dest $dir
+    if (Test-Path $p) { $left = @(Get-ChildItem $p -Force | ForEach-Object { $_.Name }); if ($left.Count -gt 0) { Write-Host "→ Left in $dir\ (yours, or an older GARAGISTE name — remove by hand if unwanted): $($left -join ' ')" } }
+  }
+  if ($Mode -eq "project") { Write-Host "→ docs\, .gitignore (the installer added .claude/worktrees/, .claude/session/, docs/screens/) and .claude\worktrees\ stay; commit the removal yourself." }
+  else { Write-Host "→ From now on a project's own .claude\ is all Claude Code loads (a same-named skill under ~\.claude used to win over the project's)." }
+  exit 0
 }
 
 # ---------- global install ----------
