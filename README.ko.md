@@ -20,7 +20,7 @@ GARAGISTE 는 **opencode** 와 **Claude Code** 양쪽에서 거의 똑같이 동
 ./install.sh opencode -Project <레포 경로>      # opencode 판
 .\install.ps1 claude  -Project <레포 경로>      # Windows PowerShell
 ```
-`-Project` 를 생략하면 현재 경로, `-Global` 이면 전역. 옵션은 두 판이 같고 `--project`/`-Project` 두 표기를 모두 받는다.
+`-Project` 를 생략하면 현재 경로. 전역 설치는 없다: 팀은 저장소에 산다(`.claude/`, 또는 `.opencode/` 와 `opencode.json` 을 프로젝트와 함께 커밋) — 어느 체크아웃이든 같은 팀을 받는다. 옵션은 두 판이 같고 `--project`/`-Project` 두 표기를 모두 받는다. `-Uninstall` 은 설치기가 넣은 것만 걷어내고 당신의 파일과 설정은 남기며, `-Global -Uninstall` 은 옛 전역 설치를 지운다. `-DryRun` 으로 미리 본다.
 설치 후 첫 세션에서 `/brainstorm` 으로 기획서를 만들고(lead 와 자유 토론, 또는 직접 쓴 문서), 신규 프로젝트는 `/kickoff`, 레거시는 `/assess`, 그다음 `/hire` 로 역할별 모델을 배정한다.
 
 ## 구조

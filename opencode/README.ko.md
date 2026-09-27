@@ -10,7 +10,7 @@
 자기 자신을 새 레포에 온보딩한다.
 
 ## 설치
-저장소 루트에서 `./install.sh opencode [-Project <경로>|.] [-Global]` / `.\install.ps1 opencode [-Project <경로>] [-Global]`. (이 폴더의 install.sh 를 직접 실행하면 대상 인자 없이 동일) 기본은 현재 경로(가 속한 git 레포 루트). --global  → ~/.config/opencode (모든 레포).
+저장소 루트에서 `./install.sh opencode [-Project <경로>|.]` / `.\install.ps1 opencode [-Project <경로>]`. (이 폴더의 install.sh 를 직접 실행하면 대상 인자 없이 동일) 기본은 현재 경로(가 속한 git 레포 루트). 전역 설치는 없다 — 팀은 저장소에 살고 `.opencode/` 와 `opencode.json` 을 커밋한다; `-Global` 은 옛 전역 설치를 지우는 `-Uninstall` 과 함께일 때만 받는다. `-Uninstall` 은 설치기가 넣은 것 — 팀의 agents · commands · skills · plugins · scripts 와 `opencode.json` 항목 — 만 백업한 뒤 걷어내고 당신의 파일과 설정은 남긴다. `-DryRun` 으로 미리 본다.
 
 ```
 ./install.sh opencode -Project <레포 경로>        # macOS / Linux / WSL
@@ -19,7 +19,7 @@
 스크립트가 하는 일: 기존 `~/.config/opencode/` 백업 → agents/commands/skills/plugins 복사(같은 이름만 덮어씀)
 → `opencode.json` 병합(instructions 합집합, permission·agent 항목은 없는 키만 추가, subagent_depth는 없을 때만 설정). provider·model은 건드리지 않는다 —
 템플릿은 model을 지정하지 않으므로 기존 opencode 설정의 provider/model을 그대로 상속한다. 바꾸고 싶을 때만 `--model`/`-Model`.
-`--project`/`-Project`를 주면 글로벌 대신 현재 레포의 `.opencode/`와 루트 `opencode.json`에 설치한다.
+`--project`/`-Project`는 설치할 레포의 경로다(기본은 현재 레포); 그 레포의 `.opencode/`와 루트 `opencode.json`에만 설치한다.
 `--dry-run`/`-DryRun`으로 먼저 확인할 수 있다. 기존 설정이 `.jsonc`면 병합을 건너뛰고 수동 안내를 출력한다.
 
 설치 후 레포에서 `opencode` 실행 → Tab으로 `team-lead` 선택.

@@ -1,21 +1,23 @@
 ﻿<#
 GARAGISTE / opencode — installs .opencode\ and opencode.json into a git repository (Windows PowerShell)
-Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|high|medium|low] [-Strong id] [-Fast id] [-Set agent=model,...] [-Model id] [-DryRun]
+Usage: .\install.ps1 [-Project <path>|.] [-Global] [-Budget inherit|unlimited|high|medium|low] [-Strong id] [-Fast id] [-Set agent=model,...] [-Model id] [-Uninstall] [-DryRun]
   -Project <path>  Install into that path (its git repo root). Default: current directory
   default   Install only into the current repo's .opencode\ and root opencode.json (global config untouched)
-  -Global   Install into $HOME\.config\opencode instead, applying to every repo
+  -Global   Only with -Uninstall: removes an older global install from $HOME\.config\opencode (the team lives in the repository)
   -Budget   Per-role model assignment profile (default inherit). unlimited/high/medium/low distribute -Strong/-Fast across roles
   -Strong/-Fast  Actual model IDs (required with -Budget; prefer /hire after installing if judgment is needed)
   -Set      Per-agent override, e.g. -Set team-reviewer=anthropic/claude-opus-4
   -Model    Only to overwrite the default model in opencode.json
   -DryRun   Preview without changes
+  -Uninstall  Remove what this installer put there (the project's .opencode\ and opencode.json entries, or with -Global $HOME\.config\opencode); yours stay
 #>
-[CmdletBinding()]param([string]$Project = "", [string]$Model = "", [switch]$Global, [string]$Budget = "inherit", [string]$Strong = "", [string]$Fast = "", [string[]]$Set = @(), [switch]$DryRun, [switch]$Help)
-if ($Help) { Get-Content $MyInvocation.MyCommand.Path -TotalCount 12 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }; exit 0 }
+[CmdletBinding()]param([string]$Project = "", [string]$Model = "", [switch]$Global, [string]$Budget = "inherit", [string]$Strong = "", [string]$Fast = "", [string[]]$Set = @(), [switch]$DryRun, [switch]$Uninstall, [switch]$Help)
+if ($Help) { Get-Content $MyInvocation.MyCommand.Path -TotalCount 13 | Select-Object -Skip 1 | Where-Object { $_ -ne "#>" }; exit 0 }
 $ErrorActionPreference = "Stop"
 $Src = Split-Path -Parent $MyInvocation.MyCommand.Path
+if ($Global -and -not $Uninstall) { Write-Host "! No global install: the team lives in the repository (.opencode\ and opencode.json are committed with the project). Install into a project — .\install.ps1 opencode -Project <path>; an older global install is removed with -Global -Uninstall"; exit 1 }
 
-if ($Global) {
+if ($Global) {   # only reached with -Uninstall
   $Dest = Join-Path $HOME ".config\opencode"; $Cfg = Join-Path $Dest "opencode.json"; $BkBase = "$Dest.bak"
 } else {
   if ($Project) {
@@ -35,13 +37,82 @@ if ($Global) {
     $Root = (Get-Location).Path
     Write-Host "! Not a git repository: $Root"
     Write-Host "  The team relies on branches, commits and worktrees, so git is required."
-    if (-not $DryRun -and (Get-Command git -ErrorAction SilentlyContinue)) {
+    if (-not $DryRun -and -not $Uninstall -and (Get-Command git -ErrorAction SilentlyContinue)) {
       $ans = Read-Host "  Run git init here (default branch main)? [Y/n]"
       if ($ans -eq "" -or $ans -match '^[Yy]') { git init | Out-Null; git symbolic-ref HEAD refs/heads/main; Write-Host "→ git init done (main)" }
     }
   }
   $Dest = Join-Path $Root ".opencode"; $Cfg = Join-Path $Root "opencode.json"; $BkBase = Join-Path $env:TEMP "garagiste-opencode-backup"
 }
+# ---------- uninstall (project or global) ----------
+# Removes only what the installer put there — the template's agents, commands, skills, plugins and scripts, and the entries it
+# merged into opencode.json (instructions, subagent_depth, permission keys, team agent entries) — and backs each removed path up
+# first. Your own agents, commands, skills, config keys, docs\ and .gitignore stay; what is left in the team's folders is listed.
+if ($Uninstall) {
+  $Mode = if ($Global) {'global'} else {'project'}
+  Write-Host "→ Uninstall [$Mode]: $Dest  (config: $Cfg)"
+  if (-not (Test-Path $Dest) -and -not (Test-Path $Cfg)) { Write-Host "→ Nothing to remove: $Dest does not exist"; exit 0 }
+  $Bk = "$BkBase.$(Get-Date -Format yyyyMMdd-HHmmss)"; $script:Removed = 0
+  function Remove-Ours($rel) {   # $rel is relative to $Dest — copied under $Bk, then removed
+    $p = Join-Path $Dest $rel
+    if (-not (Test-Path $p)) { return }
+    if ($DryRun) { Write-Host "- remove $p" }
+    else { $to = Join-Path $Bk $rel; New-Item -ItemType Directory -Force -Path (Split-Path $to) | Out-Null; Copy-Item $p $to -Recurse -Force; Remove-Item $p -Recurse -Force; Write-Host "- removed $p" }
+    $script:Removed++
+  }
+  foreach ($f in Get-ChildItem (Join-Path $Src "agents") -Filter *.md) { Remove-Ours "agents\$($f.Name)" }
+  foreach ($f in Get-ChildItem (Join-Path $Src "commands") -Filter *.md) { Remove-Ours "commands\$($f.Name)" }
+  foreach ($d in Get-ChildItem (Join-Path $Src "skills") -Directory) { Remove-Ours "skills\$($d.Name)" }
+  foreach ($f in Get-ChildItem (Join-Path $Src "plugins") -File) { Remove-Ours "plugins\$($f.Name)" }
+  foreach ($f in "apply-models.mjs","set-language.mjs","new-agent.mjs","set-profile.mjs") { Remove-Ours "scripts\$f" }
+  $Jsonc = [IO.Path]::ChangeExtension($Cfg, ".jsonc")
+  if (Test-Path $Jsonc) { Write-Host "! $Jsonc exists; the merge was by hand, so is the removal — drop these from it: instructions docs/CHARTER*.md · docs/STATUS*.md, subagent_depth, the permission block and the agent entries of $(Join-Path $Src 'opencode.json')" }
+  elseif (Test-Path $Cfg) {
+    $s = Get-Content (Join-Path $Src "opencode.json") -Raw | ConvertFrom-Json
+    $d = Get-Content $Cfg -Raw | ConvertFrom-Json
+    $changed = @()
+    if ($d.PSObject.Properties['instructions']) {
+      $cur = @($d.instructions); $new = @($cur | Where-Object { @($s.instructions) -notcontains $_ })
+      if ($new.Count -ne $cur.Count) { $changed += "instructions: $($cur.Count - $new.Count) entries" }
+      if ($new.Count -gt 0) { $d.instructions = $new } else { $d.PSObject.Properties.Remove('instructions') }
+    }
+    if ($s.PSObject.Properties['subagent_depth'] -and $d.PSObject.Properties['subagent_depth'] -and $d.subagent_depth -eq $s.subagent_depth) { $d.PSObject.Properties.Remove('subagent_depth'); $changed += "subagent_depth" }
+    if ($d.PSObject.Properties['permission'] -and $d.permission -is [pscustomobject]) {
+      foreach ($p in $s.permission.PSObject.Properties) { if ($d.permission.PSObject.Properties[$p.Name] -and ($d.permission.($p.Name) -eq $p.Value)) { $d.permission.PSObject.Properties.Remove($p.Name); $changed += "permission.$($p.Name)" } }
+      if (@($d.permission.PSObject.Properties).Count -eq 0) { $d.PSObject.Properties.Remove('permission') }
+    }
+    if ($d.PSObject.Properties['agent'] -and $d.agent -is [pscustomobject]) {
+      foreach ($a in $s.agent.PSObject.Properties) { if ($d.agent.PSObject.Properties[$a.Name]) { $d.agent.PSObject.Properties.Remove($a.Name); $changed += "agent.$($a.Name)" } }
+      if (@($d.agent.PSObject.Properties).Count -eq 0) { $d.PSObject.Properties.Remove('agent') }
+    }
+    if ($changed.Count -eq 0) { Write-Host "→ $($Cfg): nothing of ours in it" }
+    else {
+      foreach ($c in $changed) { Write-Host "- $(if ($DryRun) {'remove'} else {'removed'}) from opencode.json: $c" }
+      if (-not $DryRun) {
+        New-Item -ItemType Directory -Force -Path $Bk | Out-Null; Copy-Item $Cfg (Join-Path $Bk "opencode.json") -Force
+        $rest = @($d.PSObject.Properties | Where-Object { $_.Name -ne '$schema' })
+        if ($rest.Count -gt 0) {
+          [IO.File]::WriteAllText($Cfg, ($d | ConvertTo-Json -Depth 10), (New-Object System.Text.UTF8Encoding $false))
+          if ($d.PSObject.Properties['model']) { Write-Host "→ Left in opencode.json: model — yours to keep or drop" }
+        } else { Remove-Item $Cfg; Write-Host "- removed $Cfg (nothing else was in it)" }
+      }
+    }
+  }
+  if (-not $DryRun) {
+    foreach ($dir in "agents","commands","skills","plugins","scripts") { $p = Join-Path $Dest $dir; if ((Test-Path $p) -and -not (Get-ChildItem $p -Force | Select-Object -First 1)) { Remove-Item $p } }
+    if ((Test-Path $Dest) -and -not (Get-ChildItem $Dest -Force | Select-Object -First 1)) { Remove-Item $Dest }
+  }
+  if ($script:Removed -eq 0) { Write-Host "→ No template files under $Dest" }
+  if (-not $DryRun -and $script:Removed -gt 0) { Write-Host "→ Backup of what was removed: $Bk" }
+  foreach ($dir in "agents","commands","skills","plugins","scripts") {
+    $p = Join-Path $Dest $dir
+    if (Test-Path $p) { $left = @(Get-ChildItem $p -Force | ForEach-Object { $_.Name }); if ($left.Count -gt 0) { Write-Host "→ Left in $dir\ (yours, or an older GARAGISTE name — remove by hand if unwanted): $($left -join ' ')" } }
+  }
+  if ($Mode -eq "project") { Write-Host "→ docs\ and .gitignore (the installer added docs/screens/) stay; commit the removal yourself." }
+  else { Write-Host "→ From now on a project's own .opencode\ and opencode.json are all opencode loads from the team." }
+  exit 0
+}
+
 Write-Host "→ Install location [$(if ($Global) {'global'} else {'project'})]: $Dest  (config: $Cfg)"
 
 # 1. Backup
@@ -57,14 +128,6 @@ foreach ($d in "agents","commands","skills","plugins","scripts") {
   if ($DryRun) { Write-Host "+ copy $d -> $to"; continue }
   New-Item -ItemType Directory -Force -Path $to | Out-Null
   Copy-Item (Join-Path $Src "$d\*") $to -Recurse -Force
-}
-if ($Global -and -not $DryRun) {  # commands and the lead's bash allow-list name the scripts by a project-relative path; point them at $Dest
-  $DestFwd = $Dest -replace '\\','/'
-  foreach ($f in @(Get-ChildItem (Join-Path $Dest "commands") -Filter *.md) + @(Get-Item (Join-Path $Dest "agents\team-lead.md"))) {
-    $t = [IO.File]::ReadAllText($f.FullName)
-    $t = [regex]::Replace($t, 'node \.opencode/scripts/(apply-models|set-language|new-agent|set-profile)\.mjs', "node `"$DestFwd/scripts/`$1.mjs`"")
-    [IO.File]::WriteAllText($f.FullName, $t, (New-Object System.Text.UTF8Encoding $false))
-  }
 }
 
 if (-not $Global) {

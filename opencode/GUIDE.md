@@ -36,16 +36,16 @@ What you will be asked, and nothing else: the stack and the budget once at kicko
 ## 1. Install and first run
 
 
-Three install targets. Give the flavor (opencode) to the entry point at the repository root:
+Two install targets, both inside the repository. Give the flavor (opencode) to the entry point at the repository root:
 ```
 ./install.sh opencode                       # current directory (its git repo root)
 ./install.sh opencode -Project <path>       # install into that path (--project works too)
-./install.sh opencode -Global               # global
 .\install.ps1 opencode -Project <path>      # Windows PowerShell — same options
 ```
 `opencode/install.sh` does the same without the flavor argument.
 - If the path is a subfolder of a repo, the script walks up to the git root and tells you. If it is not a git repository, it offers `git init`.
-- `-Global` → ~/.config/opencode (every repo). A global install cannot touch a project's .gitignore; if an older install git-ignored `docs/STATUS.md` there, remove that line yourself — the board is committed.
+- No global install: the team lives in the repository, so `.opencode/` and `opencode.json` are committed with the project and every checkout and collaborator gets the same release. An older global install under ~/.config/opencode is removed with `-Global -Uninstall` (next line).
+- `-Uninstall` (with `-Project` or `-Global`) → removes the team from that target: its agents, commands, skills, plugins and scripts and the `opencode.json` entries the installer added, each backed up first; your own files and config, docs/ and .gitignore stay, and what is left in the team's folders is listed. Run it on an older global install before re-installing a project, so only one release of the team is loaded.
 
 **Windows execution policy**: if `.\install.ps1` is blocked with "cannot be loaded because running scripts is disabled", either
 - once: `powershell -ExecutionPolicy Bypass -File .\install.ps1 …`
@@ -174,7 +174,7 @@ Every entry has the same shape: when / what you say / what the team does / **wha
 - When: two or more features that are independent at the file level, and sequential is too slow. **Not in the first two weeks.**
 - The one way: `/spawn <plan files>` creates a worktree and branch per approved plan and prints the command to open a session there; in that session `/build <plan>` implements it on its own branch; the board belongs to the main checkout and the worktree session never edits it.
 - Then, from the main session, `/integrate` reviews and merges the finished branches one at a time into an integration branch and `/ship` ships that branch as one PR. opencode has no in-session builder: every parallel plan is its own session, and a session interrupted mid-plan continues on its branch from the step after its last commit.
-- Prerequisites: `.opencode/` and `opencode.json` committed so worktree sessions have the team (or a global install); copy untracked files such as `.env` yourself.
+- Prerequisites: `.opencode/` and `opencode.json` committed so worktree sessions have the team; copy untracked files such as `.env` yourself.
 - You: check that the plans' "files touched" sets do not overlap; decide the integration order (dependencies first). Zero overlapping files, or run them sequentially.
 - Watch for: splitting one feature's steps across workers (steps are sequential); integrating several branches at once (always one at a time).
 
