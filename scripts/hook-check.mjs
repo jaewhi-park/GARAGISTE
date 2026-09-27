@@ -78,10 +78,10 @@ const GENERIC = [
   ["write", { filePath: "C:/repo/CLAUDE.md", content: "# X\n## Commands\n- test: `npm test`\n" + "- rule\n".repeat(1200) }, B],   // 8.4 KB
   ["write", { filePath: "C:/repo/CLAUDE.md", content: "# X\n## Commands\n- test: `npm test`\n" + "- rule\n".repeat(600) }, A],
   ["write", { filePath: "C:/repo/AGENTS.md", content: "# X\n" + "- rule\n".repeat(1200) }, B],
-  ["write", { filePath: "C:/repo/docs/plans/0002-x.md", content: "# plan\n" + "z".repeat(13000) }, B],
-  ["write", { filePath: "C:/repo/docs/plans/0002-x.md", content: "# plan\n" + "z".repeat(6000) }, A],
-  ["write", { filePath: "C:/repo/docs/plans/0003-x.md", content: "# 계획\n" + "가".repeat(4200) }, B],   // 12.6 KB in UTF-8: bytes count, not characters
-  ["write", { filePath: "C:/repo/docs/plans/0003-x.md", content: "# 계획\n" + "가".repeat(3000) }, A],
+  ["write", { filePath: "C:/repo/docs/plans/0002-x.md", content: "# plan\n" + "z".repeat(17000) }, B],
+  ["write", { filePath: "C:/repo/docs/plans/0002-x.md", content: "# plan\n" + "z".repeat(13000) }, A],   // 12.7 KB: under the 16 KB plan budget
+  ["write", { filePath: "C:/repo/docs/plans/0003-x.md", content: "# 계획\n" + "가".repeat(5600) }, B],   // 16.8 KB in UTF-8: bytes count, not characters
+  ["write", { filePath: "C:/repo/docs/plans/0003-x.md", content: "# 계획\n" + "가".repeat(5000) }, A],   // 15 KB
   ["write", { filePath: "C:/repo/docs/specs/F01-x.md", content: "# spec\n" + "z".repeat(20000) }, A],   // no budget on a spec section
 ];
 // ---- role rules, Claude Code hook only: [role, tool, args, expected] in claude shape (Bash/Edit/Write/Read, file_path).
