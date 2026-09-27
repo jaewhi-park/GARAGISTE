@@ -4,6 +4,9 @@ Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`
 
 ## Unreleased
 
+### Breaking for running projects
+- **Two more document budgets** (both flavors): `docs/memory/*.md` 16 KB each and `docs/DEBT.md` 300 lines — a write that would leave one over is refused. The planner and reviewer read their memory files whole at every spawn, and the test projects' files had grown to 27–46 KB (60 lines of 400–750 bytes: the line rule was gamed by long lines); AX_PLATFORM's DEBT stood at 315 lines. Before upgrading: the planner archives resolved DEBT lines (the `backlog` skill's Archive rule now covers DEBT), and each memory owner consolidates its file under 16 KB — one pattern per line with a `×n` count — moving retired lines to `docs/archive/memory-<role>-<year>.md` (the reviewer may write that file too).
+
 ### Added
 - The deny log (`.claude/session/denies.jsonl`) records the rule that fired and the command or path it refused (`rule`, `what`) instead of the prose reason, whose boilerplate alone exceeded the 200-character cut and hid the command — the next retro can see what was refused, not only how often.
 - The verifier may use output and check-only words between commands — `echo`, `printf`, `test`, `[`, `true`, `false`, `set`, `pwd`, `date` — as long as nothing is redirected into a file, substituted or expanded from a secret-looking variable (the two test projects logged 28 refusals of `echo` banners around listed commands, each one a re-run). The lead may `gh label list` and `gh label create` (the risk labels /ship attaches); read-only roles may list labels. Both flavors.
