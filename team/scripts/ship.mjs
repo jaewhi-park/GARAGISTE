@@ -32,7 +32,7 @@ export function proseKb(main) {
   const files = ['CLAUDE.md', 'AGENTS.md', '.garagiste/HAZARDS.md', ...listFiles(path.join(main, '.garagiste', 'packs')).map((f) => path.join('.garagiste', 'packs', f))];
   return Math.round(files.reduce((n, f) => n + Buffer.byteLength(readText(path.join(main, f))), 0) / 1024);
 }
-const DOC_OK = (team) => [team.paths.backlog, team.paths.status, team.paths.ledger_doc, team.paths.decisions];
+const DOC_OK = (team) => [team.paths.brief, team.paths.backlog, team.paths.status, team.paths.ledger_doc, team.paths.decisions]; // 스크립트가 쓰는 CEO 문서는 ship의 문서 커밋에 실린다
 function main() {
   const slug = process.argv[2];
   if (!slug) fail('사용법: ship.mjs <slug>');
