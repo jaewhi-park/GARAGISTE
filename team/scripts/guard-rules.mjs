@@ -25,6 +25,14 @@ export const PACK_RULES = {
   boot: { allow: [/^(package\.json|pnpm-workspace\.yaml|pnpm-lock\.yaml|package-lock\.json|pyproject\.toml|uv\.lock|requirements[^/]*\.txt|Cargo\.toml|go\.mod|\.node-version|\.python-version|\.nvmrc|\.tool-versions|\.gitignore|README(\.[a-z]{2})?\.md|CLAUDE\.md|AGENTS\.md|tsconfig[^/]*\.json|[^/]*\.config\.[a-z]+)$/, /^src\//, /^tests\/unit\//, /^tests\/harness\//, /^docs\/units\/[^/]+\//] },
 };
 const norm = (p) => p.replace(/\\/g, '/');
+// 따옴표 안 텍스트는 셸에선 데이터다 — 커밋 메시지의 트레일러(`<noreply@…>`)·경로 언급이 리다이렉트·쓰기 verb로 오탐됐다(첫 Windows 실기).
+// 큰따옴표 안에서도 $()·백틱은 실행되므로 그 내용만 남긴다. 우회 접두(ENV_BYPASS)·worktree 경로 추론은 따옴표로도 효력이 있어 원문을 본다.
+export function stripQuoted(command) {
+  return String(command)
+    .replace(/\\["']/g, ' ')
+    .replace(/'[^']*'/g, ' ')
+    .replace(/"([^"]*)"/g, (_, inner) => { const subs = inner.match(/\$\([^)]*\)|`[^`]*`/g); return subs ? ` ${subs.join(' ')} ` : ' '; });
+}
 // Bash도 쓰기다 — 리다이렉트 표적은 전부, in-place verb(sed -i·tee·mv·cp·rm·truncate)는 보호 구역 이름이 보일 때. 완전 차단이 아니라 최선 노력 — 법은 게이트(redproof·원장 tree 대조)다.
 const GUARDED_AREA = /(^|[\\/])(tests[\\/](acceptance|adversary)|fixtures[\\/]hostile|probes([\\/]|$)|docs[\\/]measurements[\\/]spike-)/;
 export function writeTargets(command) {
@@ -69,21 +77,22 @@ export function decide(input, ctx) {
   const admin = !!ctx.env.GARAGISTE_ADMIN;
   if (tool === 'Bash' || tool === 'PowerShell') {
     const c = String(ti.command || '');
-    if (DESTRUCTIVE.test(c)) return '파괴적 git — stash·rebase·merge·reset --hard·force push·보호 브랜치 push·--no-verify는 없다. 머지는 ship.mjs만.';
+    const cq = stripQuoted(c); // 쓰기·파괴 판정은 따옴표 밖 텍스트로만
+    if (DESTRUCTIVE.test(cq)) return '파괴적 git — stash·rebase·merge·reset --hard·force push·보호 브랜치 push·--no-verify는 없다. 머지는 ship.mjs만.';
     // DESTRUCTIVE의 push 정규식은 main|master 고정 — 보호 브랜치가 다른 이름이면 여기서 막는다 (L0 부검의 발견)
     const pb = ctx.protectedBranch;
     if (!admin && pb && pb !== 'main' && pb !== 'master'
       && new RegExp(`\\bgit\\s+push\\b[^;&|]*[\\s:]${pb.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')}(\\s|$)`).test(c)) return `보호 브랜치(${pb}) push — 머지는 ship.mjs만, 원격 push는 CEO의 일이다.`;
     if (!admin && ENV_BYPASS.test(c)) return '게이트 우회 금지 — GARAGISTE_SHIP·WIP·ADMIN 접두는 스크립트 내부와 CEO(ADMIN 세션)만 쓴다.';
-    if (LEDGER_SHELL.test(c) && /(>|>>|\brm\b|\bsed\b|\btee\b|\btruncate\b|\bmv\b)/.test(c)) return '원장·unit 상태는 스크립트만 쓴다.';
-    if (!admin && (RULEBOOK_SHELL.test(c) || RULEBOOK_REDIR.test(c))) return '규칙집(.garagiste 정본·하네스 배선)은 hard 결정 뒤 CEO가 GARAGISTE_ADMIN=1로만 바꾼다. (읽기는 자유 — Read 툴이나 cat은 막지 않는다)';
+    if (LEDGER_SHELL.test(cq) && /(>|>>|\brm\b|\bsed\b|\btee\b|\btruncate\b|\bmv\b)/.test(cq)) return '원장·unit 상태는 스크립트만 쓴다.';
+    if (!admin && (RULEBOOK_SHELL.test(cq) || RULEBOOK_REDIR.test(cq))) return '규칙집(.garagiste 정본·하네스 배선)은 hard 결정 뒤 CEO가 GARAGISTE_ADMIN=1로만 바꾼다. (읽기는 자유 — Read 툴이나 cat은 막지 않는다)';
     const w = worktreeOf(path.resolve(cwd), ctx.worktreesDir) || worktreeFromCommand(c, ctx.worktreesDir);
     if (w) {
       if (/\bgit\s+push\b/.test(c)) return 'worktree에서 push하지 않는다 — ship.mjs가 main으로 올린다.';
       if (CEO_CMDS.test(c)) return 'tried·decide(CEO 접점)·drop(방향전환)은 conductor의 일이다 — 팩은 부르지 않는다. conductor가 CEO의 말을 받아 메인에서 돌린다.';
       if (ctx.readMarker(w.dir) === 'spike' && /\bgit\s+commit\b/.test(c)) return 'spike는 커밋하지 않는다 — 측정 파일만 남긴다.';
     }
-    for (const target of writeTargets(c)) {
+    for (const target of writeTargets(cq)) {
       const abs = path.resolve(cwd, target);
       const tw = worktreeOf(abs, ctx.worktreesDir);
       if (tw) { const r = packWriteReason(ctx.readMarker(tw.dir), norm(tw.rel)); if (r) return `Bash 쓰기: ${r}`; continue; }

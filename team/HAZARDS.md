@@ -16,3 +16,5 @@
 - `.garagiste/scripts/**` · ship의 machine_os 필터가 win32의 정당한 full PASS를 거부했다(첫 Windows 실기) · 검사: platform은 원장 기록만, 대상-OS 보증은 @sensor 태그(claims.mjs) — 필터 부재를 unit 테스트가 고정
 - `.garagiste/scripts/**` · Windows에서 repoRoot(git, 슬래시)와 mainRoot(path.resolve, 역슬래시)가 달라 decide·drop·tried가 메인 저장소에서도 거부됐다 · 검사: 경로는 비교 전 realpath 정본화 — repoRoot===mainRoot 불변식 테스트
 - `.garagiste/scripts/**` · 가드가 규칙집 읽기(cat·sed -n)까지 쓰기로 오탐해 conductor의 진단을 막았다(첫 Windows 실기) · 검사: 쓰기 verb·리다이렉트만 거부 — guard 단위 테스트(cat·sed -n 허용, sed -i·리다이렉트 거부)
+- `.garagiste/scripts/**` · boot 팩에 CEO의 닫힌 결정(Q1)과 BRIEF 부록(40줄 컷 밖)이 빠져 확정된 스택 대신 기본값이 깔렸다(첫 Windows 실기) · 검사: 모든 팩에 닫힌 결정 전체 + BRIEF는 전문(boot 상한은 intake처럼 4×) — e2e가 팩 내용을 고정
+- `.garagiste/scripts/**` · 가드가 커밋 메시지 트레일러(<…>)의 >를 리다이렉트로 오탐해 커밋을 거부했다(첫 Windows 실기) · 검사: 따옴표 안은 데이터, $()·백틱만 실행으로 남김(stripQuoted) — guard 단위 테스트

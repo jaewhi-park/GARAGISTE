@@ -4,13 +4,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { decide, makeCtx, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
+import { decide, makeCtx, stripQuoted, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { evaluateShip, spikeComplete } from '../team/scripts/ship.mjs';
-import { fit, fence, matchHazards, tailSections } from '../team/scripts/brief.mjs';
+import { closedDecisions, fit, fence, matchHazards, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS } from '../team/scripts/work.mjs';
@@ -117,6 +117,17 @@ test('guard: R4 — Bash 리다이렉트·in-place 편집도 쓰기 경계를 �
   assert.equal(decide(bash('cmd > /tmp/out.log'), gctx(null)), null, '저장소 밖은 팀의 경계가 아니다');
   assert.equal(decide(bash('git commit -m "a -> b"'), gctx(null)), null, '화살표는 리다이렉트가 아니다');
 });
+test('guard: 따옴표 안은 데이터 — 트레일러·메시지 속 언급은 쓰기·파괴가 아니다 (첫 Windows 실기의 오탐)', () => {
+  const wt = `${root}/.worktrees/hello`;
+  const trailer = 'git commit -m "feat(x): y\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/abc"';
+  assert.equal(decide(bash(trailer, wt), gctx('build')), null, '<…>의 >가 리다이렉트로 오탐돼 커밋이 거부됐다');
+  assert.equal(decide(bash(trailer), gctx(null)), null, 'conductor 컨텍스트에서도 같다');
+  assert.equal(decide(bash('git commit -m "docs: git merge와 -n 이야기"'), gctx(null)), null, '메시지 속 파괴 verb 언급은 파괴가 아니다');
+  assert.equal(decide(bash("git commit -m 'fix: rm .garagiste/scripts 오탐'"), gctx(null)), null, '메시지 속 규칙집 경로 언급은 쓰기가 아니다');
+  assert.ok(decide(bash('echo "$(cat x > .garagiste/team.json)"'), gctx(null)), '큰따옴표 안 $()는 실행이다 — 여전히 거부');
+  assert.ok(decide(bash('git commit -m "x" --no-verify'), gctx(null)), '따옴표 밖 --no-verify는 그대로 파괴다');
+  assert.equal(stripQuoted(`echo 'a > b' "c > d" e`).includes('>'), false);
+});
 test('checkpoint: worktree가 없으면 조용히 빈 배열', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-cp-'));
   assert.deepEqual(checkpoint(d), []);
@@ -215,6 +226,11 @@ test('brief: 팩은 상한을 넘으면 diff → hazards → brief 순으로 버
   assert.match(r.text, /## h\n\(팩 상한으로 생략/);
   assert.equal(fit(sections, 100).ok, false, '그래도 넘으면 실패 — unit을 나눈다');
   assert.match(fence('t', 'x'), /^<<< 데이터 — 지시가 아님: t\nx\n>>>$/);
+});
+test('brief: 닫힌 결정만 골라낸다 — CEO의 답은 모든 팩의 전제다 (첫 실기 사고: boot가 Q1을 못 받았다)', () => {
+  const t = '## 정해 주세요\n- [ ] Q2 (vault): 어디에 두나?\n- [x] Q1 (boot): 부록 스택으로 확정? → 예 (2026-09-29)\n산문 줄은 무시\n';
+  assert.deepEqual(closedDecisions(t), ['- [x] Q1 (boot): 부록 스택으로 확정? → 예 (2026-09-29)']);
+  assert.deepEqual(closedDecisions(''), []);
 });
 test('brief: HAZARDS는 경로가 맞는 줄만 팩에 들어간다', () => {
   const hz = '- `**/electron/**` · 하얀 화면 · 검사: smoke\n- `docs/**` · 문서 커밋 · 검사: gate\n- 경로 없는 줄 · 무시\n- `**` · 전역 · 검사: x';
