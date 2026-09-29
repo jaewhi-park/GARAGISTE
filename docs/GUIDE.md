@@ -14,9 +14,14 @@ cd ~/GARAGISTE && node --test "tests/*.test.mjs"      # 단위 + e2e 전부 통�
 ```bash
 ~/GARAGISTE/install.sh claude -Project ~/work/f1 -Budget medium     # Windows: ~\GARAGISTE\install.ps1 claude -Project ~\work\f1
 ```
-설치기가 `git init`, 팀 파일 복사, 첫 커밋(팀 파일만)까지 한다. team.json의 명령과 CLAUDE.md의 자리는 비어 있는 것이 정상이다 — 첫 unit `boot`가 채운다. 기존 프로젝트에 설치할 때도 같은 명령이고, 그때는 첫 커밋 대신 conductor가 `work.mjs commands`로 기존 검증 명령을 적는다.
+설치기가 `git init`, 팀 파일 복사, 첫 커밋(팀 파일만)까지 한다. 바로 이어서 **자가 진단**을 돌린다 — 이 기계에서 기계 루프(첫 커밋 → boot unit → 게이트 → ship)가 닫히는지 30초 안에 본다:
+```bash
+node .garagiste/scripts/selftest.mjs      # SELFTEST PASS n/n 이어야 한다. FAIL이면 그 출력을 그대로 붙여 달라
+``` team.json의 명령과 CLAUDE.md의 자리는 비어 있는 것이 정상이다 — 첫 unit `boot`가 채운다. 기존 프로젝트에 설치할 때도 같은 명령이고, 그때는 첫 커밋 대신 conductor가 `work.mjs commands`로 기존 검증 명령을 적는다.
 
 ## 3. 세션 열기
+권한: `.claude/settings.json`이 `defaultMode: acceptEdits`(파일 쓰기는 묻지 않음 — 경계는 guard 훅이 지킨다)와 allow 목록(`node .garagiste/scripts/*`·git 읽기·add·commit·worktree·npm/pnpm/python 등)을 갖는다. 그래도 프롬프트가 계속 뜨면 어떤 명령이었는지 붙여 달라 — allow 목록에 더한다.
+
 ```bash
 cd ~/work/f1 && claude
 ```

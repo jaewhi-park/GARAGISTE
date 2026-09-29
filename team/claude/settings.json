@@ -1,5 +1,25 @@
 {
   "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(node .garagiste/scripts/work.mjs:*)",
+      "Bash(node .garagiste/scripts/brief.mjs:*)",
+      "Bash(node .garagiste/scripts/verify.mjs:*)",
+      "Bash(node .garagiste/scripts/redproof.mjs:*)",
+      "Bash(node .garagiste/scripts/boundary.mjs:*)",
+      "Bash(node .garagiste/scripts/ship.mjs:*)",
+      "Bash(node .garagiste/scripts/state.mjs:*)",
+      "Bash(node .garagiste/scripts/claims.mjs:*)",
+      "Bash(node .garagiste/scripts/doctor.mjs:*)",
+      "Bash(node .garagiste/scripts/selftest.mjs:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)", "Bash(pnpm:*)", "Bash(npx:*)", "Bash(yarn:*)", "Bash(bun:*)", "Bash(deno:*)",
+      "Bash(python:*)", "Bash(python3:*)", "Bash(uv:*)", "Bash(pytest:*)", "Bash(pip:*)", "Bash(ruff:*)", "Bash(mypy:*)",
+      "Bash(cargo:*)", "Bash(go:*)", "Bash(dotnet:*)", "Bash(mvn:*)", "Bash(gradle:*)", "Bash(make:*)", "Bash(tsc:*)", "Bash(vitest:*)", "Bash(jest:*)", "Bash(playwright:*)",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(git branch:*)", "Bash(git rev-parse:*)", "Bash(git ls-files:*)",
+      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git worktree:*)", "Bash(git config core.hooksPath:*)", "Bash(git fetch:*)", "Bash(git switch:*)",
+      "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(wc:*)", "Bash(find:*)", "Bash(grep:*)", "Bash(rg:*)", "Bash(pwd)", "Bash(which:*)", "Bash(mkdir:*)", "Bash(touch:*)", "Bash(echo:*)", "Bash(date:*)", "Bash(tree:*)"
+    ],
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",

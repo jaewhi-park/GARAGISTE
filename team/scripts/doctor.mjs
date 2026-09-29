@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { REQUIRED_TEAM_KEYS, git, isMain, out, readJson, readText, scriptRoot } from './lib.mjs';
 
-export const SCRIPTS = ['lib', 'verify', 'redproof', 'work', 'brief', 'boundary', 'ship', 'state', 'claims', 'doctor', 'guard-rules', 'checkpoint'];
+export const SCRIPTS = ['lib', 'verify', 'redproof', 'work', 'brief', 'boundary', 'ship', 'state', 'claims', 'doctor', 'guard-rules', 'checkpoint', 'selftest'];
 export function harnesses(root) {
   const h = [];
   if (fs.existsSync(path.join(root, '.claude', 'settings.json'))) h.push('claude');
@@ -25,7 +25,10 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
   const hs = harnesses(root);
   if (!hs.length) p.push('하네스 배선 없음(.claude/settings.json도 opencode.json도 없다) → install.sh claude 또는 install.sh opencode');
   if (hs.includes('claude')) {
-    const cmds = JSON.stringify(readJson(path.join(root, '.claude', 'settings.json'), {}).hooks || {});
+    const settings = readJson(path.join(root, '.claude', 'settings.json'), {});
+    if (!Array.isArray(settings.permissions?.allow) || !settings.permissions.allow.length) p.push('.claude/settings.json에 permissions.allow 없음 → 모든 node·git 호출이 승인 프롬프트를 띄운다: team/claude/settings.json으로 교체');
+    if (settings.permissions?.defaultMode !== 'acceptEdits') p.push('.claude/settings.json permissions.defaultMode가 acceptEdits가 아님 → 팩의 파일 쓰기마다 승인을 묻는다(경계는 guard 훅이 지킨다)');
+    const cmds = JSON.stringify(settings.hooks || {});
     for (const h of ['session-start.mjs', 'guard.mjs', 'spawn-log.mjs']) {
       if (!cmds.includes(h)) p.push(`.claude/settings.json hooks에 ${h} 없음 → team/claude/settings.json과 비교`);
       if (!fs.existsSync(path.join(root, '.claude', 'hooks', h))) p.push(`.claude/hooks/${h} 없음 → install.sh claude 다시`);
