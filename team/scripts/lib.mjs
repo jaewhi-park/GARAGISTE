@@ -28,16 +28,18 @@ export function shell(cmdString, opts = {}) {
   const r = spawnSync(cmdString, { shell: true, encoding: 'utf8', ...opts, env });
   return { status: r.status ?? 1, stdout: r.stdout || '', stderr: r.stderr || '' };
 }
+// 경로는 비교 전에 하나의 표기로 — git은 Windows에서도 슬래시(C:/…)를, path.resolve는 역슬래시(C:\…)를, 드라이브 문자는 호출한 셸에 따라 대소문자를 달리 내놓는다.
+// realpath가 표기·대소문자·심볼릭 링크까지 디스크의 정본으로 맞춘다 (win32 사고: c.root!==c.main이 메인에서도 참이 되어 decide·drop·tried가 거부됐다)
+const canon = (p) => { try { return fs.realpathSync.native(p); } catch { return path.resolve(p); } };
 export function repoRoot(cwd = process.cwd()) {
   const r = git(['rev-parse', '--show-toplevel'], cwd);
   if (r.status) throw new Error('git 저장소가 아니다');
-  // git은 Windows에서도 슬래시(C:/…)를 내놓는다 — mainRoot(path.resolve, C:\…)와 문자열 비교가 가능하게 플랫폼 표기로 정규화한다(win32 사고: decide·drop·tried가 메인에서도 거부됐다)
-  return path.resolve(r.stdout);
+  return canon(r.stdout);
 }
 // worktree 안에서도 메인 저장소 루트 — 로컬 상태(원장·unit·팩)의 집
 export function mainRoot(cwd = process.cwd()) {
   const r = git(['rev-parse', '--git-common-dir'], cwd);
-  return path.dirname(path.resolve(cwd, r.stdout));
+  return canon(path.dirname(path.resolve(cwd, r.stdout)));
 }
 export const REQUIRED_TEAM_KEYS = ['version', 'protected_branch', 'models', 'commands', 'paths', 'boundary', 'budgets', 'sensors'];
 export function loadTeam(root) {

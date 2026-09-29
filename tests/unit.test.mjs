@@ -39,6 +39,11 @@ test('guard: 비밀·규칙집·원장은 쓰지 않는다 (GARAGISTE_ADMIN만 �
   assert.ok(decide(write('.githooks/pre-commit'), gctx(null)));
   assert.ok(decide(bash('echo x >> .garagiste/ledger/evidence.jsonl'), gctx(null)));
   assert.equal(decide(write('.garagiste/team.json'), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null);
+  assert.equal(decide(bash('cat .garagiste/scripts/lib.mjs'), gctx(null)), null, '규칙집 읽기는 경계가 아니다 — 첫 Windows 실기의 오탐(conductor의 진단이 막혔다)');
+  assert.equal(decide(bash('sed -n "30,40p" .garagiste/scripts/work.mjs'), gctx(null)), null, 'sed도 -i 없이는 읽기다');
+  assert.ok(decide(bash('echo x > .garagiste/team.json'), gctx(null)), '리다이렉트로 향하면 쓰기다');
+  assert.ok(decide(bash('sed -i "s/x/y/" .garagiste/scripts/lib.mjs'), gctx(null)), 'sed -i는 쓰기다');
+  assert.ok(decide(bash('cp lib.mjs .garagiste/scripts/lib.mjs'), gctx(null)));
 });
 test('guard: conductor는 쓰지 않는다 — worktree 밖 편집은 거부, GARAGISTE_ADMIN만 예외', () => {
   assert.match(decide(write('src/a.ts'), gctx(null)), /conductor는 쓰지 않는다/);
