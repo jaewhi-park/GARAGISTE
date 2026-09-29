@@ -5,7 +5,7 @@
 GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), twelve judgment-free scripts, a boundary hook or plugin, and a ledger.
 
 - **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
-- **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all seven conditions hold.
+- **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all eight conditions hold.
 - **The human gives one sentence, yes/no, and "tried it".** The first line of STATUS is all they read each day.
 
 ## There are agents — there are no personas
@@ -29,7 +29,7 @@ The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs ·
 | conductor | the main session (CLAUDE.md Flow) | the `conductor` primary agent (no edit permission) |
 | models | budget → `model:` in the agent files | inherits the default provider/model; per-pack `model:` by hand |
 
-Then fill `commands` (quick · full · test_file · run) in `.garagiste/team.json`. `quick` must exclude `tests/acceptance` and `tests/adversary` (they are committed red by design); `full` includes everything.
+The verification commands (`commands`: quick · full · test_file · run) are written by the first unit, `boot`, through `work.mjs commands` — there is no file for the human to fill. The rule: `quick` must exclude `tests/acceptance` and `tests/adversary` (they are committed red by design); `full` includes everything.
 
 ## The entrance — from an empty folder to scope
 Install is one command (`install.sh claude -Project <empty dir>`: git init, team files, first commit). After that there is no file for the human to fill in: the first unit, `boot` (kind scaffold), picks the stack, writes the verification commands, the smoke test and the rules file, and ships. You do not speak one sentence at a time; the unit of input is the whole conversation.
@@ -51,7 +51,7 @@ CEO sentence ─▶ work.mjs new <slug> "<verbatim>"      (boundary HIT → spik
              ─▶ brief.mjs spec  → red acceptance tests · try.md · surface.md → redproof.mjs = RED
              ─▶ brief.mjs build → red→green, verify quick per commit, the gate checks the ledger
              ─▶ brief.mjs attack → failing tests in tests/adversary → build respawn → red 0
-             ─▶ ship.mjs <slug> → 7 conditions → ff merge to main · LEDGER row · STATUS
+             ─▶ ship.mjs <slug> → 8 conditions → ff merge to main · LEDGER row · STATUS
 CEO "tried it" ─▶ work.mjs tried <slug> ok|fail
 ```
 Agents receive one pack file and never talk to each other. Build has never met attack — it only meets failing test files.
@@ -64,7 +64,7 @@ Agents receive one pack file and never talk to each other. Build has never met a
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
 | `redproof` | proves acceptance tests are red on base and green on head |
 | `boundary` | dependency · workflow · IPC · permission · egress keywords → spike required |
-| `ship` | 7 fail-closed conditions → ff merge · docs/LEDGER.md · STATUS |
+| `ship` | 8 fail-closed conditions → ff merge · docs/LEDGER.md · STATUS (rolls the merge back if main quick fails) |
 | `claims` | the claim graph: true · false · unsensed · unknown, sensor coverage, next |
 | `state` | generates docs/STATUS.md (first line is everything) · unattended stop budgets |
 | `doctor` | differential diagnosis — detects the harness, says what died and what to fix |
@@ -78,8 +78,8 @@ Agents receive one pack file and never talk to each other. Build has never met a
 
 ## Verify this repository
 ```
-node --test tests/unit.test.mjs   # 22 pure-function tests
-node --test tests/e2e.test.mjs    # birth test (claude) + opencode install: empty repo → shipped unit, zero model calls, zero network
+node --test tests/unit.test.mjs   # pure-function tests
+node --test tests/e2e.test.mjs    # birth test (claude) + ship atomicity + opencode install: empty repo → shipped unit, zero model calls, zero network
 ```
 
 ## v1

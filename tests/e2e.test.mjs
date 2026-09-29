@@ -26,7 +26,7 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'init'], repo).status, 0);
 
   // 설치 — 세 파일이 팀이다
-  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low'], repo);
+  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo);
   assert.equal(inst.status, 0, inst.out);
   const teamPath = path.join(repo, '.garagiste', 'team.json');
   const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
@@ -36,6 +36,11 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   assert.match(script('work', ['models', 'build=opus'], repo).out, /^MODELS .*build=opus.* → 6 에이전트 파일 갱신/);
   assert.match(fs.readFileSync(path.join(repo, '.claude/agents/build.md'), 'utf8'), /^model: opus$/m, 'work models가 team.json과 에이전트 파일을 함께 바꾼다');
   assert.match(script('work', ['models', 'low'], repo).out, /build=haiku/);
+  const re = run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
+  assert.equal(re.status, 0, re.out);
+  assert.match(fs.readFileSync(teamPath, 'utf8'), /"build": "haiku"/, 'R15: 재설치가 편성을 지우지 않는다 — 기존 team.json이 -Budget을 이긴다(v1 재적용병 회귀)');
+  assert.match(fs.readFileSync(path.join(repo, '.claude/agents/build.md'), 'utf8'), /^model: haiku$/m, 'R15: 에이전트 model:도 team.json이 정본');
+  assert.match(fs.readFileSync(path.join(repo, '.claude/settings.json'), 'utf8'), /permissions/, 'R15: 기존 settings.json 보존');
   team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/**/*.test.mjs"', test_file: 'node --test {file}', run: 'node src/cli.mjs' };
   fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
   fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
@@ -51,8 +56,10 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   assert.match(nw.out, /^UNIT hello spec \.worktrees\/hello/);
   const wt = path.join(repo, '.worktrees', 'hello');
   assert.equal(fs.readFileSync(path.join(wt, '.garagiste-pack'), 'utf8'), 'spec');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/hello.json'), 'utf8')).origin_kind, 'team', 'R3: 팀 세션의 new는 team — ADMIN(CEO 세션)만 ceo');
   assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] hello · M\? · needs: - · "이름을 주면 그 이름으로 인사한다" · 인수: -/);
   assert.match(script('work', ['new', 'net', '외부 API로 network 호출을 한다'], repo).out, /HIT .*keyword network/, 'boundary는 spike부터');
+  assert.match(script('brief', ['spike', 'net'], repo).out, /^PACK .*net-spike-/, 'R11: 안내대로 spike 팩이 spec 전에 열린다 — 측정은 인수 테스트를 기다리지 않는다');
 
   // spec: red 주장
   write(wt, 'tests/acceptance/hello.test.mjs', `// @claim 이름을 주면 "hello <이름>"을 출력한다
@@ -85,7 +92,9 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
   assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
 
   // 출하 시도 — attack 기록이 없으면 닫힌다
-  assert.match(script('ship', ['hello'], repo).out, /FAIL ship hello 1\/7\n- attack: attack 기록 없음/);
+  assert.match(script('ship', ['hello'], repo).out, /FAIL ship hello 1\/8\n- attack: attack 기록 없음/);
+  assert.match(script('work', ['tried', 'hello', 'ok'], wt).out, /^FAIL tried는 메인 저장소에서만/, 'R2: 팩이 자기 unit을 검수하지 못한다');
+  assert.match(script('work', ['commands', 'quick=echo x'], wt).out, /^FAIL commands는 boot/, 'R6: feature unit이 검증 명령을 재작성하지 못한다');
 
   // attack: 실패하는 테스트가 산출물
   assert.match(script('brief', ['attack', 'hello'], repo).out, /^PACK .*model=sonnet/);
@@ -139,9 +148,51 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   const sc = script('work', ['scope', 'export'], repo).out;
   assert.match(sc, /^SCOPE 요청 1 · 선행 2 · 없는 선행 0\n- 선행: session \(memo가 needs\) · memo \(export가 needs\)\n- 순서: session → memo → export/, sc);
   assert.match(script('work', ['seed'], repo).out, /^UNIT session spec \.worktrees\/session/, '선행이 먼저 열린다');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).origin_kind, 'seed', 'R1·R3: seed 경유는 seed — 팀 자발(team)도 CEO 접점(ceo)도 아니다');
   assert.match(script('work', ['seed'], repo).out, /^WAIT memo needs session — 선행 unit이 먼저/, '진행 중인 선행이 끝나야 다음이 열린다');
   assert.match(script('state', [], repo).out, /안 본 것 0\/3/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 범위\n- 요청 1 · 선행 2 · 출하 0\/3\n- 순서: session → memo → export/);
+});
+
+test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 기록이 되돌려진다', { timeout: 120000 }, () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-atomic-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  const flagged = `node -e "process.exit(require('fs').existsSync('.garagiste/session/failflag')?1:0)"`;
+  team.commands = { quick: flagged, full: flagged, test_file: 'node --test {file}', run: 'true' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  git(['add', '-A'], repo);
+  script('verify', ['quick'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  script('work', ['new', 'atom', '원자성 확인'], repo);
+  const wt = path.join(repo, '.worktrees', 'atom');
+  write(wt, 'tests/acceptance/atom.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';\ntest('atom 산출물', () => { assert.ok(fs.existsSync('src/atom.mjs')); });\n");
+  assert.match(script('redproof', ['atom'], wt).out, /^RED atom/);
+  git(['add', '-A'], wt); script('verify', ['quick'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'test(atom): red'], wt).status, 0);
+  write(wt, 'src/atom.mjs', '// atom\n');
+  write(wt, 'tests/adversary/atom-1.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';\ntest('빈 파일 아님', () => { assert.ok(fs.readFileSync('src/atom.mjs', 'utf8').length > 0); });\n");
+  git(['add', '-A'], wt); script('verify', ['quick'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'feat(atom): 산출물\n\nUnit: atom\nStep: 1'], wt).status, 0);
+  assert.match(script('redproof', ['atom'], wt).out, /^PASS redproof/);
+  assert.match(script('verify', ['attack', 'atom'], wt).out, /red 0\/1/);
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
+  const prevHead = git(['rev-parse', 'main'], repo).out.trim();
+  write(repo, '.garagiste/session/failflag', '1');
+  const s1 = script('ship', ['atom'], repo);
+  assert.match(s1.out, /머지를 되돌렸다/, s1.out);
+  assert.equal(git(['rev-parse', 'main'], repo).out.trim(), prevHead, 'main이 머지 전으로 돌아온다');
+  assert.notEqual(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/atom.json'), 'utf8')).state, 'shipped', 'unit은 출하되지 않았다');
+  assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] atom · /, 'BACKLOG 줄이 다시 열린다');
+  if (fs.existsSync(path.join(repo, 'docs/LEDGER.md'))) assert.doesNotMatch(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| atom \|/, 'LEDGER 행이 남지 않는다');
+  fs.rmSync(path.join(repo, '.garagiste/session/failflag'));
+  assert.match(script('ship', ['atom'], repo).out, /^SHIPPED atom/, '원인이 사라지면 같은 증거로 다시 ship된다');
 });
 
 test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents·guard 플러그인이 깔리고 doctor가 OK', () => {
@@ -149,7 +200,7 @@ test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents
   git(['init', '-q', '-b', 'main'], repo);
   write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
   git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
-  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'opencode', '-Project', repo], repo);
+  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'opencode', '-Project', repo, '-SkipSelftest'], repo);
   assert.equal(inst.status, 0, inst.out);
   for (const f of ['opencode.json', 'AGENTS.md', '.opencode/plugins/guard.ts', '.opencode/agents/conductor.md', '.opencode/agents/build.md', '.garagiste/scripts/guard-rules.mjs', '.garagiste/team.json', '.githooks/pre-commit']) assert.ok(fs.existsSync(path.join(repo, f)), f);
   assert.ok(!fs.existsSync(path.join(repo, '.claude')), 'Claude 배선은 깔리지 않는다');
@@ -167,6 +218,7 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low'], repo);
   assert.equal(inst.status, 0, inst.out);
   assert.match(inst.out, /git init/); assert.match(inst.out, /첫 커밋: 팀 파일/);
+  assert.match(inst.out, /SELFTEST PASS/, 'R15: 설치는 install→doctor→selftest 원샷이고 빨간 채로 완료를 선언하지 않는다');
   assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): GARAGISTE 증거 팀 설치/);
   assert.match(git(['ls-files', '-s', '.githooks/pre-commit'], repo).out, /^100755/, '훅의 실행 비트가 인덱스에 있다 — 없으면 맥·리눅스가 게이트를 무시한다');
   assert.match(script('doctor', [], repo).out, /commands.quick 비어 있음 → 첫 unit\(boot\)이 채운다/);
@@ -175,7 +227,10 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.match(script('work', ['add', 'boot', '터미널 메모 도구', '--milestone', 'M1', '--accept', '진입점이 뜨고 quick·full이 PASS', '--kind', 'scaffold'], repo).out, /^ADD boot M1 needs=- kind=scaffold/);
   script('work', ['add', 'memo-add', 'memo add로 남기고', '--milestone', 'M1', '--needs', 'boot'], repo);
   assert.match(script('work', ['scope', '--milestone', 'M1'], repo).out, /순서: boot → memo-add/);
+  const touchPath = path.join(repo, '.garagiste/session/ceo-touch');
+  const touchBefore = fs.readFileSync(touchPath, 'utf8');
   assert.match(script('work', ['seed'], repo).out, /^UNIT boot boot \.worktrees\/boot\nSCAFFOLD/);
+  assert.equal(fs.readFileSync(touchPath, 'utf8'), touchBefore, 'R1: seed는 CEO 접점이 아니다 — 매 seed가 무인 출하 카운터를 리셋하면 상한이 영영 안 걸린다');
   const wt = path.join(repo, '.worktrees', 'boot');
   assert.equal(fs.readFileSync(path.join(wt, '.garagiste-pack'), 'utf8'), 'boot');
   assert.match(script('brief', ['spec', 'boot'], repo).out, /^FAIL scaffold unit/, 'scaffold엔 spec 팩이 없다');
@@ -201,6 +256,9 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.match(fs.readFileSync(path.join(repo, 'CLAUDE.md'), 'utf8'), /^# memo/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| boot \| .* \| PASS \| scaffold \| — \|/);
   assert.match(script('work', ['seed'], repo).out, /^UNIT memo-add spec/, 'boot 뒤 다음 unit이 열린다');
+  git(['config', '--unset', 'core.hooksPath'], repo);
+  assert.match(script('work', ['seed'], repo).out, /^FAIL doctor \d+[\s\S]*core\.hooksPath/, 'R8: 병든 설치(게이트 침묵 꺼짐)에서 seed는 이유 전문과 함께 멈춘다');
+  git(['config', 'core.hooksPath', '.githooks'], repo);
   assert.match(script('doctor', [], repo).out, /^FAIL doctor 1\n- session-start alive/, '남은 건 첫 세션의 alive 마커뿐');
   const st = script('selftest', [], repo);
   assert.match(st.out, /SELFTEST PASS \d+\/\d+/, st.out);

@@ -4,6 +4,9 @@ import path from 'node:path';
 import { REQUIRED_TEAM_KEYS, git, isMain, out, readJson, readText, scriptRoot } from './lib.mjs';
 
 export const SCRIPTS = ['lib', 'verify', 'redproof', 'work', 'brief', 'boundary', 'ship', 'state', 'claims', 'doctor', 'guard-rules', 'checkpoint', 'selftest'];
+// 갓 설치된 저장소에서 정상인 항목 — 이것만 빼고 전부가 설치(--fresh)·seed·ship을 fail-closed로 막는다(훅 침묵사 계열이 여기 들어오면 안 된다)
+export const FRESH_OK = [/alive 마커 없음/, /commands\.(quick|full|test_file) 비어 있음/];
+export function blocking(problems) { return problems.filter((p) => !FRESH_OK.some((re) => re.test(p))); }
 export function harnesses(root) {
   const h = [];
   if (fs.existsSync(path.join(root, '.claude', 'settings.json'))) h.push('claude');
@@ -58,7 +61,7 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
 }
 function main() {
   const root = process.env.CLAUDE_PROJECT_DIR || scriptRoot(import.meta.url); // cwd가 아니라 이 스크립트가 설치된 저장소
-  const p = diagnose(root);
+  const p = process.argv.includes('--fresh') ? blocking(diagnose(root)) : diagnose(root);
   if (!p.length) return out(`OK doctor (${harnesses(root).join('+') || '하네스 없음'})`);
   out(`FAIL doctor ${p.length}\n${p.map((x) => `- ${x}`).join('\n')}`);
   process.exit(1);

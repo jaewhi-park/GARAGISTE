@@ -11,6 +11,7 @@
 4. 버그 unit이면 재현 테스트가 이미 red로 있다. 그 테스트를 초록으로 만드는 것 이상을 하지 않는다.
 5. surface.md 안에서 해결이 안 되면 코드를 늘리지 말고 마지막 줄에 `spec: <무엇이 막는가>`를 쓰고 멈춘다.
 6. 모두 green이면 `node .garagiste/scripts/verify.mjs full`. FAIL이면 로그 경로를 읽고 고친다.
+7. 마지막 커밋 뒤 `node .garagiste/scripts/redproof.mjs <slug>` — 원장은 tree 단위라 커밋이 있었으면 이전 증거는 무효다. ship이 낡은 증거로 FAIL하면 그 문구의 명령을 그대로 돌린다.
 
 하지 않는 것: `stash|rebase|merge|reset --hard|push`, 작업 디렉터리 밖 쓰기, 보고서 작성. 네가 죽으면 훅이 wip를 커밋한다 — 정리하려 애쓰지 않는다.
 마지막 출력은 세 줄 이하: 커밋 수 · verify full 결과 · `spec:` 줄(있으면).

@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
+import { blocking, diagnose } from './doctor.mjs';
 import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readText, saveUnit, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
@@ -116,6 +117,10 @@ function add(c, slug, origin, flags) {
 function createUnit(c, slug, origin, opts = {}) {
   if (!SLUG_RE.test(slug || '')) fail('FAIL slug: 소문자·숫자·하이픈 2~41자');
   if (!origin) fail('FAIL 원문이 없다');
+  // origin_kind = 이 unit이 어디서 왔나: seed(범위의 BACKLOG 경유) · ceo(CEO 본인 = ADMIN 세션) · team(팀 발의 — 연속 상한이 센다)
+  const from = opts.from || (process.env.GARAGISTE_ADMIN ? 'ceo' : 'team');
+  if (!['ceo', 'team', 'seed'].includes(from)) fail(`FAIL --from은 ceo|team (받은 값: ${from})`);
+  if (from === 'ceo' && opts.from === 'ceo' && !process.env.GARAGISTE_ADMIN) fail('FAIL --from ceo는 GARAGISTE_ADMIN=1(CEO 세션)에서만 — 팀 발의는 team이다');
   if (fs.existsSync(unitFile(c.main, c.team, slug))) fail(`FAIL unit 있음: ${slug}`);
   const wt = worktreeDir(c.main, c.team, slug);
   const branch = `unit/${slug}`;
@@ -126,13 +131,13 @@ function createUnit(c, slug, origin, opts = {}) {
   const kind = opts.kind || 'feature';
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec');
   const unit = {
-    slug, kind, origin, origin_kind: opts.from || 'ceo', milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
+    slug, kind, origin, origin_kind: from, milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
     created: new Date().toISOString(), state: kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt), boundary,
     defaults: [], questions: [], tried: null, shipped: null, sensor: null,
   };
   saveUnit(c.main, c.team, unit);
   if (!parseBacklog(readBacklog(c)).some((i) => i.slug === slug)) appendBacklog(c, backlogLine({ slug, origin, kind }));
-  if (unit.origin_kind === 'ceo') touchCeo(c.main);
+  // unit 생성은 CEO 접점이 아니다 — 접점은 brief·scope·decide·tried뿐. 여기서 touchCeo하면 매 seed가 무인 출하 상한을 리셋한다.
   appendLedger(c.main, c.team, { kind: 'unit', slug, state: unit.state, origin_kind: unit.origin_kind, milestone: unit.milestone });
   out(`UNIT ${slug} ${unit.state} ${unit.worktree}`);
   if (kind === 'scaffold') out('SCAFFOLD — boot 팩 하나로 끝난다(스택·명령·스모크·규칙 파일), spec·attack 없음');
@@ -165,6 +170,9 @@ function scope(c, args) {
   out('받으려면 work.mjs seed. 선행을 빼려면 --no-needs (CEO 결정, 원장에 남는다).');
 }
 function seed(c) {
+  // 병든 설치(훅 침묵·게이트 꺼짐)에서 unit을 만들지 않는다 — tacit을 죽인 조용한 죽음의 백신. fresh 항목(alive·빈 commands)은 통과.
+  const probs = blocking(diagnose(c.main));
+  if (probs.length) fail(`FAIL doctor ${probs.length} — 설치가 병든 채로 seed하지 않는다\n${probs.map((x) => `- ${x}`).join('\n')}`);
   const sc = readJson(scopePath(c), null);
   if (!sc) fail('FAIL scope 없음 — work.mjs scope <slug…>|--milestone M1|--range a..b');
   const items = parseBacklog(readBacklog(c));
@@ -172,7 +180,7 @@ function seed(c) {
   if (r.kind === 'done') return out('SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위를 정해라(work.mjs scope).');
   if (r.kind === 'active') return out(`ACTIVE ${r.slugs.join(', ')} — 진행 중인 unit이 끝나야 다음이 열린다`);
   if (r.kind === 'wait') return out(`WAIT ${r.slug} needs ${r.unmet.join(',')} — ${r.unmet.some((n) => /^Q\d+$/.test(n)) ? '결정이 먼저(work.mjs decide)' : '선행 unit이 먼저'}`);
-  createUnit(c, r.slug, r.item.origin, { milestone: r.item.milestone, needs: r.item.needs, accept: r.item.accept, kind: r.item.kind, from: 'ceo' });
+  createUnit(c, r.slug, r.item.origin, { milestone: r.item.milestone, needs: r.item.needs, accept: r.item.accept, kind: r.item.kind, from: 'seed' });
 }
 function decisionsFile(c) {
   const p = path.join(c.main, c.team.paths.decisions);
@@ -191,6 +199,7 @@ function ask(c, slug, question) {
   out(`Q${n} queued — ${slug === 'intake' ? `needs: Q${n}으로 기대는 unit은 답이 올 때까지 WAIT` : `${slug}은 답이 올 때까지 이 질문 밖에서만 진행`}`);
 }
 function decide(c, n, answer) {
+  if (c.root !== c.main) fail('FAIL decide는 메인 저장소에서만 — 질문의 답은 CEO 접점이다, 팩이 만들지 않는다');
   if (!answer) fail('FAIL 답이 없다: work.mjs decide <n> "<답>"');
   const p = decisionsFile(c);
   const updated = decideLine(readText(p), Number(n), answer, new Date().toISOString().slice(0, 10));
@@ -207,6 +216,7 @@ function setDefault(c, slug, text) {
   out(`DEFAULT ${slug}: ${text} — CEO가 한 마디로 뒤집는다`);
 }
 function tried(c, slug, result, note = '') {
+  if (c.root !== c.main) fail('FAIL tried는 메인 저장소에서만 — 팩이 자기 unit을 검수하지 않는다(CEO 접점)');
   if (!['ok', 'fail'].includes(result)) fail('사용법: work.mjs tried <slug> ok|fail ["메모"]');
   const u = loadUnit(c.main, c.team, slug);
   if (u.state !== 'shipped') fail(`FAIL ${slug} 아직 출하 전(${u.state})`);
@@ -216,11 +226,18 @@ function tried(c, slug, result, note = '') {
   if (result === 'fail') appendBacklog(c, backlogLine({ slug: `${slug}-fix`, milestone: u.milestone, origin: note || '써봤는데 실패 — 스펙 정정', accept: '-' }));
   out(`PASS tried ${slug} ${result}`);
 }
-// boot 팩의 쓰기 경로: team.json commands는 스크립트만 쓴다
+// boot 팩의 쓰기 경로: team.json commands는 스크립트만 쓴다 — 그리고 boot(scaffold) 컨텍스트만. 다른 팩이 검증 명령을 바꾸는 것은 초록 조작이다.
 function commands(c, args) {
   const teamPath = path.join(c.root, '.garagiste', 'team.json');
   const t = readJson(teamPath, null);
   if (!args.length) return out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`);
+  if (!process.env.GARAGISTE_ADMIN) {
+    const rel = path.relative(c.main, c.root).replace(/\\/g, '/');
+    const wtPrefix = c.team.paths.worktrees.replace(/^\.?\//, '') + '/';
+    const slug = rel.startsWith(wtPrefix) ? rel.slice(wtPrefix.length).split('/')[0] : null;
+    const u = slug ? readJson(unitFile(c.main, c.team, slug), null) : null;
+    if (!u || u.kind !== 'scaffold') fail('FAIL commands는 boot(scaffold) unit의 worktree 또는 GARAGISTE_ADMIN=1(CEO)에서만 — 검증 명령의 변경은 CEO 결정이다');
+  }
   for (const a of args) {
     const m = /^(quick|full|test_file|run)=([\s\S]*)$/.exec(a);
     if (!m) fail(`사용법: work.mjs commands quick="…" full="…" test_file="… {file}" run="…" — 받은 값: ${a}`);
