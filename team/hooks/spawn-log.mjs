@@ -1,0 +1,28 @@
+// spawn-log — SubagentStop. 죽는 에이전트에게 부탁하지 않는다: 더러운 worktree는 wip로 커밋해 이어받기를 보장한다.
+import fs from 'node:fs';
+import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+
+export function checkpoint(root) {
+  const dir = path.join(root, '.worktrees');
+  if (!fs.existsSync(dir)) return [];
+  const done = [];
+  for (const slug of fs.readdirSync(dir)) {
+    const wt = path.join(dir, slug);
+    if (!fs.existsSync(path.join(wt, '.git'))) continue;
+    const st = spawnSync('git', ['status', '--porcelain'], { cwd: wt, encoding: 'utf8' }).stdout.trim();
+    if (!st) continue;
+    spawnSync('git', ['add', '-A'], { cwd: wt });
+    const r = spawnSync('git', ['commit', '-q', '-m', `wip: ${slug} checkpoint (SubagentStop)`], { cwd: wt, env: { ...process.env, GARAGISTE_WIP: '1' } });
+    if (r.status === 0) done.push(slug);
+  }
+  return done;
+}
+function main() {
+  try { fs.readFileSync(0, 'utf8'); } catch { /* 입력 없음 */ }
+  const root = process.env.CLAUDE_PROJECT_DIR || process.cwd();
+  const done = checkpoint(root);
+  const ledger = path.join(root, '.claude', 'ledger', 'evidence.jsonl');
+  try { fs.mkdirSync(path.dirname(ledger), { recursive: true }); fs.appendFileSync(ledger, JSON.stringify({ ts: new Date().toISOString(), kind: 'spawn_stop', checkpointed: done }) + '\n'); } catch { /* 원장 없음 */ }
+}
+if (process.argv[1] && path.resolve(process.argv[1]) === new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')) main();
