@@ -196,3 +196,6 @@ L1 시험 준비 완료: 사전 등록 = **docs/measurements/L1-TRIAL.md**(동�
 - V1 측정: v2 브랜치 `docs/catalogue/V1-ANALYSIS.md`(2026-09-28) — plan당 고정비 ~70분, 코딩 41~47%, 결함을 잡은 것은 cs 리뷰(56%)와 「돌려 봄」(최고가 rework 4/4) 둘뿐, critic 15%·step-verifier 0, 규칙집 44→212KB, retro 제거 0, 질문 80% 추천 수락.
 - 제품 부검: LACUNA(`docs/DECISIONS.md:30` 하얀 화면 — 3 plan × 4~5렌즈 APPROVE 뒤 CEO 발견), AX(`docs/METRICS.md:51` plan 0046 — 22 blocker 해결·4렌즈 APPROVE 머지 후 당일 CEO 거부·삭제, `:47` logic 212줄에 spawn 753), tacit(마지막 커밋 "hook error" — 상대 경로 훅 침묵사).
 - v2 코드 감사 기준: 설치 커밋 95e9292(G2_TEST)·b0341cf(G2_TEST2), 2026-09-29.
+
+## 표 이후 후보 (시험 중 등록 — 장치는 동결 해제 뒤)
+- 팩 상한 이유-차선: LARGE_STEP 패턴을 brief.mjs에 이식 — 상한~2×는 이유 선언(원장 기록)으로 통과, 2×는 벽. 모양 휴리스틱(팩·step·산문)은 밴드, 증거 게이트·예산 정지는 벽이라는 구분의 성문화. 사고 8의 후속 (2026-09-29, CEO 발의).
