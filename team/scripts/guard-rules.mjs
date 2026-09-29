@@ -49,7 +49,8 @@ export function decide(input, ctx) {
     if (SECRET.test(abs)) return '비밀 파일(.env·*.pem·*.key·credentials)은 읽지도 쓰지도 않는다.';
     if (!admin && RULEBOOK.test(norm(abs))) return '규칙집·원장·unit 상태는 스크립트가 쓴다. 바꾸려면 hard 결정 → CEO가 GARAGISTE_ADMIN=1.';
     const w = worktreeOf(abs, ctx.worktreesDir);
-    if (w) {
+    if (!w) return admin ? null : 'conductor는 쓰지 않는다 — 쓰기는 worktree 안의 팩과 스크립트(work.mjs brief|add)만. 일반 편집 세션은 GARAGISTE_ADMIN=1.';
+    {
       const marker = ctx.readMarker(w.dir);
       const rule = PACK_RULES[marker];
       if (rule?.deny && rule.deny.some((re) => re.test(w.rel))) return `${marker} 팩은 ${w.rel}에 쓸 수 없다 — 테스트·프로브·hostile은 다른 팩의 경계다.`;

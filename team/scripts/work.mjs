@@ -1,11 +1,60 @@
-// work — unit의 생애: new(CEO 한 마디 → 브랜치·worktree·상태) · ask/decide(hard 결정 큐) · default(팀이 정한 것) · tried(써봤다) · list
+// work — unit의 생애와 입구: brief(구상 원문 축적) · add(BACKLOG unit 줄) · scope(범위 + 선행 닫힘) · seed(다음 unit 자동) · new · ask/decide · default · tried · list
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
-import { ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readText, saveUnit, touchCeo, unitFile, worktreeDir, appendLedger } from './lib.mjs';
+import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readText, saveUnit, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const DECISIONS_TEMPLATE = '# DECISIONS\n\n## 정해 주세요\n\n## 정한 것\n';
+const BACKLOG_HEAD = '# BACKLOG — 한 줄 = 한 unit. 형식: `- [ ] <slug> · M<n> · needs: <a,b|Q<n>|-> · "<원문 한 문장>" · 인수: <기계가 확인할 한 줄>`. 쓰기는 work.mjs만.\n\n';
+const q = (s) => String(s).replace(/"/g, '”').replace(/\n/g, ' ');
+
+export function backlogLine({ slug, milestone = 'M?', needs = [], origin, accept = '-' }) {
+  return `- [ ] ${slug} · ${milestone} · needs: ${needs.length ? needs.join(',') : '-'} · "${q(origin)}" · 인수: ${q(accept)}`;
+}
+export function parseBacklog(text) {
+  const items = [];
+  for (const line of (text || '').split('\n')) {
+    const m = /^- \[( |x)\] ([a-z0-9][a-z0-9-]*) · (\S+) · needs: (\S+) · "(.*)" · 인수: (.*)$/.exec(line);
+    if (m) items.push({ done: m[1] === 'x', slug: m[2], milestone: m[3], needs: m[4] === '-' ? [] : m[4].split(',').map((s) => s.trim()).filter(Boolean), origin: m[5], accept: m[6] });
+  }
+  return items;
+}
+// 범위 닫힘: 요청한 unit들이 기대는 선행을 끝까지 따라가 순서(선행 먼저, BACKLOG 순 안정)와 없는 선행을 낸다.
+export function closure(items, requested, { noNeeds = false } = {}) {
+  const by = new Map(items.map((i) => [i.slug, i]));
+  const order = []; const missing = new Set(); const seen = new Set(); const stack = new Set(); let cycle = null;
+  const visit = (slug) => {
+    if (seen.has(slug)) return; if (stack.has(slug)) { cycle = slug; return; }
+    const it = by.get(slug);
+    if (!it) { if (!/^Q\d+$/.test(slug)) missing.add(slug); return; }
+    stack.add(slug);
+    if (!noNeeds) for (const n of it.needs) visit(n);
+    stack.delete(slug); seen.add(slug);
+    if (!it.done) order.push(slug);
+  };
+  for (const r of requested) visit(r);
+  const required = order.filter((s) => !requested.includes(s));
+  return { requested: requested.filter((r) => by.has(r)), unknown: requested.filter((r) => !by.has(r)), required, missing: [...missing], order, cycle };
+}
+// 다음 unit: 순서상 첫 미완·미착수 unit 중 선행(unit 출하 또는 BACKLOG [x], Q<n>은 DECISIONS [x])이 전부 끝난 것
+export function pickReady({ order, items, units, decisionsText = '' }) {
+  const by = new Map(items.map((i) => [i.slug, i]));
+  const shipped = new Set(units.filter((u) => u.state === 'shipped').map((u) => u.slug));
+  const active = new Set(units.filter((u) => u.state !== 'shipped').map((u) => u.slug));
+  const closedQ = new Set([...decisionsText.matchAll(/^- \[x\] (Q\d+)/gm)].map((m) => m[1]));
+  const satisfied = (n) => (/^Q\d+$/.test(n) ? closedQ.has(n) : shipped.has(n) || by.get(n)?.done === true);
+  const remaining = order.filter((s) => !shipped.has(s) && !(by.get(s)?.done));
+  if (!remaining.length) return { kind: 'done' };
+  for (const s of remaining) {
+    if (active.has(s)) continue;
+    const unmet = (by.get(s)?.needs || []).filter((n) => !satisfied(n));
+    if (!unmet.length) return { kind: 'ready', slug: s, item: by.get(s) };
+  }
+  const first = remaining.find((s) => !active.has(s));
+  if (!first) return { kind: 'active', slugs: remaining.filter((s) => active.has(s)) };
+  return { kind: 'wait', slug: first, unmet: (by.get(first)?.needs || []).filter((n) => !satisfied(n)) };
+}
 export function nextQuestionNumber(text) {
   const nums = [...text.matchAll(/^- \[[ x]\] Q(\d+)/gm)].map((m) => Number(m[1]));
   return nums.length ? Math.max(...nums) + 1 : 1;
@@ -15,31 +64,91 @@ export function decideLine(text, n, answer, date) {
   if (!re.test(text)) return null;
   return text.replace(re, (_, rest) => `- [x] Q${n}${rest} → ${answer} (${date})`);
 }
-function newUnit(c, slug, origin, opts) {
+
+const backlogPath = (c) => path.join(c.main, c.team.paths.backlog);
+function readBacklog(c) { return readText(backlogPath(c)); }
+function appendBacklog(c, line) {
+  const p = backlogPath(c); fs.mkdirSync(path.dirname(p), { recursive: true });
+  if (!fs.existsSync(p)) fs.writeFileSync(p, BACKLOG_HEAD);
+  fs.appendFileSync(p, line + '\n');
+}
+function brief(c, args) {
+  const p = path.join(c.main, c.team.paths.brief); fs.mkdirSync(path.dirname(p), { recursive: true });
+  let text = '';
+  if (args[0] === '--file') { text = readText(args[1]); if (!text) fail(`FAIL 파일 없음: ${args[1]}`); }
+  else text = args.join(' ');
+  if (!text.trim()) fail('사용법: work.mjs brief "<CEO 말 그대로>" | --file <PRD 경로>');
+  if (!fs.existsSync(p)) fs.writeFileSync(p, '# BRIEF — CEO의 말 그대로. 요약·해석 없음. 팩은 이 파일을 데이터로 받는다.\n');
+  fs.appendFileSync(p, `\n## ${new Date().toISOString().slice(0, 16).replace('T', ' ')}${args[0] === '--file' ? ` (${path.basename(args[1])})` : ''}\n${text.trim()}\n`);
+  touchCeo(c.main);
+  out(`BRIEF +${text.trim().split('\n').length}줄 ${Buffer.byteLength(text)}B → ${c.team.paths.brief}`);
+}
+function add(c, slug, origin, flags) {
   if (!SLUG_RE.test(slug || '')) fail('FAIL slug: 소문자·숫자·하이픈 2~41자');
-  if (!origin) fail('FAIL 원문이 없다: work.mjs new <slug> "<CEO 말 그대로>"');
+  if (!origin) fail('FAIL 원문이 없다: work.mjs add <slug> "<원문 한 문장>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"]');
+  if (parseBacklog(readBacklog(c)).some((i) => i.slug === slug)) fail(`FAIL BACKLOG에 있음: ${slug}`);
+  const needs = (flags.needs || '-') === '-' ? [] : flags.needs.split(',').map((s) => s.trim()).filter(Boolean);
+  appendBacklog(c, backlogLine({ slug, milestone: flags.milestone || 'M?', needs, origin, accept: flags.accept || '-' }));
+  out(`ADD ${slug} ${flags.milestone || 'M?'} needs=${needs.join(',') || '-'}`);
+}
+function createUnit(c, slug, origin, opts = {}) {
+  if (!SLUG_RE.test(slug || '')) fail('FAIL slug: 소문자·숫자·하이픈 2~41자');
+  if (!origin) fail('FAIL 원문이 없다');
   if (fs.existsSync(unitFile(c.main, c.team, slug))) fail(`FAIL unit 있음: ${slug}`);
   const wt = worktreeDir(c.main, c.team, slug);
   const branch = `unit/${slug}`;
-  const add = git(['worktree', 'add', '-q', '-b', branch, wt, c.team.protected_branch], c.main);
-  if (add.status) fail(`FAIL worktree: ${add.stderr}`);
+  const addWt = git(['worktree', 'add', '-q', '-b', branch, wt, c.team.protected_branch], c.main);
+  if (addWt.status) fail(`FAIL worktree: ${addWt.stderr}`);
   linkDeps(c.main, wt);
   const boundary = checkBoundary(c.team, { text: origin });
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), boundary.hit ? 'spike' : 'spec');
   const unit = {
-    slug, kind: opts.kind || 'feature', origin, origin_kind: opts.from || 'ceo', created: new Date().toISOString(),
-    state: boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt), boundary,
+    slug, kind: opts.kind || 'feature', origin, origin_kind: opts.from || 'ceo', milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
+    created: new Date().toISOString(), state: boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt), boundary,
     defaults: [], questions: [], tried: null, shipped: null, sensor: null,
   };
   saveUnit(c.main, c.team, unit);
-  const backlog = path.join(c.main, c.team.paths.backlog);
-  fs.mkdirSync(path.dirname(backlog), { recursive: true });
-  if (!fs.existsSync(backlog)) fs.writeFileSync(backlog, '# BACKLOG — CEO의 말 그대로. 팀은 여기서 unit을 뜬다.\n\n');
-  fs.appendFileSync(backlog, `- [ ] ${slug} — "${origin.replace(/\n/g, ' ')}" (${unit.created.slice(0, 10)})\n`);
+  if (!parseBacklog(readBacklog(c)).some((i) => i.slug === slug)) appendBacklog(c, backlogLine({ slug, origin }));
   if (unit.origin_kind === 'ceo') touchCeo(c.main);
-  appendLedger(c.main, c.team, { kind: 'unit', slug, state: unit.state, origin_kind: unit.origin_kind });
+  appendLedger(c.main, c.team, { kind: 'unit', slug, state: unit.state, origin_kind: unit.origin_kind, milestone: unit.milestone });
   out(`UNIT ${slug} ${unit.state} ${unit.worktree}`);
   if (boundary.hit) out(`HIT ${boundary.reasons.join(', ')} — spike 팩부터`);
+}
+const scopePath = (c) => path.join(c.main, '.garagiste', 'scope.json');
+function scope(c, args) {
+  const items = parseBacklog(readBacklog(c));
+  if (!items.length) fail('FAIL BACKLOG가 비었다 — work.mjs brief → intake 팩 → work.mjs add');
+  const noNeeds = args.includes('--no-needs');
+  const rest = args.filter((a) => a !== '--no-needs');
+  let requested = [];
+  if (rest[0] === '--milestone') requested = items.filter((i) => i.milestone === rest[1]).map((i) => i.slug);
+  else if (rest[0] === '--range') {
+    const [a, b] = (rest[1] || '').split('..'); const ia = items.findIndex((i) => i.slug === a); const ib = items.findIndex((i) => i.slug === b);
+    if (ia < 0 || ib < 0) fail(`FAIL range: ${a}..${b} — BACKLOG에 없는 slug`);
+    requested = items.slice(Math.min(ia, ib), Math.max(ia, ib) + 1).map((i) => i.slug);
+  } else requested = rest;
+  if (!requested.length) fail('사용법: work.mjs scope <slug…> | --milestone M1 | --range a..b [--no-needs]');
+  const cl = closure(items, requested, { noNeeds });
+  if (cl.unknown.length) fail(`FAIL BACKLOG에 없는 slug: ${cl.unknown.join(', ')}`);
+  if (cl.cycle) fail(`FAIL needs 순환: ${cl.cycle}`);
+  writeJson(scopePath(c), { ...cl, noNeeds, at: new Date().toISOString() });
+  touchCeo(c.main);
+  appendLedger(c.main, c.team, { kind: 'scope', requested: cl.requested, required: cl.required, missing: cl.missing, noNeeds });
+  out(`SCOPE 요청 ${cl.requested.length} · 선행 ${cl.required.length} · 없는 선행 ${cl.missing.length}${noNeeds ? ' · 선행 무시(--no-needs)' : ''}`);
+  if (cl.required.length) { const by = new Map(items.map((i) => [i.slug, i])); out(`- 선행: ${cl.required.map((s) => `${s} (${items.filter((i) => i.needs.includes(s) && cl.order.includes(i.slug)).map((i) => i.slug).join(',')}가 needs)`).join(' · ')}`); void by; }
+  if (cl.missing.length) out(`- 없는 선행: ${cl.missing.join(', ')} — intake가 추가하거나 needs를 고쳐라`);
+  out(`- 순서: ${cl.order.join(' → ')}`);
+  out('받으려면 work.mjs seed. 선행을 빼려면 --no-needs (CEO 결정, 원장에 남는다).');
+}
+function seed(c) {
+  const sc = readJson(scopePath(c), null);
+  if (!sc) fail('FAIL scope 없음 — work.mjs scope <slug…>|--milestone M1|--range a..b');
+  const items = parseBacklog(readBacklog(c));
+  const r = pickReady({ order: sc.order, items, units: listUnits(c.main, c.team), decisionsText: readText(path.join(c.main, c.team.paths.decisions)) });
+  if (r.kind === 'done') return out('SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위를 정해라(work.mjs scope).');
+  if (r.kind === 'active') return out(`ACTIVE ${r.slugs.join(', ')} — 진행 중인 unit이 끝나야 다음이 열린다`);
+  if (r.kind === 'wait') return out(`WAIT ${r.slug} needs ${r.unmet.join(',')} — ${r.unmet.some((n) => /^Q\d+$/.test(n)) ? '결정이 먼저(work.mjs decide)' : '선행 unit이 먼저'}`);
+  createUnit(c, r.slug, r.item.origin, { milestone: r.item.milestone, needs: r.item.needs, accept: r.item.accept, from: 'ceo' });
 }
 function decisionsFile(c) {
   const p = path.join(c.main, c.team.paths.decisions);
@@ -48,15 +157,14 @@ function decisionsFile(c) {
 }
 function ask(c, slug, question) {
   if (!question) fail('FAIL 질문이 없다');
-  const u = loadUnit(c.main, c.team, slug);
+  const u = slug === 'intake' ? null : loadUnit(c.main, c.team, slug);
   const p = decisionsFile(c);
   const text = readText(p);
   const n = nextQuestionNumber(text);
-  const line = `- [ ] Q${n} (${slug}): ${question.replace(/\n/g, ' ')}`;
-  const updated = text.includes('## 정해 주세요') ? text.replace('## 정해 주세요\n', `## 정해 주세요\n${line}\n`) : text + `\n## 정해 주세요\n${line}\n`;
-  fs.writeFileSync(p, updated);
-  u.questions.push(n); saveUnit(c.main, c.team, u);
-  out(`Q${n} queued — ${slug} 은 답이 올 때까지 이 질문 밖에서만 진행`);
+  const line = `- [ ] Q${n} (${slug}): ${q(question)}`;
+  fs.writeFileSync(p, text.includes('## 정해 주세요') ? text.replace('## 정해 주세요\n', `## 정해 주세요\n${line}\n`) : text + `\n## 정해 주세요\n${line}\n`);
+  if (u) { u.questions.push(n); saveUnit(c.main, c.team, u); }
+  out(`Q${n} queued — ${slug === 'intake' ? `needs: Q${n}으로 기대는 unit은 답이 올 때까지 WAIT` : `${slug}은 답이 올 때까지 이 질문 밖에서만 진행`}`);
 }
 function decide(c, n, answer) {
   if (!answer) fail('FAIL 답이 없다: work.mjs decide <n> "<답>"');
@@ -81,25 +189,29 @@ function tried(c, slug, result, note = '') {
   u.tried = { result, note, at: new Date().toISOString() }; saveUnit(c.main, c.team, u);
   touchCeo(c.main);
   appendLedger(c.main, c.team, { kind: 'tried', slug, result, note });
-  if (result === 'fail') fs.appendFileSync(path.join(c.main, c.team.paths.backlog), `- [ ] ${slug}-fix — "${note || '써봤는데 실패'}" (tried fail, 스펙 정정)\n`);
+  if (result === 'fail') appendBacklog(c, backlogLine({ slug: `${slug}-fix`, milestone: u.milestone, origin: note || '써봤는데 실패 — 스펙 정정', accept: '-' }));
   out(`PASS tried ${slug} ${result}`);
 }
 function list(c) {
   const units = listUnits(c.main, c.team);
   if (!units.length) return out('unit 없음');
-  for (const u of units) out(`${u.slug.padEnd(24)} ${u.state.padEnd(8)} ${u.kind.padEnd(12)} tried=${u.tried ? u.tried.result : '-'} ${u.boundary.hit ? 'HIT' : ''}`);
+  for (const u of units) out(`${u.slug.padEnd(24)} ${u.state.padEnd(8)} ${(u.milestone || 'M?').padEnd(4)} tried=${u.tried ? u.tried.result : '-'} ${u.boundary.hit ? 'HIT' : ''}`);
 }
 function main() {
-  const [cmd, a, b, ...rest] = process.argv.slice(2);
+  const [cmd, ...raw] = process.argv.slice(2);
   const c = ctx();
-  const flags = {}; const positional = [];
-  for (let i = 0; i < rest.length + 2; i++) { const x = [a, b, ...rest][i]; if (x === undefined) continue; if (x.startsWith('--')) flags[x.slice(2)] = [a, b, ...rest][++i]; else positional.push(x); }
-  if (cmd === 'new') return newUnit(c, positional[0], positional[1], flags);
-  if (cmd === 'ask') return ask(c, positional[0], positional[1]);
-  if (cmd === 'decide') return decide(c, positional[0], positional[1]);
-  if (cmd === 'default') return setDefault(c, positional[0], positional[1]);
-  if (cmd === 'tried') return tried(c, positional[0], positional[1], positional[2]);
+  const flags = {}; const pos = [];
+  for (let i = 0; i < raw.length; i++) { if (raw[i].startsWith('--') && cmd !== 'brief' && cmd !== 'scope') flags[raw[i].slice(2)] = raw[++i]; else pos.push(raw[i]); }
+  if (cmd === 'brief') return brief(c, raw);
+  if (cmd === 'add') return add(c, pos[0], pos[1], flags);
+  if (cmd === 'scope') return scope(c, raw);
+  if (cmd === 'seed') return seed(c);
+  if (cmd === 'new') return createUnit(c, pos[0], pos[1], flags);
+  if (cmd === 'ask') return ask(c, pos[0], pos[1]);
+  if (cmd === 'decide') return decide(c, pos[0], pos[1]);
+  if (cmd === 'default') return setDefault(c, pos[0], pos[1]);
+  if (cmd === 'tried') return tried(c, pos[0], pos[1], pos[2]);
   if (cmd === 'list') return list(c);
-  fail('사용법: work.mjs new <slug> "<원문>" [--kind feature|bug|boundary|architecture] [--from ceo|team] | ask <slug> "<질문>" | decide <n> "<답>" | default <slug> "<정한 것>" | tried <slug> ok|fail ["메모"] | list');
+  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" · decide <n> "<답>" · default <slug> "<정한 것>" · tried <slug> ok|fail · list');
 }
 if (isMain(import.meta.url)) main();

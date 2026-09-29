@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { collect, coverage } from './claims.mjs';
-import { ceoTouch, ctx, isMain, listUnits, out, readLedger, readText } from './lib.mjs';
+import { ceoTouch, ctx, isMain, listUnits, out, readJson, readLedger, readText } from './lib.mjs';
 
 export function firstLine({ run, unseen, unseenMax, unobservedOs, decisionsOpen, coveragePct, uncertain }) {
   return `실행: ${run || '—'} · 안 본 것 ${unseen}/${unseenMax} · target-OS 미관측 ${unobservedOs} · 결정 대기 ${decisionsOpen} · 센서 커버리지 ${coveragePct}% · 불확실: ${uncertain || '없음'}`;
@@ -44,6 +44,10 @@ export function render(c) {
   const defaults = units.flatMap((u) => u.defaults.map((d) => `- ${u.slug}: ${d.text}`)).slice(-10);
   parts.push(...(defaults.length ? defaults : ['- 없음']));
   parts.push('', '## 멈춘 이유', ...(b.stops.length ? b.stops.map((s) => `- ${s}`) : ['- 없음 — 팀은 돈다']));
+  const sc = readJson(path.join(c.main, '.garagiste', 'scope.json'), null);
+  parts.push('', '## 범위');
+  if (sc) { const done = sc.order.filter((s2) => units.some((u) => u.slug === s2 && u.state === 'shipped')).length; parts.push(`- 요청 ${sc.requested.length} · 선행 ${sc.required.length} · 출하 ${done}/${sc.order.length}${sc.missing.length ? ` · 없는 선행: ${sc.missing.join(', ')}` : ''}${sc.noNeeds ? ' · 선행 무시' : ''}`, `- 순서: ${sc.order.join(' → ')}`); }
+  else parts.push('- 없음 — work.mjs scope로 정한다');
   parts.push('', '## 진행 중');
   const open = units.filter((u) => u.state !== 'shipped');
   parts.push(...(open.length ? open.map((u) => `- ${u.slug} (${u.state}${u.boundary.hit ? ', boundary' : ''}) — "${u.origin}"`) : ['- 없음']));

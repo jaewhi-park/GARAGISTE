@@ -73,7 +73,7 @@ function main() {
   const at = [...ledger].reverse().find((e) => e.kind === 'attack' && e.slug === slug);
   fs.appendFileSync(ledgerDoc, `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | base_red head_green | 0/${at ? at.total : 0} | ${unit.sensor} |\n`);
   const backlog = path.join(c.main, c.team.paths.backlog);
-  if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[ \\] ${slug} —`, 'm'), `- [x] ${slug} —`));
+  if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `));
   fs.writeFileSync(path.join(c.main, c.team.paths.status), render(c).text);
   const docs = DOC_OK(c.team).filter((f) => fs.existsSync(path.join(c.main, f)));
   git(['add', ...docs], c.main);

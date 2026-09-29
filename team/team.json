@@ -1,7 +1,7 @@
 {
   "version": 2,
   "protected_branch": "main",
-  "models": { "spec": "opus", "build": "sonnet", "attack": "opus", "spike": "sonnet" },
+  "models": { "intake": "opus", "spec": "opus", "build": "sonnet", "attack": "opus", "spike": "sonnet" },
   "commands": {
     "quick": "",
     "full": "",
