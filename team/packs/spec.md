@@ -13,5 +13,6 @@
 4. `surface.md` ≤10줄: build가 부를 인터페이스와 설계 노트. 데이터 모델·파일 형식은 정하지 않는다 — 그것은 hard 결정이라 `node .garagiste/scripts/work.mjs ask <slug> "<질문>"`으로 큐에 넣는다.
 5. 원문이 정하지 않은 것을 네가 정했다면 `work.mjs default <slug> "<정한 것>"`에 남긴다(CEO가 한 마디로 뒤집는다).
 6. 끝내기 전에 `node .garagiste/scripts/redproof.mjs <slug>` → `RED` 줄을 확인한다. red가 아니면 테스트가 아니다.
+7. 이미 인수 테스트가 있는 unit(re-spec — CEO의 말이 바뀌었다)이면: 새 원문과 어긋나는 주장만 고치고 나머지는 건드리지 않는다. 끝은 같다 — redproof RED.
 
 마지막 출력은 다섯 줄 이하: 쓴 파일 · 주장 수 · human 주장 수 · 질문 수 · redproof 결과.

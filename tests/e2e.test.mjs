@@ -156,6 +156,13 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(sc, /^SCOPE 요청 1 · 선행 2 · 없는 선행 0\n- 선행: session \(memo가 needs\) · memo \(export가 needs\)\n- 순서: session → memo → export/, sc);
   assert.match(script('work', ['seed'], repo).out, /^UNIT session spec \.worktrees\/session/, '선행이 먼저 열린다');
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).origin_kind, 'seed', 'R1·R3: seed 경유는 seed — 팀 자발(team)도 CEO 접점(ceo)도 아니다');
+  // Q1 re-spec: 진행 중 unit의 수용을 다시 연다 — 정체(팩)가 spec으로 돌아온다
+  const swt = path.join(repo, '.worktrees', 'session');
+  write(swt, 'tests/acceptance/session.test.mjs', "import test from 'node:test'; test('로그인한 사람만', () => { throw new Error('red'); });\n");
+  script('brief', ['build', 'session'], repo);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).state, 'build');
+  assert.match(script('brief', ['spec', 'session'], repo).out, /PACK .*session-spec-/, 'Q1 re-spec: 진행 중 unit에 spec 팩이 다시 열린다');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).state, 'spec', '정체가 spec으로 돌아와 수용을 고칠 수 있다 — 「저게 낫겠더라」의 착지점');
   assert.match(script('work', ['seed'], repo).out, /^WAIT memo needs session — 선행 unit이 먼저/, '진행 중인 선행이 끝나야 다음이 열린다');
   assert.match(script('state', [], repo).out, /안 본 것 0\/3/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 범위\n- 요청 1 · 선행 2 · 출하 0\/3\n- 순서: session → memo → export/);
