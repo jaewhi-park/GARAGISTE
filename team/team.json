@@ -47,7 +47,7 @@
     "unattended_ship_max": 5,
     "no_ceo_units_max": 2,
     "prose_kb_max": 40,
-    "pack_kb_max": 8,
+    "pack_kb_max": 16,
     "step_logic_lines_max": 300,
     "spike_minutes": 30
   },

@@ -20,3 +20,4 @@
 - `.garagiste/scripts/**` · 가드가 커밋 메시지 트레일러(<…>)의 >를 리다이렉트로 오탐해 커밋을 거부했다(첫 Windows 실기) · 검사: 따옴표 안은 데이터, $()·백틱만 실행으로 남김(stripQuoted) — guard 단위 테스트
 - `.garagiste/scripts/**` · models가 규칙집(team.json·agents)을 main에 고쳐 두고 커밋 경로가 없어 ship이 막혔다(2차 실기) · 검사: models는 산출물을 스스로 scaffold(team) 커밋(내부 SHIP·WIP 차선) — e2e(models 뒤 main 깨끗)
 - `.garagiste/scripts/**` · main의 models 커밋과 boot의 commands 커밋이 team.json에서 rebase 충돌 — FAIL 문구가 scaffold에 없는 build 팩을 가리켜 spawn 1회를 낭비시켰다(2차 실기) · 검사: 키 단위 3-way 기계 병합(mergeTeamJson) + kind 맞는 팩 이름 — unit·e2e 테스트
+- `.garagiste/scripts/**` `.garagiste/team.json` · 첫 실제 build 팩(12KB)이 상한 8KB를 넘어 루프가 멈췄다 — 상한은 실측 없는 추정이었고, 초과분은 법(인수 5.4KB)이 아니라 부대물이었다(2차 실기) · 검사: 기본 상한 16KB + fit이 이어받기·try·surface를 포인터로 강등(법은 불가침) — unit 테스트
