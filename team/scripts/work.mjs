@@ -5,11 +5,11 @@ import { checkBoundary } from './boundary.mjs';
 import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readText, saveUnit, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
-export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike'];
+export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot'];
 export const TIERS = {
-  low: { intake: 'sonnet', spec: 'sonnet', build: 'haiku', attack: 'sonnet', spike: 'haiku' },
-  medium: { intake: 'opus', spec: 'opus', build: 'sonnet', attack: 'opus', spike: 'sonnet' },
-  high: { intake: 'opus', spec: 'opus', build: 'opus', attack: 'opus', spike: 'sonnet' },
+  low: { intake: 'sonnet', spec: 'sonnet', build: 'haiku', attack: 'sonnet', spike: 'haiku', boot: 'haiku' },
+  medium: { intake: 'opus', spec: 'opus', build: 'sonnet', attack: 'opus', spike: 'sonnet', boot: 'sonnet' },
+  high: { intake: 'opus', spec: 'opus', build: 'opus', attack: 'opus', spike: 'sonnet', boot: 'sonnet' },
 };
 // 편성 한 곳: team.json.models가 정본, 하네스의 에이전트 파일 앞머리 `model:`은 거기서 재생성
 export function resolveModels(current, args) {
@@ -31,14 +31,14 @@ export const DECISIONS_TEMPLATE = '# DECISIONS\n\n## 정해 주세요\n\n## 정�
 const BACKLOG_HEAD = '# BACKLOG — 한 줄 = 한 unit. 형식: `- [ ] <slug> · M<n> · needs: <a,b|Q<n>|-> · "<원문 한 문장>" · 인수: <기계가 확인할 한 줄>`. 쓰기는 work.mjs만.\n\n';
 const q = (s) => String(s).replace(/"/g, '”').replace(/\n/g, ' ');
 
-export function backlogLine({ slug, milestone = 'M?', needs = [], origin, accept = '-' }) {
-  return `- [ ] ${slug} · ${milestone} · needs: ${needs.length ? needs.join(',') : '-'} · "${q(origin)}" · 인수: ${q(accept)}`;
+export function backlogLine({ slug, milestone = 'M?', needs = [], origin, accept = '-', kind }) {
+  return `- [ ] ${slug} · ${milestone} · needs: ${needs.length ? needs.join(',') : '-'} · "${q(origin)}" · 인수: ${q(accept)}${kind && kind !== 'feature' ? ` · kind: ${kind}` : ''}`;
 }
 export function parseBacklog(text) {
   const items = [];
   for (const line of (text || '').split('\n')) {
-    const m = /^- \[( |x)\] ([a-z0-9][a-z0-9-]*) · (\S+) · needs: (\S+) · "(.*)" · 인수: (.*)$/.exec(line);
-    if (m) items.push({ done: m[1] === 'x', slug: m[2], milestone: m[3], needs: m[4] === '-' ? [] : m[4].split(',').map((s) => s.trim()).filter(Boolean), origin: m[5], accept: m[6] });
+    const m = /^- \[( |x)\] ([a-z0-9][a-z0-9-]*) · (\S+) · needs: (\S+) · "(.*)" · 인수: (.*?)(?: · kind: ([a-z]+))?$/.exec(line);
+    if (m) items.push({ done: m[1] === 'x', slug: m[2], milestone: m[3], needs: m[4] === '-' ? [] : m[4].split(',').map((s) => s.trim()).filter(Boolean), origin: m[5], accept: m[6], kind: m[7] || 'feature' });
   }
   return items;
 }
@@ -110,8 +110,8 @@ function add(c, slug, origin, flags) {
   if (!origin) fail('FAIL 원문이 없다: work.mjs add <slug> "<원문 한 문장>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"]');
   if (parseBacklog(readBacklog(c)).some((i) => i.slug === slug)) fail(`FAIL BACKLOG에 있음: ${slug}`);
   const needs = (flags.needs || '-') === '-' ? [] : flags.needs.split(',').map((s) => s.trim()).filter(Boolean);
-  appendBacklog(c, backlogLine({ slug, milestone: flags.milestone || 'M?', needs, origin, accept: flags.accept || '-' }));
-  out(`ADD ${slug} ${flags.milestone || 'M?'} needs=${needs.join(',') || '-'}`);
+  appendBacklog(c, backlogLine({ slug, milestone: flags.milestone || 'M?', needs, origin, accept: flags.accept || '-', kind: flags.kind }));
+  out(`ADD ${slug} ${flags.milestone || 'M?'} needs=${needs.join(',') || '-'}${flags.kind && flags.kind !== 'feature' ? ` kind=${flags.kind}` : ''}`);
 }
 function createUnit(c, slug, origin, opts = {}) {
   if (!SLUG_RE.test(slug || '')) fail('FAIL slug: 소문자·숫자·하이픈 2~41자');
@@ -123,18 +123,20 @@ function createUnit(c, slug, origin, opts = {}) {
   if (addWt.status) fail(`FAIL worktree: ${addWt.stderr}`);
   linkDeps(c.main, wt);
   const boundary = checkBoundary(c.team, { text: origin });
-  fs.writeFileSync(path.join(wt, '.garagiste-pack'), boundary.hit ? 'spike' : 'spec');
+  const kind = opts.kind || 'feature';
+  fs.writeFileSync(path.join(wt, '.garagiste-pack'), kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec');
   const unit = {
-    slug, kind: opts.kind || 'feature', origin, origin_kind: opts.from || 'ceo', milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
-    created: new Date().toISOString(), state: boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt), boundary,
+    slug, kind, origin, origin_kind: opts.from || 'ceo', milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
+    created: new Date().toISOString(), state: kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt), boundary,
     defaults: [], questions: [], tried: null, shipped: null, sensor: null,
   };
   saveUnit(c.main, c.team, unit);
-  if (!parseBacklog(readBacklog(c)).some((i) => i.slug === slug)) appendBacklog(c, backlogLine({ slug, origin }));
+  if (!parseBacklog(readBacklog(c)).some((i) => i.slug === slug)) appendBacklog(c, backlogLine({ slug, origin, kind }));
   if (unit.origin_kind === 'ceo') touchCeo(c.main);
   appendLedger(c.main, c.team, { kind: 'unit', slug, state: unit.state, origin_kind: unit.origin_kind, milestone: unit.milestone });
   out(`UNIT ${slug} ${unit.state} ${unit.worktree}`);
-  if (boundary.hit) out(`HIT ${boundary.reasons.join(', ')} — spike 팩부터`);
+  if (kind === 'scaffold') out('SCAFFOLD — boot 팩 하나로 끝난다(스택·명령·스모크·규칙 파일), spec·attack 없음');
+  else if (boundary.hit) out(`HIT ${boundary.reasons.join(', ')} — spike 팩부터`);
 }
 const scopePath = (c) => path.join(c.main, '.garagiste', 'scope.json');
 function scope(c, args) {
@@ -170,7 +172,7 @@ function seed(c) {
   if (r.kind === 'done') return out('SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위를 정해라(work.mjs scope).');
   if (r.kind === 'active') return out(`ACTIVE ${r.slugs.join(', ')} — 진행 중인 unit이 끝나야 다음이 열린다`);
   if (r.kind === 'wait') return out(`WAIT ${r.slug} needs ${r.unmet.join(',')} — ${r.unmet.some((n) => /^Q\d+$/.test(n)) ? '결정이 먼저(work.mjs decide)' : '선행 unit이 먼저'}`);
-  createUnit(c, r.slug, r.item.origin, { milestone: r.item.milestone, needs: r.item.needs, accept: r.item.accept, from: 'ceo' });
+  createUnit(c, r.slug, r.item.origin, { milestone: r.item.milestone, needs: r.item.needs, accept: r.item.accept, kind: r.item.kind, from: 'ceo' });
 }
 function decisionsFile(c) {
   const p = path.join(c.main, c.team.paths.decisions);
@@ -214,6 +216,34 @@ function tried(c, slug, result, note = '') {
   if (result === 'fail') appendBacklog(c, backlogLine({ slug: `${slug}-fix`, milestone: u.milestone, origin: note || '써봤는데 실패 — 스펙 정정', accept: '-' }));
   out(`PASS tried ${slug} ${result}`);
 }
+// boot 팩의 쓰기 경로: team.json commands는 스크립트만 쓴다
+function commands(c, args) {
+  const teamPath = path.join(c.root, '.garagiste', 'team.json');
+  const t = readJson(teamPath, null);
+  if (!args.length) return out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`);
+  for (const a of args) {
+    const m = /^(quick|full|test_file|run)=([\s\S]*)$/.exec(a);
+    if (!m) fail(`사용법: work.mjs commands quick="…" full="…" test_file="… {file}" run="…" — 받은 값: ${a}`);
+    if (m[1] === 'test_file' && !m[2].includes('{file}')) fail('FAIL test_file에는 {file} 자리표시자가 있어야 한다');
+    t.commands[m[1]] = m[2];
+  }
+  writeJson(teamPath, t);
+  appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root) || '.' });
+  out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`);
+}
+// 규칙 파일의 {{…}} 자리 — boot 팩이 채운다(CLAUDE.md 또는 AGENTS.md)
+function rules(c, args) {
+  const file = ['CLAUDE.md', 'AGENTS.md'].map((f) => path.join(c.root, f)).find((f) => fs.existsSync(f));
+  if (!file) fail('FAIL 규칙 파일 없음(CLAUDE.md·AGENTS.md)');
+  let text = readText(file);
+  const t = readJson(path.join(c.root, '.garagiste', 'team.json'), { commands: {} });
+  const vals = { QUICK: t.commands.quick, FULL: t.commands.full, TEST_FILE: t.commands.test_file, RUN: t.commands.run };
+  for (const a of args) { const m = /^(project|one_line)=([\s\S]*)$/.exec(a); if (!m) fail(`사용법: work.mjs rules project="<이름>" one_line="<한 줄>"`); vals[m[1].toUpperCase()] = m[2]; }
+  const left = [];
+  text = text.replace(/\{\{([A-Z_]+)\}\}/g, (all, k) => (vals[k] ? vals[k] : (left.push(k), all)));
+  fs.writeFileSync(file, text);
+  out(`RULES ${path.basename(file)}${left.length ? ` 남은 자리: ${[...new Set(left)].join(', ')}` : ' 자리 전부 채움'}`);
+}
 function models(c, args) {
   const teamPath = path.join(c.main, '.garagiste', 'team.json');
   const t = readJson(teamPath, null);
@@ -244,7 +274,7 @@ function main() {
   const [cmd, ...raw] = process.argv.slice(2);
   const c = ctx();
   const flags = {}; const pos = [];
-  for (let i = 0; i < raw.length; i++) { if (raw[i].startsWith('--') && cmd !== 'brief' && cmd !== 'scope' && cmd !== 'models') flags[raw[i].slice(2)] = raw[++i]; else pos.push(raw[i]); }
+  for (let i = 0; i < raw.length; i++) { if (raw[i].startsWith('--') && !['brief', 'scope', 'models', 'commands', 'rules'].includes(cmd)) flags[raw[i].slice(2)] = raw[++i]; else pos.push(raw[i]); }
   if (cmd === 'brief') return brief(c, raw);
   if (cmd === 'add') return add(c, pos[0], pos[1], flags);
   if (cmd === 'scope') return scope(c, raw);
@@ -256,7 +286,9 @@ function main() {
   if (cmd === 'tried') return tried(c, pos[0], pos[1], pos[2]);
   if (cmd === 'list') return list(c);
   if (cmd === 'models') return models(c, raw);
+  if (cmd === 'commands') return commands(c, raw);
+  if (cmd === 'rules') return rules(c, raw);
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
-  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" · decide <n> "<답>" · default <slug> "<정한 것>" · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · spawned <slug> <팩> [--tokens N --minutes M]');
+  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" · decide <n> "<답>" · default <slug> "<정한 것>" · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug> <팩> [--tokens N --minutes M]');
 }
 if (isMain(import.meta.url)) main();

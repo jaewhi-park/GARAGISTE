@@ -10,28 +10,11 @@ cd ~/GARAGISTE && node --test "tests/*.test.mjs"      # 단위 + e2e 전부 통�
 `main`에는 아직 v1이 있다. v2는 이 브랜치다(PR·머지는 네 결정).
 
 ## 2. 시험 저장소 만들기 (feasibility 1 — 작은 CLI, UI 없음)
-빈 Node 프로젝트 하나. 기존 프로젝트를 쓰지 않는다 — 코드 0줄에서 시작하는 것이 시험의 뜻이다.
+빈 폴더 하나와 명령 한 줄. 사람이 채울 파일은 없다.
 ```bash
-mkdir -p ~/work/f1 && cd ~/work/f1 && git init -b main
-printf '{ "name": "f1", "type": "module", "private": true }\n' > package.json
-mkdir -p tests/unit && printf "import test from 'node:test'; test('smoke', () => {});\n" > tests/unit/smoke.test.mjs
-git add -A && git commit -m "init"
-~/GARAGISTE/install.sh claude -Project . -Budget medium        # Windows: ~\GARAGISTE\install.ps1 claude -Project .
+~/GARAGISTE/install.sh claude -Project ~/work/f1 -Budget medium     # Windows: ~\GARAGISTE\install.ps1 claude -Project ~\work\f1
 ```
-설치기가 만든 `.garagiste/team.json`의 `commands`를 채운다(그대로 붙여도 된다):
-```json
-"quick": "node --test \"tests/unit/**/*.test.mjs\"",
-"full": "node --test \"tests/**/*.test.mjs\"",
-"test_file": "node --test {file}",
-"run": "node src/cli.mjs"
-```
-규칙: `quick`은 `tests/acceptance`·`tests/adversary`를 **포함하지 않는다**(둘은 red 상태로 커밋되는 것이 정상이라 커밋 게이트와 충돌한다). `full`은 전부.
-`CLAUDE.md`의 `{{…}}` 자리를 채운다(프로젝트 이름·한 줄·명령 넷). 그 뒤 첫 커밋:
-```bash
-git add -A && node .garagiste/scripts/verify.mjs quick && GARAGISTE_SHIP=1 git commit -m "scaffold: team"
-node .garagiste/scripts/doctor.mjs      # alive 마커 한 줄만 빠지면 정상(첫 세션 전)
-```
-`GARAGISTE_SHIP=1`은 보호 브랜치(main)에 직접 커밋하는 유일한 예외다 — 설치 커밋에만 쓴다. 그 뒤 main에 닿는 것은 `ship.mjs`뿐이다.
+설치기가 `git init`, 팀 파일 복사, 첫 커밋(팀 파일만)까지 한다. team.json의 명령과 CLAUDE.md의 자리는 비어 있는 것이 정상이다 — 첫 unit `boot`가 채운다. 기존 프로젝트에 설치할 때도 같은 명령이고, 그때는 첫 커밋 대신 conductor가 `work.mjs commands`로 기존 검증 명령을 적는다.
 
 ## 3. 세션 열기
 ```bash
@@ -44,9 +27,9 @@ session-start 훅이 첫 줄에 `GARAGISTE 증거 팀 — 이 세션은 conducto
 ## 4. 시험 진행 — CEO가 하는 말과 보는 것
 1. **구상.** 자유롭게 말한다. 끝나면 "이 내용으로 brief 축적해" — conductor가 `work.mjs brief`로 원문을 docs/BRIEF.md에 쌓는다. feasibility 1의 brief는 이 한 문단으로 충분하다:
    > 터미널에서 쓰는 메모 도구. `memo add "<글>"`로 메모를 남기고, `memo list`로 최신순으로 보고, `memo find <단어>`로 찾는다. 메모는 홈 폴더의 `.memo/` 아래 하루 한 파일(마크다운)로 저장되고, 파일을 손으로 고쳐도 다음 명령이 그대로 읽는다. 외부 네트워크는 쓰지 않는다.
-2. **"개발해."** conductor가 `brief.mjs intake` → intake 팩 spawn. 결과: docs/BACKLOG.md에 unit 줄, docs/DECISIONS.md에 예/아니오 질문. 질문에는 `node .garagiste/scripts/work.mjs decide <n> "<답>"`으로 답한다(또는 말로 — conductor가 대신 친다).
+2. **"개발해."** conductor가 `brief.mjs intake` → intake 팩 spawn. 결과: docs/BACKLOG.md에 unit 줄(코드가 없으면 첫 줄은 `boot` · kind scaffold — 스택·명령·스모크·규칙 파일을 채우는 unit), docs/DECISIONS.md에 예/아니오 질문. 질문에는 `node .garagiste/scripts/work.mjs decide <n> "<답>"`으로 답한다(또는 말로 — conductor가 대신 친다).
 3. **범위.** "M1 전부" 또는 "add와 list만". conductor가 `work.mjs scope …`를 치고 SCOPE 줄(요청 n · 선행 m · 순서)을 보여 준다. 받으면 "가".
-4. **루프.** conductor가 `seed` → spec(opus) → redproof → build(sonnet) → attack(opus) → build → ship을 돈다. 네가 볼 것은 docs/STATUS.md 첫 줄과 「써볼 것」뿐이다.
+4. **루프.** conductor가 `seed` → (boot는 boot 팩 하나 → ship) → 다음 unit은 spec(opus) → redproof → build(sonnet) → attack(opus) → build → ship. 네가 볼 것은 docs/STATUS.md 첫 줄과 「써볼 것」뿐이다.
 5. **써봤다.** STATUS의 try 카드대로 명령을 쳐 보고 `node .garagiste/scripts/work.mjs tried <slug> ok|fail "<메모>"`.
 
 ## 5. 무엇을 재나 (판정선)
@@ -70,14 +53,15 @@ node .garagiste/scripts/work.mjs models              # 지금 편성
 node .garagiste/scripts/work.mjs models low          # tier 통째로
 node .garagiste/scripts/work.mjs models build=opus   # 팩 하나
 ```
-| tier | intake | spec | build | attack | spike |
-|---|---|---|---|---|---|
-| low | sonnet | sonnet | haiku | sonnet | haiku |
-| medium | opus | opus | sonnet | opus | sonnet |
-| high | opus | opus | opus | opus | sonnet |
+| tier | intake | spec | build | attack | spike | boot |
+|---|---|---|---|---|---|---|
+| low | sonnet | sonnet | haiku | sonnet | haiku | haiku |
+| medium | opus | opus | sonnet | opus | sonnet | sonnet |
+| high | opus | opus | opus | opus | sonnet | sonnet |
 opencode는 기본 provider/model을 상속한다. 팩별로 바꾸려면 같은 명령이 `.opencode/agents/<팩>.md`의 `model:`을 쓴다(값은 `provider/model`).
 
 ## 7. 막히면
+- **설치 직후 doctor가 commands 비어 있음을 말한다.** 정상이다 — boot unit이 채운다. 세션을 열고 만들 것을 말하라.
 - **커밋이 거부된다.** 원장에 그 tree의 quick PASS가 없다는 뜻이다. `node .garagiste/scripts/verify.mjs quick` 뒤 다시. `--no-verify`는 없다(설계).
 - **"인덱스 ≠ 작업 트리".** 스테이지 안 한 파일이 있다. 전부 `git add -A` 하거나 되돌린다. 로컬 상태(`.garagiste/ledger·units·session·scope.json`, `.worktrees/`)는 .gitignore에 있어야 한다.
 - **테스트가 root에서 다르게 돈다(컨테이너).** `.garagiste/env.local`(추적 안 함)에 `GARAGISTE_RUNNER=…`를 두면 verify가 그 환경으로 돈다. 맥에선 필요 없다.

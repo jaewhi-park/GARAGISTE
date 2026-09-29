@@ -1,7 +1,7 @@
 // ship — 7조건 fail-closed. 통과하면 ff 머지 + LEDGER + STATUS. 이 스크립트만 보호 브랜치에 닿는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadUnit, out, readLedger, readText, saveUnit, shell, short, workTree, worktreeDir, ceoTouch, listUnits, listFiles } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, readLedger, readText, saveUnit, shell, short, workTree, worktreeDir, ceoTouch, listUnits, listFiles } from './lib.mjs';
 import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { budgetStatus, render } from './state.mjs';
@@ -13,13 +13,14 @@ export function evaluateShip(x) {
   c.push({ id: 'unit', ok: !!x.unit && x.unit.state !== 'shipped' && x.worktreeExists && x.clean, why: !x.unit ? 'unit 없음' : x.unit.state === 'shipped' ? '이미 출하' : !x.worktreeExists ? 'worktree 없음' : !x.clean ? '작업 트리가 깨끗하지 않다' : '' });
   const full = x.ledger.find((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === x.tree && x.machineOs.includes(e.platform));
   c.push({ id: 'full', ok: !!full, why: full ? '' : `이 tree(${short(x.tree)})의 verify full PASS(machine OS) 없음` });
-  const rp = x.ledger.find((e) => e.kind === 'redproof' && e.slug === x.slug && e.base_red && e.head_green === true && e.tree === x.tree);
+  const scaffold = x.unit?.kind === 'scaffold';
+  const rp = scaffold || x.ledger.find((e) => e.kind === 'redproof' && e.slug === x.slug && e.base_red && e.head_green === true && e.tree === x.tree);
   c.push({ id: 'redproof', ok: !!rp, why: rp ? '' : 'base red · head green 증명 없음 — redproof.mjs' });
   const at = [...x.ledger].reverse().find((e) => e.kind === 'attack' && e.slug === x.slug && e.tree === x.tree);
-  const atOk = !x.requireAttack || (!!at && at.red === 0 && at.total >= 1);
+  const atOk = scaffold || !x.requireAttack || (!!at && at.red === 0 && at.total >= 1);
   c.push({ id: 'attack', ok: atOk, why: atOk ? '' : !at ? 'attack 기록 없음 — attack 팩을 돌려라' : at.total < 1 ? 'adversary 테스트 0개' : `adversary red ${at.red}` });
   const hit = x.boundaryHit ?? !!x.unit?.boundary?.hit;
-  const sp = !hit || spikeComplete(x.spikeText);
+  const sp = scaffold || !hit || spikeComplete(x.spikeText); // scaffold(boot)의 매니페스트는 그 unit의 일이라 spike를 요구하지 않는다
   c.push({ id: 'spike', ok: sp, why: sp ? '' : `boundary HIT(${x.boundaryWhy || '원문'})인데 spike 필수 행(${SPIKE_ROWS.join('·')}) 미완` });
   const head = !/^wip:/.test(x.lastSubject || '');
   c.push({ id: 'head', ok: head, why: head ? '' : 'HEAD가 wip 체크포인트 — build를 다시 띄워 끝내라' });
@@ -69,6 +70,7 @@ function main() {
   }
   const mg = git(['merge', '--ff-only', unit.branch], c.main);
   if (mg.status) fail(`FAIL ship: ff 머지 실패 — ${mg.stderr}`);
+  c.team = loadTeam(c.main); // boot unit이 team.json commands를 바꿨을 수 있다
   const head = headSha(c.main);
   const tags = acceptanceFiles(c.main, c.team, slug).map((f) => parseTags(readText(path.join(c.main, f))));
   unit.sensor = tags.find((t) => t.sensor.startsWith('human'))?.sensor || 'machine';
@@ -77,7 +79,7 @@ function main() {
   const ledgerDoc = path.join(c.main, c.team.paths.ledger_doc);
   if (!fs.existsSync(ledgerDoc)) fs.writeFileSync(ledgerDoc, '# LEDGER — 증명 커밋. 한 줄 = 출하 하나 = 기계가 확인한 사실의 목록.\n\n| 날짜 | unit | head | tree | full | redproof | attack | sensor |\n|---|---|---|---|---|---|---|---|\n');
   const at = [...ledger].reverse().find((e) => e.kind === 'attack' && e.slug === slug);
-  fs.appendFileSync(ledgerDoc, `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | base_red head_green | 0/${at ? at.total : 0} | ${unit.sensor} |\n`);
+  fs.appendFileSync(ledgerDoc, `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'} | ${unit.kind === 'scaffold' ? '—' : `0/${at ? at.total : 0}`} | ${unit.sensor} |\n`);
   const backlog = path.join(c.main, c.team.paths.backlog);
   if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `));
   fs.writeFileSync(path.join(c.main, c.team.paths.status), render(c).text);
@@ -86,7 +88,7 @@ function main() {
   const q = shell(c.team.commands.quick, { cwd: c.main });
   appendLedger(c.main, c.team, { kind: 'verify', mode: 'quick', tree: workTree(c.main), head, exit: q.status, platform: process.platform, where: '.', ship: true });
   if (q.status) fail('FAIL ship: 머지 뒤 main quick FAIL — 문서 커밋을 멈춤(원인은 통합)');
-  const msg = `ship(${slug}): ${unit.origin.replace(/\n/g, ' ').slice(0, 60)}\n\nUnit: ${slug}\nHead: ${short(head)}\nFull: ${short(newTree)}\nRedproof: base_red head_green\nAttack: 0/${at ? at.total : 0}\nSensor: ${unit.sensor}`;
+  const msg = `ship(${slug}): ${unit.origin.replace(/\n/g, ' ').slice(0, 60)}\n\nUnit: ${slug}\nKind: ${unit.kind}\nHead: ${short(head)}\nFull: ${short(newTree)}\nRedproof: ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'}\nAttack: ${unit.kind === 'scaffold' ? '—' : `0/${at ? at.total : 0}`}\nSensor: ${unit.sensor}`;
   const cm = git(['commit', '-q', '-m', msg], c.main, { GARAGISTE_SHIP: '1' });
   if (cm.status) fail(`FAIL ship: 문서 커밋 실패 — ${cm.stderr}`);
   git(['worktree', 'remove', wt], c.main);

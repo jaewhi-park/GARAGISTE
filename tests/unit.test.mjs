@@ -47,6 +47,12 @@ test('guard: conductor는 쓰지 않는다 — worktree 밖 편집은 거부, GA
   assert.equal(decide(write(`${root}/.worktrees/hello/src/a.ts`), gctx('build')), null);
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs add x "y"'), gctx(null)), null, '쓰기는 스크립트로');
 });
+test('guard: boot 팩은 매니페스트·src·유닛 스모크·규칙 파일 자리만 — 인수 테스트·규칙집은 아니다', () => {
+  const wt = `${root}/.worktrees/boot`;
+  for (const f of ['package.json', '.node-version', 'src/cli.mjs', 'tests/unit/smoke.test.mjs', 'CLAUDE.md', 'vitest.config.ts', 'README.md']) assert.equal(decide(write(`${wt}/${f}`), gctx('boot')), null, f);
+  assert.ok(decide(write(`${wt}/tests/acceptance/x.test.mjs`), gctx('boot')));
+  assert.ok(decide(write(`${wt}/.garagiste/team.json`), gctx('boot')), 'team.json은 work.mjs commands로만');
+});
 test('guard: 팩의 쓰기 경계 — build는 테스트에, spec은 소스에 쓸 수 없다', () => {
   const wt = `${root}/.worktrees/hello`;
   assert.ok(decide(write(`${wt}/tests/acceptance/hello.test.mjs`), gctx('build')));
@@ -98,6 +104,7 @@ test('verify gate: 로직 변경엔 테스트가, 보호 브랜치엔 ship만, s
   assert.equal(gateDecision({ ...big, env: { GARAGISTE_LARGE_STEP: '이유' } }).ok, true);
   assert.equal(gateDecision({ ...big, numstat: '700\t0\tsrc/a.ts', env: { GARAGISTE_LARGE_STEP: '이유' } }).ok, false, '2×는 이유로도 안 된다');
   assert.equal(gateDecision({ ...b, ledger: [], env: { GARAGISTE_WIP: '1' } }).ok, true, 'wip 체크포인트는 원장 면제');
+  assert.equal(gateDecision({ ...b, ledger: [], branch: 'main', hasHead: false }).initial, true, '첫 커밋(HEAD 없음)은 설치기가 만든다 — 원장이 있을 수 없다');
 });
 test('claims: 태그 파싱, 기계 센서 커버리지, 다음 거짓 주장은 마일스톤 순', () => {
   const t = parseTags('// @claim 인사한다\n// @milestone M2\n// @sensor human@win32');
@@ -126,6 +133,8 @@ test('ship: 7조건 — 하나라도 빠지면 fail-closed', () => {
   assert.deepEqual(evaluateShip({ ...x, stops: ['미검수 3'] }).filter((k) => !k.ok).map((k) => k.id), ['budget']);
   assert.deepEqual(evaluateShip({ ...x, proseKb: 41 }).filter((k) => !k.ok).map((k) => k.id), ['budget']);
   assert.deepEqual(evaluateShip({ ...x, clean: false }).filter((k) => !k.ok).map((k) => k.id), ['unit']);
+  assert.equal(evaluateShip({ ...x, unit: { ...unit, kind: 'scaffold' }, ledger: [ledger[0]] }).filter((k) => !k.ok).length, 0, 'scaffold(boot)는 redproof·attack 없이 full만으로 ship');
+  assert.equal(evaluateShip({ ...x, unit: { ...unit, kind: 'scaffold' }, ledger: [ledger[0]], boundaryHit: true }).filter((k) => !k.ok).length, 0, 'scaffold의 매니페스트는 spike 대상이 아니다');
 });
 test('ship: spike는 필수 행 다섯이 전부 있어야 끝난 것이다', () => {
   assert.equal(spikeComplete('- wire: 없음\n- host: linux node 22\n- license: MIT 동봉\n- default: 포트 3000\n- os: 없음'), true);
@@ -185,9 +194,12 @@ test('doctor: 빈 저장소는 무엇을 치라고 한 줄씩 말한다', () => 
 test('work: BACKLOG 줄은 slug·마일스톤·needs·원문·인수를 왕복한다', () => {
   const line = backlogLine({ slug: 'login', milestone: 'M2', needs: ['session', 'Q3'], origin: '이메일로 "로그인"한다', accept: 'POST /login → 200' });
   const [it] = parseBacklog(line);
-  assert.deepEqual(it, { done: false, slug: 'login', milestone: 'M2', needs: ['session', 'Q3'], origin: '이메일로 ”로그인”한다', accept: 'POST /login → 200' });
+  assert.deepEqual(it, { done: false, slug: 'login', milestone: 'M2', needs: ['session', 'Q3'], origin: '이메일로 ”로그인”한다', accept: 'POST /login → 200', kind: 'feature' });
   assert.equal(parseBacklog('- [x] a · M1 · needs: - · "x" · 인수: -')[0].done, true);
   assert.equal(parseBacklog('- [ ] 옛 형식 — "x"').length, 0);
+  const b = parseBacklog(backlogLine({ slug: 'boot', origin: '메모 도구', accept: '뜬다', kind: 'scaffold' }))[0];
+  assert.equal(b.kind, 'scaffold'); assert.equal(b.accept, '뜬다');
+  assert.equal(parseBacklog(backlogLine({ slug: 'x', origin: 'y' }))[0].kind, 'feature');
 });
 test('work scope: 선행은 needs 간선의 닫힘이고 순서는 선행 먼저', () => {
   const items = parseBacklog(['- [ ] db · M1 · needs: - · "db" · 인수: -', '- [ ] session · M1 · needs: db · "s" · 인수: -', '- [ ] login · M2 · needs: session · "l" · 인수: -', '- [ ] export · M2 · needs: fmt · "e" · 인수: -', '- [ ] share · M3 · needs: - · "sh" · 인수: -'].join('\n'));
@@ -234,6 +246,7 @@ test('work models: tier 한 단어 또는 팩=모델, 에이전트 앞머리 mod
   assert.equal(resolveModels(TIERS.medium, ['build=opus']).build, 'opus');
   assert.equal(resolveModels(TIERS.medium, ['build=opus']).spec, 'opus');
   assert.throws(() => resolveModels(TIERS.medium, ['critic=opus']), /팩/);
+  assert.equal(TIERS.medium.boot, 'sonnet');
   assert.match(setFrontmatterModel('---\nname: build\nmodel: sonnet\ntools: Read\n---\n본문', 'opus'), /^---\nname: build\nmodel: opus\ntools: Read\n---\n본문$/);
   assert.match(setFrontmatterModel('---\ndescription: x\nmode: subagent\n---\n본문', 'anthropic/claude-sonnet-4-5'), /^---\nmodel: anthropic\/claude-sonnet-4-5\ndescription: x/);
 });

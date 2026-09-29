@@ -19,8 +19,9 @@ export function logicLines(numstat) {
   }
   return n;
 }
-export function gateDecision({ index, work, ledger, staged, branchFiles = [], numstat, branch, protectedBranch, env = {}, budgets }) {
+export function gateDecision({ index, work, ledger, staged, branchFiles = [], numstat, branch, protectedBranch, env = {}, budgets, hasHead = true }) {
   const reasons = [];
+  if (!hasHead) return { ok: true, reasons, wip: false, logic: 0, initial: true }; // 첫 커밋: 원장이 있을 수 없다 — 설치기가 만든다
   if (branch === protectedBranch && !env.GARAGISTE_SHIP) reasons.push(`보호 브랜치(${protectedBranch})에 직접 커밋 — ship.mjs만 머지한다`);
   if (env.GARAGISTE_WIP) return { ok: reasons.length === 0, reasons, wip: true, logic: 0 };
   if (index !== work) reasons.push('인덱스 ≠ 작업 트리 — 원장은 작업 트리를 증명한다: 전부 스테이지하거나 되돌려라');
@@ -78,10 +79,11 @@ function gate(c) {
     branchFiles: base ? git(['diff', '--name-only', `${base}..HEAD`], c.root).stdout.split('\n').filter(Boolean) : [],
     numstat: git(['diff', '--cached', '--numstat'], c.root).stdout,
     branch: currentBranch(c.root), protectedBranch: c.team.protected_branch, env: process.env, budgets: c.team.budgets,
+    hasHead: !git(['rev-parse', '--verify', '-q', 'HEAD'], c.root).status,
   });
   if (!d.ok) fail(`FAIL gate\n${d.reasons.map((r) => `- ${r}`).join('\n')}`);
-  appendLedger(c.main, c.team, { kind: 'gate', tree: indexTree(c.root), branch: currentBranch(c.root), logic: d.logic, wip: d.wip, large: process.env.GARAGISTE_LARGE_STEP || null, ship: !!process.env.GARAGISTE_SHIP });
-  out(`PASS gate${d.wip ? ' wip' : ''}`);
+  appendLedger(c.main, c.team, { kind: 'gate', tree: indexTree(c.root), branch: currentBranch(c.root), logic: d.logic, wip: d.wip, initial: !!d.initial, large: process.env.GARAGISTE_LARGE_STEP || null, ship: !!process.env.GARAGISTE_SHIP });
+  out(`PASS gate${d.wip ? ' wip' : ''}${d.initial ? ' initial' : ''}`);
 }
 function main() {
   const [mode, arg] = process.argv.slice(2);

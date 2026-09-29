@@ -4,10 +4,11 @@ param([Parameter(Position=0)][string]$Flavor = "", [string]$Project = ".", [stri
 $ErrorActionPreference = "Stop"
 if ($Flavor -notin @("claude", "opencode")) { Write-Host "하네스: claude 또는 opencode"; exit 1 }
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Root = (git -C $Project rev-parse --show-toplevel 2>$null); if (-not $Root) { Write-Error "git 저장소가 아니다: $Project"; exit 1 }
+New-Item -ItemType Directory -Force -Path $Project | Out-Null
+$Root = (git -C $Project rev-parse --show-toplevel 2>$null); if (-not $Root) { git -C $Project init -q -b main; $Root = (Resolve-Path $Project).Path; Write-Host "git init: $Root" }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Error "node가 없다 (20 이상)"; exit 1 }
 function Run([scriptblock]$b, [string]$what) { if ($DryRun) { Write-Host "  [dry] $what" } else { & $b } }
-$tiers = @{ low = @{intake="sonnet";spec="sonnet";build="haiku";attack="sonnet";spike="haiku"}; medium = @{intake="opus";spec="opus";build="sonnet";attack="opus";spike="sonnet"}; high = @{intake="opus";spec="opus";build="opus";attack="opus";spike="sonnet"} }
+$tiers = @{ low = @{intake="sonnet";spec="sonnet";build="haiku";attack="sonnet";spike="haiku";boot="haiku"}; medium = @{intake="opus";spec="opus";build="sonnet";attack="opus";spike="sonnet";boot="sonnet"}; high = @{intake="opus";spec="opus";build="opus";attack="opus";spike="sonnet";boot="sonnet"} }
 if (-not $tiers.ContainsKey($Budget)) { $Budget = "medium" }; $M = $tiers[$Budget]
 Write-Host "GARAGISTE 증거 팀 [$Flavor] → $Root (budget: $Budget)"
 foreach ($d in ".garagiste\scripts", ".garagiste\packs", ".githooks") { Run { New-Item -ItemType Directory -Force -Path (Join-Path $Root $d) | Out-Null } "mkdir $d" }
@@ -19,9 +20,8 @@ $team = Join-Path $Root ".garagiste\team.json"
 if (-not (Test-Path $team)) {
   Run { Copy-Item "$Here\team\team.json" $team } "team.json"
   if (-not $DryRun) { $t = Get-Content $team -Raw | ConvertFrom-Json; $t.models = $M; $t | ConvertTo-Json -Depth 8 | Set-Content $team -Encoding UTF8 }
-  Write-Host "  .garagiste/team.json — commands.quick·full·test_file·run을 채워라"
 }
-function Sub($src, $dst) { (Get-Content $src -Raw).Replace("{{MODEL_INTAKE}}", $M.intake).Replace("{{MODEL_SPEC}}", $M.spec).Replace("{{MODEL_BUILD}}", $M.build).Replace("{{MODEL_ATTACK}}", $M.attack).Replace("{{MODEL_SPIKE}}", $M.spike) | Set-Content $dst -Encoding UTF8 -NoNewline }
+function Sub($src, $dst) { (Get-Content $src -Raw).Replace("{{MODEL_BOOT}}", $M.boot).Replace("{{MODEL_INTAKE}}", $M.intake).Replace("{{MODEL_SPEC}}", $M.spec).Replace("{{MODEL_BUILD}}", $M.build).Replace("{{MODEL_ATTACK}}", $M.attack).Replace("{{MODEL_SPIKE}}", $M.spike) | Set-Content $dst -Encoding UTF8 -NoNewline }
 if ($Flavor -eq "claude") {
   foreach ($d in ".claude\hooks", ".claude\agents") { Run { New-Item -ItemType Directory -Force -Path (Join-Path $Root $d) | Out-Null } "mkdir $d" }
   Run { Copy-Item "$Here\team\claude\hooks\*.mjs" (Join-Path $Root ".claude\hooks") -Force } "hooks"
@@ -42,10 +42,11 @@ if ($Flavor -eq "claude") {
   Write-Host "  opencode 모델: 기본 provider/model을 상속한다. 팩별로 바꾸려면 .opencode/agents/<pack>.md 앞머리에 model:"
   $Rules = Join-Path $Root "AGENTS.md"; $Template = "$Here\team\opencode\AGENTS.md.template"
 }
-if (-not (Test-Path $Rules)) { Run { Copy-Item $Template $Rules } (Split-Path -Leaf $Rules); Write-Host "  $(Split-Path -Leaf $Rules) — {{...}} 자리를 채워라" }
+if (-not (Test-Path $Rules)) { Run { Copy-Item $Template $Rules } (Split-Path -Leaf $Rules) }
 $gi = Join-Path $Root ".gitignore"; if (-not (Test-Path $gi)) { New-Item $gi | Out-Null }
 if (-not (Select-String -Quiet -Path $gi -Pattern "GARAGISTE 증거 팀")) { Run { Add-Content $gi ("`n" + (Get-Content "$Here\team\gitignore.snippet" -Raw)) } ".gitignore" }
 Run { git -C $Root config core.hooksPath .githooks } "core.hooksPath"
+if (-not $DryRun) { git -C $Root rev-parse --verify -q HEAD 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { git -C $Root add -A; $env:GARAGISTE_SHIP = "1"; git -C $Root commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$Flavor, budget $Budget]"; Remove-Item Env:GARAGISTE_SHIP; Write-Host "  첫 커밋: 팀 파일" } }
 Write-Host "---"
 if (-not $DryRun) { node (Join-Path $Root ".garagiste\scripts\doctor.mjs") }
-Write-Host "다음: team.json 명령 채우기 → 첫 unit: node .garagiste/scripts/work.mjs new <slug> `"<CEO 말 그대로>`""
+Write-Host "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot)이 스택·명령·스모크·규칙 파일을 채운다."

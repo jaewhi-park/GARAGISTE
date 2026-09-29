@@ -9,6 +9,7 @@ permission:
   task:
     "*": deny
     "intake": allow
+    "boot": allow
     "spec": allow
     "build": allow
     "attack": allow

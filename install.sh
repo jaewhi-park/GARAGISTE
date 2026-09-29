@@ -14,13 +14,14 @@ while [ $# -gt 0 ]; do
     *) echo "알 수 없는 옵션: $1" >&2; exit 1 ;;
   esac
 done
-ROOT="$(cd "$PROJECT" && git rev-parse --show-toplevel 2>/dev/null)" || { echo "git 저장소가 아니다: $PROJECT" >&2; exit 1; }
+mkdir -p "$PROJECT"
+if ! ROOT="$(cd "$PROJECT" && git rev-parse --show-toplevel 2>/dev/null)"; then git -C "$PROJECT" init -q -b main; ROOT="$(cd "$PROJECT" && pwd)"; echo "git init: $ROOT"; fi
 command -v node >/dev/null || { echo "node가 없다 (20 이상)" >&2; exit 1; }
 run() { if [ "$DRY" = 1 ]; then echo "  [dry] $*"; else "$@"; fi; }
 case "$BUDGET" in
-  low)    M_INTAKE=sonnet; M_SPEC=sonnet; M_BUILD=haiku;  M_ATTACK=sonnet; M_SPIKE=haiku ;;
-  high)   M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=opus;   M_ATTACK=opus;   M_SPIKE=sonnet ;;
-  *)      M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=sonnet; M_ATTACK=opus;   M_SPIKE=sonnet; BUDGET=medium ;;
+  low)    M_INTAKE=sonnet; M_SPEC=sonnet; M_BUILD=haiku;  M_ATTACK=sonnet; M_SPIKE=haiku;  M_BOOT=haiku ;;
+  high)   M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=opus;   M_ATTACK=opus;   M_SPIKE=sonnet; M_BOOT=sonnet ;;
+  *)      M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=sonnet; M_ATTACK=opus;   M_SPIKE=sonnet; M_BOOT=sonnet; BUDGET=medium ;;
 esac
 echo "GARAGISTE 증거 팀 [$FLAVOR] → $ROOT (budget: $BUDGET)"
 # 1. 팀 정본 — 하네스 중립
@@ -33,12 +34,11 @@ run chmod +x "$ROOT/.githooks/pre-commit"
 if [ ! -f "$ROOT/.garagiste/team.json" ]; then
   run cp "$HERE/team/team.json" "$ROOT/.garagiste/team.json"
   [ "$DRY" = 0 ] && node -e '
-    const fs=require("fs"); const [p,i,s,b,a,k]=process.argv.slice(1); const t=JSON.parse(fs.readFileSync(p,"utf8"));
-    t.models={intake:i,spec:s,build:b,attack:a,spike:k}; fs.writeFileSync(p, JSON.stringify(t,null,2)+"\n");' "$ROOT/.garagiste/team.json" "$M_INTAKE" "$M_SPEC" "$M_BUILD" "$M_ATTACK" "$M_SPIKE"
-  echo "  .garagiste/team.json — commands.quick·full·test_file·run을 프로젝트 명령으로 채워라"
+    const fs=require("fs"); const [p,i,s,b,a,k,o]=process.argv.slice(1); const t=JSON.parse(fs.readFileSync(p,"utf8"));
+    t.models={intake:i,spec:s,build:b,attack:a,spike:k,boot:o}; fs.writeFileSync(p, JSON.stringify(t,null,2)+"\n");' "$ROOT/.garagiste/team.json" "$M_INTAKE" "$M_SPEC" "$M_BUILD" "$M_ATTACK" "$M_SPIKE" "$M_BOOT"
 fi
 # 2. 하네스 배선
-sub() { sed -e "s/{{MODEL_INTAKE}}/$M_INTAKE/; s/{{MODEL_SPEC}}/$M_SPEC/; s/{{MODEL_BUILD}}/$M_BUILD/; s/{{MODEL_ATTACK}}/$M_ATTACK/; s/{{MODEL_SPIKE}}/$M_SPIKE/" "$1" > "$2"; }
+sub() { sed -e "s/{{MODEL_BOOT}}/$M_BOOT/; s/{{MODEL_INTAKE}}/$M_INTAKE/; s/{{MODEL_SPEC}}/$M_SPEC/; s/{{MODEL_BUILD}}/$M_BUILD/; s/{{MODEL_ATTACK}}/$M_ATTACK/; s/{{MODEL_SPIKE}}/$M_SPIKE/" "$1" > "$2"; }
 if [ "$FLAVOR" = claude ]; then
   run mkdir -p "$ROOT/.claude/hooks" "$ROOT/.claude/agents"
   run cp "$HERE"/team/claude/hooks/*.mjs "$ROOT/.claude/hooks/"
@@ -63,12 +63,16 @@ else
   echo "  opencode 모델: 기본 provider/model을 상속한다. 팩별로 바꾸려면 .opencode/agents/<pack>.md 앞머리에 model: <provider/model>"
   RULES="$ROOT/AGENTS.md"; TEMPLATE="$HERE/team/opencode/AGENTS.md.template"
 fi
-if [ ! -f "$RULES" ]; then run cp "$TEMPLATE" "$RULES"; echo "  $(basename "$RULES") — {{...}} 자리를 채워라(20줄, 그 이상은 규칙집 팽창이다)"; fi
+if [ ! -f "$RULES" ]; then run cp "$TEMPLATE" "$RULES"; fi
 touch "$ROOT/.gitignore"
 if ! grep -q 'GARAGISTE 증거 팀' "$ROOT/.gitignore"; then
   if [ "$DRY" = 1 ]; then echo "  [dry] .gitignore += team/gitignore.snippet"; else { echo; cat "$HERE/team/gitignore.snippet"; } >> "$ROOT/.gitignore"; fi
 fi
 run git -C "$ROOT" config core.hooksPath .githooks
+# 첫 커밋이 없으면 설치기가 만든다(첫 커밋은 원장이 있을 수 없어 게이트가 통과시킨다) — 그 뒤 main에 닿는 것은 ship.mjs뿐
+if [ "$DRY" = 0 ] && ! git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then
+  git -C "$ROOT" add -A && GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]" && echo "  첫 커밋: 팀 파일"
+fi
 echo "---"
 [ "$DRY" = 0 ] && { node "$ROOT/.garagiste/scripts/doctor.mjs" || true; }
-echo "다음: team.json 명령 채우기 → 첫 unit: node .garagiste/scripts/work.mjs new <slug> \"<CEO 말 그대로>\""
+echo "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot)이 스택·명령·스모크·규칙 파일을 채운다. 사람이 채울 파일은 없다."

@@ -10,4 +10,5 @@
 - 2026-09-29 · **opencode 모델은 기본 provider/model을 상속한다.** opencode 모델 id는 provider마다 다르고 자주 바뀌어 예산표에서 추측하지 않는다. 팩별 모델은 `.opencode/agents/<pack>.md` 앞머리에 CEO가 직접 쓴다.
 - 2026-09-29 · **입력 단위는 대화 전체다.** `work brief`가 원문을 축적하고 intake 팩이 BACKLOG unit 줄로 쪼갠다. "PRD를 넣을 곳이 없다"는 CEO가 부딛힌 첫 사고라 탄생 규칙 안에서 만들었다. intake는 파일을 쓰지 않는다 — `work add`·`work ask intake` 두 명령만.
 - 2026-09-29 · **선행은 관례가 아니라 간선이다.** BACKLOG 줄의 `needs`는 주장 그래프의 의존 간선이고, `work scope`가 닫힘을 계산해 "요청 n · 선행 m · 순서"로 역제안한다. CEO의 답은 둘뿐: 받는다(`seed`) · 선행을 뺀다(`--no-needs`, 원장 기록). hard 결정에 기대는 unit은 `needs: Q<n>`으로 답이 올 때까지 WAIT.
+- 2026-09-29 · **설치 뒤 사람이 채우는 파일은 없다.** CEO가 "설치 과정에도 할 게 많다"고 짚었다 — v1 kickoff를 손으로 옮긴 꼴이었다. 설치기는 git init·첫 커밋까지 하고, 스택·명령·스모크·규칙 파일은 첫 unit `boot`(kind scaffold)가 채운다. scaffold는 redproof·attack을 면제받는 대신 쓰기 경계가 매니페스트·src 진입점·유닛 스모크·규칙 파일 자리로 좁다.
 - 2026-09-29 · **conductor는 쓰지 않는다 — 훅이 강제한다.** `.worktrees/` 밖 Edit/Write는 거부. 메인 worktree의 문서는 스크립트(work.mjs)만 쓴다. 일반 편집 세션은 `GARAGISTE_ADMIN=1`. 산문 규칙이었던 것을 코드로 옮긴 첫 사례.

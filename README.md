@@ -2,14 +2,14 @@
 
 > Coding is making claims true. Claims are tests, probes and invariants; the team is a scheduler over that graph; the human supplies direction, reality and accountability — and keeps the windows.
 
-GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are five packs that hand off only through files (intake · spec · build · attack · spike), twelve judgment-free scripts, a boundary hook or plugin, and a ledger.
+GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), twelve judgment-free scripts, a boundary hook or plugin, and a ledger.
 
 - **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
 - **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all seven conditions hold.
 - **The human gives one sentence, yes/no, and "tried it".** The first line of STATUS is all they read each day.
 
 ## There are agents — there are no personas
-The five packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
+The six packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
 
 ## Install
 ```
@@ -31,8 +31,8 @@ The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs ·
 
 Then fill `commands` (quick · full · test_file · run) in `.garagiste/team.json`. `quick` must exclude `tests/acceptance` and `tests/adversary` (they are committed red by design); `full` includes everything.
 
-## The entrance — from conversation to scope
-You do not speak one sentence at a time; the unit of input is the whole conversation.
+## The entrance — from an empty folder to scope
+Install is one command (`install.sh claude -Project <empty dir>`: git init, team files, first commit). After that there is no file for the human to fill in: the first unit, `boot` (kind scaffold), picks the stack, writes the verification commands, the smoke test and the rules file, and ships. You do not speak one sentence at a time; the unit of input is the whole conversation.
 ```
 conversation ─▶ work.mjs brief "<verbatim>" | --file PRD.md   accumulated verbatim in docs/BRIEF.md (no summarising)
 "build it"   ─▶ brief.mjs intake → intake pack spawn           BACKLOG lines: slug · milestone · needs · "one sentence" · one acceptance line
