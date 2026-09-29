@@ -38,6 +38,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - LEDGER attack 열이 「선발견→최종red/총」(예 1→0/1) — attack 검출률(Q4)을 tried fail과 대조하는 계측.
 - guard가 team.json `protected_branch`로의 push를 브랜치 이름과 무관하게 거부(main|master 고정이던 구멍).
 
+### Fixed — 2026-09-29 win32 경로 표기 (첫 Windows 실기의 사고 2)
+- Windows에서 repoRoot(git 출력, `C:/…`)와 mainRoot(`path.resolve`, `C:\…`)의 표기가 달라 `c.root !== c.main` 검사(decide·drop·tried의 메인 전용, L0 R2)가 **메인 저장소에서도** 참이 됐다 — L1 시험의 decide 9건이 기록되지 못했다. repoRoot가 `path.resolve`로 플랫폼 표기를 정규화한다. 검사: repoRoot===mainRoot 불변식 unit 테스트(red는 win32에서만 관측 — 사고 재현이 그 red) + HAZARDS에 실기 사고 2줄 등록.
+
 ### Removed — 2026-09-29 sensors.machine_os와 ship의 platform 필터 (첫 Windows 실기의 사고)
 - Windows 첫 설치에서 selftest가 ship 조건 2에 막혔다: verify full은 PASS인데 platform `win32`가 기본 목록(`["linux","darwin"]`)에 없어 증거가 거부됐다. 이 필터는 「어디서 검증해도 되는가」의 허용 목록일 뿐 대상-OS 보증(HAZARDS 14)은 하지 못하면서 정당한 증거만 거부했다 — 검출 0·오탐 1로 제거. 대상-OS 보증은 `@sensor` 태그·STATUS의 target-OS 미관측 카운트가 계속 맡고, verify의 `platform`은 원장 필드로 계속 기록된다(L4 플랫폼 센서의 재료). 기존 설치본의 team.json에 남은 `machine_os` 키는 무해하게 무시된다 — 수정 불필요, 스크립트 재설치만 하면 된다.
 

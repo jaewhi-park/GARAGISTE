@@ -320,6 +320,12 @@ test('work models: tier 한 단어 또는 팩=모델, 에이전트 앞머리 mod
   assert.match(setFrontmatterModel('---\ndescription: x\nmode: subagent\n---\n본문', 'anthropic/claude-sonnet-4-5'), /^---\nmodel: anthropic\/claude-sonnet-4-5\ndescription: x/);
 });
 
+test('lib: repoRoot와 mainRoot는 같은 저장소에서 같은 문자열이다 — win32 사고(슬래시/역슬래시)로 decide·drop·tried가 메인에서도 거부됐다', async () => {
+  const { repoRoot, mainRoot } = await import('../team/scripts/lib.mjs');
+  const cwd = path.dirname(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')));
+  assert.equal(repoRoot(cwd), mainRoot(cwd), 'c.root===c.main 비교의 전제 — red는 win32에서만 관측된다(사고 재현이 그 red)');
+  assert.equal(repoRoot(cwd), path.resolve(repoRoot(cwd)), '플랫폼 표기로 정규화된다');
+});
 test('lib: Windows PowerShell이 붙인 BOM이 있어도 team.json을 읽는다', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-bom-'));
   fs.mkdirSync(path.join(d, '.garagiste'));

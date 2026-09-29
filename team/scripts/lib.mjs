@@ -31,7 +31,8 @@ export function shell(cmdString, opts = {}) {
 export function repoRoot(cwd = process.cwd()) {
   const r = git(['rev-parse', '--show-toplevel'], cwd);
   if (r.status) throw new Error('git 저장소가 아니다');
-  return r.stdout;
+  // git은 Windows에서도 슬래시(C:/…)를 내놓는다 — mainRoot(path.resolve, C:\…)와 문자열 비교가 가능하게 플랫폼 표기로 정규화한다(win32 사고: decide·drop·tried가 메인에서도 거부됐다)
+  return path.resolve(r.stdout);
 }
 // worktree 안에서도 메인 저장소 루트 — 로컬 상태(원장·unit·팩)의 집
 export function mainRoot(cwd = process.cwd()) {
