@@ -9,8 +9,8 @@ const LEDGER_SHELL = /\.garagiste[\\/](ledger|units)[\\/]/;
 const RULEBOOK_SHELL = /(^|[\s;&|>])(rm|mv|cp|sed|tee|truncate|echo|cat|printf)\b[^;&|]*(\.garagiste[\\/](team\.json|HAZARDS\.md|scripts|packs)|\.claude[\\/](settings\.json|hooks|agents)|opencode\.json|\.opencode[\\/](agents|plugins)|\.githooks)/;
 // 게이트 우회 접두 — SHIP·WIP·ADMIN은 스크립트 내부(ship·checkpoint)와 CEO 세션만 쓴다. LARGE_STEP은 게이트가 받는 정상 경로라 막지 않는다.
 const ENV_BYPASS = /(^|[\s;&|])(env\s+)?GARAGISTE_(SHIP|WIP|ADMIN)=/;
-// CEO 접점 명령 — 팩이 부르면 미검수·무인 상한이 자가 리셋된다
-const CEO_CMDS = /\bwork\.mjs\s+(tried|decide)\b/;
+// conductor 전용 명령 — tried·decide는 CEO 접점(팩이 부르면 상한 자가 리셋), drop은 방향전환(팩이 자기를 버리지 않는다)
+const CEO_CMDS = /\bwork\.mjs\s+(tried|decide|drop)\b/;
 
 export const PACK_RULES = {
   spec: { allow: [/^tests\/acceptance\//, /^docs\/units\/[^/]+\//] },
@@ -72,7 +72,7 @@ export function decide(input, ctx) {
     const w = worktreeOf(path.resolve(cwd), ctx.worktreesDir) || worktreeFromCommand(c, ctx.worktreesDir);
     if (w) {
       if (/\bgit\s+push\b/.test(c)) return 'worktree에서 push하지 않는다 — ship.mjs가 main으로 올린다.';
-      if (CEO_CMDS.test(c)) return 'tried·decide는 CEO 접점이다 — 팩은 부르지 않는다. conductor가 CEO의 말을 받아 메인에서 돌린다.';
+      if (CEO_CMDS.test(c)) return 'tried·decide(CEO 접점)·drop(방향전환)은 conductor의 일이다 — 팩은 부르지 않는다. conductor가 CEO의 말을 받아 메인에서 돌린다.';
       if (ctx.readMarker(w.dir) === 'spike' && /\bgit\s+commit\b/.test(c)) return 'spike는 커밋하지 않는다 — 측정 파일만 남긴다.';
     }
     for (const target of writeTargets(c)) {

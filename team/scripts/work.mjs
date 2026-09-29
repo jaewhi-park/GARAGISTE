@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
-import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readText, saveUnit, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readText, saveUnit, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot'];
@@ -64,7 +64,7 @@ export function closure(items, requested, { noNeeds = false } = {}) {
 export function pickReady({ order, items, units, decisionsText = '' }) {
   const by = new Map(items.map((i) => [i.slug, i]));
   const shipped = new Set(units.filter((u) => u.state === 'shipped').map((u) => u.slug));
-  const active = new Set(units.filter((u) => u.state !== 'shipped').map((u) => u.slug));
+  const active = new Set(units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped').map((u) => u.slug)); // dropped는 자리를 막지 않는다
   const closedQ = new Set([...decisionsText.matchAll(/^- \[x\] (Q\d+)/gm)].map((m) => m[1]));
   const satisfied = (n) => (/^Q\d+$/.test(n) ? closedQ.has(n) : shipped.has(n) || by.get(n)?.done === true);
   const remaining = order.filter((s) => !shipped.has(s) && !(by.get(s)?.done));
@@ -121,7 +121,8 @@ function createUnit(c, slug, origin, opts = {}) {
   const from = opts.from || (process.env.GARAGISTE_ADMIN ? 'ceo' : 'team');
   if (!['ceo', 'team', 'seed'].includes(from)) fail(`FAIL --from은 ceo|team (받은 값: ${from})`);
   if (from === 'ceo' && opts.from === 'ceo' && !process.env.GARAGISTE_ADMIN) fail('FAIL --from ceo는 GARAGISTE_ADMIN=1(CEO 세션)에서만 — 팀 발의는 team이다');
-  if (fs.existsSync(unitFile(c.main, c.team, slug))) fail(`FAIL unit 있음: ${slug}`);
+  const prev = readJson(unitFile(c.main, c.team, slug), null);
+  if (prev && prev.state !== 'dropped') fail(`FAIL unit 있음: ${slug}`); // dropped 위에는 같은 slug가 새로 열린다 (kill-and-respawn)
   const wt = worktreeDir(c.main, c.team, slug);
   const branch = `unit/${slug}`;
   const addWt = git(['worktree', 'add', '-q', '-b', branch, wt, c.team.protected_branch], c.main);
@@ -208,6 +209,24 @@ function decide(c, n, answer) {
   touchCeo(c.main);
   appendLedger(c.main, c.team, { kind: 'decide', q: Number(n), answer });
   out(`PASS decide Q${n}`);
+}
+// 방향전환의 원자 연산 — 작업을 버리되 잃지 않는다: wip 커밋 → 브랜치를 dropped/로 개명 → worktree 제거. BACKLOG 줄은 열려 있어 seed가 새로 연다(--forget이면 닫는다).
+function drop(c, slug, reason = '', flags = {}) {
+  if (c.root !== c.main) fail('FAIL drop은 메인에서만 — 방향전환은 conductor의 일이다');
+  const u = loadUnit(c.main, c.team, slug);
+  if (u.state === 'shipped') fail(`FAIL ${slug}은 이미 출하 — 되돌리기는 새 unit이다`);
+  if (u.state === 'dropped') fail(`FAIL ${slug}은 이미 dropped`);
+  const wt = worktreeDir(c.main, c.team, slug);
+  if (fs.existsSync(wt)) {
+    if (git(['status', '--porcelain'], wt).stdout.trim()) { git(['add', '-A'], wt); git(['commit', '-q', '-m', `wip: ${slug} drop checkpoint`], wt, { GARAGISTE_WIP: '1' }); }
+    git(['worktree', 'remove', '--force', wt], c.main);
+  }
+  const graveyard = `dropped/${slug}-${stamp()}`;
+  if (!git(['rev-parse', '--verify', '-q', u.branch], c.main).status) git(['branch', '-m', u.branch, graveyard], c.main);
+  u.state = 'dropped'; u.dropped = { at: new Date().toISOString(), reason, branch: graveyard }; saveUnit(c.main, c.team, u);
+  if (flags.forget !== undefined) { const p = backlogPath(c); if (fs.existsSync(p)) fs.writeFileSync(p, readText(p).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `)); }
+  appendLedger(c.main, c.team, { kind: 'drop', slug, reason, branch: graveyard, forget: flags.forget !== undefined });
+  out(`DROPPED ${slug}${reason ? ` — ${reason}` : ''} · 작업은 ${graveyard}에 남았다${flags.forget !== undefined ? ' · BACKLOG 줄 닫음' : ' · BACKLOG 줄은 열려 있어 seed가 새로 연다'}`);
 }
 function setDefault(c, slug, text) {
   if (!text) fail('FAIL 내용이 없다');
@@ -300,12 +319,13 @@ function main() {
   if (cmd === 'ask') return ask(c, pos[0], pos[1]);
   if (cmd === 'decide') return decide(c, pos[0], pos[1]);
   if (cmd === 'default') return setDefault(c, pos[0], pos[1]);
+  if (cmd === 'drop') return drop(c, pos[0], pos[1], flags);
   if (cmd === 'tried') return tried(c, pos[0], pos[1], pos[2]);
   if (cmd === 'list') return list(c);
   if (cmd === 'models') return models(c, raw);
   if (cmd === 'commands') return commands(c, raw);
   if (cmd === 'rules') return rules(c, raw);
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
-  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" · decide <n> "<답>" · default <slug> "<정한 것>" · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug> <팩> [--tokens N --minutes M]');
+  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug> <팩> [--tokens N --minutes M]');
 }
 if (isMain(import.meta.url)) main();

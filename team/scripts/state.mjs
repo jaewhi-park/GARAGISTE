@@ -49,7 +49,7 @@ export function render(c) {
   if (sc) { const done = sc.order.filter((s2) => units.some((u) => u.slug === s2 && u.state === 'shipped')).length; parts.push(`- 요청 ${sc.requested.length} · 선행 ${sc.required.length} · 출하 ${done}/${sc.order.length}${sc.missing.length ? ` · 없는 선행: ${sc.missing.join(', ')}` : ''}${sc.noNeeds ? ' · 선행 무시' : ''}`, `- 순서: ${sc.order.join(' → ')}`); }
   else parts.push('- 없음 — work.mjs scope로 정한다');
   parts.push('', '## 진행 중');
-  const open = units.filter((u) => u.state !== 'shipped');
+  const open = units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped');
   parts.push(...(open.length ? open.map((u) => `- ${u.slug} (${u.state}${u.boundary.hit ? ', boundary' : ''}) — "${u.origin}"`) : ['- 없음']));
   parts.push('', `_생성: state.mjs ${new Date().toISOString()} · 주장 ${cov.total} · 손편집 없음_`, '');
   return { text: parts.join('\n'), line, stops: b.stops };
