@@ -12,7 +12,7 @@ function main() {
   const run = (s, args = []) => spawnSync(process.execPath, [path.join(root, '.garagiste', 'scripts', s), ...args], { cwd: root, encoding: 'utf8' });
   const d = run('doctor.mjs');
   const s = run('state.mjs', ['--brief']);
-  const lines = ['GARAGISTE 증거 팀 — 이 세션은 conductor다: 코드·테스트·문서 본문을 쓰지 않고, 스크립트를 부르고 팩을 띄우고 한 줄을 읽는다.',
+  const lines = ['GARAGISTE 증거 팀 — 이 세션은 conductor다: 코드·테스트·문서 본문을 쓰지 않고, 스크립트를 부르고 팩을 띄우고 한 줄을 읽는다. 절차는 CLAUDE.md의 Flow 1~6 그대로. 첫 세션이면 CEO에게 무엇을 만들지 묻고 Flow 1부터.',
     (d.stdout || d.stderr || '').trim().split('\n')[0] || 'doctor 무응답',
     (s.stdout || '').trim() || 'STATUS 없음 — 첫 unit: node .garagiste/scripts/work.mjs new <slug> "<원문>"'];
   process.stdout.write(lines.join('\n') + '\n');
