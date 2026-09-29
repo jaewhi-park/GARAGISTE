@@ -77,7 +77,7 @@ test('lib: glob — 경로 없는 패턴은 어느 디렉터리에서도 맞는�
   assert.ok(!globToRegex('tests/**').test('src/tests.ts'));
 });
 test('verify: 로직 줄 수는 테스트·문서·잠금 파일을 빼고 센다', () => {
-  assert.equal(logicLines('10\t2\tsrc/a.ts\n5\t5\ttests/a.test.ts\n3\t0\tdocs/x.md\n-\t-\timg.png\n7\t1\tpackage-lock.json'), 12);
+  assert.equal(logicLines('10\t2\tsrc/a.ts\n5\t5\ttests/a.test.ts\n3\t0\tdocs/x.md\n-\t-\timg.png\n7\t1\tpackage-lock.json\n4\t4\tapps/desktop/vitest.config.ts'), 12, '설정 파일은 로직이 아니다');
 });
 test('verify gate: 원장에 tree PASS가 없으면 커밋이 열리지 않는다', () => {
   const base = { index: 't1', work: 't1', staged: ['src/a.ts'], branchFiles: ['tests/acceptance/a.test.ts'], numstat: '10\t0\tsrc/a.ts', branch: 'unit/a', protectedBranch: 'main', budgets: team.budgets };

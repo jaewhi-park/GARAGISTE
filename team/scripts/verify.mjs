@@ -6,7 +6,7 @@ import {
   mergeBase, out, readLedger, shell, short, stamp, workTree,
 } from './lib.mjs';
 
-export const LOGIC_EXCLUDE = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', 'docs/**', '.garagiste/**', '.claude/**', '.opencode/**', 'opencode.json', 'fixtures/**', 'probes/**',
+export const LOGIC_EXCLUDE = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', '**/*.config.*', '**/tsconfig*.json', 'docs/**', '.garagiste/**', '.claude/**', '.opencode/**', 'opencode.json', 'fixtures/**', 'probes/**',
   '**/package-lock.json', '**/pnpm-lock.yaml', '**/uv.lock', '**/*.md', '.githooks/**', '.gitignore'];
 export const TEST_GLOBS = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', 'probes/**'];
 export function isTestFile(f) { return matchAny(f, TEST_GLOBS); }
