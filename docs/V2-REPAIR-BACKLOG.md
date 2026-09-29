@@ -37,7 +37,7 @@
 - **Q4 열** (6d2abaf) — LEDGER attack 칸이 「선발견→최종red/총」. 후발견은 `tried fail` 원장 줄 — 3 unit 뒤 두 수의 비가 Q4의 표.
 - **소수리** (4464fcb) — 보호 브랜치 push 차단을 protected_branch 동적으로(L0의 발견 항목 해소).
 
-L1 시험 전 남은 준비: 시험 **사전 등록 문서**(docs/measurements/ — 조건·시계 정의·재시작 규칙·빈 표) · G2_TEST2 재설치(이 판) · 시험 중 **프레임워크 동결** 선언.
+L1 시험 준비 완료: 사전 등록 = **docs/measurements/L1-TRIAL.md**(동결 59bb724·시계 정의·3-unit 구성·빈 표·conductor 절차) · G2_TEST2 재설치(475c4a1). 시험은 G2_TEST2 안에서 연 새 conductor 세션이 그 문서대로 돈다 — 이 세션(훅 밖)이 돌리면 표가 오염된다.
 
 ---
 
