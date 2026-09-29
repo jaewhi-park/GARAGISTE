@@ -66,6 +66,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 ### Fixed — 2026-09-29 glob `**/`가 세그먼트 경계를 삼켰다 (2차 실기의 사고 11)
 - `globToRegex`가 `**/`를 `.*`로 바꾸며 뒤의 `/`를 삼켜, `**/schema/**`가 `docs/units/vault-schema/…`처럼 schema로 **끝나는** 폴더까지 물었다 — 거짓 boundary HIT가 순수 로직 unit의 ship을 「spike 미완」으로 막았고, slug 이름(vault-schema)이 지뢰가 되는 구조였다. 수리: `**/` → `(.*/)?`(0개 이상의 온전한 세그먼트; `a/**/b`가 `a/b`도 맞고 `a/xb`는 안 맞는다). boundary·HAZARDS 매칭·LOGIC_EXCLUDE가 같은 함수를 쓰므로 전부 함께 바로잡힌다. 검사: vault-schema 재현 포함 glob 단위 테스트.
 
+### Fixed — 2026-09-29 porcelain 선행 공백 절단 (2차 실기의 사고 12)
+- `sh()`가 stdout 전체를 trim해 `git status --porcelain` 첫 줄이 비스테이징 수정(` M …`)이면 선행 공백이 사라지고, `dirtyFiles`의 `slice(3)`이 경로 첫 글자를 먹었다(`ocs/BACKLOG.md`·`garagiste/HAZARDS.md`) — DOC_OK에 있는 파일이 목록 밖 파일로 보여 ship을 거짓으로 막았고, 앞선 FAIL 문구의 경로 표기도 왜곡했다. 수리: dirtyFiles가 trim 없는 원문 stdout을 직접 읽는다. 검사: 비스테이징 수정 재현 단위 테스트.
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 

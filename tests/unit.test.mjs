@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { decide, makeCtx, stripQuoted, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
@@ -15,7 +16,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
-import { globToRegex, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot } from '../team/scripts/lib.mjs';
+import { dirtyFiles, globToRegex, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -334,6 +335,16 @@ test('work seed: 선행이 출하됐거나 Q가 닫힌 unit만 열린다, 아니
   assert.equal(pickReady({ order, items, units: [{ slug: 'db', state: 'shipped' }, { slug: 'session', state: 'shipped' }] }).kind, 'done');
 });
 
+test('lib: dirtyFiles는 porcelain 선행 공백을 살린다 — 첫 줄이 비스테이징 수정이면 경로 첫 글자가 잘렸다 (2차 실기 사고 12)', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-dirty-'));
+  const g = (args) => spawnSync('git', args, { cwd: d, encoding: 'utf8' });
+  g(['init', '-q']); g(['config', 'user.email', 'x@x']); g(['config', 'user.name', 'x']);
+  fs.mkdirSync(path.join(d, 'docs'));
+  fs.writeFileSync(path.join(d, 'docs', 'BACKLOG.md'), 'a\n');
+  g(['add', '-A']); g(['commit', '-q', '-m', 'init']);
+  fs.writeFileSync(path.join(d, 'docs', 'BACKLOG.md'), 'b\n'); // 수정만, 스테이징 없음 → ' M docs/BACKLOG.md'
+  assert.deepEqual(dirtyFiles(d), ['docs/BACKLOG.md'], "'ocs/BACKLOG.md'가 아니다");
+});
 test('lib: env.local은 KEY=VALUE 줄만 읽고 주석은 무시한다', () => {
   assert.deepEqual(parseLocalEnv('# 이 기계만\nGARAGISTE_RUNNER=setpriv --reuid=1000 env HOME=/tmp/x\nBAD LINE\nA=1'), { GARAGISTE_RUNNER: 'setpriv --reuid=1000 env HOME=/tmp/x', A: '1' });
 });
