@@ -26,7 +26,7 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'init'], repo).status, 0);
 
   // 설치 — 세 파일이 팀이다
-  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low'], repo);
+  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo);
   assert.equal(inst.status, 0, inst.out);
   const teamPath = path.join(repo, '.garagiste', 'team.json');
   const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
@@ -36,6 +36,11 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   assert.match(script('work', ['models', 'build=opus'], repo).out, /^MODELS .*build=opus.* → 6 에이전트 파일 갱신/);
   assert.match(fs.readFileSync(path.join(repo, '.claude/agents/build.md'), 'utf8'), /^model: opus$/m, 'work models가 team.json과 에이전트 파일을 함께 바꾼다');
   assert.match(script('work', ['models', 'low'], repo).out, /build=haiku/);
+  const re = run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
+  assert.equal(re.status, 0, re.out);
+  assert.match(fs.readFileSync(teamPath, 'utf8'), /"build": "haiku"/, 'R15: 재설치가 편성을 지우지 않는다 — 기존 team.json이 -Budget을 이긴다(v1 재적용병 회귀)');
+  assert.match(fs.readFileSync(path.join(repo, '.claude/agents/build.md'), 'utf8'), /^model: haiku$/m, 'R15: 에이전트 model:도 team.json이 정본');
+  assert.match(fs.readFileSync(path.join(repo, '.claude/settings.json'), 'utf8'), /permissions/, 'R15: 기존 settings.json 보존');
   team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/**/*.test.mjs"', test_file: 'node --test {file}', run: 'node src/cli.mjs' };
   fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
   fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
@@ -155,7 +160,7 @@ test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 
   write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
   write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
   git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
-  assert.equal(run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low'], repo).status, 0);
+  assert.equal(run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
   const teamPath = path.join(repo, '.garagiste', 'team.json');
   const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
   const flagged = `node -e "process.exit(require('fs').existsSync('.garagiste/session/failflag')?1:0)"`;
@@ -195,7 +200,7 @@ test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents
   git(['init', '-q', '-b', 'main'], repo);
   write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
   git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
-  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'opencode', '-Project', repo], repo);
+  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'opencode', '-Project', repo, '-SkipSelftest'], repo);
   assert.equal(inst.status, 0, inst.out);
   for (const f of ['opencode.json', 'AGENTS.md', '.opencode/plugins/guard.ts', '.opencode/agents/conductor.md', '.opencode/agents/build.md', '.garagiste/scripts/guard-rules.mjs', '.garagiste/team.json', '.githooks/pre-commit']) assert.ok(fs.existsSync(path.join(repo, f)), f);
   assert.ok(!fs.existsSync(path.join(repo, '.claude')), 'Claude 배선은 깔리지 않는다');
@@ -213,6 +218,7 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low'], repo);
   assert.equal(inst.status, 0, inst.out);
   assert.match(inst.out, /git init/); assert.match(inst.out, /첫 커밋: 팀 파일/);
+  assert.match(inst.out, /SELFTEST PASS/, 'R15: 설치는 install→doctor→selftest 원샷이고 빨간 채로 완료를 선언하지 않는다');
   assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): GARAGISTE 증거 팀 설치/);
   assert.match(git(['ls-files', '-s', '.githooks/pre-commit'], repo).out, /^100755/, '훅의 실행 비트가 인덱스에 있다 — 없으면 맥·리눅스가 게이트를 무시한다');
   assert.match(script('doctor', [], repo).out, /commands.quick 비어 있음 → 첫 unit\(boot\)이 채운다/);

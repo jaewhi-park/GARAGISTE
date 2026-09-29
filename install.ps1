@@ -1,6 +1,6 @@
 ﻿# GARAGISTE 증거 팀 설치 (Windows PowerShell) — 팀 정본을 <repo>/.garagiste/로, 하네스 배선을 .claude/ 또는 opencode.json + .opencode/로.
 # Usage: .\install.ps1 <claude|opencode> [-Project <path>] [-Budget low|medium|high] [-DryRun]
-param([Parameter(Position=0)][string]$Flavor = "", [string]$Project = ".", [string]$Budget = "medium", [switch]$DryRun)
+param([Parameter(Position=0)][string]$Flavor = "", [string]$Project = ".", [string]$Budget = "medium", [switch]$DryRun, [switch]$SkipSelftest)
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -41,6 +41,11 @@ if (-not (Test-Path $team)) {
   Run { Copy-Item "$Here\team\team.json" $team } "team.json"
   if (-not $DryRun) { $t = (ReadText $team) | ConvertFrom-Json; $t.models = $M; WriteText $team (($t | ConvertTo-Json -Depth 8) + "`n") }
 }
+# 편성의 정본은 프로젝트의 team.json — 재설치의 -Budget이 기존 편성을 지우지 않는다(v1 재적용병의 백신)
+if (-not $DryRun -and (Test-Path $team)) {
+  $t2 = (ReadText $team) | ConvertFrom-Json
+  if ($t2.models) { $M = @{ intake = $t2.models.intake; spec = $t2.models.spec; build = $t2.models.build; attack = $t2.models.attack; spike = $t2.models.spike; boot = $t2.models.boot } }
+}
 function Sub($src, $dst) { WriteText $dst ((ReadText $src).Replace("{{MODEL_BOOT}}", $M.boot).Replace("{{MODEL_INTAKE}}", $M.intake).Replace("{{MODEL_SPEC}}", $M.spec).Replace("{{MODEL_BUILD}}", $M.build).Replace("{{MODEL_ATTACK}}", $M.attack).Replace("{{MODEL_SPIKE}}", $M.spike)) }
 if ($Flavor -eq "claude") {
   foreach ($d in ".claude\hooks", ".claude\agents") { Run { New-Item -ItemType Directory -Force -Path (Join-Path $Root $d) | Out-Null } "mkdir $d" }
@@ -79,5 +84,14 @@ if (-not $DryRun) {
   }
 }
 Write-Host "---"
-if (-not $DryRun) { Push-Location $Root; $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"; & node .garagiste\scripts\doctor.mjs 2>&1 | ForEach-Object { "$_" }; $ErrorActionPreference = $prev; Pop-Location }
+# fail-closed: 빨간 채로 설치 완료를 선언하지 않는다 — doctor(--fresh)와 selftest가 PASS여야 설치다
+if (-not $DryRun) {
+  Push-Location $Root; $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  & node .garagiste\scripts\doctor.mjs --fresh 2>&1 | ForEach-Object { "$_" }; $doc = $LASTEXITCODE
+  $st = 0
+  if ($doc -eq 0 -and -not $SkipSelftest) { & node .garagiste\scripts\selftest.mjs 2>&1 | ForEach-Object { "$_" }; $st = $LASTEXITCODE }
+  $ErrorActionPreference = $prev; Pop-Location
+  if ($doc -ne 0) { Write-Host "설치 FAIL — 위 doctor 줄이 이유다. 고치고 다시 설치하라."; exit 1 }
+  if ($st -ne 0) { Write-Host "설치 FAIL — selftest. 위 단계 출력이 원인이다."; exit 1 }
+}
 Write-Host "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot)이 스택·명령·스모크·규칙 파일을 채운다."

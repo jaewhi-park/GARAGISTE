@@ -5,12 +5,13 @@ set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FLAVOR="${1:-}"; [ $# -gt 0 ] && shift
 case "$FLAVOR" in claude|opencode) ;; ""|-h|--help|help) sed -n '2,3p' "$0"; exit 0 ;; *) echo "하네스: claude 또는 opencode (받은 값: $FLAVOR)" >&2; exit 1 ;; esac
-PROJECT="."; BUDGET="medium"; DRY=0
+PROJECT="."; BUDGET="medium"; DRY=0; SKIP_SELFTEST=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -Project|--project) PROJECT="$2"; shift 2 ;;
     -Budget|--budget) BUDGET="$2"; shift 2 ;;
     -DryRun|--dry-run) DRY=1; shift ;;
+    -SkipSelftest|--skip-selftest) SKIP_SELFTEST=1; shift ;;
     *) echo "알 수 없는 옵션: $1" >&2; exit 1 ;;
   esac
 done
@@ -38,6 +39,11 @@ if [ ! -f "$ROOT/.garagiste/team.json" ]; then
   [ "$DRY" = 0 ] && node -e '
     const fs=require("fs"); const [p,i,s,b,a,k,o]=process.argv.slice(1); const t=JSON.parse(fs.readFileSync(p,"utf8"));
     t.models={intake:i,spec:s,build:b,attack:a,spike:k,boot:o}; fs.writeFileSync(p, JSON.stringify(t,null,2)+"\n");' "$ROOT/.garagiste/team.json" "$M_INTAKE" "$M_SPEC" "$M_BUILD" "$M_ATTACK" "$M_SPIKE" "$M_BOOT"
+fi
+# 편성의 정본은 프로젝트의 team.json — 재설치의 -Budget이 기존 편성을 지우지 않는다(v1 재적용병의 백신). 에이전트 model:도 여기서 나온다.
+if [ "$DRY" = 0 ] && [ -f "$ROOT/.garagiste/team.json" ]; then
+  MODELS_LINE="$(node -e 'const fs=require("fs");const t=JSON.parse(fs.readFileSync(process.argv[1],"utf8").replace(/^﻿/,""));const m=t.models||{};process.stdout.write([m.intake,m.spec,m.build,m.attack,m.spike,m.boot].join(" "))' "$ROOT/.garagiste/team.json" 2>/dev/null || true)"
+  if [ "$(printf %s "$MODELS_LINE" | wc -w)" = 6 ]; then read -r M_INTAKE M_SPEC M_BUILD M_ATTACK M_SPIKE M_BOOT <<<"$MODELS_LINE"; fi
 fi
 # 2. 하네스 배선
 sub() { sed -e "s/{{MODEL_BOOT}}/$M_BOOT/; s/{{MODEL_INTAKE}}/$M_INTAKE/; s/{{MODEL_SPEC}}/$M_SPEC/; s/{{MODEL_BUILD}}/$M_BUILD/; s/{{MODEL_ATTACK}}/$M_ATTACK/; s/{{MODEL_SPIKE}}/$M_SPIKE/" "$1" > "$2"; }
@@ -77,5 +83,11 @@ if [ "$DRY" = 0 ] && ! git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1
   if GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]"; then echo "  첫 커밋: 팀 파일"; else echo "  ! 첫 커밋 실패 — 위 오류를 보고 다시: cd $ROOT && git add -A && GARAGISTE_SHIP=1 git commit -m 'scaffold(team): install'" >&2; fi
 fi
 echo "---"
-[ "$DRY" = 0 ] && { (cd "$ROOT" && node .garagiste/scripts/doctor.mjs) || true; }
+# fail-closed: 빨간 채로 설치 완료를 선언하지 않는다 — doctor(--fresh: alive·빈 commands는 정상)와 selftest가 PASS여야 설치다
+if [ "$DRY" = 0 ]; then
+  (cd "$ROOT" && node .garagiste/scripts/doctor.mjs --fresh) || { echo "설치 FAIL — 위 doctor 줄이 이유다. 고치고 다시 설치하라." >&2; exit 1; }
+  if [ "$SKIP_SELFTEST" = 0 ]; then
+    (cd "$ROOT" && node .garagiste/scripts/selftest.mjs) || { echo "설치 FAIL — selftest. 위 단계 출력이 원인이다." >&2; exit 1; }
+  fi
+fi
 echo "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot)이 스택·명령·스모크·규칙 파일을 채운다. 사람이 채울 파일은 없다."
