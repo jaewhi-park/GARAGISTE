@@ -33,7 +33,7 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   assert.equal(team.models.build, 'haiku', 'budget low가 모델 편성에 반영');
   assert.match(fs.readFileSync(path.join(repo, '.claude/agents/build.md'), 'utf8'), /^model: haiku$/m, '에이전트 파일은 팩의 spawn 설정 — 모델은 예산에서');
   assert.ok(fs.existsSync(path.join(repo, '.claude/hooks/guard.mjs')) && fs.existsSync(path.join(repo, '.garagiste/scripts/guard-rules.mjs')));
-  assert.match(script('work', ['models', 'build=opus'], repo).out, /^MODELS .*build=opus.* → 1 에이전트 파일 갱신/);
+  assert.match(script('work', ['models', 'build=opus'], repo).out, /^MODELS .*build=opus.* → 5 에이전트 파일 갱신/);
   assert.match(fs.readFileSync(path.join(repo, '.claude/agents/build.md'), 'utf8'), /^model: opus$/m, 'work models가 team.json과 에이전트 파일을 함께 바꾼다');
   assert.match(script('work', ['models', 'low'], repo).out, /build=haiku/);
   team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/**/*.test.mjs"', test_file: 'node --test {file}', run: 'node src/cli.mjs' };
