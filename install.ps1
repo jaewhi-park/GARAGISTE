@@ -7,19 +7,21 @@ $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 function WriteText([string]$Path, [string]$Text) { [System.IO.File]::WriteAllText($Path, $Text, $Utf8NoBom) }   # BOM 없이 — BOM이 붙은 team.json은 JSON.parse가 죽는다
 function ReadText([string]$Path) { [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8) }
 # git은 stderr에 말을 많이 한다 — ErrorActionPreference=Stop 아래서 그것이 예외가 되지 않게 감싼다. 결과: @{ Out = <문자열>; Code = <종료 코드> }
-function Git { param([Parameter(ValueFromRemainingArguments = $true)][string[]]$GitArgs)
+$GitExe = (Get-Command git -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+if (-not $GitExe) { Write-Host "git이 없다"; exit 1 }
+function Invoke-Git { param([Parameter(ValueFromRemainingArguments = $true)][string[]]$GitArgs)
   $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
-  try { $lines = & git @GitArgs 2>&1 | ForEach-Object { "$_" }; return @{ Out = (($lines | Where-Object { $_ }) -join "`n"); Code = $LASTEXITCODE } }
+  try { $lines = & $GitExe @GitArgs 2>&1 | ForEach-Object { "$_" }; return @{ Out = (($lines | Where-Object { $_ }) -join "`n"); Code = $LASTEXITCODE } }
   finally { $ErrorActionPreference = $prev }
 }
 if ($Flavor -notin @("claude", "opencode")) { Write-Host "하네스: claude 또는 opencode"; exit 1 }
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 New-Item -ItemType Directory -Force -Path $Project | Out-Null
-$probe = Git -C $Project rev-parse --show-toplevel
+$probe = Invoke-Git -C $Project rev-parse --show-toplevel
 if ($probe.Code -eq 0 -and $probe.Out) { $Root = $probe.Out.Trim() }
 else {
-  $init = Git -C $Project init -q -b main
-  if ($init.Code -ne 0) { $init = Git -C $Project init -q; if ($init.Code -eq 0) { Git -C $Project symbolic-ref HEAD refs/heads/main | Out-Null } }   # 옛 git엔 -b가 없다
+  $init = Invoke-Git -C $Project init -q -b main
+  if ($init.Code -ne 0) { $init = Invoke-Git -C $Project init -q; if ($init.Code -eq 0) { Invoke-Git -C $Project symbolic-ref HEAD refs/heads/main | Out-Null } }   # 옛 git엔 -b가 없다
   if ($init.Code -ne 0) { Write-Host "git init 실패: $($init.Out)"; exit 1 }
   $Root = (Resolve-Path $Project).Path; Write-Host "git init: $Root"
 }
@@ -62,14 +64,14 @@ if ($Flavor -eq "claude") {
 if (-not (Test-Path $Rules)) { Run { Copy-Item $Template $Rules } (Split-Path -Leaf $Rules) }
 $gi = Join-Path $Root ".gitignore"; if (-not (Test-Path $gi)) { WriteText $gi "" }
 if (-not ((ReadText $gi) -match "GARAGISTE")) { Run { WriteText $gi ((ReadText $gi) + "`n" + (ReadText "$Here\team\gitignore.snippet")) } ".gitignore" }
-Run { Git -C $Root config core.hooksPath .githooks | Out-Null } "core.hooksPath"
+Run { Invoke-Git -C $Root config core.hooksPath .githooks | Out-Null } "core.hooksPath"
 if (-not $DryRun) {
-  $head = Git -C $Root rev-parse --verify -q HEAD
+  $head = Invoke-Git -C $Root rev-parse --verify -q HEAD
   if ($head.Code -ne 0) {
-    Git -C $Root add -A | Out-Null
+    Invoke-Git -C $Root add -A | Out-Null
     $env:GARAGISTE_SHIP = "1"
-    $ident = @(); if ((Git -C $Root config user.name).Code -ne 0) { $ident += @("-c", "user.name=garagiste", "-c", "user.email=garagiste@local") }
-    $commit = Git -C $Root @ident commit -q -m "scaffold(team): GARAGISTE install [$Flavor, budget $Budget]"
+    $ident = @(); if ((Invoke-Git -C $Root config user.name).Code -ne 0) { $ident += @("-c", "user.name=garagiste", "-c", "user.email=garagiste@local") }
+    $commit = Invoke-Git -C $Root @ident commit -q -m "scaffold(team): GARAGISTE install [$Flavor, budget $Budget]"
     Remove-Item Env:GARAGISTE_SHIP -ErrorAction SilentlyContinue
     if ($commit.Code -eq 0) { Write-Host "  첫 커밋: 팀 파일" } else { Write-Host "  ! 첫 커밋 실패:`n$($commit.Out)`n  다시: cd $Root; git add -A; `$env:GARAGISTE_SHIP=1; git commit -m 'scaffold(team): install'" }
   }
