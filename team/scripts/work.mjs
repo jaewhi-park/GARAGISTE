@@ -116,6 +116,10 @@ function add(c, slug, origin, flags) {
 function createUnit(c, slug, origin, opts = {}) {
   if (!SLUG_RE.test(slug || '')) fail('FAIL slug: 소문자·숫자·하이픈 2~41자');
   if (!origin) fail('FAIL 원문이 없다');
+  // origin_kind = 이 unit이 어디서 왔나: seed(범위의 BACKLOG 경유) · ceo(CEO 본인 = ADMIN 세션) · team(팀 발의 — 연속 상한이 센다)
+  const from = opts.from || (process.env.GARAGISTE_ADMIN ? 'ceo' : 'team');
+  if (!['ceo', 'team', 'seed'].includes(from)) fail(`FAIL --from은 ceo|team (받은 값: ${from})`);
+  if (from === 'ceo' && opts.from === 'ceo' && !process.env.GARAGISTE_ADMIN) fail('FAIL --from ceo는 GARAGISTE_ADMIN=1(CEO 세션)에서만 — 팀 발의는 team이다');
   if (fs.existsSync(unitFile(c.main, c.team, slug))) fail(`FAIL unit 있음: ${slug}`);
   const wt = worktreeDir(c.main, c.team, slug);
   const branch = `unit/${slug}`;
@@ -126,13 +130,13 @@ function createUnit(c, slug, origin, opts = {}) {
   const kind = opts.kind || 'feature';
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec');
   const unit = {
-    slug, kind, origin, origin_kind: opts.from || 'ceo', milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
+    slug, kind, origin, origin_kind: from, milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
     created: new Date().toISOString(), state: kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt), boundary,
     defaults: [], questions: [], tried: null, shipped: null, sensor: null,
   };
   saveUnit(c.main, c.team, unit);
   if (!parseBacklog(readBacklog(c)).some((i) => i.slug === slug)) appendBacklog(c, backlogLine({ slug, origin, kind }));
-  if (unit.origin_kind === 'ceo') touchCeo(c.main);
+  // unit 생성은 CEO 접점이 아니다 — 접점은 brief·scope·decide·tried뿐. 여기서 touchCeo하면 매 seed가 무인 출하 상한을 리셋한다.
   appendLedger(c.main, c.team, { kind: 'unit', slug, state: unit.state, origin_kind: unit.origin_kind, milestone: unit.milestone });
   out(`UNIT ${slug} ${unit.state} ${unit.worktree}`);
   if (kind === 'scaffold') out('SCAFFOLD — boot 팩 하나로 끝난다(스택·명령·스모크·규칙 파일), spec·attack 없음');
@@ -172,7 +176,7 @@ function seed(c) {
   if (r.kind === 'done') return out('SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위를 정해라(work.mjs scope).');
   if (r.kind === 'active') return out(`ACTIVE ${r.slugs.join(', ')} — 진행 중인 unit이 끝나야 다음이 열린다`);
   if (r.kind === 'wait') return out(`WAIT ${r.slug} needs ${r.unmet.join(',')} — ${r.unmet.some((n) => /^Q\d+$/.test(n)) ? '결정이 먼저(work.mjs decide)' : '선행 unit이 먼저'}`);
-  createUnit(c, r.slug, r.item.origin, { milestone: r.item.milestone, needs: r.item.needs, accept: r.item.accept, kind: r.item.kind, from: 'ceo' });
+  createUnit(c, r.slug, r.item.origin, { milestone: r.item.milestone, needs: r.item.needs, accept: r.item.accept, kind: r.item.kind, from: 'seed' });
 }
 function decisionsFile(c) {
   const p = path.join(c.main, c.team.paths.decisions);
