@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { decide, makeCtx, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
-import { checkpoint } from '../team/scripts/checkpoint.mjs';
+import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
@@ -107,6 +107,15 @@ test('guard: R4 — Bash 리다이렉트·in-place 편집도 쓰기 경계를 �
 test('checkpoint: worktree가 없으면 조용히 빈 배열', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-cp-'));
   assert.deepEqual(checkpoint(d), []);
+});
+test('spawn 센서: SubagentStop의 agent_type이 팩이면 원장에 기계적으로 남고, 무명 stop은 줄을 만들지 않는다', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-spawn-'));
+  const e = spawnStop(d, { agent_type: 'build' });
+  assert.equal(e.pack, 'build');
+  assert.match(fs.readFileSync(path.join(d, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"spawn_stop".*"pack":"build"/, 'pass line의 spawn 열은 conductor의 산문 보고가 아니라 훅이 센다');
+  assert.equal(spawnStop(d, {}), null, 'v1 교훈(무명 stop 1,024건): 팩도 체크포인트도 없으면 쓰지 않는다');
+  assert.equal(spawnStop(d, { agent_type: 'claude' }), null, '메인 에이전트의 stop은 spawn이 아니다');
+  assert.equal(fs.readFileSync(path.join(d, '.garagiste/ledger/evidence.jsonl'), 'utf8').trim().split('\n').length, 1);
 });
 test('boundary: 의존성 파일과 유출 키워드는 HIT, 평범한 소스는 CLEAR', () => {
   assert.equal(checkBoundary(team, { files: ['package.json'] }).hit, true);
