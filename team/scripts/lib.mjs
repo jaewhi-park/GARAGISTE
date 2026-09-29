@@ -90,7 +90,8 @@ export function globToRegex(glob) {
   for (let i = 0; i < glob.length; i++) {
     const c = glob[i];
     if (c === '*') {
-      if (glob[i + 1] === '*') { re += '.*'; i++; if (glob[i + 1] === '/') i++; } else re += '[^/]*';
+      // `**/`는 0개 이상의 "온전한 세그먼트" — /를 삼켜 `.*`로 만들면 `**/schema/**`가 vault-schema/처럼 schema로 끝나는 폴더까지 문다(2차 실기 사고 11: 거짓 boundary HIT가 ship을 막았다)
+      if (glob[i + 1] === '*') { i++; if (glob[i + 1] === '/') { re += '(.*/)?'; i++; } else re += '.*'; } else re += '[^/]*';
     } else if (c === '?') re += '[^/]';
     else if ('.+^$(){}|[]\\'.includes(c)) re += '\\' + c;
     else re += c;

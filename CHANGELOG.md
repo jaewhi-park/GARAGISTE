@@ -63,6 +63,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 사고 9: `redproof.mjs`·`verify.mjs red|attack`을 메인 루트에서 돌리면 대상 파일이 0개라 red 0/0 거짓 초록(ship 8조건이 막긴 했지만 라운드 낭비). 수리: slug 작업은 어디서 불러도 그 unit의 worktree가 뿌리(`slugRoot`) — 위치 규칙을 문서에 적는 대신 스크립트가 위치를 무의미하게 만든다.
 - 사고 10: 의존성이 unit worktree에만 설치되고 worktree는 ship 뒤 사라져, 메인이 설치하지 않으면 다음 unit이 맨손이 된다(2차 실기: build가 zod 없이 직접 파서를 짰고 attack이 그 파서에서 결함 3건을 찾았다). 수리: ship이 매니페스트 변경 출하에 「메인 설치를 돌려라」 NOTE + boot 팩에 러너 `.worktrees/` exclude 규칙(메인 full 오염 방지).
 
+### Fixed — 2026-09-29 glob `**/`가 세그먼트 경계를 삼켰다 (2차 실기의 사고 11)
+- `globToRegex`가 `**/`를 `.*`로 바꾸며 뒤의 `/`를 삼켜, `**/schema/**`가 `docs/units/vault-schema/…`처럼 schema로 **끝나는** 폴더까지 물었다 — 거짓 boundary HIT가 순수 로직 unit의 ship을 「spike 미완」으로 막았고, slug 이름(vault-schema)이 지뢰가 되는 구조였다. 수리: `**/` → `(.*/)?`(0개 이상의 온전한 세그먼트; `a/**/b`가 `a/b`도 맞고 `a/xb`는 안 맞는다). boundary·HAZARDS 매칭·LOGIC_EXCLUDE가 같은 함수를 쓰므로 전부 함께 바로잡힌다. 검사: vault-schema 재현 포함 glob 단위 테스트.
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 

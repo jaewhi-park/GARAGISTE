@@ -151,6 +151,12 @@ test('lib: glob — 경로 없는 패턴은 어느 디렉터리에서도 맞는�
   assert.ok(globToRegex('package.json').test('app/package.json'));
   assert.ok(globToRegex('**/electron/**').test('app/electron/main.ts'));
   assert.ok(!globToRegex('tests/**').test('src/tests.ts'));
+  // 사고 11: **/는 온전한 세그먼트 경계 — schema로 "끝나는" 폴더(vault-schema)를 물면 slug 이름이 지뢰가 된다
+  assert.ok(!globToRegex('**/schema/**').test('docs/units/vault-schema/try.md'), '거짓 boundary HIT의 재현');
+  assert.ok(globToRegex('**/schema/**').test('packages/core/schema/x.ts'));
+  assert.ok(globToRegex('**/schema/**').test('schema/x.ts'), '앞 세그먼트 0개도 맞는다');
+  assert.ok(globToRegex('a/**/b').test('a/b'), '중간 **/는 0개 세그먼트도 맞는다');
+  assert.ok(!globToRegex('a/**/b').test('a/xb'));
 });
 test('verify: 로직 줄 수는 테스트·문서·잠금 파일을 빼고 센다', () => {
   assert.equal(logicLines('10\t2\tsrc/a.ts\n5\t5\ttests/a.test.ts\n3\t0\tdocs/x.md\n-\t-\timg.png\n7\t1\tpackage-lock.json\n4\t4\tapps/desktop/vitest.config.ts'), 12, '설정 파일은 로직이 아니다');
