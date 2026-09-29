@@ -10,8 +10,8 @@
    `@claim <한 문장 — 무엇이 참이 되는가>` · `@milestone <id>` · `@sensor machine@<os> | human@<os>`.
    기계가 확인할 수 없는 주장만 `human`으로 표시한다. 그 주장은 CEO가 「써봤다」 하기 전까지 참이 아니다.
 3. `try.md`: 명령 1줄 · 단계 ≤3 · 기대 결과. 이것이 CEO가 보는 거울이다.
-4. `surface.md` ≤10줄: build가 부를 인터페이스와 설계 노트. 데이터 모델·파일 형식은 정하지 않는다 — 그것은 hard 결정이라 `node .claude/scripts/work.mjs ask <slug> "<질문>"`으로 큐에 넣는다.
+4. `surface.md` ≤10줄: build가 부를 인터페이스와 설계 노트. 데이터 모델·파일 형식은 정하지 않는다 — 그것은 hard 결정이라 `node .garagiste/scripts/work.mjs ask <slug> "<질문>"`으로 큐에 넣는다.
 5. 원문이 정하지 않은 것을 네가 정했다면 `work.mjs default <slug> "<정한 것>"`에 남긴다(CEO가 한 마디로 뒤집는다).
-6. 끝내기 전에 `node .claude/scripts/redproof.mjs <slug>` → `RED` 줄을 확인한다. red가 아니면 테스트가 아니다.
+6. 끝내기 전에 `node .garagiste/scripts/redproof.mjs <slug>` → `RED` 줄을 확인한다. red가 아니면 테스트가 아니다.
 
 마지막 출력은 다섯 줄 이하: 쓴 파일 · 주장 수 · human 주장 수 · 질문 수 · redproof 결과.

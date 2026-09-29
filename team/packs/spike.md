@@ -12,5 +12,5 @@
 - os: target OS에서 다르게 동작할 것
 - 측정: 명령과 출력(데이터 펜스 안에)
 
-허용 밖(팀 규칙·라이선스·egress 선언)에 부딛히면 그 자리에서 `node .claude/scripts/work.mjs ask <slug> "<질문>"` — 코드 0줄로 멈춘다.
+허용 밖(팀 규칙·라이선스·egress 선언)에 부딛히면 그 자리에서 `node .garagiste/scripts/work.mjs ask <slug> "<질문>"` — 코드 0줄로 멈춘다.
 마지막 출력은 두 줄: 파일 경로 · hard 질문 수.

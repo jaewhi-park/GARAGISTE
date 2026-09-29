@@ -21,11 +21,11 @@
     "decisions": "docs/DECISIONS.md",
     "status": "docs/STATUS.md",
     "ledger_doc": "docs/LEDGER.md",
-    "hazards": ".claude/HAZARDS.md",
-    "units": ".claude/units",
-    "ledger": ".claude/ledger/evidence.jsonl",
-    "logs": ".claude/session/logs",
-    "packs": ".claude/session/packs",
+    "hazards": ".garagiste/HAZARDS.md",
+    "units": ".garagiste/units",
+    "ledger": ".garagiste/ledger/evidence.jsonl",
+    "logs": ".garagiste/session/logs",
+    "packs": ".garagiste/session/packs",
     "worktrees": ".worktrees"
   },
   "boundary": {

@@ -36,7 +36,7 @@ export function render(c) {
   parts.push('## 써볼 것 (≤3)');
   for (const u of shippedUnseen.slice(0, 3)) {
     const tryMd = readText(path.join(c.main, c.team.paths.units_docs, u.slug, 'try.md')).trim();
-    parts.push(`- **${u.slug}** — "${u.origin}"`, ...(tryMd ? tryMd.split('\n').slice(0, 6).map((l) => `  ${l}`) : ['  (try.md 없음)']), `  → \`node .claude/scripts/work.mjs tried ${u.slug} ok|fail\``);
+    parts.push(`- **${u.slug}** — "${u.origin}"`, ...(tryMd ? tryMd.split('\n').slice(0, 6).map((l) => `  ${l}`) : ['  (try.md 없음)']), `  → \`node .garagiste/scripts/work.mjs tried ${u.slug} ok|fail\``);
   }
   if (!shippedUnseen.length) parts.push('- 없음');
   parts.push('', '## 정해 주세요', ...(questions.length ? questions : ['- 없음']));

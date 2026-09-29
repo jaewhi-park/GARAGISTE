@@ -1,12 +1,12 @@
-// guard — PreToolUse. 판단 없는 경계: 파괴적 git · 비밀 · 규칙집·원장 보호 · 팩별 쓰기 경계(worktree 마커).
-import fs from 'node:fs';
+// guard-rules — 하네스 중립 경계 규칙. Claude 훅(.claude/hooks/guard.mjs)과 opencode 플러그인(.opencode/plugins/guard.ts)이 같은 함수를 부른다.
 import path from 'node:path';
 
 const DESTRUCTIVE = /\bgit\s+(reset\s+--hard|clean\s+-\S*f|checkout\s+--\s+\.|stash\b|rebase\b|merge\b|branch\s+-D|push\s+(\S+\s+)?(-f\b|--force)|push\s+\S+\s+(main|master)\b|commit\s+(.*\s)?(--no-verify|-n)\b)/;
 const SECRET = /(^|[\\/])\.env(\.|$)|\.pem$|\.key$|credentials\.json$/i;
-const RULEBOOK = /(^|[\\/])\.claude[\\/](team\.json|settings\.json|hooks[\\/]|scripts[\\/]|packs[\\/]|HAZARDS\.md|ledger[\\/]|units[\\/])/;
-const LEDGER_SHELL = /\.claude[\\/](ledger|units)[\\/]/;
-const RULEBOOK_SHELL = /(^|[\s;&|>])(rm|mv|cp|sed|tee|truncate|echo|cat|printf)\b[^;&|]*\.claude[\\/](team\.json|settings\.json|hooks|scripts|packs|HAZARDS\.md)/;
+// 규칙집 = 팀 정본(.garagiste) + 하네스 배선(.claude settings·hooks·agents / opencode.json·.opencode agents·plugins / .githooks)
+const RULEBOOK = /(^|[\\/])(\.garagiste[\\/](team\.json|HAZARDS\.md|scripts[\\/]|packs[\\/]|ledger[\\/]|units[\\/])|\.claude[\\/](settings\.json|hooks[\\/]|agents[\\/])|opencode\.json|\.opencode[\\/](agents|plugins)[\\/]|\.githooks[\\/])/;
+const LEDGER_SHELL = /\.garagiste[\\/](ledger|units)[\\/]/;
+const RULEBOOK_SHELL = /(^|[\s;&|>])(rm|mv|cp|sed|tee|truncate|echo|cat|printf)\b[^;&|]*(\.garagiste[\\/](team\.json|HAZARDS\.md|scripts|packs)|\.claude[\\/](settings\.json|hooks|agents)|opencode\.json|\.opencode[\\/](agents|plugins)|\.githooks)/;
 
 export const PACK_RULES = {
   spec: { allow: [/^tests\/acceptance\//, /^docs\/units\/[^/]+\//] },
@@ -17,10 +17,15 @@ export const PACK_RULES = {
 const norm = (p) => p.replace(/\\/g, '/');
 export function worktreeOf(abs, worktreesDir) {
   const rel = norm(path.relative(worktreesDir, abs));
-  if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
   const [slug, ...rest] = rel.split('/');
   return { slug, dir: path.join(worktreesDir, slug), rel: rest.join('/') };
 }
+export function worktreeFromCommand(command, worktreesDir) {
+  const m = /\.worktrees[\\/]([a-z0-9][a-z0-9-]*)/.exec(command);
+  return m ? { slug: m[1], dir: path.join(worktreesDir, m[1]), rel: '' } : null;
+}
+// input: { tool_name, tool_input, cwd } (Claude 훅 형식) · ctx: { cwd, env, worktreesDir, readMarker(dir) }
 export function decide(input, ctx) {
   const { tool_name: tool, tool_input: ti = {} } = input;
   const cwd = input.cwd || ctx.cwd || process.cwd();
@@ -29,8 +34,8 @@ export function decide(input, ctx) {
     const c = String(ti.command || '');
     if (DESTRUCTIVE.test(c)) return '파괴적 git — stash·rebase·merge·reset --hard·force push·보호 브랜치 push·--no-verify는 없다. 머지는 ship.mjs만.';
     if (LEDGER_SHELL.test(c) && /(>|>>|\brm\b|\bsed\b|\btee\b|\btruncate\b|\bmv\b)/.test(c)) return '원장·unit 상태는 스크립트만 쓴다.';
-    if (!admin && RULEBOOK_SHELL.test(c)) return '규칙집(.claude/team.json·settings·hooks·scripts·packs·HAZARDS)은 hard 결정 뒤 CEO가 GARAGISTE_ADMIN=1로만 바꾼다.';
-    const w = worktreeOf(path.resolve(cwd), ctx.worktreesDir);
+    if (!admin && RULEBOOK_SHELL.test(c)) return '규칙집(.garagiste 정본·하네스 배선)은 hard 결정 뒤 CEO가 GARAGISTE_ADMIN=1로만 바꾼다.';
+    const w = worktreeOf(path.resolve(cwd), ctx.worktreesDir) || worktreeFromCommand(c, ctx.worktreesDir);
     if (w) {
       if (/\bgit\s+push\b/.test(c)) return 'worktree에서 push하지 않는다 — ship.mjs가 main으로 올린다.';
       if (ctx.readMarker(w.dir) === 'spike' && /\bgit\s+commit\b/.test(c)) return 'spike는 커밋하지 않는다 — 측정 파일만 남긴다.';
@@ -54,14 +59,9 @@ export function decide(input, ctx) {
   }
   return null;
 }
-function main() {
-  let raw = ''; try { raw = fs.readFileSync(0, 'utf8'); } catch { /* 입력 없음 */ }
-  let input = {}; try { input = JSON.parse(raw || '{}'); } catch { input = {}; }
-  const root = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
-  const reason = decide(input, {
-    cwd: input.cwd, env: process.env, worktreesDir: path.join(root, '.worktrees'),
-    readMarker: (dir) => { try { return fs.readFileSync(path.join(dir, '.claude-pack'), 'utf8').trim(); } catch { return null; } },
-  });
-  if (reason) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } }));
+export function makeCtx(root, { cwd, env = process.env, fs }) {
+  return {
+    cwd, env, worktreesDir: path.join(root, '.worktrees'),
+    readMarker: (dir) => { try { return fs.readFileSync(path.join(dir, '.garagiste-pack'), 'utf8').trim(); } catch { return null; } },
+  };
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')) main();

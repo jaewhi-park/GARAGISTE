@@ -27,7 +27,7 @@ export function mainRoot(cwd = process.cwd()) {
 }
 export const REQUIRED_TEAM_KEYS = ['version', 'protected_branch', 'models', 'commands', 'paths', 'boundary', 'budgets', 'sensors'];
 export function loadTeam(root) {
-  const p = path.join(root, '.claude', 'team.json');
+  const p = path.join(root, '.garagiste', 'team.json');
   if (!fs.existsSync(p)) throw new Error(`team.json 없음: ${p} — install.sh를 먼저`);
   const t = JSON.parse(fs.readFileSync(p, 'utf8'));
   const missing = REQUIRED_TEAM_KEYS.filter((k) => !(k in t));
@@ -114,11 +114,11 @@ export function adversaryFiles(root, team, slug) {
   return listFiles(path.join(root, team.paths.adversary)).filter((f) => path.basename(f).startsWith(`${slug}-`)).map((f) => path.posix.join(team.paths.adversary, f));
 }
 export function touchCeo(main) {
-  const p = path.join(main, '.claude', 'session', 'ceo-touch');
+  const p = path.join(main, '.garagiste', 'session', 'ceo-touch');
   fs.mkdirSync(path.dirname(p), { recursive: true });
   fs.writeFileSync(p, new Date().toISOString());
 }
-export function ceoTouch(main) { return readText(path.join(main, '.claude', 'session', 'ceo-touch')).trim() || null; }
+export function ceoTouch(main) { return readText(path.join(main, '.garagiste', 'session', 'ceo-touch')).trim() || null; }
 export function linkDeps(root, dest) {
   // 의존성 디렉터리는 .gitignore 밖이라 worktree에 없다 — 심볼릭 링크로 재사용
   for (const d of ['node_modules', '.venv']) {

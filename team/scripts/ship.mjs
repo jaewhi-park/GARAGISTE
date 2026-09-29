@@ -26,7 +26,7 @@ export function evaluateShip(x) {
   return c;
 }
 export function proseKb(main) {
-  const files = ['CLAUDE.md', '.claude/HAZARDS.md', ...listFiles(path.join(main, '.claude', 'packs')).map((f) => path.join('.claude', 'packs', f))];
+  const files = ['CLAUDE.md', 'AGENTS.md', '.garagiste/HAZARDS.md', ...listFiles(path.join(main, '.garagiste', 'packs')).map((f) => path.join('.garagiste', 'packs', f))];
   return Math.round(files.reduce((n, f) => n + Buffer.byteLength(readText(path.join(main, f))), 0) / 1024);
 }
 const DOC_OK = (team) => [team.paths.backlog, team.paths.status, team.paths.ledger_doc, team.paths.decisions];
@@ -85,6 +85,6 @@ function main() {
   if (cm.status) fail(`FAIL ship: 문서 커밋 실패 — ${cm.stderr}`);
   git(['worktree', 'remove', wt], c.main);
   out(`SHIPPED ${slug} ${short(head)} sensor=${unit.sensor}`);
-  out(`TRY: docs/units/${slug}/try.md → node .claude/scripts/work.mjs tried ${slug} ok|fail`);
+  out(`TRY: docs/units/${slug}/try.md → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`);
 }
 if (isMain(import.meta.url)) main();

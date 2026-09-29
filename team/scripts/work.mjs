@@ -25,7 +25,7 @@ function newUnit(c, slug, origin, opts) {
   if (add.status) fail(`FAIL worktree: ${add.stderr}`);
   linkDeps(c.main, wt);
   const boundary = checkBoundary(c.team, { text: origin });
-  fs.writeFileSync(path.join(wt, '.claude-pack'), boundary.hit ? 'spike' : 'spec');
+  fs.writeFileSync(path.join(wt, '.garagiste-pack'), boundary.hit ? 'spike' : 'spec');
   const unit = {
     slug, kind: opts.kind || 'feature', origin, origin_kind: opts.from || 'ceo', created: new Date().toISOString(),
     state: boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt), boundary,

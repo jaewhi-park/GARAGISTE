@@ -38,7 +38,7 @@ function main() {
   const changed = base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
   const sections = [];
   const sec = (key, title, body) => body && sections.push({ key, title, text: `## ${title}\n${body.trim()}` });
-  sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.claude', 'packs', `${pack}.md`))}\n\n작업 디렉터리: \`${unit.worktree}\` (브랜치 ${unit.branch}). 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.`);
+  sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.garagiste', 'packs', `${pack}.md`))}\n\n작업 디렉터리: \`${unit.worktree}\` (브랜치 ${unit.branch}). 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.`);
   sec('commands', '명령', Object.entries(c.team.commands).filter(([, v]) => v).map(([k, v]) => `- ${k}: \`${v}\``).join('\n'));
   sec('origin', '원문', fence(`CEO 말 그대로 (${unit.created.slice(0, 10)})`, unit.origin));
   if (unit.boundary?.hit) sec('boundary', 'boundary', `HIT: ${unit.boundary.reasons.join(', ')}${pack !== 'spike' ? ` — spike 측정: docs/measurements/spike-${slug}.md` : ''}`);
@@ -55,7 +55,7 @@ function main() {
   if (surface) sec('surface', 'surface.md', surface);
   const briefMd = readText(path.join(c.main, c.team.paths.brief));
   if (briefMd && pack !== 'build') sec('brief', 'BRIEF 발췌', fence('docs/BRIEF.md 첫 40줄', briefMd.split('\n').slice(0, 40).join('\n')));
-  const hz = matchHazards(readText(path.join(c.main, '.claude', 'HAZARDS.md')), [...changed, ...(unit.boundary?.reasons || []).filter((r) => r.startsWith('file ')).map((r) => r.slice(5))]);
+  const hz = matchHazards(readText(path.join(c.main, '.garagiste', 'HAZARDS.md')), [...changed, ...(unit.boundary?.reasons || []).filter((r) => r.startsWith('file ')).map((r) => r.slice(5))]);
   if (hz.length) sec('hazards', 'HAZARDS — 이 경로에서 난 사고', hz.join('\n'));
   const last = [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'verify' && e.where === unit.worktree);
   if (last) sec('verify', '직전 verify', `${last.mode} exit=${last.exit} tree=${(last.tree || '').slice(0, 7)} 로그: ${last.log || '-'}`);
@@ -69,7 +69,7 @@ function main() {
   const dir = path.join(c.main, c.team.paths.packs); fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${slug}-${pack}-${stamp()}.md`);
   fs.writeFileSync(file, r.text + '\n');
-  fs.writeFileSync(path.join(wt, '.claude-pack'), pack);
+  fs.writeFileSync(path.join(wt, '.garagiste-pack'), pack);
   out(`PACK ${path.relative(c.main, file)} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
 }
 if (isMain(import.meta.url)) main();

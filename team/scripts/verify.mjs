@@ -6,7 +6,7 @@ import {
   mergeBase, out, readLedger, shell, short, stamp, workTree,
 } from './lib.mjs';
 
-export const LOGIC_EXCLUDE = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', 'docs/**', '.claude/**', 'fixtures/**', 'probes/**',
+export const LOGIC_EXCLUDE = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', 'docs/**', '.garagiste/**', '.claude/**', '.opencode/**', 'opencode.json', 'fixtures/**', 'probes/**',
   '**/package-lock.json', '**/pnpm-lock.yaml', '**/uv.lock', '**/*.md', '.githooks/**', '.gitignore'];
 export const TEST_GLOBS = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', 'probes/**'];
 export function isTestFile(f) { return matchAny(f, TEST_GLOBS); }
@@ -25,7 +25,7 @@ export function gateDecision({ index, work, ledger, staged, branchFiles = [], nu
   if (env.GARAGISTE_WIP) return { ok: reasons.length === 0, reasons, wip: true, logic: 0 };
   if (index !== work) reasons.push('인덱스 ≠ 작업 트리 — 원장은 작업 트리를 증명한다: 전부 스테이지하거나 되돌려라');
   const pass = ledger.some((e) => e.kind === 'verify' && (e.mode === 'quick' || e.mode === 'full') && e.exit === 0 && e.tree === work);
-  if (!pass) reasons.push(`원장에 이 tree(${short(work)})의 quick PASS 없음 — node .claude/scripts/verify.mjs quick`);
+  if (!pass) reasons.push(`원장에 이 tree(${short(work)})의 quick PASS 없음 — node .garagiste/scripts/verify.mjs quick`);
   const logic = logicLines(numstat);
   const logicFiles = staged.filter((f) => !matchAny(f, LOGIC_EXCLUDE));
   if (logicFiles.length && ![...staged, ...branchFiles].some(isTestFile)) reasons.push('로직 변경에 테스트 파일이 없다 — red 테스트가 먼저다');
@@ -37,7 +37,7 @@ export function gateDecision({ index, work, ledger, staged, branchFiles = [], nu
 
 function runMode(mode, c) {
   const cmd = c.team.commands[mode];
-  if (!cmd) fail(`FAIL verify:${mode} commands.${mode} 비어 있음 — .claude/team.json`);
+  if (!cmd) fail(`FAIL verify:${mode} commands.${mode} 비어 있음 — .garagiste/team.json`);
   const logDir = path.join(c.main, c.team.paths.logs); fs.mkdirSync(logDir, { recursive: true });
   const log = path.join(logDir, `verify-${mode}-${stamp()}.log`);
   const r = shell(cmd, { cwd: c.root });
@@ -51,7 +51,7 @@ function runMode(mode, c) {
 }
 export function runFiles(c, files) {
   const tpl = c.team.commands.test_file;
-  if (!tpl) fail('FAIL commands.test_file 비어 있음 — .claude/team.json ({file} 자리표시자)');
+  if (!tpl) fail('FAIL commands.test_file 비어 있음 — .garagiste/team.json ({file} 자리표시자)');
   return files.map((file) => ({ file, exit: shell(tpl.replaceAll('{file}', file), { cwd: c.root }).status }));
 }
 function red(slug, c) {
