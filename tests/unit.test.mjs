@@ -39,6 +39,11 @@ test('guard: 비밀·규칙집·원장은 쓰지 않는다 (GARAGISTE_ADMIN만 �
   assert.ok(decide(write('.githooks/pre-commit'), gctx(null)));
   assert.ok(decide(bash('echo x >> .garagiste/ledger/evidence.jsonl'), gctx(null)));
   assert.equal(decide(write('.garagiste/team.json'), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null);
+  assert.equal(decide(bash('cat .garagiste/scripts/lib.mjs'), gctx(null)), null, '규칙집 읽기는 경계가 아니다 — 첫 Windows 실기의 오탐(conductor의 진단이 막혔다)');
+  assert.equal(decide(bash('sed -n "30,40p" .garagiste/scripts/work.mjs'), gctx(null)), null, 'sed도 -i 없이는 읽기다');
+  assert.ok(decide(bash('echo x > .garagiste/team.json'), gctx(null)), '리다이렉트로 향하면 쓰기다');
+  assert.ok(decide(bash('sed -i "s/x/y/" .garagiste/scripts/lib.mjs'), gctx(null)), 'sed -i는 쓰기다');
+  assert.ok(decide(bash('cp lib.mjs .garagiste/scripts/lib.mjs'), gctx(null)));
 });
 test('guard: conductor는 쓰지 않는다 — worktree 밖 편집은 거부, GARAGISTE_ADMIN만 예외', () => {
   assert.match(decide(write('src/a.ts'), gctx(null)), /conductor는 쓰지 않는다/);
@@ -320,6 +325,12 @@ test('work models: tier 한 단어 또는 팩=모델, 에이전트 앞머리 mod
   assert.match(setFrontmatterModel('---\ndescription: x\nmode: subagent\n---\n본문', 'anthropic/claude-sonnet-4-5'), /^---\nmodel: anthropic\/claude-sonnet-4-5\ndescription: x/);
 });
 
+test('lib: repoRoot와 mainRoot는 같은 저장소에서 같은 문자열이다 — win32 사고(슬래시/역슬래시)로 decide·drop·tried가 메인에서도 거부됐다', async () => {
+  const { repoRoot, mainRoot } = await import('../team/scripts/lib.mjs');
+  const cwd = path.dirname(path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, '$1')));
+  assert.equal(repoRoot(cwd), mainRoot(cwd), 'c.root===c.main 비교의 전제 — red는 win32에서만 관측된다(사고 재현이 그 red)');
+  assert.equal(repoRoot(cwd), path.resolve(repoRoot(cwd)), '플랫폼 표기로 정규화된다');
+});
 test('lib: Windows PowerShell이 붙인 BOM이 있어도 team.json을 읽는다', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-bom-'));
   fs.mkdirSync(path.join(d, '.garagiste'));
