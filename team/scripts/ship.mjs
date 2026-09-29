@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadUnit, out, readLedger, readText, saveUnit, shell, short, workTree, worktreeDir, ceoTouch, listUnits, listFiles } from './lib.mjs';
 import { parseTags } from './claims.mjs';
+import { checkBoundary } from './boundary.mjs';
 import { budgetStatus, render } from './state.mjs';
 
 export const SPIKE_ROWS = ['wire', 'host', 'license', 'default', 'os'];
@@ -17,8 +18,9 @@ export function evaluateShip(x) {
   const at = [...x.ledger].reverse().find((e) => e.kind === 'attack' && e.slug === x.slug && e.tree === x.tree);
   const atOk = !x.requireAttack || (!!at && at.red === 0 && at.total >= 1);
   c.push({ id: 'attack', ok: atOk, why: atOk ? '' : !at ? 'attack 기록 없음 — attack 팩을 돌려라' : at.total < 1 ? 'adversary 테스트 0개' : `adversary red ${at.red}` });
-  const sp = !x.unit?.boundary?.hit || spikeComplete(x.spikeText);
-  c.push({ id: 'spike', ok: sp, why: sp ? '' : `boundary HIT인데 spike 필수 행(${SPIKE_ROWS.join('·')}) 미완` });
+  const hit = x.boundaryHit ?? !!x.unit?.boundary?.hit;
+  const sp = !hit || spikeComplete(x.spikeText);
+  c.push({ id: 'spike', ok: sp, why: sp ? '' : `boundary HIT(${x.boundaryWhy || '원문'})인데 spike 필수 행(${SPIKE_ROWS.join('·')}) 미완` });
   const head = !/^wip:/.test(x.lastSubject || '');
   c.push({ id: 'head', ok: head, why: head ? '' : 'HEAD가 wip 체크포인트 — build를 다시 띄워 끝내라' });
   const budgetOk = x.stops.length === 0 && x.proseKb <= x.proseMax;
@@ -41,8 +43,12 @@ function main() {
   const units = listUnits(c.main, c.team);
   const ledger = readLedger(c.main, c.team);
   const b = budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) });
+  const base = exists ? git(['merge-base', 'HEAD', c.team.protected_branch], wt).stdout : '';
+  const changed = exists && base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
+  const diffHit = checkBoundary(c.team, { files: changed });
   const conds = evaluateShip({
     unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, machineOs: c.team.sensors.machine_os,
+    boundaryHit: !!unit.boundary?.hit || diffHit.hit, boundaryWhy: unit.boundary?.hit ? '원문' : diffHit.reasons.join(', '),
     requireAttack: c.team.require_attack !== false, spikeText: readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`)),
     lastSubject: exists ? git(['log', '-1', '--format=%s'], wt).stdout : '', stops: b.stops, proseKb: proseKb(c.main), proseMax: c.team.budgets.prose_kb_max,
   });

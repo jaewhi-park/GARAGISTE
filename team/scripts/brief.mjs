@@ -1,7 +1,7 @@
 // brief — 팩 조립. 에이전트가 받는 유일한 입력. ≤ pack_kb_max, 외부 텍스트는 데이터 펜스, 이어받기 절 포함.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, ctx, fail, git, isMain, listFiles, loadUnit, mergeBase, out, readLedger, readText, stamp, worktreeDir } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, fail, git, isMain, listFiles, loadUnit, mergeBase, out, readLedger, readText, stamp, worktreeDir } from './lib.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { backlogLine, parseBacklog } from './work.mjs';
 
@@ -58,6 +58,7 @@ function intake(c, args) {
   const file = path.join(dir, `intake-${stamp()}.md`);
   fs.writeFileSync(file, r.text + '\n');
   fs.writeFileSync(markPath, String(briefAll.length));
+  appendLedger(c.main, c.team, { kind: 'pack', slug: 'intake', pack: 'intake', model: c.team.models.intake, bytes: r.bytes });
   out(`PACK ${path.relative(c.main, file)} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=. model=${c.team.models.intake}`);
 }
 function main() {
@@ -104,6 +105,7 @@ function main() {
   const file = path.join(dir, `${slug}-${pack}-${stamp()}.md`);
   fs.writeFileSync(file, r.text + '\n');
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), pack);
+  appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes });
   out(`PACK ${path.relative(c.main, file)} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
 }
 if (isMain(import.meta.url)) main();

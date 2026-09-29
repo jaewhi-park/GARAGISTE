@@ -13,7 +13,7 @@ import { evaluateShip, spikeComplete } from '../team/scripts/ship.mjs';
 import { fit, fence, matchHazards, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady } from '../team/scripts/work.mjs';
+import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS } from '../team/scripts/work.mjs';
 import { diagnose } from '../team/scripts/doctor.mjs';
 import { globToRegex, parseLocalEnv, depDirs, linkDeps } from '../team/scripts/lib.mjs';
 
@@ -120,6 +120,8 @@ test('ship: 7조건 — 하나라도 빠지면 fail-closed', () => {
   assert.deepEqual(evaluateShip({ ...x, ledger: [ledger[0], ledger[1], { ...ledger[2], red: 1 }] }).filter((k) => !k.ok).map((k) => k.id), ['attack']);
   assert.deepEqual(evaluateShip({ ...x, ledger: [{ ...ledger[0], platform: 'win32' }, ledger[1], ledger[2]] }).filter((k) => !k.ok).map((k) => k.id), ['full'], '사람 OS 관측은 machine이 아니다');
   assert.deepEqual(evaluateShip({ ...x, unit: { ...unit, boundary: { hit: true } } }).filter((k) => !k.ok).map((k) => k.id), ['spike']);
+  assert.deepEqual(evaluateShip({ ...x, boundaryHit: true, boundaryWhy: 'file package.json' }).filter((k) => !k.ok).map((k) => k.id), ['spike'], 'diff가 boundary 파일을 건드려도 spike');
+  assert.equal(evaluateShip({ ...x, boundaryHit: true, spikeText: '- wire: 없음\n- host: linux\n- license: MIT\n- default: 없음\n- os: 없음' }).filter((k) => !k.ok).length, 0);
   assert.deepEqual(evaluateShip({ ...x, lastSubject: 'wip: h checkpoint' }).filter((k) => !k.ok).map((k) => k.id), ['head']);
   assert.deepEqual(evaluateShip({ ...x, stops: ['미검수 3'] }).filter((k) => !k.ok).map((k) => k.id), ['budget']);
   assert.deepEqual(evaluateShip({ ...x, proseKb: 41 }).filter((k) => !k.ok).map((k) => k.id), ['budget']);
@@ -225,4 +227,13 @@ test('lib: 워크스페이스 패키지의 node_modules까지 worktree에 링크
   assert.deepEqual(linkDeps(root, wt), ['apps/desktop/node_modules', 'node_modules', 'packages/core/node_modules']);
   assert.ok(fs.lstatSync(path.join(wt, 'packages/core/node_modules')).isSymbolicLink());
   assert.deepEqual(linkDeps(root, wt), [], '두 번째는 아무것도 안 한다');
+});
+
+test('work models: tier 한 단어 또는 팩=모델, 에이전트 앞머리 model: 재생성', () => {
+  assert.deepEqual(resolveModels(TIERS.medium, ['low']), TIERS.low);
+  assert.equal(resolveModels(TIERS.medium, ['build=opus']).build, 'opus');
+  assert.equal(resolveModels(TIERS.medium, ['build=opus']).spec, 'opus');
+  assert.throws(() => resolveModels(TIERS.medium, ['critic=opus']), /팩/);
+  assert.match(setFrontmatterModel('---\nname: build\nmodel: sonnet\ntools: Read\n---\n본문', 'opus'), /^---\nname: build\nmodel: opus\ntools: Read\n---\n본문$/);
+  assert.match(setFrontmatterModel('---\ndescription: x\nmode: subagent\n---\n본문', 'anthropic/claude-sonnet-4-5'), /^---\nmodel: anthropic\/claude-sonnet-4-5\ndescription: x/);
 });

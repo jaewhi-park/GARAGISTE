@@ -59,7 +59,7 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 ## 스크립트 (판단 0)
 | 스크립트 | 하는 일 |
 |---|---|
-| `work` | 입구와 unit 생애: brief(원문 축적) · add · scope(선행 닫힘) · seed · new · ask · decide · default · tried · list |
+| `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · new · ask · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
 | `brief` | 팩 조립 ≤8 KB(intake는 32 KB) — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |
 | `redproof` | 인수 테스트가 base에서 red · head에서 green임을 증명 |
@@ -71,6 +71,7 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 | `guard-rules` · `checkpoint` | 두 하네스가 공유하는 경계 규칙과 wip 체크포인트 |
 
 ## 문서
+- [docs/GUIDE.md](docs/GUIDE.md) — 내 PC에서 돌려 보는 테스트 가이드(클론 · 시험 저장소 · 세션 · 판정선 · 모델 편성)
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — 네 문장과 뼈대 여덟, 사람의 창
 - [docs/BIRTH.md](docs/BIRTH.md) — 0 base 탄생 프로토콜, 탄생 규칙 셋, 첫 3 unit 뒤의 판정선
 - [docs/catalogue/](docs/catalogue/) — 후보 장치 카탈로그(v2 설계), v1 측정 진단, 토의 추가분. **계획이 아니다** — 사고가 나면 여기서 찾아 만든다

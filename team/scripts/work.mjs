@@ -5,6 +5,28 @@ import { checkBoundary } from './boundary.mjs';
 import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readText, saveUnit, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
+export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike'];
+export const TIERS = {
+  low: { intake: 'sonnet', spec: 'sonnet', build: 'haiku', attack: 'sonnet', spike: 'haiku' },
+  medium: { intake: 'opus', spec: 'opus', build: 'sonnet', attack: 'opus', spike: 'sonnet' },
+  high: { intake: 'opus', spec: 'opus', build: 'opus', attack: 'opus', spike: 'sonnet' },
+};
+// 편성 한 곳: team.json.models가 정본, 하네스의 에이전트 파일 앞머리 `model:`은 거기서 재생성
+export function resolveModels(current, args) {
+  if (args.length === 1 && TIERS[args[0]]) return { ...current, ...TIERS[args[0]] };
+  const next = { ...current };
+  for (const a of args) {
+    const m = /^([a-z]+)=([a-z0-9._/-]+)$/i.exec(a);
+    if (!m || !PACKS.includes(m[1])) throw new Error(`형식: <low|medium|high> 또는 <팩>=<모델> (팩: ${PACKS.join('·')}) — 받은 값: ${a}`);
+    next[m[1]] = m[2];
+  }
+  return next;
+}
+export function setFrontmatterModel(text, model) {
+  if (!text.startsWith('---')) return text;
+  if (/^model:\s.*$/m.test(text.split('\n---')[0] + '\n---')) return text.replace(/^model:\s.*$/m, `model: ${model}`);
+  return text.replace(/^---\n/, `---\nmodel: ${model}\n`);
+}
 export const DECISIONS_TEMPLATE = '# DECISIONS\n\n## 정해 주세요\n\n## 정한 것\n';
 const BACKLOG_HEAD = '# BACKLOG — 한 줄 = 한 unit. 형식: `- [ ] <slug> · M<n> · needs: <a,b|Q<n>|-> · "<원문 한 문장>" · 인수: <기계가 확인할 한 줄>`. 쓰기는 work.mjs만.\n\n';
 const q = (s) => String(s).replace(/"/g, '”').replace(/\n/g, ' ');
@@ -192,6 +214,27 @@ function tried(c, slug, result, note = '') {
   if (result === 'fail') appendBacklog(c, backlogLine({ slug: `${slug}-fix`, milestone: u.milestone, origin: note || '써봤는데 실패 — 스펙 정정', accept: '-' }));
   out(`PASS tried ${slug} ${result}`);
 }
+function models(c, args) {
+  const teamPath = path.join(c.main, '.garagiste', 'team.json');
+  const t = readJson(teamPath, null);
+  if (!args.length) return out(`MODELS ${Object.entries(t.models).map(([k, v]) => `${k}=${v}`).join(' ')}`);
+  let next; try { next = resolveModels(t.models, args); } catch (e) { fail(`FAIL models: ${e.message}`); }
+  t.models = next; writeJson(teamPath, t);
+  const touched = [];
+  for (const [pack, model] of Object.entries(next)) {
+    for (const f of [path.join(c.main, '.claude', 'agents', `${pack}.md`), path.join(c.main, '.opencode', 'agents', `${pack}.md`)]) {
+      if (!fs.existsSync(f)) continue;
+      fs.writeFileSync(f, setFrontmatterModel(readText(f), model)); touched.push(path.relative(c.main, f));
+    }
+  }
+  appendLedger(c.main, c.team, { kind: 'models', models: next });
+  out(`MODELS ${Object.entries(next).map(([k, v]) => `${k}=${v}`).join(' ')} → ${touched.length} 에이전트 파일 갱신`);
+}
+function spawned(c, slug, pack, flags) {
+  if (!slug || !PACKS.includes(pack || '')) fail('사용법: work.mjs spawned <slug|intake> <팩> [--tokens N] [--minutes M] [--model m] [--note "…"]');
+  const e = appendLedger(c.main, c.team, { kind: 'spawn', slug, pack, model: flags.model || c.team.models[pack], tokens: flags.tokens ? Number(flags.tokens) : null, minutes: flags.minutes ? Number(flags.minutes) : null, note: flags.note || '' });
+  out(`SPAWN ${slug} ${pack} ${e.model}${e.tokens ? ` ${e.tokens} tok` : ''}${e.minutes ? ` ${e.minutes} min` : ''}`);
+}
 function list(c) {
   const units = listUnits(c.main, c.team);
   if (!units.length) return out('unit 없음');
@@ -201,7 +244,7 @@ function main() {
   const [cmd, ...raw] = process.argv.slice(2);
   const c = ctx();
   const flags = {}; const pos = [];
-  for (let i = 0; i < raw.length; i++) { if (raw[i].startsWith('--') && cmd !== 'brief' && cmd !== 'scope') flags[raw[i].slice(2)] = raw[++i]; else pos.push(raw[i]); }
+  for (let i = 0; i < raw.length; i++) { if (raw[i].startsWith('--') && cmd !== 'brief' && cmd !== 'scope' && cmd !== 'models') flags[raw[i].slice(2)] = raw[++i]; else pos.push(raw[i]); }
   if (cmd === 'brief') return brief(c, raw);
   if (cmd === 'add') return add(c, pos[0], pos[1], flags);
   if (cmd === 'scope') return scope(c, raw);
@@ -212,6 +255,8 @@ function main() {
   if (cmd === 'default') return setDefault(c, pos[0], pos[1]);
   if (cmd === 'tried') return tried(c, pos[0], pos[1], pos[2]);
   if (cmd === 'list') return list(c);
-  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" · decide <n> "<답>" · default <slug> "<정한 것>" · tried <slug> ok|fail · list');
+  if (cmd === 'models') return models(c, raw);
+  if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
+  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" · decide <n> "<답>" · default <slug> "<정한 것>" · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · spawned <slug> <팩> [--tokens N --minutes M]');
 }
 if (isMain(import.meta.url)) main();

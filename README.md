@@ -59,7 +59,7 @@ Agents receive one pack file and never talk to each other. Build has never met a
 ## Scripts (zero judgment)
 | script | does |
 |---|---|
-| `work` | entrance and unit lifecycle: brief (verbatim) · add · scope (closure over needs) · seed · new · ask · decide · default · tried · list |
+| `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · new · ask · decide · default · tried · list · models (one place) · spawned (ledger) |
 | `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
 | `redproof` | proves acceptance tests are red on base and green on head |
@@ -71,6 +71,7 @@ Agents receive one pack file and never talk to each other. Build has never met a
 | `guard-rules` · `checkpoint` | the boundary rules and wip checkpoint both harnesses share |
 
 ## Documents
+- [docs/GUIDE.md](docs/GUIDE.md) — run it on your own machine: clone, trial repo, session, verdict line, model assignment (Korean)
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — four sentences, eight tenets, the human's windows (Korean)
 - [docs/BIRTH.md](docs/BIRTH.md) — the zero-base birth protocol and the verdict line after the first 3 units (Korean)
 - [docs/catalogue/](docs/catalogue/) — candidate devices (the v2 design), the v1 measurements, discussion additions. **Not a plan**: a device is built only when an incident in the ledger asks for it
