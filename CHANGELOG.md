@@ -59,6 +59,10 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 ### Fixed — 2026-09-29 팩 상한이 실측보다 작았다 (2차 실기의 사고 8)
 - 첫 실제 build 팩(vault-schema)이 12KB로 상한 8KB를 넘어 루프가 멈췄다. 초과분은 법(인수 테스트 5.4KB)이 아니라 부대물(규칙·try/surface·이어받기·결정)이었다 — 상한은 실측 없이 정한 추정치. 수리: 기본 `pack_kb_max` 8→16(기존 설치는 team.json 한 줄을 CEO가 갱신), fit의 강등 순서를 diff→hazards→brief→이어받기→try→surface로 확장(전부 worktree·git에서 복구 가능한 절 — 포인터 문구가 어디서 읽을지 말한다), 법(acceptance·원문·규칙·결정)은 불가침 유지. 이어받기 절 제목을 「이 브랜치에 이미 있는 것」으로(스펙 커밋도 담으므로). 덤: scaffold(boot)의 TRY 안내가 없는 try.md 대신 실행·검증 명령을 가리킨다(ship 출력·STATUS 써볼 것).
 
+### Fixed — 2026-09-29 위치 의존 스크립트와 의존성 승계 (2차 실기의 사고 9·10)
+- 사고 9: `redproof.mjs`·`verify.mjs red|attack`을 메인 루트에서 돌리면 대상 파일이 0개라 red 0/0 거짓 초록(ship 8조건이 막긴 했지만 라운드 낭비). 수리: slug 작업은 어디서 불러도 그 unit의 worktree가 뿌리(`slugRoot`) — 위치 규칙을 문서에 적는 대신 스크립트가 위치를 무의미하게 만든다.
+- 사고 10: 의존성이 unit worktree에만 설치되고 worktree는 ship 뒤 사라져, 메인이 설치하지 않으면 다음 unit이 맨손이 된다(2차 실기: build가 zod 없이 직접 파서를 짰고 attack이 그 파서에서 결함 3건을 찾았다). 수리: ship이 매니페스트 변경 출하에 「메인 설치를 돌려라」 NOTE + boot 팩에 러너 `.worktrees/` exclude 규칙(메인 full 오염 방지).
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 

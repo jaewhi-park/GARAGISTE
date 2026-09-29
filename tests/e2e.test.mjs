@@ -70,7 +70,7 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
 `);
   write(wt, 'docs/units/hello/try.md', '명령: `node src/cli.mjs Ada`\n기대: `hello Ada`\n');
   write(wt, 'docs/units/hello/surface.md', 'CLI 인자 하나 → stdout 한 줄\n');
-  assert.match(script('redproof', ['hello'], wt).out, /^RED hello 1\/1/);
+  assert.match(script('redproof', ['hello'], repo).out, /^RED hello 1\/1/, '사고 9: 메인 루트에서 불러도 unit worktree가 뿌리 — 0/0 거짓 초록 없음');
   const spec = script('brief', ['spec', 'hello'], repo);
   assert.match(spec.out, /^PACK \.garagiste\/session\/packs\/hello-spec-.*KB cwd=\.worktrees\/hello model=sonnet/);
   git(['add', '-A'], wt);
@@ -101,7 +101,7 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
   write(wt, 'tests/adversary/hello-1.test.mjs', `import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';
 test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }); assert.equal(r.stdout, 'hello\\n'); });
 `);
-  assert.match(script('verify', ['attack', 'hello'], wt).out, /^ATTACK hello red 1\/1/);
+  assert.match(script('verify', ['attack', 'hello'], repo).out, /^ATTACK hello red 1\/1/, '사고 9: attack도 메인에서 불러도 worktree가 뿌리');
   git(['add', '-A'], wt); script('verify', ['quick'], wt);
   assert.equal(git(['commit', '-q', '-m', 'test(hello): adversary'], wt).status, 0);
   assert.match(script('ship', ['hello'], repo).out, /- attack: adversary red 1/);
@@ -282,6 +282,7 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   // 사고 7 회귀: main의 models 커밋 × boot의 commands 커밋 = team.json rebase 충돌 — ship이 키 병합으로 통과하고 통합 full까지 스스로 돌린다
   const ship = script('ship', ['boot'], repo);
   assert.match(ship.out, /^SHIPPED boot [0-9a-f]{7}/, ship.out);
+  assert.match(ship.out, /NOTE: 의존성 파일이 바뀌었다/, '사고 10: 매니페스트가 바뀐 출하는 메인 설치를 안내한다');
   const team = JSON.parse(fs.readFileSync(path.join(repo, '.garagiste', 'team.json'), 'utf8'));
   assert.match(team.commands.quick, /^node --test/);
   assert.equal(team.models.build, 'opus', '사고 7: main의 models와 boot의 commands가 함께 살아남는다');
