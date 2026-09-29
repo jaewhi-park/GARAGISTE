@@ -19,3 +19,4 @@
 - `.garagiste/scripts/**` · boot 팩에 CEO의 닫힌 결정(Q1)과 BRIEF 부록(40줄 컷 밖)이 빠져 확정된 스택 대신 기본값이 깔렸다(첫 Windows 실기) · 검사: 모든 팩에 닫힌 결정 전체 + BRIEF는 전문(boot 상한은 intake처럼 4×) — e2e가 팩 내용을 고정
 - `.garagiste/scripts/**` · 가드가 커밋 메시지 트레일러(<…>)의 >를 리다이렉트로 오탐해 커밋을 거부했다(첫 Windows 실기) · 검사: 따옴표 안은 데이터, $()·백틱만 실행으로 남김(stripQuoted) — guard 단위 테스트
 - `.garagiste/scripts/**` · models가 규칙집(team.json·agents)을 main에 고쳐 두고 커밋 경로가 없어 ship이 막혔다(2차 실기) · 검사: models는 산출물을 스스로 scaffold(team) 커밋(내부 SHIP·WIP 차선) — e2e(models 뒤 main 깨끗)
+- `.garagiste/scripts/**` · main의 models 커밋과 boot의 commands 커밋이 team.json에서 rebase 충돌 — FAIL 문구가 scaffold에 없는 build 팩을 가리켜 spawn 1회를 낭비시켰다(2차 실기) · 검사: 키 단위 3-way 기계 병합(mergeTeamJson) + kind 맞는 팩 이름 — unit·e2e 테스트
