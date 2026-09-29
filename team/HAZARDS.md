@@ -25,3 +25,4 @@
 - `**/vitest.config*` `**/*.config.*` `.garagiste/packs/boot.md` · 메인 full이 `.worktrees/` 아래 진행 중 unit의 red 테스트까지 쓸어 담았고, 의존성은 사라진 unit worktree에만 설치돼 다음 unit이 결정된 스택(zod)을 맨손으로 우회했다(2차 실기) · 검사: boot 팩의 러너 exclude 규칙 + ship이 매니페스트 변경 출하에 메인 설치 NOTE — e2e
 - `.garagiste/scripts/**` · globToRegex가 `**/`의 /를 삼켜 `**/schema/**`가 vault-schema/처럼 schema로 끝나는 폴더까지 물었다 — 거짓 boundary HIT가 순수 로직 unit의 ship을 spike 미완으로 막았다(2차 실기) · 검사: `**/`는 `(.*/)?`(온전한 세그먼트) — glob 단위 테스트(vault-schema 재현 포함)
 - `.garagiste/scripts/**` · sh()의 stdout trim이 porcelain 첫 줄( M …)의 선행 공백을 지워 dirtyFiles가 경로 첫 글자를 먹었다(ocs/BACKLOG.md) — DOC_OK인 파일이 목록 밖으로 보여 ship을 거짓으로 막았다(2차 실기) · 검사: dirtyFiles는 원문 stdout — 비스테이징 수정 재현 단위 테스트
+- `.garagiste/scripts/**` · '닫힌 결정 전체를 모든 팩에'(사고 4의 수리)가 프로젝트 나이에 비례해 팩을 키웠다 — 선행 사슬이 길수록 상한에 닿는다(2차 실기, build 팩 15.7/16KB) · 검사: 결정은 스코프(전역 intake + 이 unit + needs의 unit·Q; boot·intake 팩만 전체) — 단위·e2e 테스트

@@ -11,7 +11,7 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { evaluateShip, mergeTeamJson, spikeComplete } from '../team/scripts/ship.mjs';
-import { closedDecisions, fit, fence, matchHazards, packBreakdown, tailSections } from '../team/scripts/brief.mjs';
+import { closedDecisions, fit, fence, matchHazards, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS } from '../team/scripts/work.mjs';
@@ -254,6 +254,14 @@ test('brief: 닫힌 결정만 골라낸다 — CEO의 답은 모든 팩의 전�
   const t = '## 정해 주세요\n- [ ] Q2 (vault): 어디에 두나?\n- [x] Q1 (boot): 부록 스택으로 확정? → 예 (2026-09-29)\n산문 줄은 무시\n';
   assert.deepEqual(closedDecisions(t), ['- [x] Q1 (boot): 부록 스택으로 확정? → 예 (2026-09-29)']);
   assert.deepEqual(closedDecisions(''), []);
+});
+test('brief: 결정은 스코프 — 전역(intake)+이 unit+needs만, 전체는 프로젝트 나이만큼 팩을 키운다 (2차 실기 사고 13)', () => {
+  const t = ['- [x] Q1 (intake): 전역? → 예 (d)', '- [x] Q2 (vault-schema): 스키마? → 답 (d)', '- [x] Q3 (net): 남의 것? → 답 (d)', '- [x] Q4 (fixture-eoren): 자기 것? → 답 (d)'].join('\n');
+  const pick = (got) => got.map((l) => l.match(/Q\d+/)[0]);
+  assert.deepEqual(pick(scopedDecisions(t, { pack: 'build', slug: 'fixture-eoren', needs: ['vault-schema', 'Q3'] })), ['Q1', 'Q2', 'Q3', 'Q4'], 'needs의 unit·Q도 전제다');
+  assert.deepEqual(pick(scopedDecisions(t, { pack: 'build', slug: 'fixture-eoren', needs: [] })), ['Q1', 'Q4'], '남의 unit 결정은 스코프 밖');
+  assert.equal(scopedDecisions(t, { pack: 'boot', slug: 'boot', needs: [] }).length, 4, 'boot는 전체 — 세계 정의');
+  assert.equal(scopedDecisions('- [x] Q9 슬러그 없는 줄 → 답', { pack: 'spec', slug: 'x', needs: [] }).length, 1, '못 읽는 줄은 버리지 않는다(fail-open 포함)');
 });
 test('brief: HAZARDS는 경로가 맞는 줄만 팩에 들어간다', () => {
   const hz = '- `**/electron/**` · 하얀 화면 · 검사: smoke\n- `docs/**` · 문서 커밋 · 검사: gate\n- 경로 없는 줄 · 무시\n- `**` · 전역 · 검사: x';
