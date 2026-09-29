@@ -6,10 +6,23 @@ $ErrorActionPreference = "Stop"
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 function WriteText([string]$Path, [string]$Text) { [System.IO.File]::WriteAllText($Path, $Text, $Utf8NoBom) }   # BOM 없이 — BOM이 붙은 team.json은 JSON.parse가 죽는다
 function ReadText([string]$Path) { [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8) }
+# git은 stderr에 말을 많이 한다 — ErrorActionPreference=Stop 아래서 그것이 예외가 되지 않게 감싼다. 결과: @{ Out = <문자열>; Code = <종료 코드> }
+function Git { param([Parameter(ValueFromRemainingArguments = $true)][string[]]$GitArgs)
+  $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"
+  try { $lines = & git @GitArgs 2>&1 | ForEach-Object { "$_" }; return @{ Out = (($lines | Where-Object { $_ }) -join "`n"); Code = $LASTEXITCODE } }
+  finally { $ErrorActionPreference = $prev }
+}
 if ($Flavor -notin @("claude", "opencode")) { Write-Host "하네스: claude 또는 opencode"; exit 1 }
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 New-Item -ItemType Directory -Force -Path $Project | Out-Null
-$Root = (git -C $Project rev-parse --show-toplevel 2>$null); if (-not $Root) { git -C $Project init -q -b main; $Root = (Resolve-Path $Project).Path; Write-Host "git init: $Root" }
+$probe = Git -C $Project rev-parse --show-toplevel
+if ($probe.Code -eq 0 -and $probe.Out) { $Root = $probe.Out.Trim() }
+else {
+  $init = Git -C $Project init -q -b main
+  if ($init.Code -ne 0) { $init = Git -C $Project init -q; if ($init.Code -eq 0) { Git -C $Project symbolic-ref HEAD refs/heads/main | Out-Null } }   # 옛 git엔 -b가 없다
+  if ($init.Code -ne 0) { Write-Host "git init 실패: $($init.Out)"; exit 1 }
+  $Root = (Resolve-Path $Project).Path; Write-Host "git init: $Root"
+}
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Error "node가 없다 (20 이상)"; exit 1 }
 function Run([scriptblock]$b, [string]$what) { if ($DryRun) { Write-Host "  [dry] $what" } else { & $b } }
 $tiers = @{ low = @{intake="sonnet";spec="sonnet";build="haiku";attack="sonnet";spike="haiku";boot="haiku"}; medium = @{intake="opus";spec="opus";build="sonnet";attack="opus";spike="sonnet";boot="sonnet"}; high = @{intake="opus";spec="opus";build="opus";attack="opus";spike="sonnet";boot="sonnet"} }
@@ -49,8 +62,18 @@ if ($Flavor -eq "claude") {
 if (-not (Test-Path $Rules)) { Run { Copy-Item $Template $Rules } (Split-Path -Leaf $Rules) }
 $gi = Join-Path $Root ".gitignore"; if (-not (Test-Path $gi)) { WriteText $gi "" }
 if (-not ((ReadText $gi) -match "GARAGISTE")) { Run { WriteText $gi ((ReadText $gi) + "`n" + (ReadText "$Here\team\gitignore.snippet")) } ".gitignore" }
-Run { git -C $Root config core.hooksPath .githooks } "core.hooksPath"
-if (-not $DryRun) { git -C $Root rev-parse --verify -q HEAD 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { git -C $Root add -A; $env:GARAGISTE_SHIP = "1"; git -C $Root commit -q -m "scaffold(team): GARAGISTE install [$Flavor, budget $Budget]"; $rc = $LASTEXITCODE; Remove-Item Env:GARAGISTE_SHIP; if ($rc -eq 0) { Write-Host "  첫 커밋: 팀 파일" } else { Write-Host "  ! 첫 커밋 실패 — 위 오류를 보고 다시: cd $Root; git add -A; `$env:GARAGISTE_SHIP=1; git commit -m scaffold(team): install" } } }
+Run { Git -C $Root config core.hooksPath .githooks | Out-Null } "core.hooksPath"
+if (-not $DryRun) {
+  $head = Git -C $Root rev-parse --verify -q HEAD
+  if ($head.Code -ne 0) {
+    Git -C $Root add -A | Out-Null
+    $env:GARAGISTE_SHIP = "1"
+    $ident = @(); if ((Git -C $Root config user.name).Code -ne 0) { $ident += @("-c", "user.name=garagiste", "-c", "user.email=garagiste@local") }
+    $commit = Git -C $Root @ident commit -q -m "scaffold(team): GARAGISTE install [$Flavor, budget $Budget]"
+    Remove-Item Env:GARAGISTE_SHIP -ErrorAction SilentlyContinue
+    if ($commit.Code -eq 0) { Write-Host "  첫 커밋: 팀 파일" } else { Write-Host "  ! 첫 커밋 실패:`n$($commit.Out)`n  다시: cd $Root; git add -A; `$env:GARAGISTE_SHIP=1; git commit -m 'scaffold(team): install'" }
+  }
+}
 Write-Host "---"
-if (-not $DryRun) { Push-Location $Root; node .garagiste\scripts\doctor.mjs; Pop-Location }
+if (-not $DryRun) { Push-Location $Root; $prev = $ErrorActionPreference; $ErrorActionPreference = "Continue"; & node .garagiste\scripts\doctor.mjs 2>&1 | ForEach-Object { "$_" }; $ErrorActionPreference = $prev; Pop-Location }
 Write-Host "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot)이 스택·명령·스모크·규칙 파일을 채운다."
