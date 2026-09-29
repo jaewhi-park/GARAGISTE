@@ -44,6 +44,12 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 ### Removed — 2026-09-29 sensors.machine_os와 ship의 platform 필터 (첫 Windows 실기의 사고)
 - Windows 첫 설치에서 selftest가 ship 조건 2에 막혔다: verify full은 PASS인데 platform `win32`가 기본 목록(`["linux","darwin"]`)에 없어 증거가 거부됐다. 이 필터는 「어디서 검증해도 되는가」의 허용 목록일 뿐 대상-OS 보증(HAZARDS 14)은 하지 못하면서 정당한 증거만 거부했다 — 검출 0·오탐 1로 제거. 대상-OS 보증은 `@sensor` 태그·STATUS의 target-OS 미관측 카운트가 계속 맡고, verify의 `platform`은 원장 필드로 계속 기록된다(L4 플랫폼 센서의 재료). 기존 설치본의 team.json에 남은 `machine_os` 키는 무해하게 무시된다 — 수정 불필요, 스크립트 재설치만 하면 된다.
 
+### Fixed — 2026-09-29 팩 조립이 CEO 결정과 BRIEF 부록을 떨어뜨렸다 (첫 Windows 실기의 사고 4)
+- boot 팩에 닫힌 결정(Q1 「부록 스택 확정: 예」)과 BRIEF 부록(40줄 컷 밖)이 들어가지 않아, 에이전트가 스택 미지정으로 판단하고 기본값(Node + node:test)을 깔았다 — 에이전트 잘못이 아니라 조립 결함. 수리: 모든 팩(unit·intake)에 `## 결정된 것`(DECISIONS의 `- [x]` 전체), BRIEF는 40줄 컷 없이 전문(넘치면 fit이 「파일에서 직접 읽어라」로 대체), boot 팩 상한은 intake처럼 4×(BRIEF 전문을 지는 두 팩). 검사: e2e가 boot·re-spec·intake 팩 내용을 고정 + closedDecisions unit 테스트.
+
+### Fixed — 2026-09-29 가드가 따옴표 안 텍스트를 쓰기·파괴로 오탐 (첫 Windows 실기의 사고 5)
+- 커밋 메시지 트레일러(`<noreply@…>`)의 `>`가 리다이렉트로 읽혀 커밋이 거부됐다(에이전트는 트레일러를 빼는 우회로 통과). 수리: 쓰기·파괴 판정(DESTRUCTIVE·원장·규칙집·writeTargets)은 stripQuoted — 따옴표 안은 데이터, 단 큰따옴표 안 `$()`·백틱은 실행이라 그 내용만 남긴다. 우회 접두(GARAGISTE_* env)·worktree 경로 추론은 따옴표로도 효력이 있어 계속 원문을 본다. 검사: guard 단위 테스트(트레일러 커밋 허용, `"$(… > 규칙집)"` 거부).
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 

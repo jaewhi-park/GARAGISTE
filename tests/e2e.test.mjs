@@ -148,6 +148,7 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   const ip = script('brief', ['intake'], repo);
   assert.match(ip.out, /^PACK \.garagiste\/session\/packs\/intake-.* cwd=\. model=sonnet/);
   assert.match(fs.readFileSync(path.join(repo, ip.out.split(' ')[1]), 'utf8'), /## BRIEF \(전문\)[\s\S]*로그인한 사람만/);
+  assert.match(fs.readFileSync(path.join(repo, ip.out.split(' ')[1]), 'utf8'), /## 결정된 것[\s\S]*api\.example 하나만/, '닫힌 결정은 intake 팩에도 — 답 난 것을 다시 묻지 않는다');
   assert.match(script('work', ['add', 'session', '로그인한 사람만', '--milestone', 'M1', '--accept', 'POST /login → 200'], repo).out, /^ADD session M1/);
   assert.match(script('work', ['add', 'memo', '메모를 쓴다', '--milestone', 'M1', '--needs', 'session'], repo).out, /needs=session/);
   assert.match(script('work', ['add', 'export', '메모는 내보낼 수 있다', '--milestone', 'M2', '--needs', 'memo,Q2'], repo).out, /^ADD export M2/);
@@ -161,7 +162,10 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   write(swt, 'tests/acceptance/session.test.mjs', "import test from 'node:test'; test('로그인한 사람만', () => { throw new Error('red'); });\n");
   script('brief', ['build', 'session'], repo);
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).state, 'build');
-  assert.match(script('brief', ['spec', 'session'], repo).out, /PACK .*session-spec-/, 'Q1 re-spec: 진행 중 unit에 spec 팩이 다시 열린다');
+  const rs = script('brief', ['spec', 'session'], repo);
+  assert.match(rs.out, /PACK .*session-spec-/, 'Q1 re-spec: 진행 중 unit에 spec 팩이 다시 열린다');
+  const rsPack = fs.readFileSync(path.join(repo, rs.out.split(' ')[1]), 'utf8');
+  assert.ok(rsPack.includes('## 결정된 것') && rsPack.includes('api.example 하나만'), '닫힌 결정이 unit 팩에 있다 — 첫 실기 사고(CEO 결정 무시) 회귀');
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).state, 'spec', '정체가 spec으로 돌아와 수용을 고칠 수 있다 — 「저게 낫겠더라」의 착지점');
   assert.match(script('work', ['seed'], repo).out, /^WAIT memo needs session — 선행 unit이 먼저/, '진행 중인 선행이 끝나야 다음이 열린다');
   assert.match(script('state', [], repo).out, /안 본 것 0\/3/);
@@ -248,9 +252,16 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   const wt = path.join(repo, '.worktrees', 'boot');
   assert.equal(fs.readFileSync(path.join(wt, '.garagiste-pack'), 'utf8'), 'boot');
   assert.match(script('brief', ['spec', 'boot'], repo).out, /^FAIL scaffold unit/, 'scaffold엔 spec 팩이 없다');
+  // 첫 실기 사고 회귀: BRIEF 부록(40줄 밖)과 닫힌 결정이 boot 팩에 들어간다 — 빠지면 확정 스택 대신 기본값이 깔린다
+  script('work', ['brief', Array.from({ length: 40 }, (_, i) => `메모 규칙 ${i + 1}`).join('\n') + '\n\n## 부록 A — 스택\n부록-스택-마커'], repo);
+  assert.match(script('work', ['ask', 'boot', '스택은 부록 A대로?'], repo).out, /^Q1 queued/);
+  assert.match(script('work', ['decide', '1', '예 — 부록 A대로'], repo).out, /^PASS decide Q1/);
   const bp = script('brief', ['boot', 'boot'], repo);
   assert.match(bp.out, /^PACK .*boot-boot-.* model=haiku/, bp.out);
-  assert.match(fs.readFileSync(path.join(repo, bp.out.split(' ')[1]), 'utf8'), /## 팩: boot[\s\S]*## 인수 한 줄[\s\S]*진입점이 뜨고/);
+  const bpText = fs.readFileSync(path.join(repo, bp.out.split(' ')[1]), 'utf8');
+  assert.match(bpText, /## 팩: boot[\s\S]*## 인수 한 줄[\s\S]*진입점이 뜨고/);
+  assert.ok(bpText.includes('부록-스택-마커'), 'BRIEF는 전문 — 40줄 컷이 부록을 떨어뜨렸다(첫 실기 사고)');
+  assert.ok(bpText.includes('## 결정된 것') && bpText.includes('예 — 부록 A대로'), '닫힌 결정이 boot 팩에 있다');
   // boot 팩이 할 일을 테스트가 대신한다
   write(wt, 'package.json', '{ "name": "memo", "type": "module", "private": true }\n');
   write(wt, '.node-version', '22\n');
