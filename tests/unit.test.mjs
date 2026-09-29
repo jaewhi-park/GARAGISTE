@@ -67,6 +67,19 @@ test('guard: 팩의 쓰기 경계 — build는 테스트에, spec은 소스에 �
   assert.ok(decide(bash('cd .worktrees/hello && git push -u origin unit/hello'), gctx('build')), 'opencode: cwd 대신 명령 안의 경로로 worktree를 안다');
   assert.equal(worktreeFromCommand('git -C .worktrees/hello status', '/repo/.worktrees').slug, 'hello');
 });
+test('guard: R7 — 게이트 우회 env 접두(SHIP·WIP·ADMIN)는 ADMIN 세션만, LARGE_STEP은 정상 경로다', () => {
+  for (const c of ['GARAGISTE_SHIP=1 git commit -m x', 'GARAGISTE_WIP=1 git commit -m x', 'env GARAGISTE_ADMIN=1 node .garagiste/scripts/work.mjs tried x ok', 'export GARAGISTE_SHIP=1; git commit -m x'])
+    assert.match(decide(bash(c), gctx(null)) || '', /우회/, c);
+  assert.equal(decide(bash('GARAGISTE_LARGE_STEP="스키마 한 벌" git commit -m x'), gctx(null)), null, '큰 step의 이유는 게이트가 받는 정상 경로');
+  assert.equal(decide(bash('GARAGISTE_SHIP=1 git commit -m x'), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null);
+});
+test('guard: R2 — tried·decide는 팩(worktree 컨텍스트)이 부르지 않는다', () => {
+  const wt = `${root}/.worktrees/hello`;
+  assert.match(decide(bash('node .garagiste/scripts/work.mjs tried hello ok', wt), gctx('build')) || '', /CEO 접점/);
+  assert.match(decide(bash('node ../../.garagiste/scripts/work.mjs decide 3 "B"', wt), gctx('build')) || '', /CEO 접점/);
+  assert.equal(decide(bash('node .garagiste/scripts/work.mjs tried hello ok'), gctx(null)), null, 'conductor(메인)는 CEO의 말을 중계한다');
+  assert.equal(decide(bash('node .garagiste/scripts/work.mjs default hello "포트 3000"', wt), gctx('build')), null, 'default는 팀의 기록 — 접점이 아니다');
+});
 test('checkpoint: worktree가 없으면 조용히 빈 배열', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-cp-'));
   assert.deepEqual(checkpoint(d), []);

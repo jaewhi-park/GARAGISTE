@@ -195,6 +195,7 @@ function ask(c, slug, question) {
   out(`Q${n} queued — ${slug === 'intake' ? `needs: Q${n}으로 기대는 unit은 답이 올 때까지 WAIT` : `${slug}은 답이 올 때까지 이 질문 밖에서만 진행`}`);
 }
 function decide(c, n, answer) {
+  if (c.root !== c.main) fail('FAIL decide는 메인 저장소에서만 — 질문의 답은 CEO 접점이다, 팩이 만들지 않는다');
   if (!answer) fail('FAIL 답이 없다: work.mjs decide <n> "<답>"');
   const p = decisionsFile(c);
   const updated = decideLine(readText(p), Number(n), answer, new Date().toISOString().slice(0, 10));
@@ -211,6 +212,7 @@ function setDefault(c, slug, text) {
   out(`DEFAULT ${slug}: ${text} — CEO가 한 마디로 뒤집는다`);
 }
 function tried(c, slug, result, note = '') {
+  if (c.root !== c.main) fail('FAIL tried는 메인 저장소에서만 — 팩이 자기 unit을 검수하지 않는다(CEO 접점)');
   if (!['ok', 'fail'].includes(result)) fail('사용법: work.mjs tried <slug> ok|fail ["메모"]');
   const u = loadUnit(c.main, c.team, slug);
   if (u.state !== 'shipped') fail(`FAIL ${slug} 아직 출하 전(${u.state})`);
