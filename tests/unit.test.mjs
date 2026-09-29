@@ -13,7 +13,7 @@ import { evaluateShip, spikeComplete } from '../team/scripts/ship.mjs';
 import { fit, fence, matchHazards } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine } from '../team/scripts/work.mjs';
+import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady } from '../team/scripts/work.mjs';
 import { diagnose } from '../team/scripts/doctor.mjs';
 import { globToRegex } from '../team/scripts/lib.mjs';
 
@@ -39,7 +39,13 @@ test('guard: 비밀·규칙집·원장은 쓰지 않는다 (GARAGISTE_ADMIN만 �
   assert.ok(decide(write('.githooks/pre-commit'), gctx(null)));
   assert.ok(decide(bash('echo x >> .garagiste/ledger/evidence.jsonl'), gctx(null)));
   assert.equal(decide(write('.garagiste/team.json'), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null);
-  assert.equal(decide(write('src/a.ts'), gctx(null)), null);
+});
+test('guard: conductor는 쓰지 않는다 — worktree 밖 편집은 거부, GARAGISTE_ADMIN만 예외', () => {
+  assert.match(decide(write('src/a.ts'), gctx(null)), /conductor는 쓰지 않는다/);
+  assert.match(decide(write('docs/BACKLOG.md'), gctx(null)), /conductor는 쓰지 않는다/);
+  assert.equal(decide(write('src/a.ts'), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null);
+  assert.equal(decide(write(`${root}/.worktrees/hello/src/a.ts`), gctx('build')), null);
+  assert.equal(decide(bash('node .garagiste/scripts/work.mjs add x "y"'), gctx(null)), null, '쓰기는 스크립트로');
 });
 test('guard: 팩의 쓰기 경계 — build는 테스트에, spec은 소스에 쓸 수 없다', () => {
   const wt = `${root}/.worktrees/hello`;
@@ -172,4 +178,32 @@ test('doctor: 빈 저장소는 무엇을 치라고 한 줄씩 말한다', () => 
   assert.ok(p.some((x) => x.includes('team.json 없음')));
   assert.ok(p.some((x) => x.includes('하네스 배선 없음')));
   assert.ok(p.some((x) => x.includes('core.hooksPath')));
+});
+
+test('work: BACKLOG 줄은 slug·마일스톤·needs·원문·인수를 왕복한다', () => {
+  const line = backlogLine({ slug: 'login', milestone: 'M2', needs: ['session', 'Q3'], origin: '이메일로 "로그인"한다', accept: 'POST /login → 200' });
+  const [it] = parseBacklog(line);
+  assert.deepEqual(it, { done: false, slug: 'login', milestone: 'M2', needs: ['session', 'Q3'], origin: '이메일로 ”로그인”한다', accept: 'POST /login → 200' });
+  assert.equal(parseBacklog('- [x] a · M1 · needs: - · "x" · 인수: -')[0].done, true);
+  assert.equal(parseBacklog('- [ ] 옛 형식 — "x"').length, 0);
+});
+test('work scope: 선행은 needs 간선의 닫힘이고 순서는 선행 먼저', () => {
+  const items = parseBacklog(['- [ ] db · M1 · needs: - · "db" · 인수: -', '- [ ] session · M1 · needs: db · "s" · 인수: -', '- [ ] login · M2 · needs: session · "l" · 인수: -', '- [ ] export · M2 · needs: fmt · "e" · 인수: -', '- [ ] share · M3 · needs: - · "sh" · 인수: -'].join('\n'));
+  const cl = closure(items, ['login', 'share']);
+  assert.deepEqual(cl.required, ['db', 'session']);
+  assert.deepEqual(cl.order, ['db', 'session', 'login', 'share']);
+  assert.deepEqual(closure(items, ['export']).missing, ['fmt'], 'BACKLOG에 없는 선행은 역제안에 이름이 나온다');
+  assert.deepEqual(closure(items, ['login'], { noNeeds: true }).order, ['login']);
+  const done = parseBacklog('- [x] db · M1 · needs: - · "db" · 인수: -\n- [ ] session · M1 · needs: db · "s" · 인수: -');
+  assert.deepEqual(closure(done, ['session']).order, ['session'], '끝난 선행은 순서에 없다');
+  assert.equal(closure(parseBacklog('- [ ] a · M1 · needs: b · "a" · 인수: -\n- [ ] b · M1 · needs: a · "b" · 인수: -'), ['a']).cycle, 'a');
+});
+test('work seed: 선행이 출하됐거나 Q가 닫힌 unit만 열린다, 아니면 WAIT, 전부 끝나면 DONE', () => {
+  const items = parseBacklog(['- [ ] db · M1 · needs: - · "db" · 인수: -', '- [ ] session · M1 · needs: db,Q1 · "s" · 인수: -'].join('\n'));
+  const order = ['db', 'session'];
+  assert.equal(pickReady({ order, items, units: [] }).slug, 'db');
+  assert.equal(pickReady({ order, items, units: [{ slug: 'db', state: 'spec' }] }).kind, 'wait');
+  assert.deepEqual(pickReady({ order, items, units: [{ slug: 'db', state: 'shipped' }] }).unmet, ['Q1']);
+  assert.equal(pickReady({ order, items, units: [{ slug: 'db', state: 'shipped' }], decisionsText: '- [x] Q1 (intake): x → y' }).slug, 'session');
+  assert.equal(pickReady({ order, items, units: [{ slug: 'db', state: 'shipped' }, { slug: 'session', state: 'shipped' }] }).kind, 'done');
 });
