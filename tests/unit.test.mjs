@@ -150,7 +150,7 @@ test('claims: 태그 파싱, 기계 센서 커버리지, 다음 거짓 주장은
   assert.equal(pickNext(cs).file, 'a');
   assert.equal(coverage(cs).pct, 67);
 });
-test('ship: 7조건 — 하나라도 빠지면 fail-closed', () => {
+test('ship: 8조건 — 하나라도 빠지면 fail-closed', () => {
   const unit = { state: 'spec', boundary: { hit: false } };
   const ledger = [
     { kind: 'verify', mode: 'full', exit: 0, tree: 'T', platform: 'linux' },
@@ -168,6 +168,9 @@ test('ship: 7조건 — 하나라도 빠지면 fail-closed', () => {
   assert.deepEqual(evaluateShip({ ...x, changed: ['.garagiste/team.json', 'src/a.ts'] }).filter((k) => !k.ok).map((k) => k.id), ['unit'], 'R6: team.json 변경은 boot(scaffold)만 ship된다');
   assert.equal(evaluateShip({ ...x, unit: { ...unit, kind: 'scaffold' }, ledger: [ledger[0]], changed: ['.garagiste/team.json'] }).filter((k) => !k.ok).length, 0, 'boot는 명령을 채우는 unit이다');
   assert.deepEqual(evaluateShip({ ...x, lastSubject: 'wip: h checkpoint' }).filter((k) => !k.ok).map((k) => k.id), ['head']);
+  assert.deepEqual(evaluateShip({ ...x, openQuestions: ['Q3'] }).filter((k) => !k.ok).map((k) => k.id), ['questions'], 'R12: 이 unit의 열린 질문이 ship을 막는다 — decide 뒤에');
+  assert.match(evaluateShip({ ...x, ledger: [ledger[0], { ...ledger[1], tree: 'OLD' }, ledger[2]] }).filter((k) => !k.ok).map((k) => k.why).join(), /이전 tree.*redproof\.mjs h/, 'R10: 낡은 증거엔 재실행 명령이 문구에 있다');
+  assert.match(evaluateShip({ ...x, ledger: [ledger[0], ledger[1], { ...ledger[2], tree: 'OLD' }] }).filter((k) => !k.ok).map((k) => k.why).join(), /이전 tree.*verify\.mjs attack h/, 'R10: attack도 같다');
   assert.deepEqual(evaluateShip({ ...x, stops: ['미검수 3'] }).filter((k) => !k.ok).map((k) => k.id), ['budget']);
   assert.deepEqual(evaluateShip({ ...x, proseKb: 41 }).filter((k) => !k.ok).map((k) => k.id), ['budget']);
   assert.deepEqual(evaluateShip({ ...x, clean: false }).filter((k) => !k.ok).map((k) => k.id), ['unit']);

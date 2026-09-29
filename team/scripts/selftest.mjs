@@ -59,7 +59,7 @@ step('verify quick (worktree)', () => script('verify', ['quick'], wt), (r) => /^
 step('커밋 게이트 (원장 ↔ tree)', () => { git(['add', '-A'], wt); return git(['commit', '-q', '-m', 'scaffold(boot): selftest\n\nUnit: boot\nStep: 1'], wt); });
 step('게이트가 원장 없는 커밋을 거부', () => { write('.worktrees/boot/src/extra.mjs', '// x\n'); git(['add', '-A'], wt); const r = git(['commit', '-q', '-m', 'x'], wt); fs.rmSync(path.join(wt, 'src', 'extra.mjs')); git(['add', '-A'], wt); return r; }, (r) => r.status !== 0 && /원장/.test(r.out));
 step('verify full (worktree)', () => script('verify', ['full'], wt), (r) => /^PASS verify:full/.test(r.out));
-step('ship boot (7조건)', () => script('ship', ['boot']), (r) => /^SHIPPED boot/.test(r.out));
+step('ship boot (8조건)', () => script('ship', ['boot']), (r) => /^SHIPPED boot/.test(r.out));
 step('main에 명령이 채워짐', () => ({ status: 0, out: fs.readFileSync(teamPath, 'utf8') }), (r) => /node --test tests\/unit\/smoke/.test(r.out));
 step('state', () => script('state', ['--brief']), (r) => /^실행:/.test(r.out));
 process.stdout.write(`SELFTEST PASS ${steps.length}/${steps.length} · 임시 폴더: ${tmp}\n`);
