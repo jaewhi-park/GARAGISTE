@@ -1,7 +1,11 @@
-# GARAGISTE 증거 팀 설치 (Windows PowerShell) — 팀 정본을 <repo>/.garagiste/로, 하네스 배선을 .claude/ 또는 opencode.json + .opencode/로.
+﻿# GARAGISTE 증거 팀 설치 (Windows PowerShell) — 팀 정본을 <repo>/.garagiste/로, 하네스 배선을 .claude/ 또는 opencode.json + .opencode/로.
 # Usage: .\install.ps1 <claude|opencode> [-Project <path>] [-Budget low|medium|high] [-DryRun]
 param([Parameter(Position=0)][string]$Flavor = "", [string]$Project = ".", [string]$Budget = "medium", [switch]$DryRun)
 $ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+function WriteText([string]$Path, [string]$Text) { [System.IO.File]::WriteAllText($Path, $Text, $Utf8NoBom) }   # BOM 없이 — BOM이 붙은 team.json은 JSON.parse가 죽는다
+function ReadText([string]$Path) { [System.IO.File]::ReadAllText($Path, [System.Text.Encoding]::UTF8) }
 if ($Flavor -notin @("claude", "opencode")) { Write-Host "하네스: claude 또는 opencode"; exit 1 }
 $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 New-Item -ItemType Directory -Force -Path $Project | Out-Null
@@ -19,9 +23,9 @@ if (-not (Test-Path (Join-Path $Root ".garagiste\HAZARDS.md"))) { Run { Copy-Ite
 $team = Join-Path $Root ".garagiste\team.json"
 if (-not (Test-Path $team)) {
   Run { Copy-Item "$Here\team\team.json" $team } "team.json"
-  if (-not $DryRun) { $t = Get-Content $team -Raw | ConvertFrom-Json; $t.models = $M; $t | ConvertTo-Json -Depth 8 | Set-Content $team -Encoding UTF8 }
+  if (-not $DryRun) { $t = (ReadText $team) | ConvertFrom-Json; $t.models = $M; WriteText $team (($t | ConvertTo-Json -Depth 8) + "`n") }
 }
-function Sub($src, $dst) { (Get-Content $src -Raw).Replace("{{MODEL_BOOT}}", $M.boot).Replace("{{MODEL_INTAKE}}", $M.intake).Replace("{{MODEL_SPEC}}", $M.spec).Replace("{{MODEL_BUILD}}", $M.build).Replace("{{MODEL_ATTACK}}", $M.attack).Replace("{{MODEL_SPIKE}}", $M.spike) | Set-Content $dst -Encoding UTF8 -NoNewline }
+function Sub($src, $dst) { WriteText $dst ((ReadText $src).Replace("{{MODEL_BOOT}}", $M.boot).Replace("{{MODEL_INTAKE}}", $M.intake).Replace("{{MODEL_SPEC}}", $M.spec).Replace("{{MODEL_BUILD}}", $M.build).Replace("{{MODEL_ATTACK}}", $M.attack).Replace("{{MODEL_SPIKE}}", $M.spike)) }
 if ($Flavor -eq "claude") {
   foreach ($d in ".claude\hooks", ".claude\agents") { Run { New-Item -ItemType Directory -Force -Path (Join-Path $Root $d) | Out-Null } "mkdir $d" }
   Run { Copy-Item "$Here\team\claude\hooks\*.mjs" (Join-Path $Root ".claude\hooks") -Force } "hooks"
@@ -43,10 +47,10 @@ if ($Flavor -eq "claude") {
   $Rules = Join-Path $Root "AGENTS.md"; $Template = "$Here\team\opencode\AGENTS.md.template"
 }
 if (-not (Test-Path $Rules)) { Run { Copy-Item $Template $Rules } (Split-Path -Leaf $Rules) }
-$gi = Join-Path $Root ".gitignore"; if (-not (Test-Path $gi)) { New-Item $gi | Out-Null }
-if (-not (Select-String -Quiet -Path $gi -Pattern "GARAGISTE 증거 팀")) { Run { Add-Content $gi ("`n" + (Get-Content "$Here\team\gitignore.snippet" -Raw)) } ".gitignore" }
+$gi = Join-Path $Root ".gitignore"; if (-not (Test-Path $gi)) { WriteText $gi "" }
+if (-not ((ReadText $gi) -match "GARAGISTE")) { Run { WriteText $gi ((ReadText $gi) + "`n" + (ReadText "$Here\team\gitignore.snippet")) } ".gitignore" }
 Run { git -C $Root config core.hooksPath .githooks } "core.hooksPath"
-if (-not $DryRun) { git -C $Root rev-parse --verify -q HEAD 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { git -C $Root add -A; $env:GARAGISTE_SHIP = "1"; git -C $Root commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$Flavor, budget $Budget]"; Remove-Item Env:GARAGISTE_SHIP; Write-Host "  첫 커밋: 팀 파일" } }
+if (-not $DryRun) { git -C $Root rev-parse --verify -q HEAD 2>$null | Out-Null; if ($LASTEXITCODE -ne 0) { git -C $Root add -A; $env:GARAGISTE_SHIP = "1"; git -C $Root commit -q -m "scaffold(team): GARAGISTE install [$Flavor, budget $Budget]"; $rc = $LASTEXITCODE; Remove-Item Env:GARAGISTE_SHIP; if ($rc -eq 0) { Write-Host "  첫 커밋: 팀 파일" } else { Write-Host "  ! 첫 커밋 실패 — 위 오류를 보고 다시: cd $Root; git add -A; `$env:GARAGISTE_SHIP=1; git commit -m scaffold(team): install" } } }
 Write-Host "---"
-if (-not $DryRun) { node (Join-Path $Root ".garagiste\scripts\doctor.mjs") }
+if (-not $DryRun) { Push-Location $Root; node .garagiste\scripts\doctor.mjs; Pop-Location }
 Write-Host "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot)이 스택·명령·스모크·규칙 파일을 채운다."

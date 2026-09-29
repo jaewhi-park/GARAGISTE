@@ -1,7 +1,7 @@
 // doctor — 감별 진단. 무엇이 죽었고 무엇을 치면 되는지 한 줄씩. 훅·플러그인이 조용히 죽는 일을 막는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { REQUIRED_TEAM_KEYS, git, isMain, out, readJson, readText, repoRoot } from './lib.mjs';
+import { REQUIRED_TEAM_KEYS, git, isMain, out, readJson, readText, scriptRoot } from './lib.mjs';
 
 export const SCRIPTS = ['lib', 'verify', 'redproof', 'work', 'brief', 'boundary', 'ship', 'state', 'claims', 'doctor', 'guard-rules', 'checkpoint'];
 export function harnesses(root) {
@@ -53,7 +53,7 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
   return p;
 }
 function main() {
-  const root = process.env.CLAUDE_PROJECT_DIR || repoRoot();
+  const root = process.env.CLAUDE_PROJECT_DIR || scriptRoot(import.meta.url); // cwd가 아니라 이 스크립트가 설치된 저장소
   const p = diagnose(root);
   if (!p.length) return out(`OK doctor (${harnesses(root).join('+') || '하네스 없음'})`);
   out(`FAIL doctor ${p.length}\n${p.map((x) => `- ${x}`).join('\n')}`);

@@ -71,8 +71,8 @@ fi
 run git -C "$ROOT" config core.hooksPath .githooks
 # 첫 커밋이 없으면 설치기가 만든다(첫 커밋은 원장이 있을 수 없어 게이트가 통과시킨다) — 그 뒤 main에 닿는 것은 ship.mjs뿐
 if [ "$DRY" = 0 ] && ! git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then
-  git -C "$ROOT" add -A && GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]" && echo "  첫 커밋: 팀 파일"
+  if git -C "$ROOT" add -A && GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]"; then echo "  첫 커밋: 팀 파일"; else echo "  ! 첫 커밋 실패 — 위 오류를 보고 다시: cd $ROOT && git add -A && GARAGISTE_SHIP=1 git commit -m 'scaffold(team): install'" >&2; fi
 fi
 echo "---"
-[ "$DRY" = 0 ] && { node "$ROOT/.garagiste/scripts/doctor.mjs" || true; }
+[ "$DRY" = 0 ] && { (cd "$ROOT" && node .garagiste/scripts/doctor.mjs) || true; }
 echo "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot)이 스택·명령·스모크·규칙 파일을 채운다. 사람이 채울 파일은 없다."

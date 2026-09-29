@@ -42,7 +42,7 @@ export const REQUIRED_TEAM_KEYS = ['version', 'protected_branch', 'models', 'com
 export function loadTeam(root) {
   const p = path.join(root, '.garagiste', 'team.json');
   if (!fs.existsSync(p)) throw new Error(`team.json 없음: ${p} — install.sh를 먼저`);
-  const t = JSON.parse(fs.readFileSync(p, 'utf8'));
+  const t = JSON.parse(fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '')); // Windows PowerShell이 BOM을 붙일 수 있다
   const missing = REQUIRED_TEAM_KEYS.filter((k) => !(k in t));
   if (missing.length) throw new Error(`team.json 키 없음: ${missing.join(', ')}`);
   return t;
@@ -95,9 +95,11 @@ export function globToRegex(glob) {
   return new RegExp(glob.includes('/') ? `^${re}$` : `(^|/)${re}$`);
 }
 export function matchAny(file, globs) { const f = file.replace(/\\/g, '/'); return globs.some((g) => globToRegex(g).test(f)); }
-export function readJson(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return fallback; } }
+export function readJson(p, fallback) { try { return JSON.parse(fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, '')); } catch { return fallback; } }
 export function writeJson(p, v) { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, JSON.stringify(v, null, 2) + '\n'); }
-export function readText(p) { try { return fs.readFileSync(p, 'utf8'); } catch { return ''; } }
+export function readText(p) { try { return fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, ''); } catch { return ''; } }
+// 설치된 스크립트의 저장소 루트: <root>/.garagiste/scripts/x.mjs → <root>. cwd가 다른 곳(설치기를 돌린 폴더)이어도 맞는다
+export function scriptRoot(metaUrl) { return path.resolve(path.dirname(fileURLToPath(metaUrl)), '..', '..'); }
 export function unitFile(main, team, slug) { return path.join(main, team.paths.units, `${slug}.json`); }
 export function loadUnit(main, team, slug) {
   const u = readJson(unitFile(main, team, slug), null);

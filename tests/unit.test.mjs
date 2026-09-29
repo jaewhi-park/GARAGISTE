@@ -15,7 +15,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS } from '../team/scripts/work.mjs';
 import { diagnose } from '../team/scripts/doctor.mjs';
-import { globToRegex, parseLocalEnv, depDirs, linkDeps } from '../team/scripts/lib.mjs';
+import { globToRegex, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -249,4 +249,13 @@ test('work models: tier 한 단어 또는 팩=모델, 에이전트 앞머리 mod
   assert.equal(TIERS.medium.boot, 'sonnet');
   assert.match(setFrontmatterModel('---\nname: build\nmodel: sonnet\ntools: Read\n---\n본문', 'opus'), /^---\nname: build\nmodel: opus\ntools: Read\n---\n본문$/);
   assert.match(setFrontmatterModel('---\ndescription: x\nmode: subagent\n---\n본문', 'anthropic/claude-sonnet-4-5'), /^---\nmodel: anthropic\/claude-sonnet-4-5\ndescription: x/);
+});
+
+test('lib: Windows PowerShell이 붙인 BOM이 있어도 team.json을 읽는다', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-bom-'));
+  fs.mkdirSync(path.join(d, '.garagiste'));
+  fs.writeFileSync(path.join(d, '.garagiste', 'team.json'), '\uFEFF' + JSON.stringify(team));
+  assert.equal(loadTeam(d).version, 2);
+  assert.equal(readJson(path.join(d, '.garagiste', 'team.json'), null).version, 2);
+  assert.equal(path.basename(scriptRoot(new URL('../team/scripts/lib.mjs', import.meta.url).href)), 'GARAGISTE', '스크립트 위치에서 저장소 루트를 안다');
 });
