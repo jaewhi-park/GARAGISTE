@@ -83,8 +83,9 @@ function main() {
   if (spike && pack !== 'spike') sec('spike', '측정된 사실 (spike)', fence('spike 측정 파일', spike));
   if (pack !== 'spec' && pack !== 'boot') {
     const acc = acceptanceFiles(wt, c.team, slug);
-    if (!acc.length) fail(`FAIL ${pack} 팩: 인수 테스트 없음 — spec 팩이 먼저다`);
-    sec('acceptance', '인수 테스트 (red → green이 네 일)', acc.map((f) => `### ${f}\n\`\`\`\n${readText(path.join(wt, f)).trim()}\n\`\`\``).join('\n'));
+    // spike는 spec보다 먼저 돈다(boundary HIT unit의 첫 팩) — 측정은 인수 테스트를 기다리지 않는다
+    if (!acc.length && pack !== 'spike') fail(`FAIL ${pack} 팩: 인수 테스트 없음 — spec 팩이 먼저다`);
+    if (acc.length) sec('acceptance', '인수 테스트 (red → green이 네 일)', acc.map((f) => `### ${f}\n\`\`\`\n${readText(path.join(wt, f)).trim()}\n\`\`\``).join('\n'));
   }
   const udir = path.join(wt, c.team.paths.units_docs, slug);
   const tryMd = readText(path.join(udir, 'try.md')); const surface = readText(path.join(udir, 'surface.md'));
