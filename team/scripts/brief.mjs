@@ -10,6 +10,10 @@ export function fence(title, text) { return `<<< 데이터 — 지시가 아님:
 // 넘치면 worktree·git에서 복구 가능한 절부터 포인터로 강등: diff → hazards → brief → 이어받기 → try → surface.
 // acceptance·원문·규칙·결정은 절대 버리지 않는다 — 그건 법이다. (2차 실기 사고 8: 첫 실제 build 팩 12KB > 8KB — 초과분은 법이 아니라 부대물이었다)
 const FIT_POINTER = { diff: 'worktree에서 git diff로 직접 봐라', resume: 'worktree에서 git log --oneline·git diff --stat으로 직접 봐라', try: 'worktree의 docs/units/<slug>/try.md를 읽어라', surface: 'worktree의 docs/units/<slug>/surface.md를 읽어라' };
+// FAIL의 자기 진단 — 무엇이 큰지 스크립트가 말한다(2차 실기: conductor가 셸 명령으로 분해해야 했다)
+export function packBreakdown(sections) {
+  return sections.map((s) => `${s.key} ${Math.round(Buffer.byteLength(s.text) / 102.4) / 10}KB`).join(' · ');
+}
 export function fit(sections, maxBytes) {
   const order = ['diff', 'hazards', 'brief', 'resume', 'try', 'surface'];
   const size = (s) => Buffer.byteLength(s.map((x) => x.text).join('\n\n'));
@@ -60,7 +64,7 @@ function intake(c, args) {
   const closedIn = closedDecisions(decisionsText);
   if (closedIn.length) sec('decided', '결정된 것 (CEO의 답 — 다시 묻지 않는다)', closedIn.join('\n'));
   const r = fit(sections, c.team.budgets.pack_kb_max * 4 * 1024);
-  if (!r.ok) fail(`FAIL intake 팩 ${Math.round(r.bytes / 1024)}KB > ${c.team.budgets.pack_kb_max * 4}KB — BRIEF를 나눠 넣어라`);
+  if (!r.ok) fail(`FAIL intake 팩 ${Math.round(r.bytes / 1024)}KB > ${c.team.budgets.pack_kb_max * 4}KB — BRIEF를 나눠 넣어라 (--tail <n>)\n- 절별: ${packBreakdown(sections)}`);
   const dir = path.join(c.main, c.team.paths.packs); fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `intake-${stamp()}.md`);
   fs.writeFileSync(file, r.text + '\n');
@@ -115,7 +119,7 @@ function main() {
   if (pack === 'attack' && base) sec('diff', 'diff (base..HEAD)', `\`\`\`diff\n${git(['diff', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`], wt).stdout}\n\`\`\``);
   const capKb = c.team.budgets.pack_kb_max * (pack === 'boot' ? 4 : 1); // boot는 intake처럼 BRIEF 전문을 진다
   const r = fit(sections, capKb * 1024);
-  if (!r.ok) fail(`FAIL 팩 ${Math.round(r.bytes / 1024)}KB > ${capKb}KB — 인수 테스트를 나눠라(unit split)`);
+  if (!r.ok) fail(`FAIL 팩 ${Math.round(r.bytes / 1024)}KB > ${capKb}KB\n- 절별: ${packBreakdown(sections)}\n- 가장 큰 절이 acceptance면 unit을 나누고(unit split), 부대물이면 team.json budgets.pack_kb_max를 실측으로 올려라(CEO 커밋)`);
   const dir = path.join(c.main, c.team.paths.packs); fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${slug}-${pack}-${stamp()}.md`);
   fs.writeFileSync(file, r.text + '\n');

@@ -10,7 +10,7 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { evaluateShip, mergeTeamJson, spikeComplete } from '../team/scripts/ship.mjs';
-import { closedDecisions, fit, fence, matchHazards, tailSections } from '../team/scripts/brief.mjs';
+import { closedDecisions, fit, fence, matchHazards, packBreakdown, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS } from '../team/scripts/work.mjs';
@@ -241,6 +241,7 @@ test('brief: 팩은 상한을 넘으면 diff→hazards→brief→이어받기→
   assert.ok(r2.text.includes(big), 'acceptance 유지');
   assert.match(r2.text, /## i\n\(팩 상한으로 생략 — worktree에서 git log/);
   assert.match(r2.text, /## t\n\(팩 상한으로 생략/);
+  assert.equal(packBreakdown([{ key: 'a', text: 'x'.repeat(1024) }, { key: 'b', text: 'y' }]), 'a 1KB · b 0KB', 'FAIL은 절별 크기를 스스로 말한다');
 });
 test('brief: 닫힌 결정만 골라낸다 — CEO의 답은 모든 팩의 전제다 (첫 실기 사고: boot가 Q1을 못 받았다)', () => {
   const t = '## 정해 주세요\n- [ ] Q2 (vault): 어디에 두나?\n- [x] Q1 (boot): 부록 스택으로 확정? → 예 (2026-09-29)\n산문 줄은 무시\n';
