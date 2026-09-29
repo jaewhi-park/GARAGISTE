@@ -50,6 +50,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 ### Fixed — 2026-09-29 가드가 따옴표 안 텍스트를 쓰기·파괴로 오탐 (첫 Windows 실기의 사고 5)
 - 커밋 메시지 트레일러(`<noreply@…>`)의 `>`가 리다이렉트로 읽혀 커밋이 거부됐다(에이전트는 트레일러를 빼는 우회로 통과). 수리: 쓰기·파괴 판정(DESTRUCTIVE·원장·규칙집·writeTargets)은 stripQuoted — 따옴표 안은 데이터, 단 큰따옴표 안 `$()`·백틱은 실행이라 그 내용만 남긴다. 우회 접두(GARAGISTE_* env)·worktree 경로 추론은 따옴표로도 효력이 있어 계속 원문을 본다. 검사: guard 단위 테스트(트레일러 커밋 허용, `"$(… > 규칙집)"` 거부).
 
+### Fixed — 2026-09-29 models 산출물에 커밋 경로가 없었다 (2차 실기의 사고 6)
+- `work.mjs models`가 team.json과 에이전트 `model:` 줄을 main에 고쳐 두기만 해서, ship의 「메인 미커밋 변경」 검사에 걸리고 conductor에겐 커밋 수단이 없었다(보호 브랜치 게이트가 직접 커밋을 거부 — 둘 다 정상 작동). 수리: models가 바꾼 파일만 pathspec으로 `scaffold(team): models <args>` 자기-커밋(내부 SHIP·WIP 차선 — drop의 wip 커밋과 같은 선례, 기계적 재생성이라 원장 PASS 불요). 변경이 없으면 커밋도 없다. 검사: e2e(models 뒤 main 깨끗 + 커밋 메시지 + no-op 무커밋).
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 

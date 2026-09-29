@@ -18,3 +18,4 @@
 - `.garagiste/scripts/**` · 가드가 규칙집 읽기(cat·sed -n)까지 쓰기로 오탐해 conductor의 진단을 막았다(첫 Windows 실기) · 검사: 쓰기 verb·리다이렉트만 거부 — guard 단위 테스트(cat·sed -n 허용, sed -i·리다이렉트 거부)
 - `.garagiste/scripts/**` · boot 팩에 CEO의 닫힌 결정(Q1)과 BRIEF 부록(40줄 컷 밖)이 빠져 확정된 스택 대신 기본값이 깔렸다(첫 Windows 실기) · 검사: 모든 팩에 닫힌 결정 전체 + BRIEF는 전문(boot 상한은 intake처럼 4×) — e2e가 팩 내용을 고정
 - `.garagiste/scripts/**` · 가드가 커밋 메시지 트레일러(<…>)의 >를 리다이렉트로 오탐해 커밋을 거부했다(첫 Windows 실기) · 검사: 따옴표 안은 데이터, $()·백틱만 실행으로 남김(stripQuoted) — guard 단위 테스트
+- `.garagiste/scripts/**` · models가 규칙집(team.json·agents)을 main에 고쳐 두고 커밋 경로가 없어 ship이 막혔다(2차 실기) · 검사: models는 산출물을 스스로 scaffold(team) 커밋(내부 SHIP·WIP 차선) — e2e(models 뒤 main 깨끗)

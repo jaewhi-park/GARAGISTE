@@ -280,6 +280,11 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.match(team.commands.quick, /^node --test/);
   assert.match(fs.readFileSync(path.join(repo, 'CLAUDE.md'), 'utf8'), /^# memo/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| boot \| .* \| PASS \| scaffold \| — \|/);
+  // 사고 6 회귀: models는 규칙집(team.json·agents)을 바꾸면 스스로 커밋한다 — main에 커밋 경로 없는 dirt를 남겨 ship을 막지 않는다
+  assert.match(script('work', ['models', 'high'], repo).out, /scaffold\(team\) 커밋/);
+  assert.equal(git(['status', '--porcelain', '--', '.garagiste/team.json', '.claude/agents'], repo).out.trim(), '', 'models 뒤 main은 깨끗하다');
+  assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): models high/);
+  assert.ok(!script('work', ['models', 'high'], repo).out.includes('커밋'), '변경 없으면 커밋도 없다');
   assert.match(script('work', ['seed'], repo).out, /^UNIT memo-add spec/, 'boot 뒤 다음 unit이 열린다');
   git(['config', '--unset', 'core.hooksPath'], repo);
   assert.match(script('work', ['seed'], repo).out, /^FAIL doctor \d+[\s\S]*core\.hooksPath/, 'R8: 병든 설치(게이트 침묵 꺼짐)에서 seed는 이유 전문과 함께 멈춘다');
