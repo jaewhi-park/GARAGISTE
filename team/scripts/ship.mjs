@@ -4,6 +4,7 @@ import path from 'node:path';
 import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, readLedger, readText, saveUnit, shell, short, workTree, worktreeDir, ceoTouch, listUnits, listFiles } from './lib.mjs';
 import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
+import { blocking, diagnose } from './doctor.mjs';
 import { budgetStatus, openQuestions, render } from './state.mjs';
 
 export const SPIKE_ROWS = ['wire', 'host', 'license', 'default', 'os'];
@@ -42,6 +43,8 @@ function main() {
   const slug = process.argv[2];
   if (!slug) fail('사용법: ship.mjs <slug>');
   const c = ctx();
+  const probs = blocking(diagnose(c.main));
+  if (probs.length) fail(`FAIL doctor ${probs.length} — 설치가 병든 채로 ship하지 않는다\n${probs.map((x) => `- ${x}`).join('\n')}`);
   const unit = loadUnit(c.main, c.team, slug);
   const wt = worktreeDir(c.main, c.team, slug);
   const exists = fs.existsSync(wt);

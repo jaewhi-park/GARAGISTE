@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
+import { blocking, diagnose } from './doctor.mjs';
 import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readText, saveUnit, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
@@ -169,6 +170,9 @@ function scope(c, args) {
   out('받으려면 work.mjs seed. 선행을 빼려면 --no-needs (CEO 결정, 원장에 남는다).');
 }
 function seed(c) {
+  // 병든 설치(훅 침묵·게이트 꺼짐)에서 unit을 만들지 않는다 — tacit을 죽인 조용한 죽음의 백신. fresh 항목(alive·빈 commands)은 통과.
+  const probs = blocking(diagnose(c.main));
+  if (probs.length) fail(`FAIL doctor ${probs.length} — 설치가 병든 채로 seed하지 않는다\n${probs.map((x) => `- ${x}`).join('\n')}`);
   const sc = readJson(scopePath(c), null);
   if (!sc) fail('FAIL scope 없음 — work.mjs scope <slug…>|--milestone M1|--range a..b');
   const items = parseBacklog(readBacklog(c));

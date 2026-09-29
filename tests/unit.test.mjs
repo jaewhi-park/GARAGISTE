@@ -14,7 +14,7 @@ import { fit, fence, matchHazards, tailSections } from '../team/scripts/brief.mj
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS } from '../team/scripts/work.mjs';
-import { diagnose } from '../team/scripts/doctor.mjs';
+import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { globToRegex, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
@@ -222,6 +222,11 @@ test('work: 결정 큐 번호와 답 기록', () => {
   assert.equal(nextQuestionNumber(''), 1);
   assert.match(decideLine(t, 1, '예', '2026-09-30'), /- \[x\] Q1 \(a\): 빈 메모 저장\? → 예 \(2026-09-30\)/);
   assert.equal(decideLine(t, 2, '예', '2026-09-30'), null, '이미 닫힌 질문');
+});
+test('doctor: R8 — fresh 항목(alive·빈 commands)만 통과, 구조 결함은 seed·ship을 막는다', () => {
+  const probs = ['session-start alive 마커 없음 → 첫 세션이면 정상', 'team.json commands.quick 비어 있음 → boot이 채운다', 'core.hooksPath=(없음) → git config core.hooksPath .githooks'];
+  assert.deepEqual(blocking(probs), [probs[2]], '훅 침묵사 계열은 fresh가 아니다');
+  assert.deepEqual(blocking(probs.slice(0, 2)), []);
 });
 test('doctor: 빈 저장소는 무엇을 치라고 한 줄씩 말한다', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-doctor-'));
