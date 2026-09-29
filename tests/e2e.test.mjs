@@ -149,6 +149,47 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 범위\n- 요청 1 · 선행 2 · 출하 0\/3\n- 순서: session → memo → export/);
 });
 
+test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 기록이 되돌려진다', { timeout: 120000 }, () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-atomic-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  const flagged = `node -e "process.exit(require('fs').existsSync('.garagiste/session/failflag')?1:0)"`;
+  team.commands = { quick: flagged, full: flagged, test_file: 'node --test {file}', run: 'true' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  git(['add', '-A'], repo);
+  script('verify', ['quick'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  script('work', ['new', 'atom', '원자성 확인'], repo);
+  const wt = path.join(repo, '.worktrees', 'atom');
+  write(wt, 'tests/acceptance/atom.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';\ntest('atom 산출물', () => { assert.ok(fs.existsSync('src/atom.mjs')); });\n");
+  assert.match(script('redproof', ['atom'], wt).out, /^RED atom/);
+  git(['add', '-A'], wt); script('verify', ['quick'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'test(atom): red'], wt).status, 0);
+  write(wt, 'src/atom.mjs', '// atom\n');
+  write(wt, 'tests/adversary/atom-1.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';\ntest('빈 파일 아님', () => { assert.ok(fs.readFileSync('src/atom.mjs', 'utf8').length > 0); });\n");
+  git(['add', '-A'], wt); script('verify', ['quick'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'feat(atom): 산출물\n\nUnit: atom\nStep: 1'], wt).status, 0);
+  assert.match(script('redproof', ['atom'], wt).out, /^PASS redproof/);
+  assert.match(script('verify', ['attack', 'atom'], wt).out, /red 0\/1/);
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
+  const prevHead = git(['rev-parse', 'main'], repo).out.trim();
+  write(repo, '.garagiste/session/failflag', '1');
+  const s1 = script('ship', ['atom'], repo);
+  assert.match(s1.out, /머지를 되돌렸다/, s1.out);
+  assert.equal(git(['rev-parse', 'main'], repo).out.trim(), prevHead, 'main이 머지 전으로 돌아온다');
+  assert.notEqual(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/atom.json'), 'utf8')).state, 'shipped', 'unit은 출하되지 않았다');
+  assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] atom · /, 'BACKLOG 줄이 다시 열린다');
+  if (fs.existsSync(path.join(repo, 'docs/LEDGER.md'))) assert.doesNotMatch(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| atom \|/, 'LEDGER 행이 남지 않는다');
+  fs.rmSync(path.join(repo, '.garagiste/session/failflag'));
+  assert.match(script('ship', ['atom'], repo).out, /^SHIPPED atom/, '원인이 사라지면 같은 증거로 다시 ship된다');
+});
+
 test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents·guard 플러그인이 깔리고 doctor가 OK', () => {
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-oc-'));
   git(['init', '-q', '-b', 'main'], repo);

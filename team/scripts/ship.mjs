@@ -74,18 +74,20 @@ function main() {
     appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true });
     if (r.status) fail('FAIL ship: 통합 tree에서 full FAIL — main이 움직였다, build 재spawn');
   }
+  const prevHead = headSha(c.main);
   const mg = git(['merge', '--ff-only', unit.branch], c.main);
   if (mg.status) fail(`FAIL ship: ff 머지 실패 — ${mg.stderr}`);
   c.team = loadTeam(c.main); // boot unit이 team.json commands를 바꿨을 수 있다
   const head = headSha(c.main);
   const tags = acceptanceFiles(c.main, c.team, slug).map((f) => parseTags(readText(path.join(c.main, f))));
+  const prevUnit = { state: unit.state, sensor: unit.sensor };
   unit.sensor = tags.find((t) => t.sensor.startsWith('human'))?.sensor || 'machine';
   unit.state = 'shipped'; unit.shipped = new Date().toISOString(); unit.head = head; saveUnit(c.main, c.team, unit);
-  appendLedger(c.main, c.team, { kind: 'ship', slug, head, tree: newTree, sensor: unit.sensor });
   const ledgerDoc = path.join(c.main, c.team.paths.ledger_doc);
   if (!fs.existsSync(ledgerDoc)) fs.writeFileSync(ledgerDoc, '# LEDGER — 증명 커밋. 한 줄 = 출하 하나 = 기계가 확인한 사실의 목록.\n\n| 날짜 | unit | head | tree | full | redproof | attack | sensor |\n|---|---|---|---|---|---|---|---|\n');
   const at = [...ledger].reverse().find((e) => e.kind === 'attack' && e.slug === slug);
-  fs.appendFileSync(ledgerDoc, `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'} | ${unit.kind === 'scaffold' ? '—' : `0/${at ? at.total : 0}`} | ${unit.sensor} |\n`);
+  const row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'} | ${unit.kind === 'scaffold' ? '—' : `0/${at ? at.total : 0}`} | ${unit.sensor} |\n`;
+  fs.appendFileSync(ledgerDoc, row);
   const backlog = path.join(c.main, c.team.paths.backlog);
   if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `));
   fs.writeFileSync(path.join(c.main, c.team.paths.status), render(c).text);
@@ -93,7 +95,18 @@ function main() {
   git(['add', ...docs], c.main);
   const q = shell(c.team.commands.quick, { cwd: c.main });
   appendLedger(c.main, c.team, { kind: 'verify', mode: 'quick', tree: workTree(c.main), head, exit: q.status, platform: process.platform, where: '.', ship: true });
-  if (q.status) fail('FAIL ship: 머지 뒤 main quick FAIL — 문서 커밋을 멈춤(원인은 통합)');
+  if (q.status) {
+    // 원자성: 머지와 출하 기록을 전부 되돌린다 — main에 「머지는 됐는데 빨간」 상태를 남기지 않는다 (증거 jsonl은 append-only라 ship_rollback 줄로 남긴다)
+    git(['reset', '--keep', prevHead], c.main);
+    unit.state = prevUnit.state; unit.sensor = prevUnit.sensor; unit.shipped = null; delete unit.head; saveUnit(c.main, c.team, unit);
+    const led = readText(ledgerDoc);
+    if (led.endsWith(row)) fs.writeFileSync(ledgerDoc, led.slice(0, -row.length));
+    if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[x\\] ${slug} `, 'm'), `- [ ] ${slug} `));
+    fs.writeFileSync(path.join(c.main, c.team.paths.status), render(c).text);
+    appendLedger(c.main, c.team, { kind: 'ship_rollback', slug, from: head, to: prevHead, why: 'main quick FAIL' });
+    fail(`FAIL ship: 머지 뒤 main quick FAIL — 머지를 되돌렸다(${short(head)} → ${short(prevHead)}). 원인은 통합: build 재spawn 뒤 다시 ship`);
+  }
+  appendLedger(c.main, c.team, { kind: 'ship', slug, head, tree: newTree, sensor: unit.sensor });
   const msg = `ship(${slug}): ${unit.origin.replace(/\n/g, ' ').slice(0, 60)}\n\nUnit: ${slug}\nKind: ${unit.kind}\nHead: ${short(head)}\nFull: ${short(newTree)}\nRedproof: ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'}\nAttack: ${unit.kind === 'scaffold' ? '—' : `0/${at ? at.total : 0}`}\nSensor: ${unit.sensor}`;
   const cm = git(['commit', '-q', '-m', msg], c.main, { GARAGISTE_SHIP: '1' });
   if (cm.status) fail(`FAIL ship: 문서 커밋 실패 — ${cm.stderr}`);
