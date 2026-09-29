@@ -83,4 +83,4 @@ node --test tests/e2e.test.mjs    # 탄생 시험(claude) + opencode 설치: 빈
 ```
 
 ## v1
-`claude/`·`opencode/`·`scripts/`·`assets/`는 v1(역할극) 트리다. v2는 이 트리에서 한 파일도 물려받지 않는다. 삭제는 CEO 결정(docs/DECISIONS.md).
+v1(역할극: agents 7 · skills 31 · opencode 플레이버)은 2026-09-29에 지웠다. 이력은 main의 `0fdfa28` 이전에 있고, 측정 진단은 docs/catalogue/V1-ANALYSIS.md에 남는다.

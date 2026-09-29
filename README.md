@@ -82,4 +82,4 @@ node --test tests/e2e.test.mjs    # birth test (claude) + opencode install: empt
 ```
 
 ## v1
-`claude/`, `opencode/`, `scripts/` and `assets/` are the v1 tree (the role-play). v2 inherits no file from it. Deleting it is the CEO's call (docs/DECISIONS.md).
+v1 (the role-play: 7 agents, 31 skills, the opencode flavor) was deleted on 2026-09-29. Its history is on main before `0fdfa28`; the measured diagnosis stays in docs/catalogue/V1-ANALYSIS.md.
