@@ -2,7 +2,21 @@
 
 Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`, and `session-start.mjs` names it in the injected context. A running project keeps the release it was installed with until its CEO decides to upgrade — the "Breaking for running projects" list of a release is the migration checklist; re-run `install.sh <flavor> -Project <repo>` afterwards.
 
-## Unreleased
+## v2 — 2026-09-29 · 증거 팀 (unreleased)
+
+v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 잇지 않는 재시작. `team/`이 새 정본이고 `install.sh`는 그것만 설치한다. v1 트리는 저장소에 남아 있으며 삭제는 CEO 결정(docs/DECISIONS.md).
+
+### Added
+- `team/scripts/` 열 개(판단 0): work · brief · verify(+gate) · redproof · boundary · ship · claims · state · doctor · lib. `team/hooks/` 셋: guard · spawn-log · session-start. 팩 넷: spec · build · attack · spike(쓰기 경계로 정의, 페르소나 없음).
+- 커밋 게이트(`.githooks/pre-commit` → `verify.mjs gate`): 모든 커밋은 원장에 그 tree의 quick PASS가 있어야 하고, 로직 변경엔 테스트 파일이, step은 로직 300줄(2×는 이유로도 불가), 보호 브랜치엔 ship만.
+- `ship.mjs` 7조건 fail-closed: unit·full(machine OS)·redproof·attack red 0·spike 필수 행·wip 아님·예산(미검수 3·무인 출하 5·팀 자발 unit 연속 2·산문 40 KB).
+- `docs/PRINCIPLES.md` · `docs/BIRTH.md` · `docs/catalogue/`(v2 설계는 계획이 아니라 후보 카탈로그) · `team/HAZARDS.md`(v1 사고 11건, 줄마다 경로와 검사).
+- `tests/unit.test.mjs` 17 · `tests/e2e.test.mjs` 탄생 시험(빈 저장소 → 출하 → 써봤다, 모델 0 · 네트워크 0). CI: ubuntu + windows(unit).
+
+### Removed from the install path
+- 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
+
+## v1 — Unreleased (역할극 트리, 유지 보수 없음)
 
 ### Breaking for running projects
 - **Two more document budgets** (both flavors): `docs/memory/*.md` 16 KB each and `docs/DEBT.md` 300 lines — a write that would leave one over is refused. The planner and reviewer read their memory files whole at every spawn, and the test projects' files had grown to 27–46 KB (60 lines of 400–750 bytes: the line rule was gamed by long lines); AX_PLATFORM's DEBT stood at 315 lines. Before upgrading: the planner archives resolved DEBT lines (the `backlog` skill's Archive rule now covers DEBT), and each memory owner consolidates its file under 16 KB — one pattern per line with a `×n` count — moving retired lines to `docs/archive/memory-<role>-<year>.md` (the reviewer may write that file too).
