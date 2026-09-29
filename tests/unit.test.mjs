@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { decide } from '../team/hooks/guard.mjs';
+import { decide, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
+import { checkpoint } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
@@ -25,15 +26,19 @@ const write = (file_path, cwd = root) => ({ tool_name: 'Write', tool_input: { fi
 test('guard: 파괴적 git과 --no-verify는 누구에게도 없다', () => {
   for (const c of ['git push --force origin x', 'git push origin main', 'git reset --hard HEAD~1', 'git stash', 'git rebase main', 'git merge unit/x', 'git commit --no-verify -m x', 'git clean -fd'])
     assert.ok(decide(bash(c), gctx(null)), c);
-  assert.equal(decide(bash('node .claude/scripts/ship.mjs hello'), gctx(null)), null);
+  assert.equal(decide(bash('node .garagiste/scripts/ship.mjs hello'), gctx(null)), null);
   assert.equal(decide(bash('git commit -m "feat(x): y"'), gctx(null)), null);
 });
 test('guard: 비밀·규칙집·원장은 쓰지 않는다 (GARAGISTE_ADMIN만 예외)', () => {
   assert.ok(decide(write('.env'), gctx(null)));
-  assert.ok(decide(write('.claude/team.json'), gctx(null)));
-  assert.ok(decide(write('.claude/ledger/evidence.jsonl'), gctx(null)));
-  assert.ok(decide(bash('echo x >> .claude/ledger/evidence.jsonl'), gctx(null)));
-  assert.equal(decide(write('.claude/team.json'), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null);
+  assert.ok(decide(write('.garagiste/team.json'), gctx(null)));
+  assert.ok(decide(write('.garagiste/ledger/evidence.jsonl'), gctx(null)));
+  assert.ok(decide(write('.claude/settings.json'), gctx(null)), 'Claude 배선');
+  assert.ok(decide(write('opencode.json'), gctx(null)), 'opencode 배선');
+  assert.ok(decide(write('.opencode/plugins/guard.ts'), gctx(null)));
+  assert.ok(decide(write('.githooks/pre-commit'), gctx(null)));
+  assert.ok(decide(bash('echo x >> .garagiste/ledger/evidence.jsonl'), gctx(null)));
+  assert.equal(decide(write('.garagiste/team.json'), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null);
   assert.equal(decide(write('src/a.ts'), gctx(null)), null);
 });
 test('guard: 팩의 쓰기 경계 — build는 테스트에, spec은 소스에 쓸 수 없다', () => {
@@ -47,6 +52,12 @@ test('guard: 팩의 쓰기 경계 — build는 테스트에, spec은 소스에 �
   assert.equal(decide(write(`${wt}/tests/adversary/hello-1.test.mjs`), gctx('attack')), null);
   assert.ok(decide(bash('git commit -m x', wt), gctx('spike')));
   assert.ok(decide(bash('git push -u origin unit/hello', wt), gctx('build')));
+  assert.ok(decide(bash('cd .worktrees/hello && git push -u origin unit/hello'), gctx('build')), 'opencode: cwd 대신 명령 안의 경로로 worktree를 안다');
+  assert.equal(worktreeFromCommand('git -C .worktrees/hello status', '/repo/.worktrees').slug, 'hello');
+});
+test('checkpoint: worktree가 없으면 조용히 빈 배열', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-cp-'));
+  assert.deepEqual(checkpoint(d), []);
 });
 test('boundary: 의존성 파일과 유출 키워드는 HIT, 평범한 소스는 CLEAR', () => {
   assert.equal(checkBoundary(team, { files: ['package.json'] }).hit, true);
@@ -159,6 +170,6 @@ test('doctor: 빈 저장소는 무엇을 치라고 한 줄씩 말한다', () => 
   const p = diagnose(d, { nodeVersion: '18.0.0' });
   assert.ok(p.some((x) => x.includes('node 18')));
   assert.ok(p.some((x) => x.includes('team.json 없음')));
-  assert.ok(p.some((x) => x.includes('settings.json 없음')));
+  assert.ok(p.some((x) => x.includes('하네스 배선 없음')));
   assert.ok(p.some((x) => x.includes('core.hooksPath')));
 });

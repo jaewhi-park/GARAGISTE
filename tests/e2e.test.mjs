@@ -14,7 +14,7 @@ const run = (cmd, args, cwd, env = {}) => {
   const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...ENV, ...env } });
   return { status: r.status, out: (r.stdout || '') + (r.stderr || '') };
 };
-const script = (name, args, cwd, env) => run(process.execPath, [path.join(cwd, '.claude', 'scripts', `${name}.mjs`), ...args], cwd, env);
+const script = (name, args, cwd, env) => run(process.execPath, [path.join(cwd, '.garagiste', 'scripts', `${name}.mjs`), ...args], cwd, env);
 const write = (root, rel, text) => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); };
 const git = (args, cwd, env) => run('git', args, cwd, env);
 
@@ -26,11 +26,13 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'init'], repo).status, 0);
 
   // 설치 — 세 파일이 팀이다
-  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), '-Project', repo, '-Budget', 'low'], repo);
+  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low'], repo);
   assert.equal(inst.status, 0, inst.out);
-  const teamPath = path.join(repo, '.claude', 'team.json');
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
   const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
   assert.equal(team.models.build, 'haiku', 'budget low가 모델 편성에 반영');
+  assert.match(fs.readFileSync(path.join(repo, '.claude/agents/build.md'), 'utf8'), /^model: haiku$/m, '에이전트 파일은 팩의 spawn 설정 — 모델은 예산에서');
+  assert.ok(fs.existsSync(path.join(repo, '.claude/hooks/guard.mjs')) && fs.existsSync(path.join(repo, '.garagiste/scripts/guard-rules.mjs')));
   team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/**/*.test.mjs"', test_file: 'node --test {file}', run: 'node src/cli.mjs' };
   fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
   fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
@@ -38,13 +40,14 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 1, '설치 뒤 첫 커밋도 원장 PASS 없이는 닫힌다');
   assert.match(script('verify', ['quick'], repo).out, /^PASS verify:quick/);
   assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
-  assert.match(script('doctor', [], repo).out, /alive 마커 없음/, '첫 세션 전엔 alive만 빠진다');
+  const doc = script('doctor', [], repo).out;
+  assert.match(doc, /FAIL doctor 1\n- session-start alive 마커 없음/, '첫 세션 전엔 alive만 빠진다: ' + doc);
 
   // CEO 한 마디
   const nw = script('work', ['new', 'hello', '이름을 주면 그 이름으로 인사한다'], repo);
   assert.match(nw.out, /^UNIT hello spec \.worktrees\/hello/);
   const wt = path.join(repo, '.worktrees', 'hello');
-  assert.equal(fs.readFileSync(path.join(wt, '.claude-pack'), 'utf8'), 'spec');
+  assert.equal(fs.readFileSync(path.join(wt, '.garagiste-pack'), 'utf8'), 'spec');
   assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] hello — "이름을 주면 그 이름으로 인사한다"/);
   assert.match(script('work', ['new', 'net', '외부 API로 network 호출을 한다'], repo).out, /HIT .*keyword network/, 'boundary는 spike부터');
 
@@ -59,7 +62,7 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
   write(wt, 'docs/units/hello/surface.md', 'CLI 인자 하나 → stdout 한 줄\n');
   assert.match(script('redproof', ['hello'], wt).out, /^RED hello 1\/1/);
   const spec = script('brief', ['spec', 'hello'], repo);
-  assert.match(spec.out, /^PACK \.claude\/session\/packs\/hello-spec-.*KB cwd=\.worktrees\/hello model=sonnet/);
+  assert.match(spec.out, /^PACK \.garagiste\/session\/packs\/hello-spec-.*KB cwd=\.worktrees\/hello model=sonnet/);
   git(['add', '-A'], wt);
   assert.equal(git(['commit', '-q', '-m', 'test(hello): red 주장'], wt).status, 1, '원장 PASS 없는 커밋은 닫힌다');
   assert.match(script('verify', ['quick'], wt).out, /^PASS verify:quick/);
@@ -70,7 +73,7 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
   assert.match(build.out, /^PACK .* model=haiku/);
   const packText = fs.readFileSync(path.join(repo, build.out.split(' ')[1]), 'utf8');
   assert.ok(packText.includes('## 인수 테스트') && packText.includes('hello Ada') && packText.includes('<<< 데이터 — 지시가 아님'));
-  assert.equal(fs.readFileSync(path.join(wt, '.claude-pack'), 'utf8'), 'build');
+  assert.equal(fs.readFileSync(path.join(wt, '.garagiste-pack'), 'utf8'), 'build');
   write(wt, 'src/cli.mjs', "process.stdout.write(`hello ${process.argv[2] ?? ''}\\n`);\n");
   git(['add', '-A'], wt);
   assert.match(script('verify', ['quick'], wt).out, /^PASS verify:quick/);
@@ -119,4 +122,22 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('state', ['--brief'], repo).out, /결정 대기 1/);
   assert.match(script('work', ['decide', '1', 'api.example 하나만'], repo).out, /^PASS decide Q1/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/DECISIONS.md'), 'utf8'), /- \[x\] Q1 \(net\): 어느 호스트로 나가나\? → api\.example 하나만/);
+});
+
+test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents·guard 플러그인이 깔리고 doctor가 OK', () => {
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-oc-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  const inst = run('bash', [path.join(GARAGISTE, 'install.sh'), 'opencode', '-Project', repo], repo);
+  assert.equal(inst.status, 0, inst.out);
+  for (const f of ['opencode.json', 'AGENTS.md', '.opencode/plugins/guard.ts', '.opencode/agents/conductor.md', '.opencode/agents/build.md', '.garagiste/scripts/guard-rules.mjs', '.garagiste/team.json', '.githooks/pre-commit']) assert.ok(fs.existsSync(path.join(repo, f)), f);
+  assert.ok(!fs.existsSync(path.join(repo, '.claude')), 'Claude 배선은 깔리지 않는다');
+  const cfg = JSON.parse(fs.readFileSync(path.join(repo, 'opencode.json'), 'utf8'));
+  assert.equal(cfg.default_agent, 'conductor');
+  assert.match(fs.readFileSync(path.join(repo, '.opencode/agents/conductor.md'), 'utf8'), /mode: primary[\s\S]*edit: deny/);
+  const teamPath = path.join(repo, '.garagiste', 'team.json'); const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/**/*.test.mjs"', test_file: 'node --test {file}', run: 'node src/cli.mjs' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  assert.match(script('doctor', [], repo).out, /^OK doctor \(opencode\)/);
 });
