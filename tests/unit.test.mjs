@@ -81,6 +81,14 @@ test('guard: R2 — tried·decide는 팩(worktree 컨텍스트)이 부르지 않
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs default hello "포트 3000"', wt), gctx('build')), null, 'default는 팀의 기록 — 접점이 아니다');
   assert.match(decide(bash('node .garagiste/scripts/work.mjs drop hello "안 되겠다"', wt), gctx('build')) || '', /팩은 부르지 않는다/, '방향전환(drop)은 conductor의 일이다');
 });
+test('guard: 보호 브랜치가 main이 아니어도 push가 막힌다', () => {
+  const pb = { ...gctx(null), protectedBranch: 'claude/quirky-wozniak-keqgbi' };
+  assert.ok(decide(bash('git push origin claude/quirky-wozniak-keqgbi'), pb), '보호 브랜치 push는 이름과 무관하게 없다');
+  assert.ok(decide(bash('git push -u origin claude/quirky-wozniak-keqgbi'), pb));
+  assert.equal(decide(bash('git push origin feature/x'), pb), null);
+  assert.equal(decide(bash('git push origin claude/quirky-wozniak-keqgbi'), gctx(null)), null, 'protected_branch를 모르면 기존 main|master 규칙만');
+  assert.equal(decide(bash('git push origin claude/quirky-wozniak-keqgbi'), { ...pb, env: { GARAGISTE_ADMIN: '1' } }), null, '원격 push는 CEO(ADMIN)의 일');
+});
 test('guard: R5 — 팩 정체는 unit 상태가 정본, 마커 변조는 무효, 정체 불명은 fail-closed', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-marker-'));
   fs.mkdirSync(path.join(d, '.garagiste', 'units'), { recursive: true });

@@ -66,6 +66,10 @@ export function decide(input, ctx) {
   if (tool === 'Bash' || tool === 'PowerShell') {
     const c = String(ti.command || '');
     if (DESTRUCTIVE.test(c)) return '파괴적 git — stash·rebase·merge·reset --hard·force push·보호 브랜치 push·--no-verify는 없다. 머지는 ship.mjs만.';
+    // DESTRUCTIVE의 push 정규식은 main|master 고정 — 보호 브랜치가 다른 이름이면 여기서 막는다 (L0 부검의 발견)
+    const pb = ctx.protectedBranch;
+    if (!admin && pb && pb !== 'main' && pb !== 'master'
+      && new RegExp(`\\bgit\\s+push\\b[^;&|]*[\\s:]${pb.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')}(\\s|$)`).test(c)) return `보호 브랜치(${pb}) push — 머지는 ship.mjs만, 원격 push는 CEO의 일이다.`;
     if (!admin && ENV_BYPASS.test(c)) return '게이트 우회 금지 — GARAGISTE_SHIP·WIP·ADMIN 접두는 스크립트 내부와 CEO(ADMIN 세션)만 쓴다.';
     if (LEDGER_SHELL.test(c) && /(>|>>|\brm\b|\bsed\b|\btee\b|\btruncate\b|\bmv\b)/.test(c)) return '원장·unit 상태는 스크립트만 쓴다.';
     if (!admin && RULEBOOK_SHELL.test(c)) return '규칙집(.garagiste 정본·하네스 배선)은 hard 결정 뒤 CEO가 GARAGISTE_ADMIN=1로만 바꾼다.';
@@ -97,8 +101,10 @@ export function decide(input, ctx) {
 }
 export function makeCtx(root, { cwd, env = process.env, fs }) {
   const read = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch { return null; } };
+  let protectedBranch = null;
+  try { protectedBranch = JSON.parse((read(path.join(root, '.garagiste', 'team.json')) || 'null').replace(/^﻿/, ''))?.protected_branch ?? null; } catch { /* team.json 없음 — main|master 규칙만 */ }
   return {
-    cwd, env, root, worktreesDir: path.join(root, '.worktrees'),
+    cwd, env, root, protectedBranch, worktreesDir: path.join(root, '.worktrees'),
     // 팩 정체의 정본은 unit 상태(.garagiste/units — 스크립트만 쓴다). worktree 안 마커 파일은 unit 상태가 없을 때의 fallback일 뿐이라, 변조해도 정체가 바뀌지 않는다.
     readMarker: (dir) => {
       const raw = read(path.join(root, '.garagiste', 'units', `${path.basename(dir)}.json`));
