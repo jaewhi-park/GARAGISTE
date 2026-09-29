@@ -5,7 +5,7 @@
 GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 여섯 팩(boot·intake·spec·build·attack·spike), 판단 없는 스크립트 열둘, 경계를 지키는 훅/플러그인, 그리고 원장이다.
 
 - **실행되지 않은 것은 믿지 않는다.** 스펙은 red 인수 테스트, 승인은 exit code, 리뷰의 산출물은 실패하는 테스트.
-- **루프는 기계가 끝낸다.** 커밋 게이트가 원장과 tree를 대조하고, `ship`은 7조건이 전부 참일 때만 main에 닿는다.
+- **루프는 기계가 끝낸다.** 커밋 게이트가 원장과 tree를 대조하고, `ship`은 8조건이 전부 참일 때만 main에 닿는다.
 - **사람은 한 마디 · 예/아니오 · 「써봤다」.** STATUS 첫 줄이 매일 보는 전부다.
 
 ## 에이전트는 있다 — 페르소나가 없을 뿐
@@ -29,7 +29,7 @@ GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**
 | conductor | 메인 세션 (CLAUDE.md Flow) | `conductor` primary agent (edit 권한 없음) |
 | 모델 | 예산 → agents 앞머리 `model:` | 기본 provider/model 상속, 팩별 `model:`은 앞머리에 직접 |
 
-그 뒤 `.garagiste/team.json`의 `commands`(quick·full·test_file·run)를 채우면 팀이 산다. `quick`은 `tests/acceptance`·`tests/adversary`를 빼고(red 상태로 커밋되므로), `full`은 전부 포함한다.
+검증 명령(`commands`: quick·full·test_file·run)은 첫 unit `boot`가 `work.mjs commands`로 채운다 — 사람이 채울 파일은 없다. 규칙: `quick`은 `tests/acceptance`·`tests/adversary`를 빼고(red 상태로 커밋되므로), `full`은 전부 포함한다.
 
 ## 입구 — 빈 폴더에서 범위까지
 설치는 명령 한 줄(`install.sh claude -Project <빈 폴더>`: git init · 팀 파일 · 첫 커밋). 그 뒤 사람이 채울 파일은 없다 — 첫 unit `boot`(kind scaffold)가 스택·검증 명령·스모크·규칙 파일을 채우고 ship한다. 한 문장씩 말하지 않는다. 입력 단위는 대화 전체다.
@@ -51,7 +51,7 @@ CEO 한 마디 ─▶ work.mjs new <slug> "<원문>"          (boundary HIT면 s
            ─▶ brief.mjs spec  → red 인수 테스트 · try.md · surface.md → redproof.mjs = RED
            ─▶ brief.mjs build → red→green, 커밋마다 verify quick, 게이트가 원장 대조
            ─▶ brief.mjs attack → 실패하는 테스트 (tests/adversary) → build 재spawn → red 0
-           ─▶ ship.mjs <slug> → 7조건 → main ff 머지 · LEDGER 한 줄 · STATUS 생성
+           ─▶ ship.mjs <slug> → 8조건 → main ff 머지 · LEDGER 한 줄 · STATUS 생성
 CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 ```
 에이전트는 팩 파일 하나만 받고 서로 말하지 않는다. build는 attack을 만난 적이 없다 — 실패하는 테스트 파일을 만날 뿐이다.
@@ -64,7 +64,7 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |
 | `redproof` | 인수 테스트가 base에서 red · head에서 green임을 증명 |
 | `boundary` | 의존성·워크플로·IPC·권한·유출 키워드 → spike 필수 |
-| `ship` | 7조건 fail-closed → ff 머지 · docs/LEDGER.md · STATUS |
+| `ship` | 8조건 fail-closed → ff 머지 · docs/LEDGER.md · STATUS(quick FAIL이면 머지 롤백) |
 | `claims` | 주장 그래프: 참·거짓·미검수·불명, 센서 커버리지, 다음 거짓 |
 | `state` | docs/STATUS.md 생성(첫 줄 = 전부) · 무인 정지 예산 |
 | `doctor` | 감별 진단 — 하네스를 감지해 무엇이 죽었고 무엇을 치면 되는지 한 줄씩 |
@@ -79,8 +79,8 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 
 ## 이 저장소 검증
 ```
-node --test tests/unit.test.mjs   # 순수 함수 22
-node --test tests/e2e.test.mjs    # 탄생 시험(claude) + opencode 설치: 빈 저장소 → 출하까지, 모델 0 · 네트워크 0
+node --test tests/unit.test.mjs   # 순수 함수
+node --test tests/e2e.test.mjs    # 탄생 시험(claude) + 출하 원자성 + opencode 설치: 빈 저장소 → 출하까지, 모델 0 · 네트워크 0
 ```
 
 ## v1

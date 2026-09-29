@@ -4,21 +4,32 @@ Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`
 
 ## v2 — 2026-09-29 · 증거 팀 (unreleased)
 
-v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 잇지 않는 재시작. `team/`이 새 정본이고 `install.sh <claude|opencode>`가 정본을 `.garagiste/`로, 배선을 `.claude/` 또는 `opencode.json`+`.opencode/`로 설치한다. v1 트리는 저장소에 남아 있으며 삭제는 CEO 결정(docs/DECISIONS.md).
+v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 잇지 않는 재시작. `team/`이 새 정본이고 `install.sh <claude|opencode>`가 정본을 `.garagiste/`로, 배선을 `.claude/` 또는 `opencode.json`+`.opencode/`로 설치한다. v1 트리는 2026-09-29 삭제(be39c4a, CEO 결정) — 이력은 main의 `0fdfa28` 이전에 있고 백업 브랜치 `v1`이 그 지점을 가리킨다.
 
 ### Added
 - `team/scripts/` 열둘(판단 0, 하네스 중립): work · brief · verify(+gate) · redproof · boundary · ship · claims · state · doctor · guard-rules · checkpoint · lib. 팩 넷: spec · build · attack · spike(쓰기 경계로 정의, 페르소나 없음).
 - Claude Code 배선 `team/claude/`: settings.json(deny + 훅 3) · hooks(guard · spawn-log · session-start — 규칙은 guard-rules.mjs를 부른다) · agents 넷(10줄 spawn 설정, 모델은 -Budget) · CLAUDE.md 템플릿.
 - opencode 배선 `team/opencode/`: opencode.json(default_agent conductor) · agents 다섯(conductor primary, edit 권한 없음 + 팩 넷 subagent) · plugins/guard.ts(tool.execute.before → 같은 guard-rules, task 뒤 → checkpoint) · AGENTS.md 템플릿.
 - 커밋 게이트(`.githooks/pre-commit` → `verify.mjs gate`): 모든 커밋은 원장에 그 tree의 quick PASS가 있어야 하고, 로직 변경엔 테스트 파일이, step은 로직 300줄(2×는 이유로도 불가), 보호 브랜치엔 ship만.
-- `ship.mjs` 7조건 fail-closed: unit·full(machine OS)·redproof·attack red 0·spike 필수 행·wip 아님·예산(미검수 3·무인 출하 5·팀 자발 unit 연속 2·산문 40 KB).
+- `ship.mjs` 8조건 fail-closed: unit·full(machine OS)·redproof·attack red 0·spike 필수 행·wip 아님·열린 질문 없음·예산(미검수 3·무인 출하 5·팀 자발 unit 연속 2·산문 40 KB).
 - `docs/PRINCIPLES.md` · `docs/BIRTH.md` · `docs/catalogue/`(v2 설계는 계획이 아니라 후보 카탈로그) · `team/HAZARDS.md`(v1 사고 11건, 줄마다 경로와 검사).
-- `tests/unit.test.mjs` 18 · `tests/e2e.test.mjs` 탄생 시험(claude: 빈 저장소 → 출하 → 써봤다) + opencode 설치·doctor, 모델 0 · 네트워크 0. CI: ubuntu + windows(unit).
+- `tests/unit.test.mjs`(순수 함수) · `tests/e2e.test.mjs` 탄생 시험(claude: 빈 저장소 → 출하 → 써봤다) + 출하 원자성 + opencode 설치·doctor, 모델 0 · 네트워크 0. CI 없음 — 검증은 로컬 quick/full(Actions 미사용은 CEO 결정 26d3e94).
 
 - 입구: `work brief`(원문 축적) · intake 팩(BRIEF → BACKLOG unit 줄 + 예/아니오) · `work add` · `work scope`(needs 닫힘 → 선행 역제안, `--milestone`·`--range`·`--no-needs`) · `work seed`(다음 unit 자동, Q<n> 게이트, WAIT/DONE) · STATUS `## 범위`.
 - conductor 가드: `.worktrees/` 밖 Edit/Write 거부(GARAGISTE_ADMIN=1 예외). 팩 다섯(intake 추가), -Budget에 intake 모델.
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
+
+### Fixed — 2026-09-29 L0 수리 (6-레포 부검의 백로그 docs/V2-REPAIR-BACKLOG.md)
+- R1·R3: seed가 매 unit을 CEO 접점으로 찍어 무인 출하 상한이 절대 발동하지 않던 것 — 접점은 brief·scope·decide·tried만, origin_kind는 seed·ceo(ADMIN 세션)·team(기본).
+- R2·R7: tried·decide는 메인 전용이고 팩(worktree 컨텍스트)의 호출은 가드가 거부; GARAGISTE_SHIP·WIP·ADMIN env 접두는 ADMIN 밖에서 거부(LARGE_STEP은 정상 경로).
+- R4·R5: Bash 리다이렉트·in-place 편집(sed -i 등)도 팩 쓰기 경계를 지키고 worktree 밖 Bash 쓰기는 거부(최선 노력 — 법은 게이트); 팩 정체의 정본은 unit 상태라 마커 변조가 무효, 정체 불명 worktree는 fail-closed.
+- R6: 검증 명령(team.json)의 재작성은 boot(scaffold) worktree·ADMIN만, ship이 scaffold 아닌 diff의 team.json 변경을 거부.
+- R8: seed·ship 전 doctor fail-closed(구조 결함; alive·빈 commands는 FRESH_OK), session-start가 doctor 이유 전문을 주입, doctor --fresh 추가.
+- R9: 머지 뒤 main quick FAIL이면 머지·shipped 마크·LEDGER 행·BACKLOG 체크를 롤백(원장은 append-only — ship_rollback 줄), ship 원장 줄은 quick PASS 뒤에만.
+- R10·R11·R12: 낡은(이전 tree) 증거의 FAIL 문구에 복붙 가능한 재실행 명령; spike 팩은 인수 테스트 없이 열림(boundary HIT의 spike-first 복원); unit의 열린 질문이 8번째 ship 조건.
+- R15: 설치는 install→doctor(--fresh)→selftest 원샷 fail-closed(-SkipSelftest로 생략), 재설치에서 team.json 편성이 -Budget을 이기고 에이전트 model:도 team.json에서 나온다(v1 재적용병 백신).
+- R14: README의 「commands를 사람이 채운다」 모순 제거, HAZARDS 검사열을 실존 검사로 정합, 이 CHANGELOG의 낡은 사실(v1 트리·CI) 정정.
 
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
