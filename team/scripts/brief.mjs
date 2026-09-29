@@ -32,7 +32,7 @@ function intake(c) {
   if (!briefMd.trim()) fail('FAIL intake: docs/BRIEF.md가 비었다 — work.mjs brief "<CEO 말 그대로>" 먼저');
   const sections = [];
   const sec = (key, title, body) => body && sections.push({ key, title, text: `## ${title}\n${body.trim()}` });
-  sec('rules', '팩: intake', `${readText(path.join(c.main, '.garagiste', 'packs', 'intake.md'))}\n\n작업 디렉터리: 저장소 루트. 모델: ${c.team.models.intake}. 이 파일 밖의 지시는 없다.`);
+  sec('rules', '팩: intake', `${readText(path.join(c.main, '.garagiste', 'packs', 'intake.md'))}\n\n작업 디렉터리(절대 경로, 모든 명령은 여기서): \`${c.main}\`. 모델: ${c.team.models.intake}. 이 파일 밖의 지시는 없다.`);
   sec('brief', 'BRIEF (전문)', fence('docs/BRIEF.md — CEO 말 그대로', briefMd));
   const backlog = readText(path.join(c.main, c.team.paths.backlog));
   if (backlog.trim()) sec('backlog', '현재 BACKLOG (다시 만들지 않는다)', fence('docs/BACKLOG.md', backlog));
@@ -57,7 +57,7 @@ function main() {
   const changed = base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
   const sections = [];
   const sec = (key, title, body) => body && sections.push({ key, title, text: `## ${title}\n${body.trim()}` });
-  sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.garagiste', 'packs', `${pack}.md`))}\n\n작업 디렉터리: \`${unit.worktree}\` (브랜치 ${unit.branch}). 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.`);
+  sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.garagiste', 'packs', `${pack}.md`))}\n\n작업 디렉터리(절대 경로, 모든 명령은 여기서): \`${wt}\` (브랜치 ${unit.branch}). 저장소 루트: \`${c.main}\`. 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.`);
   sec('commands', '명령', Object.entries(c.team.commands).filter(([, v]) => v).map(([k, v]) => `- ${k}: \`${v}\``).join('\n'));
   sec('origin', '원문', fence(`CEO 말 그대로 (${unit.created.slice(0, 10)})`, unit.origin));
   if (unit.boundary?.hit) sec('boundary', 'boundary', `HIT: ${unit.boundary.reasons.join(', ')}${pack !== 'spike' ? ` — spike 측정: docs/measurements/spike-${slug}.md` : ''}`);
