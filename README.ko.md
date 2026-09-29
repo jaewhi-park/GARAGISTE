@@ -1,64 +1,87 @@
-# GARAGISTE
+# GARAGISTE — 증거 팀
 
-> 영어 정본: [README.md](README.md). 에이전트 프롬프트는 영어이며, 응답·질문·문서 언어는 규칙 파일(AGENTS.md / CLAUDE.md)의 `## Language` 줄로 정합니다(`/brainstorm` 시작 시 한 번 묻고, `/lang <code>`로 언제든 변경). 비어 있으면 당신이 쓰는 언어를 따릅니다.
+> 코딩은 주장을 참으로 만드는 일이다. 주장은 테스트·프로브·불변식이고, 팀은 그 그래프 위의 스케줄러이며, 사람은 방향·현실·책임 — 그리고 창이다.
 
+GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 여섯 팩(boot·intake·spec·build·attack·spike), 판단 없는 스크립트 열둘, 경계를 지키는 훅/플러그인, 그리고 원장이다.
 
-> 나도 그들처럼 차고에서 시작하고 싶었지만, 우리 집엔 차고가 없다. 그래서 설정 파일 한 폴더로 차고를 지었다.
+- **실행되지 않은 것은 믿지 않는다.** 스펙은 red 인수 테스트, 승인은 exit code, 리뷰의 산출물은 실패하는 테스트.
+- **루프는 기계가 끝낸다.** 커밋 게이트가 원장과 tree를 대조하고, `ship`은 7조건이 전부 참일 때만 main에 닿는다.
+- **사람은 한 마디 · 예/아니오 · 「써봤다」.** STATUS 첫 줄이 매일 보는 전부다.
 
-차고는 설정 파일 한 폴더, 엔진은 기성품 LLM, 공장은 없다. 그래도 계획·구현·검증·리뷰·출하를 도는 작은 소프트웨어 회사 하나가 돌아간다.
-
-GARAGISTE 는 **opencode** 와 **Claude Code** 양쪽에서 거의 똑같이 동작하는 자율 개발 팀 템플릿이다. 핵심 에이전트 6개(lead · planner · critic · implementer · reviewer · verifier) — Claude Code 는 병렬 구현용(`/parallel`) team-builder 를 하나 더 둔다 — 회사의 운영 루프를 담은 커맨드(`/kickoff` `/plan` `/run` `/review` `/ship` `/release` `/retro` `/handoff` `/resume` …), 저장소 상태에서 추론되는 머지 정책, 세션을 넘어 이어지는 상태판, 그리고 **사람이 무엇을 해야 하는지** 적은 가이드로 되어 있다.
-
-## 한눈에 보는 워크플로우
-![GARAGISTE 워크플로우 노선도 — 시작 선이 매 작업이 밟는 기본 경로에 합류하고, 핫픽스 선은 계획을 건너뛰며, 병렬 선은 /ship 에 합류하고, 출하 뒤 선은 /plan 으로 돌아온다. 겹친 원은 CEO 가 답하거나 승인하는 역](assets/workflow-map.ko.svg)
-
-파란 선이 매 작업이 밟는 기본 경로다: `/backlog` → `/plan` → `/build` → `/review` → `/ship` → 머지. `/run` 은 가운데 세 역을 한 번에 지난다. 빨간 선은 `/hotfix`, 한 문장으로 말할 수 있는 수정을 계획 없이 한 번에 처리하는 길이다(Risk path 에 닿으면 멈추지 않고 security 렌즈와 `risk:high` 라벨을 더해 이어 간다). 초록 선은 병렬 작업: `/parallel`(Claude Code) 또는 `/spawn`(opencode) 뒤 `/integrate` 를 거쳐 `/ship` 으로. 보라 선은 머지 뒤의 일: 주 1회 `/release`, 지표에 신호가 있으면 이터레이션 끝에 스스로 도는(청하면 언제든) `/retro`, 그다음 다음 `/plan`. 되돌아가는 선 위의 이터레이션 리뷰 역은 무인 상한(기본 계획 8개 · 사양서 절 2개 · 이터레이션 시작 뒤 12시간 중 먼저 오는 것)에서 당신이 제품을 써 보고 \"계속\"이나 지시를 말하는 곳이다. 그 사이의 새 화면 · 첫 실행 · 기본값 결정은 당신 페이지의 한 줄이지 멈춤이 아니다. 겹친 원이 당신이 답하거나 승인하는 역이고, 나머지 역은 팀이 알아서 지난다.
+## 에이전트는 있다 — 페르소나가 없을 뿐
+팩 여섯(boot·intake·spec·build·attack·spike)이 에이전트다. 각 팩은 spawn 설정 한 장(`.claude/agents/<pack>.md` 또는 `.opencode/agents/<pack>.md`, 10줄)과 쓰기 경계로만 정의된다. 프롬프트는 팩 파일 경로 한 줄이고, 팩 파일이 그 spawn의 전부다. 모델은 예산(`-Budget`)이 정한다. "너는 시니어 엔지니어다" 같은 문장은 어디에도 없다.
 
 ## 설치
 ```
-./install.sh claude   -Project <레포 경로>      # Claude Code 판
-./install.sh opencode -Project <레포 경로>      # opencode 판
-.\install.ps1 claude  -Project <레포 경로>      # Windows PowerShell
+./install.sh claude   -Project <repo> [-Budget low|medium|high]    # Claude Code
+./install.sh opencode -Project <repo> [-Budget low|medium|high]    # opencode
+.\install.ps1 claude|opencode -Project <repo>                       # Windows PowerShell
 ```
-`-Project` 를 생략하면 현재 경로. 전역 설치는 없다: 팀은 저장소에 산다(`.claude/`, 또는 `.opencode/` 와 `opencode.json` 을 프로젝트와 함께 커밋) — 어느 체크아웃이든 같은 팀을 받는다. 옵션은 두 판이 같고 `--project`/`-Project` 두 표기를 모두 받는다. `-Uninstall` 은 설치기가 넣은 것만 걷어내고 당신의 파일과 설정은 남기며, `-Global -Uninstall` 은 옛 전역 설치를 지운다. `-DryRun` 으로 미리 본다.
-설치 후 첫 세션에서 `/brainstorm` 으로 기획서를 만들고(lead 와 자유 토론, 또는 직접 쓴 문서), 신규 프로젝트는 `/kickoff`, 레거시는 `/assess`, 그다음 `/hire` 로 역할별 모델을 배정한다.
+팀 정본은 하네스와 무관하게 `<repo>/.garagiste/`(scripts·packs·HAZARDS·team.json·원장·unit 상태)로, 하네스 배선만 갈린다:
 
-## 구조
+| | Claude Code | opencode |
+|---|---|---|
+| 규칙 파일 | `CLAUDE.md` (20줄) | `AGENTS.md` (20줄) |
+| 경계 | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
+| 규칙 본체 | 둘 다 `.garagiste/scripts/guard-rules.mjs` 하나 | |
+| spawn 설정 | `.claude/agents/{spec,build,attack,spike}.md` | `.opencode/agents/{conductor,spec,build,attack,spike}.md` |
+| 죽은 에이전트의 wip | SubagentStop 훅 → `checkpoint.mjs` | `task` 뒤 플러그인 → `checkpoint.mjs` |
+| conductor | 메인 세션 (CLAUDE.md Flow) | `conductor` primary agent (edit 권한 없음) |
+| 모델 | 예산 → agents 앞머리 `model:` | 기본 provider/model 상속, 팩별 `model:`은 앞머리에 직접 |
+
+그 뒤 `.garagiste/team.json`의 `commands`(quick·full·test_file·run)를 채우면 팀이 산다. `quick`은 `tests/acceptance`·`tests/adversary`를 빼고(red 상태로 커밋되므로), `full`은 전부 포함한다.
+
+## 입구 — 빈 폴더에서 범위까지
+설치는 명령 한 줄(`install.sh claude -Project <빈 폴더>`: git init · 팀 파일 · 첫 커밋). 그 뒤 사람이 채울 파일은 없다 — 첫 unit `boot`(kind scaffold)가 스택·검증 명령·스모크·규칙 파일을 채우고 ship한다. 한 문장씩 말하지 않는다. 입력 단위는 대화 전체다.
 ```
-garagiste/
-  install.sh / install.ps1     # 진입점: <opencode|claude> [옵션]
-  opencode/                    # opencode 판 (.opencode/ 로 설치되는 agents·commands·skills·plugins + GUIDE.md)
-  claude/                      # Claude Code 판 (.claude/ 로 설치되는 agents·skills·hooks + GUIDE.md)
-  scripts/                     # 이 저장소 관리용 도구 (정합성 검사와 그 기준선, 훅 검사, 노선도 생성; 설치되지 않음)
-  assets/                      # 위 워크플로우 노선도 (영문·한글)
+구상(대화) ─▶ work.mjs brief "<원문>" | --file PRD.md      원문 그대로 docs/BRIEF.md에 축적 (요약 금지)
+"개발해"   ─▶ brief.mjs intake → intake 팩 spawn          BACKLOG에 unit 줄: slug · 마일스톤 · needs · "원문 한 문장" · 인수 한 줄
+                                                          되돌리기 어려운 것은 예/아니오 카드(work.mjs ask intake) → needs: Q<n>
+범위       ─▶ work.mjs scope login share | --milestone M1 | --range a..b
+              SCOPE 요청 2 · 선행 2 · 없는 선행 0            ← 역제안: needs 간선의 닫힘을 기계가 계산한 것
+              - 선행: db (session가 needs) · session (login가 needs)
+              - 순서: db → session → login → share
+루프       ─▶ work.mjs seed → UNIT | WAIT <slug> needs … | SCOPE DONE
 ```
-각 판의 `GUIDE.md` 가 사람용 사용법(설치, 상황별 역할, 체크리스트)이고, `README.md` 가 설정 레퍼런스다.
+`needs`는 인간 관례가 아니라 주장 그래프의 간선이다. "이걸 하려면 저게 먼저"는 회의가 아니라 `closure()`의 출력이고, CEO는 받거나(`seed`) 선행을 빼거나(`--no-needs`, 원장에 남는다) 둘 중 하나만 한다.
 
-## 두 판을 나란히 유지하기
-두 판은 각각 손으로 고치므로, 커맨드·에이전트·가이드의 변경은 양쪽에 다 들어가야 한다. PR 전에 실행한다:
+## 한 unit의 생애
 ```
-node scripts/parity-check.mjs
+CEO 한 마디 ─▶ work.mjs new <slug> "<원문>"          (boundary HIT면 spike 팩부터)
+           ─▶ brief.mjs spec  → red 인수 테스트 · try.md · surface.md → redproof.mjs = RED
+           ─▶ brief.mjs build → red→green, 커밋마다 verify quick, 게이트가 원장 대조
+           ─▶ brief.mjs attack → 실패하는 테스트 (tests/adversary) → build 재spawn → red 0
+           ─▶ ship.mjs <slug> → 7조건 → main ff 머지 · LEDGER 한 줄 · STATUS 생성
+CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 ```
-`claude/` 의 파일마다 `opencode/` 의 짝을 찾아 claude 쪽을 opencode 어휘로 바꾼 뒤(CLAUDE.md → AGENTS.md, AskUserQuestion → the question tool, `/parallel` → `/spawn`, …) 남는 차이를 `scripts/parity-baseline.txt` 에 기록된 허용 차이와 비교해, 달라진 곳만 보고한다. 두 판의 README 가 같은 커맨드·산출물을 언급하는지, `scripts/*.mjs` 넷이 동일한지, 각 `.ko.md` 가 영어 원본의 절 구조를 유지하는지도 본다. 보고된 줄은 다른 판에 빚진 수정이거나 의도한 차이다. 후자면 `--update` 로 기록하고, 기준선 파일의 diff 가 리뷰어에게 무엇이 갈라졌는지 보여 준다. 작업 순서는 claude 판 먼저, 같은 변경을 opencode 판에, 그다음 검사다. 한쪽에만 의도적으로 있는 것 — 래퍼 명령 규칙·백틱 명령 파싱·session-start 훅은 Claude 전용, 컴팩션 플러그인은 opencode 전용 — 은 기준선에 남는다.
+에이전트는 팩 파일 하나만 받고 서로 말하지 않는다. build는 attack을 만난 적이 없다 — 실패하는 테스트 파일을 만날 뿐이다.
 
-`node scripts/hook-check.mjs` 는 가드레일 쪽 짝이다. 명령·경로·역할의 매트릭스를 Claude Code 훅과 opencode 플러그인에 넣어(파괴적 명령, 비밀 파일, 배포, push 정책, gh api 변경, 역할별 경계, verifier의 CLAUDE.md 명령 허용, 래퍼 명령, 상태판 파일과 CEO 페이지의 상한, reviewer의 기억 파일) 기대한 판정과 다른 것이 하나라도 있으면 실패한다. `guardrails.mjs` 나 `guardrails.ts` 를 고친 뒤 실행한다.
+## 스크립트 (판단 0)
+| 스크립트 | 하는 일 |
+|---|---|
+| `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · new · ask · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
+| `brief` | 팩 조립 ≤8 KB(intake는 32 KB) — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
+| `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |
+| `redproof` | 인수 테스트가 base에서 red · head에서 green임을 증명 |
+| `boundary` | 의존성·워크플로·IPC·권한·유출 키워드 → spike 필수 |
+| `ship` | 7조건 fail-closed → ff 머지 · docs/LEDGER.md · STATUS |
+| `claims` | 주장 그래프: 참·거짓·미검수·불명, 센서 커버리지, 다음 거짓 |
+| `state` | docs/STATUS.md 생성(첫 줄 = 전부) · 무인 정지 예산 |
+| `doctor` | 감별 진단 — 하네스를 감지해 무엇이 죽었고 무엇을 치면 되는지 한 줄씩 |
+| `guard-rules` · `checkpoint` | 두 하네스가 공유하는 경계 규칙과 wip 체크포인트 |
 
-## CEO와의 계약
-- CEO가 승인하는 문서는 기획서 하나다. 나머지(사양서, 계획, 기본값)는 팀이 쓰고 정하고 docs/DECISIONS.md에 남긴다.
-- 팀은 무인 상한(기본 계획 8개 · 사양서 절 2개 · 이터레이션 시작 뒤 12시간 중 먼저 오는 것)까지 계획을 이어 돌고, 저위험 작업은 스스로 머지하고, 상한에서 멈춰 써 볼 수 있는 것을 보여 준다. 묻는 건 되돌리기 비싼 것뿐이다 — 돈, 보안·사용자 데이터, 비목표 충돌, 머지된 작업 폐기, 출시 뒤의 `risk:high` 머지. 나머지는 기본값으로 정해 CEO 페이지에 적고, 한마디면 뒤집힌다.
-- 애매하면 한 줄로 확인하지 추측해서 실행하지 않는다. 감상은 지시가 아니다.
-- main은 항상 실행 가능하다. 상태판의 CEO 페이지(docs/STATUS.md — 1분이면 읽고, 훅이 상한을 강제한다)가 CEO의 창이고 제품이 데모다.
+## 문서
+- [docs/GUIDE.md](docs/GUIDE.md) — 내 PC에서 돌려 보는 테스트 가이드(클론 · 시험 저장소 · 세션 · 판정선 · 모델 편성)
+- [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — 네 문장과 뼈대 여덟, 사람의 창
+- [docs/BIRTH.md](docs/BIRTH.md) — 0 base 탄생 프로토콜, 탄생 규칙 셋, 첫 3 unit 뒤의 판정선
+- [docs/catalogue/](docs/catalogue/) — 후보 장치 카탈로그(v2 설계), v1 측정 진단, 토의 추가분. **계획이 아니다** — 사고가 나면 여기서 찾아 만든다
+- [docs/DECISIONS.md](docs/DECISIONS.md)
 
-## 원칙 여섯 줄
-1. 판단하는 자와 실행하는 자를 분리한다 — implementer 는 자기 결과를 판정하지 않고, reviewer 는 고치지 않고, lead 는 코드를 쓰지 않는다.
-2. 검증 수단이 없으면 팀은 "그럴듯한 코드" 생산기다 — 첫 작업은 1분 안에 도는 테스트다.
-3. 상태는 세션이 아니라 레포에 산다 — 커밋, 계획 파일, 그리고 상태판(CEO용 `docs/STATUS.md`와 팀용 `docs/STATUS-team.md`, 끊는 지점마다 커밋). 상태판은 커밋을 가리킬 뿐이고, 어긋나면 git이 이긴다.
-4. 게이트는 가능한 한 저장소가 강제한다 — 머지 정책은 원격·브랜치 보호·auto-merge 에서 추론된다. lead의 `risk:low` 머지는 프롬프트 게이트이니 원격이 생기면 브랜치 보호를 켠다.
-5. 기계적 변경과 논리 변경을 한 커밋에 섞지 않는다.
-6. 실패는 `/retro` 로 규칙·스킬·훅에 환류한다. 기억하는 것은 사람이 아니라 저장소다.
+## 이 저장소 검증
+```
+node --test tests/unit.test.mjs   # 순수 함수 22
+node --test tests/e2e.test.mjs    # 탄생 시험(claude) + opencode 설치: 빈 저장소 → 출하까지, 모델 0 · 네트워크 0
+```
 
-## 상태
-opinionated template, v0.x. 재료(계획 우선, 테스트 오라클, 작은 diff, worktree 격리, 별도 컨텍스트 리뷰)는 널리 검증된 것이고, 이 배치는 벤치마크된 적 없다. `docs/METRICS.md` 를 보며 잘라내라.
-
-## 라이선스
-MIT — [LICENSE](LICENSE) 참고.
+## v1
+v1(역할극: agents 7 · skills 31 · opencode 플레이버)은 2026-09-29에 지웠다. 이력은 main의 `0fdfa28` 이전에 있고, 측정 진단은 docs/catalogue/V1-ANALYSIS.md에 남는다.

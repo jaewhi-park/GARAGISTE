@@ -1,0 +1,12 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["docs/STATUS.md"],
+  "subagent_depth": 1,
+  "default_agent": "conductor",
+  "permission": {
+    "external_directory": "deny",
+    "edit": "allow",
+    "bash": "allow",
+    "question": "deny"
+  }
+}

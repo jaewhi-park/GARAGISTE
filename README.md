@@ -1,63 +1,86 @@
-# GARAGISTE
+# GARAGISTE — the evidence team
 
-> I would have started in a garage like the big ones did, but my apartment doesn't have one. So I built a garage out of a folder of config files.
+> Coding is making claims true. Claims are tests, probes and invariants; the team is a scheduler over that graph; the human supplies direction, reality and accountability — and keeps the windows.
 
-The garage is one folder of config files, the engine is an off-the-shelf LLM, and there is no factory. What you get is a small software company that runs plan → implement → verify → review → ship — and a guide for what the human is supposed to do.
+GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), twelve judgment-free scripts, a boundary hook or plugin, and a ledger.
 
-GARAGISTE is an autonomous development team template that works nearly identically in **opencode** and **Claude Code**: six core agents (lead · planner · critic · implementer · reviewer · verifier) — Claude Code adds a seventh, team-builder, for in-session parallel implementation (`/parallel`) — commands that encode a company's operating loops (`/kickoff` `/plan` `/run` `/review` `/ship` `/release` `/retro` `/handoff` `/resume` …), a merge policy inferred from repository state, a status board that survives sessions, and a human-facing guide.
+- **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
+- **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all seven conditions hold.
+- **The human gives one sentence, yes/no, and "tried it".** The first line of STATUS is all they read each day.
 
-한국어 문서: [README.ko.md](README.ko.md) · [opencode/GUIDE.ko.md](opencode/GUIDE.ko.md) · [claude/GUIDE.ko.md](claude/GUIDE.ko.md)
-
-## The workflow in one picture
-![GARAGISTE workflow map — the start line joins the main line every piece of work takes; the hotfix line skips the plan; the parallel branch rejoins at /ship; the after-merge loop returns to /plan; double rings are where the CEO answers or approves](assets/workflow-map.svg)
-
-Blue is the path every piece of work takes: `/backlog` → `/plan` → `/build` → `/review` → `/ship` → merge, with `/run` driving the three middle stops in one go. Red is `/hotfix`, one pass without a plan for a change you can state in one sentence (on a Risk path it keeps going, with the security lens added and the `risk:high` label). Green is parallel work: `/parallel` (Claude Code) or `/spawn` (opencode), then `/integrate` before `/ship`. Purple is what happens after a merge: `/release` weekly, `/retro` by itself at the iteration end when the metrics show a trigger (or on request), then the next `/plan`. The iteration-review stop on the return line is where, at the unattended cap (default 8 plans, 2 spec sections or 12 hours since the iteration started, whichever first), you try the product and say 계속 or give an instruction; a new screen, a first run or a decision taken by default is a line on your page along the way, never a stop. Double rings mark the stops where you answer or approve; the team passes every other stop on its own.
+## There are agents — there are no personas
+The six packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
 
 ## Install
 ```
-./install.sh claude   -Project <repo path>      # Claude Code flavor
-./install.sh opencode -Project <repo path>      # opencode flavor
-.\install.ps1 claude  -Project <repo path>      # Windows PowerShell
+./install.sh claude   -Project <repo> [-Budget low|medium|high]    # Claude Code
+./install.sh opencode -Project <repo> [-Budget low|medium|high]    # opencode
+.\install.ps1 claude|opencode -Project <repo>                       # Windows PowerShell
 ```
-Omit `-Project` for the current directory. There is no global install: the team lives in the repository (`.claude/`, or `.opencode/` and `opencode.json`, committed with the project), so every checkout gets the same team. Options are identical across flavors; both `--project` and `-Project` spellings work. `-Uninstall` removes what the installer put there and leaves your own files and settings, `-Global -Uninstall` removes an older global install, and `-DryRun` previews either.
-In the first session, write the product brief with `/brainstorm` (talk it through with the lead, or bring a document you wrote), then start a new project with `/kickoff` or a legacy codebase with `/assess`; each is followed by `/hire`, which assigns models per role.
+The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs · HAZARDS · team.json · ledger · unit state); only the wiring differs:
 
-## Layout
+| | Claude Code | opencode |
+|---|---|---|
+| rules file | `CLAUDE.md` (20 lines) | `AGENTS.md` (20 lines) |
+| boundary | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
+| the rules themselves | both call `.garagiste/scripts/guard-rules.mjs` | |
+| spawn configs | `.claude/agents/{spec,build,attack,spike}.md` | `.opencode/agents/{conductor,spec,build,attack,spike}.md` |
+| wip of a dead agent | SubagentStop hook → `checkpoint.mjs` | plugin after `task` → `checkpoint.mjs` |
+| conductor | the main session (CLAUDE.md Flow) | the `conductor` primary agent (no edit permission) |
+| models | budget → `model:` in the agent files | inherits the default provider/model; per-pack `model:` by hand |
+
+Then fill `commands` (quick · full · test_file · run) in `.garagiste/team.json`. `quick` must exclude `tests/acceptance` and `tests/adversary` (they are committed red by design); `full` includes everything.
+
+## The entrance — from an empty folder to scope
+Install is one command (`install.sh claude -Project <empty dir>`: git init, team files, first commit). After that there is no file for the human to fill in: the first unit, `boot` (kind scaffold), picks the stack, writes the verification commands, the smoke test and the rules file, and ships. You do not speak one sentence at a time; the unit of input is the whole conversation.
 ```
-garagiste/
-  install.sh / install.ps1     # entry point: <opencode|claude> [options]
-  opencode/                    # opencode flavor (agents · commands · skills · plugins installed as .opencode/, plus GUIDE.md)
-  claude/                      # Claude Code flavor (agents · skills · hooks installed as .claude/, plus GUIDE.md)
-  scripts/                     # maintainer tools for this repository (parity check and its baseline, hook check, map builder; never installed)
-  assets/                      # the workflow map shown above (English and Korean)
+conversation ─▶ work.mjs brief "<verbatim>" | --file PRD.md   accumulated verbatim in docs/BRIEF.md (no summarising)
+"build it"   ─▶ brief.mjs intake → intake pack spawn           BACKLOG lines: slug · milestone · needs · "one sentence" · one acceptance line
+                                                               hard-to-reverse choices become yes/no cards (work.mjs ask intake) → needs: Q<n>
+scope        ─▶ work.mjs scope login share | --milestone M1 | --range a..b
+                SCOPE requested 2 · prerequisites 2 · missing 0   ← the counter-proposal: the closure over `needs`, computed
+                - prerequisites: db (needed by session) · session (needed by login)
+                - order: db → session → login → share
+loop         ─▶ work.mjs seed → UNIT | WAIT <slug> needs … | SCOPE DONE
 ```
-Each flavor's `GUIDE.md` is the human manual (install, what to do in each situation, checklists); its `README.md` is the configuration reference. Agent prompts are English; agents respond in the language set under `## Language` in the project's rules file (AGENTS.md / CLAUDE.md), asked once at the start of `/brainstorm` and changed any time with `/lang <code>`; when unset they mirror the CEO's language.
+`needs` is not a human-team convention; it is an edge in the claim graph. "This needs that first" is the output of `closure()`, not a meeting, and the CEO either accepts (`seed`) or drops the prerequisites (`--no-needs`, recorded in the ledger).
 
-## Keeping the flavors in step
-Both flavors are edited by hand, so a change to a command, agent or guide belongs in both. Before a PR, run
+## Life of a unit
 ```
-node scripts/parity-check.mjs
+CEO sentence ─▶ work.mjs new <slug> "<verbatim>"      (boundary HIT → spike pack first)
+             ─▶ brief.mjs spec  → red acceptance tests · try.md · surface.md → redproof.mjs = RED
+             ─▶ brief.mjs build → red→green, verify quick per commit, the gate checks the ledger
+             ─▶ brief.mjs attack → failing tests in tests/adversary → build respawn → red 0
+             ─▶ ship.mjs <slug> → 7 conditions → ff merge to main · LEDGER row · STATUS
+CEO "tried it" ─▶ work.mjs tried <slug> ok|fail
 ```
-It pairs every `claude/` file with its `opencode/` counterpart, translates the claude side into opencode vocabulary (CLAUDE.md → AGENTS.md, AskUserQuestion → the question tool, `/parallel` → `/spawn`, …) and reports where the remaining difference moved away from the accepted divergence recorded in `scripts/parity-baseline.txt`. It also checks that the flavor READMEs name the same commands and artifacts, that the four `scripts/*.mjs` are identical, and that each `.ko.md` keeps the section structure of its English original. A reported line is either a fix owed to the other flavor or a deliberate difference; for the latter, `--update` records it, and the baseline's diff shows reviewers what diverged. The working order is claude first, then the same change in opencode, then the check; what exists on one side by design — the wrapper-command rule, backtick command parsing and the session-start hook are Claude-only, the compaction plugin opencode-only — stays in the baseline.
+Agents receive one pack file and never talk to each other. Build has never met attack — it only meets failing test files.
 
-`node scripts/hook-check.mjs` is the companion for the guardrails: it feeds a matrix of commands, paths and roles to the Claude Code hook and the opencode plugin (destructive commands, secret files, publishing, the push policy, gh api mutations, the role boundaries, the verifier's CLAUDE.md-listed commands, wrapper commands, the board files and the CEO page's size cap, the reviewer's memory file) and fails on any verdict that differs from the expected one. Run it after touching `guardrails.mjs` or `guardrails.ts`.
+## Scripts (zero judgment)
+| script | does |
+|---|---|
+| `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · new · ask · decide · default · tried · list · models (one place) · spawned (ledger) |
+| `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
+| `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
+| `redproof` | proves acceptance tests are red on base and green on head |
+| `boundary` | dependency · workflow · IPC · permission · egress keywords → spike required |
+| `ship` | 7 fail-closed conditions → ff merge · docs/LEDGER.md · STATUS |
+| `claims` | the claim graph: true · false · unsensed · unknown, sensor coverage, next |
+| `state` | generates docs/STATUS.md (first line is everything) · unattended stop budgets |
+| `doctor` | differential diagnosis — detects the harness, says what died and what to fix |
+| `guard-rules` · `checkpoint` | the boundary rules and wip checkpoint both harnesses share |
 
-## The CEO's contract
-- The CEO approves one document, the brief; the team writes and decides the rest (spec, plans, defaults) and logs it in docs/DECISIONS.md.
-- The team runs plan after plan up to the unattended cap (default 8 plans, 2 spec sections or 12 hours since the iteration started, whichever first), merges low-risk work itself, and stops at the cap to show what can be tried; it asks only for what is expensive to reverse — money, security or user data, a non-goal conflict, discarding shipped work, `risk:high` merges once the product is live. Everything else it decides by default and lists on the CEO's page, where one word overturns it.
-- Ambiguity is confirmed in one line, never guessed into action; a remark is not an order.
-- Main is always runnable; the CEO's page of the status board (docs/STATUS.md — a minute to read, a size the hook enforces) is the CEO's window, and the product is the demo.
+## Documents
+- [docs/GUIDE.md](docs/GUIDE.md) — run it on your own machine: clone, trial repo, session, verdict line, model assignment (Korean)
+- [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — four sentences, eight tenets, the human's windows (Korean)
+- [docs/BIRTH.md](docs/BIRTH.md) — the zero-base birth protocol and the verdict line after the first 3 units (Korean)
+- [docs/catalogue/](docs/catalogue/) — candidate devices (the v2 design), the v1 measurements, discussion additions. **Not a plan**: a device is built only when an incident in the ledger asks for it
 
-## Six principles
-1. Separate judgment from execution — the implementer does not grade its own work, the reviewer does not fix, the lead does not write code.
-2. Without a verification oracle the team is a plausible-code generator — the first task is a test suite that runs in under a minute.
-3. State lives in the repository, not the session — commits, plan files and the status board (`docs/STATUS.md` for the CEO, `docs/STATUS-team.md` for the team, committed at every cut point); the board only points at the commits, and git wins when they disagree.
-4. Gates are enforced by the repository where it can — the merge policy is derived from remote, branch protection and auto-merge settings; the lead's `risk:low` merge is a prompt gate, so turn branch protection on once there is a remote.
-5. Mechanical changes and logic changes never share a commit.
-6. Failures flow back into rules, skills and hooks through `/retro`. The repository remembers, not the human.
+## Verify this repository
+```
+node --test tests/unit.test.mjs   # 22 pure-function tests
+node --test tests/e2e.test.mjs    # birth test (claude) + opencode install: empty repo → shipped unit, zero model calls, zero network
+```
 
-## Status
-Opinionated template, v0.x. The ingredients (plan first, test oracles, small diffs, worktree isolation, fresh-context review) are widely validated; this arrangement has not been benchmarked. Watch `docs/METRICS.md` and cut what does not earn its keep.
-
-## License
-MIT — see [LICENSE](LICENSE).
+## v1
+v1 (the role-play: 7 agents, 31 skills, the opencode flavor) was deleted on 2026-09-29. Its history is on main before `0fdfa28`; the measured diagnosis stays in docs/catalogue/V1-ANALYSIS.md.

@@ -1,0 +1,56 @@
+{
+  "version": 2,
+  "protected_branch": "main",
+  "models": { "intake": "opus", "spec": "opus", "build": "sonnet", "attack": "opus", "spike": "sonnet", "boot": "sonnet" },
+  "commands": {
+    "quick": "",
+    "full": "",
+    "test_file": "",
+    "run": ""
+  },
+  "paths": {
+    "acceptance": "tests/acceptance",
+    "adversary": "tests/adversary",
+    "hostile": "fixtures/hostile",
+    "probes": "probes",
+    "harness": "tests/harness",
+    "units_docs": "docs/units",
+    "measurements": "docs/measurements",
+    "brief": "docs/BRIEF.md",
+    "backlog": "docs/BACKLOG.md",
+    "decisions": "docs/DECISIONS.md",
+    "status": "docs/STATUS.md",
+    "ledger_doc": "docs/LEDGER.md",
+    "hazards": ".garagiste/HAZARDS.md",
+    "units": ".garagiste/units",
+    "ledger": ".garagiste/ledger/evidence.jsonl",
+    "logs": ".garagiste/session/logs",
+    "packs": ".garagiste/session/packs",
+    "worktrees": ".worktrees"
+  },
+  "boundary": {
+    "files": [
+      "package.json", "package-lock.json", "pnpm-lock.yaml", "pyproject.toml", "uv.lock",
+      ".github/workflows/**", ".githooks/**", ".gitignore",
+      "**/electron/**", "**/preload*", "**/ipc/**",
+      "**/auth/**", "**/permission*", "**/migrations/**", "**/schema/**",
+      "**/installer*", "build/**"
+    ],
+    "keywords": [
+      "egress", "network", "socket", "subprocess", "child_process",
+      "license", "licence", "API_KEY", "secret", "credential",
+      "IPC", "installer", "bundle", "migration", "permission"
+    ]
+  },
+  "budgets": {
+    "unseen_max": 3,
+    "unattended_ship_max": 5,
+    "no_ceo_units_max": 2,
+    "prose_kb_max": 40,
+    "pack_kb_max": 8,
+    "step_logic_lines_max": 300,
+    "spike_minutes": 30
+  },
+  "sensors": { "machine_os": ["linux", "darwin"], "human_os": [] },
+  "require_attack": true
+}
