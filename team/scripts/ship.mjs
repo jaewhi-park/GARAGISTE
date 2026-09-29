@@ -155,6 +155,9 @@ function main() {
   if (cm.status) fail(`FAIL ship: 문서 커밋 실패 — ${cm.stderr}`);
   git(['worktree', 'remove', wt], c.main);
   out(`SHIPPED ${slug} ${short(head)} sensor=${unit.sensor}`);
+  // 사고 10(2차 실기): 의존성은 unit worktree에만 설치되고 worktree는 ship 뒤 사라진다 — 메인이 설치하지 않으면 다음 unit이 맨손이 되어 스펙(결정된 스택)을 우회한다
+  if (changed.some((f) => /(^|\/)(package(-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|uv\.lock|pyproject\.toml|requirements[^/]*\.txt|Cargo\.(toml|lock)|go\.(mod|sum))$/.test(f)))
+    out('NOTE: 의존성 파일이 바뀌었다 — 메인 루트에서 설치를 한 번 돌려라(npm ci·uv sync 등). 다음 unit의 worktree가 그것을 물려받는다.');
   // scaffold(boot)엔 try.md가 없다 — 써보기는 실행·검증 명령이다 (2차 실기: 빈 파일을 가리켜 conductor가 즉석 안내를 지어냈다)
   out(unit.kind === 'scaffold'
     ? `TRY: 실행 \`${c.team.commands.run || c.team.commands.quick}\` → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`

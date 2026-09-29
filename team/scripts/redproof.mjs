@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, fail, git, headSha, isMain, linkDeps, mergeBase, out, workTree } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, fail, git, headSha, isMain, linkDeps, mergeBase, out, slugRoot, workTree } from './lib.mjs';
 import { runFiles } from './verify.mjs';
 
 export function verdict(baseResults, headResults) {
@@ -13,7 +13,8 @@ export function verdict(baseResults, headResults) {
 function main() {
   const slug = process.argv[2];
   if (!slug) fail('사용법: redproof.mjs <slug>');
-  const c = ctx();
+  const c0 = ctx();
+  const c = { ...c0, root: slugRoot(c0, slug) }; // 사고 9: 어디서 불러도 unit worktree가 뿌리
   const files = acceptanceFiles(c.root, c.team, slug);
   if (!files.length) fail(`FAIL redproof ${slug}: ${c.team.paths.acceptance}/${slug}* 없음`);
   const base = mergeBase(c.root, c.team.protected_branch);

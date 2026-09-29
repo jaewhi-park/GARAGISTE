@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   acceptanceFiles, adversaryFiles, appendLedger, ctx, currentBranch, fail, git, headSha, indexTree, isMain, matchAny,
-  mergeBase, out, readLedger, shell, short, stamp, workTree,
+  mergeBase, out, readLedger, shell, short, slugRoot, stamp, workTree,
 } from './lib.mjs';
 
 export const LOGIC_EXCLUDE = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', '**/*.config.*', '**/tsconfig*.json', 'docs/**', '.garagiste/**', '.claude/**', '.opencode/**', 'opencode.json', 'fixtures/**', 'probes/**',
@@ -89,8 +89,9 @@ function main() {
   const [mode, arg] = process.argv.slice(2);
   const c = ctx();
   if (mode === 'quick' || mode === 'full') return runMode(mode, c);
-  if (mode === 'red' && arg) return red(arg, c);
-  if (mode === 'attack' && arg) return attack(arg, c);
+  // 사고 9: slug 작업은 어디서 불러도 그 unit의 worktree가 뿌리 — 메인에서 0/0 거짓 초록을 만들지 않는다
+  if (mode === 'red' && arg) return red(arg, { ...c, root: slugRoot(c, arg) });
+  if (mode === 'attack' && arg) return attack(arg, { ...c, root: slugRoot(c, arg) });
   if (mode === 'gate') return gate(c);
   fail('사용법: verify.mjs quick | full | red <slug> | attack <slug> | gate');
 }

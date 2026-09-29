@@ -116,6 +116,12 @@ export function listUnits(main, team) {
   return fs.readdirSync(d).filter((f) => f.endsWith('.json')).map((f) => readJson(path.join(d, f), null)).filter(Boolean);
 }
 export function worktreeDir(main, team, slug) { return path.join(main, team.paths.worktrees, slug); }
+// slug 작업(redproof·verify red·attack)의 뿌리는 그 unit의 worktree다 — 메인 루트에서 불러도 스스로 찾아간다.
+// (2차 실기 사고 9: 메인에서 돌리면 인수·adversary 파일이 0개라 red 0/0 거짓 초록 — ship 8조건이 막긴 했지만 라운드를 낭비시켰다)
+export function slugRoot(c, slug) {
+  const wt = worktreeDir(c.main, c.team, slug);
+  return fs.existsSync(wt) ? wt : c.root;
+}
 export function listFiles(dir, base = dir) {
   if (!fs.existsSync(dir)) return [];
   const out = [];
