@@ -56,6 +56,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 ### Fixed — 2026-09-29 team.json rebase 충돌과 kind 안 맞는 FAIL 안내 (2차 실기의 사고 7)
 - main의 models 커밋(build=opus)과 boot 브랜치의 commands 커밋이 team.json의 인접 블록을 각자 재작성해 ship의 rebase가 텍스트 충돌로 죽었고, FAIL 문구는 scaffold unit에 존재하지 않는 build 팩을 가리켜 conductor가 boot 팩 spawn 1회를 낭비했다. 수리: 충돌 파일이 team.json 하나면 키 단위 3-way 기계 병합(`mergeTeamJson` — 한쪽만 바꾼 키는 그쪽, 같은 키가 갈리면 병합 없이 기존 FAIL) 후 rebase 계속, 통합 tree의 full은 기존대로 ship이 재실행해 원장에 남긴다; FAIL 문구는 unit kind에 맞는 팩 이름. 검사: mergeTeamJson unit 테스트 + boot e2e가 models 커밋 × commands 커밋 충돌을 그대로 재현해 SHIPPED와 두 변경의 공존을 고정.
 
+### Fixed — 2026-09-29 팩 상한이 실측보다 작았다 (2차 실기의 사고 8)
+- 첫 실제 build 팩(vault-schema)이 12KB로 상한 8KB를 넘어 루프가 멈췄다. 초과분은 법(인수 테스트 5.4KB)이 아니라 부대물(규칙·try/surface·이어받기·결정)이었다 — 상한은 실측 없이 정한 추정치. 수리: 기본 `pack_kb_max` 8→16(기존 설치는 team.json 한 줄을 CEO가 갱신), fit의 강등 순서를 diff→hazards→brief→이어받기→try→surface로 확장(전부 worktree·git에서 복구 가능한 절 — 포인터 문구가 어디서 읽을지 말한다), 법(acceptance·원문·규칙·결정)은 불가침 유지. 이어받기 절 제목을 「이 브랜치에 이미 있는 것」으로(스펙 커밋도 담으므로). 덤: scaffold(boot)의 TRY 안내가 없는 try.md 대신 실행·검증 명령을 가리킨다(ship 출력·STATUS 써볼 것).
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 

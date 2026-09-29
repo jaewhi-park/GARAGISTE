@@ -155,6 +155,9 @@ function main() {
   if (cm.status) fail(`FAIL ship: 문서 커밋 실패 — ${cm.stderr}`);
   git(['worktree', 'remove', wt], c.main);
   out(`SHIPPED ${slug} ${short(head)} sensor=${unit.sensor}`);
-  out(`TRY: docs/units/${slug}/try.md → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`);
+  // scaffold(boot)엔 try.md가 없다 — 써보기는 실행·검증 명령이다 (2차 실기: 빈 파일을 가리켜 conductor가 즉석 안내를 지어냈다)
+  out(unit.kind === 'scaffold'
+    ? `TRY: 실행 \`${c.team.commands.run || c.team.commands.quick}\` → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`
+    : `TRY: docs/units/${slug}/try.md → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`);
 }
 if (isMain(import.meta.url)) main();
