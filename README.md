@@ -2,18 +2,34 @@
 
 > Coding is making claims true. Claims are tests, probes and invariants; the team is a scheduler over that graph; the human supplies direction, reality and accountability — and keeps the windows.
 
-GARAGISTE v2 is an **AI-native development team** that runs on Claude Code. There are no roles that imitate a human company (planner, critic, reviewer). There are four packs that hand off only through files (spec · build · attack · spike), ten judgment-free scripts, three hooks, and a ledger.
+GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are four packs that hand off only through files (spec · build · attack · spike), twelve judgment-free scripts, a boundary hook or plugin, and a ledger.
 
 - **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
 - **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all seven conditions hold.
 - **The human gives one sentence, yes/no, and "tried it".** The first line of STATUS is all they read each day.
 
+## There are agents — there are no personas
+The four packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
+
 ## Install
 ```
-./install.sh -Project <repo> [-Budget low|medium|high]     # macOS · Linux · Git Bash
-.\install.ps1 -Project <repo> [-Budget low|medium|high]    # Windows PowerShell
+./install.sh claude   -Project <repo> [-Budget low|medium|high]    # Claude Code
+./install.sh opencode -Project <repo> [-Budget low|medium|high]    # opencode
+.\install.ps1 claude|opencode -Project <repo>                       # Windows PowerShell
 ```
-`team/` lands in `<repo>/.claude/`, `.githooks/pre-commit` becomes the commit gate. Fill `commands` (quick · full · test_file · run) in `.claude/team.json`. `quick` must exclude `tests/acceptance` and `tests/adversary` (they are committed red by design); `full` includes everything.
+The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs · HAZARDS · team.json · ledger · unit state); only the wiring differs:
+
+| | Claude Code | opencode |
+|---|---|---|
+| rules file | `CLAUDE.md` (20 lines) | `AGENTS.md` (20 lines) |
+| boundary | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
+| the rules themselves | both call `.garagiste/scripts/guard-rules.mjs` | |
+| spawn configs | `.claude/agents/{spec,build,attack,spike}.md` | `.opencode/agents/{conductor,spec,build,attack,spike}.md` |
+| wip of a dead agent | SubagentStop hook → `checkpoint.mjs` | plugin after `task` → `checkpoint.mjs` |
+| conductor | the main session (CLAUDE.md Flow) | the `conductor` primary agent (no edit permission) |
+| models | budget → `model:` in the agent files | inherits the default provider/model; per-pack `model:` by hand |
+
+Then fill `commands` (quick · full · test_file · run) in `.garagiste/team.json`. `quick` must exclude `tests/acceptance` and `tests/adversary` (they are committed red by design); `full` includes everything.
 
 ## Life of a unit
 ```
@@ -30,16 +46,15 @@ Agents receive one pack file and never talk to each other. Build has never met a
 | script | does |
 |---|---|
 | `work` | unit lifecycle: new · ask (hard-decision queue) · decide · default · tried · list |
-| `brief` | pack assembly ≤8 KB — verbatim text fenced as data, HAZARDS matched by path, resume section |
+| `brief` | pack assembly ≤8 KB — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
 | `redproof` | proves acceptance tests are red on base and green on head |
 | `boundary` | dependency · workflow · IPC · permission · egress keywords → spike required |
 | `ship` | 7 fail-closed conditions → ff merge · docs/LEDGER.md · STATUS |
 | `claims` | the claim graph: true · false · unsensed · unknown, sensor coverage, next |
 | `state` | generates docs/STATUS.md (first line is everything) · unattended stop budgets |
-| `doctor` | differential diagnosis — what died and what to fix, one line each |
-
-Hooks: `guard` (destructive git, secrets, rulebook, per-pack write boundary) · `spawn-log` (SubagentStop → wip checkpoint) · `session-start` (alive marker + STATUS first line).
+| `doctor` | differential diagnosis — detects the harness, says what died and what to fix |
+| `guard-rules` · `checkpoint` | the boundary rules and wip checkpoint both harnesses share |
 
 ## Documents
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — four sentences, eight tenets, the human's windows (Korean)
@@ -48,8 +63,8 @@ Hooks: `guard` (destructive git, secrets, rulebook, per-pack write boundary) · 
 
 ## Verify this repository
 ```
-node --test tests/unit.test.mjs   # 17 pure-function tests
-node --test tests/e2e.test.mjs    # birth test: empty repo → shipped unit, zero model calls, zero network
+node --test tests/unit.test.mjs   # 18 pure-function tests
+node --test tests/e2e.test.mjs    # birth test (claude) + opencode install: empty repo → shipped unit, zero model calls, zero network
 ```
 
 ## v1

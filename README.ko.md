@@ -2,18 +2,34 @@
 
 > 코딩은 주장을 참으로 만드는 일이다. 주장은 테스트·프로브·불변식이고, 팀은 그 그래프 위의 스케줄러이며, 사람은 방향·현실·책임 — 그리고 창이다.
 
-GARAGISTE v2는 Claude Code 위에서 도는 **AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 네 팩(spec·build·attack·spike), 판단 없는 스크립트 열 개, 훅 셋, 그리고 원장이다.
+GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 네 팩(spec·build·attack·spike), 판단 없는 스크립트 열둘, 경계를 지키는 훅/플러그인, 그리고 원장이다.
 
 - **실행되지 않은 것은 믿지 않는다.** 스펙은 red 인수 테스트, 승인은 exit code, 리뷰의 산출물은 실패하는 테스트.
 - **루프는 기계가 끝낸다.** 커밋 게이트가 원장과 tree를 대조하고, `ship`은 7조건이 전부 참일 때만 main에 닿는다.
 - **사람은 한 마디 · 예/아니오 · 「써봤다」.** STATUS 첫 줄이 매일 보는 전부다.
 
+## 에이전트는 있다 — 페르소나가 없을 뿐
+팩 넷이 에이전트다. 각 팩은 spawn 설정 한 장(`.claude/agents/<pack>.md` 또는 `.opencode/agents/<pack>.md`, 10줄)과 쓰기 경계로만 정의된다. 프롬프트는 팩 파일 경로 한 줄이고, 팩 파일이 그 spawn의 전부다. 모델은 예산(`-Budget`)이 정한다. "너는 시니어 엔지니어다" 같은 문장은 어디에도 없다.
+
 ## 설치
 ```
-./install.sh -Project <repo> [-Budget low|medium|high]     # macOS · Linux · Git Bash
-.\install.ps1 -Project <repo> [-Budget low|medium|high]    # Windows PowerShell
+./install.sh claude   -Project <repo> [-Budget low|medium|high]    # Claude Code
+./install.sh opencode -Project <repo> [-Budget low|medium|high]    # opencode
+.\install.ps1 claude|opencode -Project <repo>                       # Windows PowerShell
 ```
-`team/`이 `<repo>/.claude/`로 들어가고, `.githooks/pre-commit`이 커밋 게이트가 된다. 그 뒤 `.claude/team.json`의 `commands`(quick·full·test_file·run)를 채우면 팀이 산다. `quick`은 `tests/acceptance`·`tests/adversary`를 빼고(red 상태로 커밋되므로), `full`은 전부 포함한다.
+팀 정본은 하네스와 무관하게 `<repo>/.garagiste/`(scripts·packs·HAZARDS·team.json·원장·unit 상태)로, 하네스 배선만 갈린다:
+
+| | Claude Code | opencode |
+|---|---|---|
+| 규칙 파일 | `CLAUDE.md` (20줄) | `AGENTS.md` (20줄) |
+| 경계 | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
+| 규칙 본체 | 둘 다 `.garagiste/scripts/guard-rules.mjs` 하나 | |
+| spawn 설정 | `.claude/agents/{spec,build,attack,spike}.md` | `.opencode/agents/{conductor,spec,build,attack,spike}.md` |
+| 죽은 에이전트의 wip | SubagentStop 훅 → `checkpoint.mjs` | `task` 뒤 플러그인 → `checkpoint.mjs` |
+| conductor | 메인 세션 (CLAUDE.md Flow) | `conductor` primary agent (edit 권한 없음) |
+| 모델 | 예산 → agents 앞머리 `model:` | 기본 provider/model 상속, 팩별 `model:`은 앞머리에 직접 |
+
+그 뒤 `.garagiste/team.json`의 `commands`(quick·full·test_file·run)를 채우면 팀이 산다. `quick`은 `tests/acceptance`·`tests/adversary`를 빼고(red 상태로 커밋되므로), `full`은 전부 포함한다.
 
 ## 한 unit의 생애
 ```
@@ -30,16 +46,15 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 | 스크립트 | 하는 일 |
 |---|---|
 | `work` | unit 생애: new · ask(hard 결정 큐) · decide · default(팀이 정한 것) · tried · list |
-| `brief` | 팩 조립 ≤8 KB — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절 |
+| `brief` | 팩 조립 ≤8 KB — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |
 | `redproof` | 인수 테스트가 base에서 red · head에서 green임을 증명 |
 | `boundary` | 의존성·워크플로·IPC·권한·유출 키워드 → spike 필수 |
 | `ship` | 7조건 fail-closed → ff 머지 · docs/LEDGER.md · STATUS |
 | `claims` | 주장 그래프: 참·거짓·미검수·불명, 센서 커버리지, 다음 거짓 |
 | `state` | docs/STATUS.md 생성(첫 줄 = 전부) · 무인 정지 예산 |
-| `doctor` | 감별 진단 — 무엇이 죽었고 무엇을 치면 되는지 한 줄씩 |
-
-훅: `guard`(파괴적 git·비밀·규칙집·팩별 쓰기 경계) · `spawn-log`(SubagentStop → wip 체크포인트) · `session-start`(alive + STATUS 첫 줄).
+| `doctor` | 감별 진단 — 하네스를 감지해 무엇이 죽었고 무엇을 치면 되는지 한 줄씩 |
+| `guard-rules` · `checkpoint` | 두 하네스가 공유하는 경계 규칙과 wip 체크포인트 |
 
 ## 문서
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — 네 문장과 뼈대 여덟, 사람의 창
@@ -49,8 +64,8 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 
 ## 이 저장소 검증
 ```
-node --test tests/unit.test.mjs   # 순수 함수 17
-node --test tests/e2e.test.mjs    # 탄생 시험: 빈 저장소 → 출하까지, 모델 0 · 네트워크 0
+node --test tests/unit.test.mjs   # 순수 함수 18
+node --test tests/e2e.test.mjs    # 탄생 시험(claude) + opencode 설치: 빈 저장소 → 출하까지, 모델 0 · 네트워크 0
 ```
 
 ## v1
