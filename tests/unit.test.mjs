@@ -165,6 +165,8 @@ test('ship: 7조건 — 하나라도 빠지면 fail-closed', () => {
   assert.deepEqual(evaluateShip({ ...x, unit: { ...unit, boundary: { hit: true } } }).filter((k) => !k.ok).map((k) => k.id), ['spike']);
   assert.deepEqual(evaluateShip({ ...x, boundaryHit: true, boundaryWhy: 'file package.json' }).filter((k) => !k.ok).map((k) => k.id), ['spike'], 'diff가 boundary 파일을 건드려도 spike');
   assert.equal(evaluateShip({ ...x, boundaryHit: true, spikeText: '- wire: 없음\n- host: linux\n- license: MIT\n- default: 없음\n- os: 없음' }).filter((k) => !k.ok).length, 0);
+  assert.deepEqual(evaluateShip({ ...x, changed: ['.garagiste/team.json', 'src/a.ts'] }).filter((k) => !k.ok).map((k) => k.id), ['unit'], 'R6: team.json 변경은 boot(scaffold)만 ship된다');
+  assert.equal(evaluateShip({ ...x, unit: { ...unit, kind: 'scaffold' }, ledger: [ledger[0]], changed: ['.garagiste/team.json'] }).filter((k) => !k.ok).length, 0, 'boot는 명령을 채우는 unit이다');
   assert.deepEqual(evaluateShip({ ...x, lastSubject: 'wip: h checkpoint' }).filter((k) => !k.ok).map((k) => k.id), ['head']);
   assert.deepEqual(evaluateShip({ ...x, stops: ['미검수 3'] }).filter((k) => !k.ok).map((k) => k.id), ['budget']);
   assert.deepEqual(evaluateShip({ ...x, proseKb: 41 }).filter((k) => !k.ok).map((k) => k.id), ['budget']);

@@ -88,6 +88,7 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
   // 출하 시도 — attack 기록이 없으면 닫힌다
   assert.match(script('ship', ['hello'], repo).out, /FAIL ship hello 1\/7\n- attack: attack 기록 없음/);
   assert.match(script('work', ['tried', 'hello', 'ok'], wt).out, /^FAIL tried는 메인 저장소에서만/, 'R2: 팩이 자기 unit을 검수하지 못한다');
+  assert.match(script('work', ['commands', 'quick=echo x'], wt).out, /^FAIL commands는 boot/, 'R6: feature unit이 검증 명령을 재작성하지 못한다');
 
   // attack: 실패하는 테스트가 산출물
   assert.match(script('brief', ['attack', 'hello'], repo).out, /^PACK .*model=sonnet/);

@@ -222,11 +222,18 @@ function tried(c, slug, result, note = '') {
   if (result === 'fail') appendBacklog(c, backlogLine({ slug: `${slug}-fix`, milestone: u.milestone, origin: note || '써봤는데 실패 — 스펙 정정', accept: '-' }));
   out(`PASS tried ${slug} ${result}`);
 }
-// boot 팩의 쓰기 경로: team.json commands는 스크립트만 쓴다
+// boot 팩의 쓰기 경로: team.json commands는 스크립트만 쓴다 — 그리고 boot(scaffold) 컨텍스트만. 다른 팩이 검증 명령을 바꾸는 것은 초록 조작이다.
 function commands(c, args) {
   const teamPath = path.join(c.root, '.garagiste', 'team.json');
   const t = readJson(teamPath, null);
   if (!args.length) return out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`);
+  if (!process.env.GARAGISTE_ADMIN) {
+    const rel = path.relative(c.main, c.root).replace(/\\/g, '/');
+    const wtPrefix = c.team.paths.worktrees.replace(/^\.?\//, '') + '/';
+    const slug = rel.startsWith(wtPrefix) ? rel.slice(wtPrefix.length).split('/')[0] : null;
+    const u = slug ? readJson(unitFile(c.main, c.team, slug), null) : null;
+    if (!u || u.kind !== 'scaffold') fail('FAIL commands는 boot(scaffold) unit의 worktree 또는 GARAGISTE_ADMIN=1(CEO)에서만 — 검증 명령의 변경은 CEO 결정이다');
+  }
   for (const a of args) {
     const m = /^(quick|full|test_file|run)=([\s\S]*)$/.exec(a);
     if (!m) fail(`사용법: work.mjs commands quick="…" full="…" test_file="… {file}" run="…" — 받은 값: ${a}`);

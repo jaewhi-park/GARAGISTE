@@ -10,10 +10,11 @@ export const SPIKE_ROWS = ['wire', 'host', 'license', 'default', 'os'];
 export function spikeComplete(text) { return SPIKE_ROWS.every((r) => new RegExp(`^\\s*[-*]?\\s*${r}\\s*:\\s*\\S`, 'mi').test(text || '')); }
 export function evaluateShip(x) {
   const c = [];
-  c.push({ id: 'unit', ok: !!x.unit && x.unit.state !== 'shipped' && x.worktreeExists && x.clean, why: !x.unit ? 'unit 없음' : x.unit.state === 'shipped' ? '이미 출하' : !x.worktreeExists ? 'worktree 없음' : !x.clean ? '작업 트리가 깨끗하지 않다' : '' });
+  const scaffold = x.unit?.kind === 'scaffold';
+  const teamChanged = !scaffold && (x.changed || []).includes('.garagiste/team.json'); // 검증 명령·예산의 재작성은 boot의 일이지 어느 팩의 일도 아니다 (HAZARDS 8형)
+  c.push({ id: 'unit', ok: !!x.unit && x.unit.state !== 'shipped' && x.worktreeExists && x.clean && !teamChanged, why: !x.unit ? 'unit 없음' : x.unit.state === 'shipped' ? '이미 출하' : !x.worktreeExists ? 'worktree 없음' : !x.clean ? '작업 트리가 깨끗하지 않다' : teamChanged ? 'team.json 변경은 boot(scaffold) unit만 — 검증 명령·예산은 CEO 결정' : '' });
   const full = x.ledger.find((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === x.tree && x.machineOs.includes(e.platform));
   c.push({ id: 'full', ok: !!full, why: full ? '' : `이 tree(${short(x.tree)})의 verify full PASS(machine OS) 없음` });
-  const scaffold = x.unit?.kind === 'scaffold';
   const rp = scaffold || x.ledger.find((e) => e.kind === 'redproof' && e.slug === x.slug && e.base_red && e.head_green === true && e.tree === x.tree);
   c.push({ id: 'redproof', ok: !!rp, why: rp ? '' : 'base red · head green 증명 없음 — redproof.mjs' });
   const at = [...x.ledger].reverse().find((e) => e.kind === 'attack' && e.slug === x.slug && e.tree === x.tree);
@@ -48,7 +49,7 @@ function main() {
   const changed = exists && base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
   const diffHit = checkBoundary(c.team, { files: changed });
   const conds = evaluateShip({
-    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, machineOs: c.team.sensors.machine_os,
+    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, machineOs: c.team.sensors.machine_os,
     boundaryHit: !!unit.boundary?.hit || diffHit.hit, boundaryWhy: unit.boundary?.hit ? '원문' : diffHit.reasons.join(', '),
     requireAttack: c.team.require_attack !== false, spikeText: readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`)),
     lastSubject: exists ? git(['log', '-1', '--format=%s'], wt).stdout : '', stops: b.stops, proseKb: proseKb(c.main), proseMax: c.team.budgets.prose_kb_max,
