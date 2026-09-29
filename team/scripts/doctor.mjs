@@ -46,7 +46,7 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
   if (!fs.existsSync(path.join(root, '.githooks', 'pre-commit'))) p.push('.githooks/pre-commit 없음 → install.sh 다시');
   if (team && git(['rev-parse', '--verify', '-q', team.protected_branch], root).status) p.push(`보호 브랜치 ${team.protected_branch} 없음 → 첫 커밋을 만들어라`);
   const gi = readText(path.join(root, '.gitignore'));
-  for (const l of ['/.garagiste/ledger/', '/.garagiste/units/', '/.garagiste/session/', '/.worktrees/', '.garagiste-pack']) if (!gi.includes(l)) p.push(`.gitignore에 ${l} 없음 → team/gitignore.snippet 추가`);
+  for (const l of ['/.garagiste/ledger/', '/.garagiste/units/', '/.garagiste/session/', '/.garagiste/scope.json', '/.worktrees/', '.garagiste-pack']) if (!gi.includes(l)) p.push(`.gitignore에 ${l} 없음 → team/gitignore.snippet 추가`);
   const hz = readText(path.join(root, '.garagiste', 'HAZARDS.md'));
   if (!hz) p.push('.garagiste/HAZARDS.md 없음 → install.sh 다시');
   else for (const line of hz.split('\n').filter((l) => l.startsWith('- '))) if (!/`[^`]+`/.test(line)) p.push(`HAZARDS 경로 없는 줄: ${line.slice(0, 40)}… → 경로 패턴을 붙이거나 지워라`);
