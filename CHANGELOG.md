@@ -69,6 +69,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 ### Fixed — 2026-09-29 porcelain 선행 공백 절단 (2차 실기의 사고 12)
 - `sh()`가 stdout 전체를 trim해 `git status --porcelain` 첫 줄이 비스테이징 수정(` M …`)이면 선행 공백이 사라지고, `dirtyFiles`의 `slice(3)`이 경로 첫 글자를 먹었다(`ocs/BACKLOG.md`·`garagiste/HAZARDS.md`) — DOC_OK에 있는 파일이 목록 밖 파일로 보여 ship을 거짓으로 막았고, 앞선 FAIL 문구의 경로 표기도 왜곡했다. 수리: dirtyFiles가 trim 없는 원문 stdout을 직접 읽는다. 검사: 비스테이징 수정 재현 단위 테스트.
 
+### Fixed — 2026-09-29 결정 절이 프로젝트 나이만큼 팩을 키웠다 (2차 실기의 사고 13)
+- 사고 4의 수리('닫힌 결정 **전체**를 모든 팩에')가 단조 증가 벡터였다 — 결정이 쌓일수록·선행 사슬이 길수록 팩이 커져 build 팩이 15.7/16KB까지 닿았다. 당시 conductor의 원안(needs에 걸린 Q만)이 옳았다. 수리: unit 팩의 결정은 스코프로 — 전역(intake 슬러그) + 이 unit + needs의 unit·Q<n>; 슬러그를 못 읽는 줄은 버리지 않는다(결정을 떨어뜨리는 쪽이 더 위험). boot(세계 정의)·intake(전 그림) 팩은 전체 유지. 검사: scopedDecisions 단위 테스트 + e2e(남의 unit 결정 제외·전역 포함).
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 

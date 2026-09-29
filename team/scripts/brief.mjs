@@ -36,6 +36,16 @@ export function matchHazards(hazardsText, files) {
 }
 // CEO의 닫힌 결정 — 모든 팩의 전제. 첫 실기 사고: boot 팩에 Q1(스택 확정)이 없어 확정된 스택 대신 기본값이 깔렸다.
 export function closedDecisions(text) { return [...text.matchAll(/^- \[x\] Q\d+.*$/gm)].map((m) => m[0]); }
+// 사고 13(2차 실기): '전체'는 프로젝트 나이에 비례해 팩을 키운다(선행 사슬이 길수록 상한에 닿음 — build 팩 15.7/16KB).
+// 스코프는 산수다: 전역(intake) + 이 unit + needs의 unit·Q. boot는 전체(세계 정의), intake 팩도 전체(전 그림). 슬러그 없는 줄은 버리지 않는다(결정을 떨어뜨리는 쪽이 더 위험).
+export function scopedDecisions(text, { pack, slug, needs = [] }) {
+  const scope = new Set(['intake', slug, ...needs.filter((n) => !/^Q\d+$/.test(n))]);
+  const qs = new Set(needs.filter((n) => /^Q\d+$/.test(n)));
+  return closedDecisions(text).filter((l) => {
+    const m = /^- \[x\] (Q\d+) \(([^)]+)\)/.exec(l);
+    return !m || pack === 'boot' || scope.has(m[2]) || qs.has(m[1]);
+  });
+}
 // BRIEF의 `## ` 절 중 뒤에서 n개 — intake는 증분이다: 마지막 intake 뒤에 더해진 말만 받는다
 export function tailSections(text, n) {
   const parts = text.split(/^(?=## )/m);
@@ -89,7 +99,7 @@ function main() {
   sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.garagiste', 'packs', `${pack}.md`))}\n\n작업 디렉터리(절대 경로, 모든 명령은 여기서): \`${wt}\` (브랜치 ${unit.branch}). 저장소 루트: \`${c.main}\`. 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.`);
   sec('commands', '명령', Object.entries(c.team.commands).filter(([, v]) => v).map(([k, v]) => `- ${k}: \`${v}\``).join('\n'));
   sec('origin', '원문', fence(`CEO 말 그대로 (${unit.created.slice(0, 10)})`, unit.origin));
-  const closed = closedDecisions(readText(path.join(c.main, c.team.paths.decisions)));
+  const closed = scopedDecisions(readText(path.join(c.main, c.team.paths.decisions)), { pack, slug, needs: unit.needs });
   if (closed.length) sec('decided', '결정된 것 (CEO의 답 — 전제다, 조용한 기본값으로 덮지 않는다)', closed.join('\n'));
   if (unit.boundary?.hit) sec('boundary', 'boundary', `HIT: ${unit.boundary.reasons.join(', ')}${pack !== 'spike' ? ` — spike 측정: docs/measurements/spike-${slug}.md` : ''}`);
   const spike = readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`));
