@@ -53,6 +53,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 ### Fixed — 2026-09-29 models 산출물에 커밋 경로가 없었다 (2차 실기의 사고 6)
 - `work.mjs models`가 team.json과 에이전트 `model:` 줄을 main에 고쳐 두기만 해서, ship의 「메인 미커밋 변경」 검사에 걸리고 conductor에겐 커밋 수단이 없었다(보호 브랜치 게이트가 직접 커밋을 거부 — 둘 다 정상 작동). 수리: models가 바꾼 파일만 pathspec으로 `scaffold(team): models <args>` 자기-커밋(내부 SHIP·WIP 차선 — drop의 wip 커밋과 같은 선례, 기계적 재생성이라 원장 PASS 불요). 변경이 없으면 커밋도 없다. 검사: e2e(models 뒤 main 깨끗 + 커밋 메시지 + no-op 무커밋).
 
+### Fixed — 2026-09-29 team.json rebase 충돌과 kind 안 맞는 FAIL 안내 (2차 실기의 사고 7)
+- main의 models 커밋(build=opus)과 boot 브랜치의 commands 커밋이 team.json의 인접 블록을 각자 재작성해 ship의 rebase가 텍스트 충돌로 죽었고, FAIL 문구는 scaffold unit에 존재하지 않는 build 팩을 가리켜 conductor가 boot 팩 spawn 1회를 낭비했다. 수리: 충돌 파일이 team.json 하나면 키 단위 3-way 기계 병합(`mergeTeamJson` — 한쪽만 바꾼 키는 그쪽, 같은 키가 갈리면 병합 없이 기존 FAIL) 후 rebase 계속, 통합 tree의 full은 기존대로 ship이 재실행해 원장에 남긴다; FAIL 문구는 unit kind에 맞는 팩 이름. 검사: mergeTeamJson unit 테스트 + boot e2e가 models 커밋 × commands 커밋 충돌을 그대로 재현해 SHIPPED와 두 변경의 공존을 고정.
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 

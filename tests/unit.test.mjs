@@ -9,7 +9,7 @@ import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
-import { evaluateShip, spikeComplete } from '../team/scripts/ship.mjs';
+import { evaluateShip, mergeTeamJson, spikeComplete } from '../team/scripts/ship.mjs';
 import { closedDecisions, fit, fence, matchHazards, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
@@ -211,6 +211,14 @@ test('ship: 8조건 — 하나라도 빠지면 fail-closed', () => {
   assert.deepEqual(evaluateShip({ ...x, clean: false }).filter((k) => !k.ok).map((k) => k.id), ['unit']);
   assert.equal(evaluateShip({ ...x, unit: { ...unit, kind: 'scaffold' }, ledger: [ledger[0]] }).filter((k) => !k.ok).length, 0, 'scaffold(boot)는 redproof·attack 없이 full만으로 ship');
   assert.equal(evaluateShip({ ...x, unit: { ...unit, kind: 'scaffold' }, ledger: [ledger[0]], boundaryHit: true }).filter((k) => !k.ok).length, 0, 'scaffold의 매니페스트는 spike 대상이 아니다');
+});
+test('ship: team.json rebase 충돌은 키 단위 3-way — 겹치지 않으면 병합, 같은 키가 갈리면 없음 (2차 실기 사고 7)', () => {
+  const base = { models: { build: 'sonnet' }, commands: { quick: '' }, paths: { ledger: 'x' } };
+  const ours = { ...base, models: { build: 'opus' } };                 // main: models만 (work.mjs models)
+  const theirs = { ...base, commands: { quick: 'npm test' } };         // boot: commands만 (work.mjs commands)
+  assert.deepEqual(mergeTeamJson(base, ours, theirs), { models: { build: 'opus' }, commands: { quick: 'npm test' }, paths: { ledger: 'x' } });
+  assert.equal(mergeTeamJson(base, ours, { ...base, models: { build: 'haiku' } }), null, '같은 키(models)를 양쪽이 다르게 — 기계 병합 없음');
+  assert.deepEqual(mergeTeamJson({ a: 1, b: 2 }, { a: 1, b: 2 }, { b: 2 }), { b: 2 }, '한쪽의 키 삭제는 삭제로');
 });
 test('ship: spike는 필수 행 다섯이 전부 있어야 끝난 것이다', () => {
   assert.equal(spikeComplete('- wire: 없음\n- host: linux node 22\n- license: MIT 동봉\n- default: 포트 3000\n- os: 없음'), true);

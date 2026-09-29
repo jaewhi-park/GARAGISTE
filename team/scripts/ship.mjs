@@ -1,7 +1,7 @@
 // ship — 8조건 fail-closed. 통과하면 ff 머지 + LEDGER + STATUS. 이 스크립트만 보호 브랜치에 닿는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, readLedger, readText, saveUnit, shell, short, workTree, worktreeDir, ceoTouch, listUnits, listFiles } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, short, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles } from './lib.mjs';
 import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
@@ -40,6 +40,36 @@ export function proseKb(main) {
   return Math.round(files.reduce((n, f) => n + Buffer.byteLength(readText(path.join(main, f))), 0) / 1024);
 }
 const DOC_OK = (team) => [team.paths.brief, team.paths.backlog, team.paths.status, team.paths.ledger_doc, team.paths.decisions]; // 스크립트가 쓰는 CEO 문서는 ship의 문서 커밋에 실린다
+// 사고 7(2차 실기): main의 models 커밋과 boot의 commands 커밋이 team.json 인접 블록을 각자 재작성해 rebase가 텍스트 충돌 — 키는 겹치지 않았다.
+// 키 단위 3-way는 판단이 아니라 산수다: 한쪽만 바꾼 키는 그쪽, 양쪽이 같은 키를 다르게 바꾸면 병합 없음(null → 기존 FAIL 경로).
+export function mergeTeamJson(base, ours, theirs) {
+  const J = JSON.stringify;
+  const merged = {};
+  for (const k of new Set([...Object.keys(base || {}), ...Object.keys(ours || {}), ...Object.keys(theirs || {})])) {
+    const b = J((base || {})[k]), o = J((ours || {})[k]), t = J((theirs || {})[k]);
+    if (o === t) { if (o !== undefined) merged[k] = (ours || {})[k]; continue; }
+    if (b === o) { if (t !== undefined) merged[k] = (theirs || {})[k]; continue; }
+    if (b === t) { if (o !== undefined) merged[k] = (ours || {})[k]; continue; }
+    return null;
+  }
+  return merged;
+}
+const TEAM_JSON = '.garagiste/team.json';
+function resolveRebaseTeamJson(wt) {
+  for (let i = 0; i < 10; i++) {
+    const un = git(['diff', '--name-only', '--diff-filter=U'], wt).stdout.split('\n').filter(Boolean);
+    if (un.length !== 1 || un[0] !== TEAM_JSON) return false;
+    const stage = (n) => { const r = git(['show', `:${n}:${TEAM_JSON}`], wt); if (r.status) return n === 1 ? {} : null; try { return JSON.parse(r.stdout.replace(/^﻿/, '')); } catch { return null; } };
+    const ours = stage(2), theirs = stage(3);
+    const merged = ours && theirs ? mergeTeamJson(stage(1), ours, theirs) : null;
+    if (!merged) return false;
+    writeJson(path.join(wt, TEAM_JSON), merged);
+    git(['add', TEAM_JSON], wt);
+    // --continue의 커밋에도 게이트가 돈다 — 통합 tree의 full은 rebase 뒤 ship이 직접 재실행해 원장에 남긴다(아래), WIP는 그 사이의 승인된 차선
+    if (!git(['rebase', '--continue'], wt, { GIT_EDITOR: 'true', GARAGISTE_WIP: '1' }).status) return true;
+  }
+  return false;
+}
 function main() {
   const slug = process.argv[2];
   if (!slug) fail('사용법: ship.mjs <slug>');
@@ -71,10 +101,16 @@ function main() {
   if (dirty.length) fail(`FAIL ship: 메인 worktree에 미커밋 변경 — ${dirty.join(' ')}`);
   // 통합: unit을 main 위로 올리고, tree가 바뀌었으면 full을 다시 돌린다
   const rb = git(['rebase', c.team.protected_branch], wt);
-  if (rb.status) { git(['rebase', '--abort'], wt); fail(`FAIL ship: rebase 충돌 — build 팩을 다시 띄워 ${c.team.protected_branch} 위에서 해결`); }
+  if (rb.status && !resolveRebaseTeamJson(wt)) {
+    git(['rebase', '--abort'], wt);
+    fail(`FAIL ship: rebase 충돌 — ${unit.kind === 'scaffold' ? 'boot' : 'build'} 팩을 다시 띄워 ${c.team.protected_branch} 위에서 해결`);
+  }
   const newTree = headTree(wt);
   if (newTree !== tree) {
-    const r = shell(c.team.commands.full, { cwd: wt });
+    // 통합 tree는 자기 자신의 명령으로 검증한다 — boot의 commands는 머지 전 main엔 없다(사고 7에서 노출: main의 빈 full로 crash)
+    const fullCmd = readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.full || c.team.commands.full;
+    if (!fullCmd) fail('FAIL ship: 통합 tree 재검증 불가 — commands.full 비어 있음');
+    const r = shell(fullCmd, { cwd: wt });
     appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true });
     if (r.status) fail('FAIL ship: 통합 tree에서 full FAIL — main이 움직였다, build 재spawn');
   }
