@@ -31,6 +31,13 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - R15: 설치는 install→doctor(--fresh)→selftest 원샷 fail-closed(-SkipSelftest로 생략), 재설치에서 team.json 편성이 -Budget을 이기고 에이전트 model:도 team.json에서 나온다(v1 재적용병 백신).
 - R14: README의 「commands를 사람이 채운다」 모순 제거, HAZARDS 검사열을 실존 검사로 정합, 이 CHANGELOG의 낡은 사실(v1 트리·CI) 정정.
 
+### Added — 2026-09-29 L1 진입 조건 (docs/V2-REPAIR-BACKLOG.md §L1)
+- `work drop <slug> ["사유"] [--forget]` — 방향전환의 원자 연산: wip 커밋 → `dropped/<slug>-<ts>` 브랜치 보존 → worktree 제거. dropped는 seed 자리를 막지 않아 같은 slug가 새로 열린다. conductor 전용.
+- Flow 7 — 인터럽트 4종(버그·수정·추가·방향전환)의 착지 절차, spec 팩의 re-spec 규칙(어긋나는 주장만 고친다).
+- spawn 센서 — SubagentStop의 agent_type이 팩이면 원장 `spawn_stop`(무명 stop은 기록하지 않는다: v1 무명 stop 1,024건 사고의 백신). unit당 spawn은 `pack` 줄(의도)과 `spawn_stop`(완료)이 기계로 센다.
+- LEDGER attack 열이 「선발견→최종red/총」(예 1→0/1) — attack 검출률(Q4)을 tried fail과 대조하는 계측.
+- guard가 team.json `protected_branch`로의 push를 브랜치 이름과 무관하게 거부(main|master 고정이던 구멍).
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 

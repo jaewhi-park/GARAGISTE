@@ -5,7 +5,7 @@ import path from "node:path"
 // @ts-ignore — 팀 정본은 JS 모듈이다
 import { decide, makeCtx } from "../../.garagiste/scripts/guard-rules.mjs"
 // @ts-ignore
-import { checkpoint } from "../../.garagiste/scripts/checkpoint.mjs"
+import { spawnStop } from "../../.garagiste/scripts/checkpoint.mjs"
 
 const TOOL: Record<string, string> = { bash: "Bash", edit: "Edit", write: "Write", patch: "Edit", multiedit: "MultiEdit" }
 
@@ -20,6 +20,6 @@ export const Guard: Plugin = async ({ directory }) => ({
     if (reason) throw new Error(`[guard] ${reason}`)
   },
   "tool.execute.after": async (input) => {
-    if (input.tool === "task") checkpoint(directory)
+    if (input.tool === "task") spawnStop(directory, {}) // opencode는 stop에 타입이 없다 — spawn 의도 수는 원장의 pack 줄이 센다
   },
 })

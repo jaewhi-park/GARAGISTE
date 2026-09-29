@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { decide, makeCtx, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
-import { checkpoint } from '../team/scripts/checkpoint.mjs';
+import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
@@ -79,6 +79,15 @@ test('guard: R2 — tried·decide는 팩(worktree 컨텍스트)이 부르지 않
   assert.match(decide(bash('node ../../.garagiste/scripts/work.mjs decide 3 "B"', wt), gctx('build')) || '', /CEO 접점/);
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs tried hello ok'), gctx(null)), null, 'conductor(메인)는 CEO의 말을 중계한다');
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs default hello "포트 3000"', wt), gctx('build')), null, 'default는 팀의 기록 — 접점이 아니다');
+  assert.match(decide(bash('node .garagiste/scripts/work.mjs drop hello "안 되겠다"', wt), gctx('build')) || '', /팩은 부르지 않는다/, '방향전환(drop)은 conductor의 일이다');
+});
+test('guard: 보호 브랜치가 main이 아니어도 push가 막힌다', () => {
+  const pb = { ...gctx(null), protectedBranch: 'claude/quirky-wozniak-keqgbi' };
+  assert.ok(decide(bash('git push origin claude/quirky-wozniak-keqgbi'), pb), '보호 브랜치 push는 이름과 무관하게 없다');
+  assert.ok(decide(bash('git push -u origin claude/quirky-wozniak-keqgbi'), pb));
+  assert.equal(decide(bash('git push origin feature/x'), pb), null);
+  assert.equal(decide(bash('git push origin claude/quirky-wozniak-keqgbi'), gctx(null)), null, 'protected_branch를 모르면 기존 main|master 규칙만');
+  assert.equal(decide(bash('git push origin claude/quirky-wozniak-keqgbi'), { ...pb, env: { GARAGISTE_ADMIN: '1' } }), null, '원격 push는 CEO(ADMIN)의 일');
 });
 test('guard: R5 — 팩 정체는 unit 상태가 정본, 마커 변조는 무효, 정체 불명은 fail-closed', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-marker-'));
@@ -106,6 +115,15 @@ test('guard: R4 — Bash 리다이렉트·in-place 편집도 쓰기 경계를 �
 test('checkpoint: worktree가 없으면 조용히 빈 배열', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-cp-'));
   assert.deepEqual(checkpoint(d), []);
+});
+test('spawn 센서: SubagentStop의 agent_type이 팩이면 원장에 기계적으로 남고, 무명 stop은 줄을 만들지 않는다', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-spawn-'));
+  const e = spawnStop(d, { agent_type: 'build' });
+  assert.equal(e.pack, 'build');
+  assert.match(fs.readFileSync(path.join(d, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"spawn_stop".*"pack":"build"/, 'pass line의 spawn 열은 conductor의 산문 보고가 아니라 훅이 센다');
+  assert.equal(spawnStop(d, {}), null, 'v1 교훈(무명 stop 1,024건): 팩도 체크포인트도 없으면 쓰지 않는다');
+  assert.equal(spawnStop(d, { agent_type: 'claude' }), null, '메인 에이전트의 stop은 spawn이 아니다');
+  assert.equal(fs.readFileSync(path.join(d, '.garagiste/ledger/evidence.jsonl'), 'utf8').trim().split('\n').length, 1);
 });
 test('boundary: 의존성 파일과 유출 키워드는 HIT, 평범한 소스는 CLEAR', () => {
   assert.equal(checkBoundary(team, { files: ['package.json'] }).hit, true);
@@ -257,6 +275,10 @@ test('work scope: 선행은 needs 간선의 닫힘이고 순서는 선행 먼저
   const done = parseBacklog('- [x] db · M1 · needs: - · "db" · 인수: -\n- [ ] session · M1 · needs: db · "s" · 인수: -');
   assert.deepEqual(closure(done, ['session']).order, ['session'], '끝난 선행은 순서에 없다');
   assert.equal(closure(parseBacklog('- [ ] a · M1 · needs: b · "a" · 인수: -\n- [ ] b · M1 · needs: a · "b" · 인수: -'), ['a']).cycle, 'a');
+});
+test('work seed: dropped unit은 자리를 막지 않고 같은 slug가 새로 열린다', () => {
+  const items = parseBacklog('- [ ] a · M1 · needs: - · "a" · 인수: -');
+  assert.equal(pickReady({ order: ['a'], items, units: [{ slug: 'a', state: 'dropped' }] }).slug, 'a', 'kill-and-respawn: 버린 unit이 ACTIVE로 잡히면 안 된다');
 });
 test('work seed: 선행이 출하됐거나 Q가 닫힌 unit만 열린다, 아니면 WAIT, 전부 끝나면 DONE', () => {
   const items = parseBacklog(['- [ ] db · M1 · needs: - · "db" · 인수: -', '- [ ] session · M1 · needs: db,Q1 · "s" · 인수: -'].join('\n'));

@@ -29,7 +29,15 @@
 - **R8 부속(doctor 참조 경로)**: 오탐 — install.sh 등 언급은 치료법 안내 문자열이지 파일 검사가 아니었다.
 - **발견(미수리, L1 전 소수리 후보)**: guard DESTRUCTIVE의 보호 브랜치 push 정규식이 main|master 고정 — protected_branch가 다른 이름인 레포에선 push 차단이 약하다.
 
-§L1 진입 조건의 코드 항목 — `drop` 명령·re-spec 절차·spawn 센서·Q4 원장 열 — 은 L0 범위 밖으로 남아 있다.
+## 상태 2 — L1 진입 조건 구현 완료 (2026-09-29)
+
+- **Q1 `drop`** (edfca85) — kill-and-respawn: wip 커밋 → `dropped/<slug>-<ts>` 브랜치 보존 → worktree 제거, dropped는 seed 자리를 막지 않아 같은 slug 재생성, `--forget`이면 BACKLOG도 닫음. conductor 전용(가드 + 메인 검사).
+- **Q1 re-spec** (aa69608) — 기계 경로는 R5의 상태 기계로 이미 성립(brief spec 재실행 → 정체 spec 복귀), e2e로 고정. Flow 7(인터럽트 4종 착지)과 spec 팩 re-spec 규칙 명문화.
+- **spawn 센서** (d7b957e) — SubagentStop의 agent_type이 팩이면 원장 `spawn_stop`(무명 stop은 기록 안 함 — v1 1,024건 사고 백신). unit당 spawn = `pack` 줄(의도) + `spawn_stop`(완료); `spawned`(토큰·분)는 보조.
+- **Q4 열** (6d2abaf) — LEDGER attack 칸이 「선발견→최종red/총」. 후발견은 `tried fail` 원장 줄 — 3 unit 뒤 두 수의 비가 Q4의 표.
+- **소수리** (4464fcb) — 보호 브랜치 push 차단을 protected_branch 동적으로(L0의 발견 항목 해소).
+
+L1 시험 준비 완료: 사전 등록 = **docs/measurements/L1-TRIAL.md**(동결 59bb724·시계 정의·3-unit 구성·빈 표·conductor 절차) · G2_TEST2 재설치(475c4a1). 시험은 G2_TEST2 안에서 연 새 conductor 세션이 그 문서대로 돈다 — 이 세션(훅 밖)이 돌리면 표가 오염된다.
 
 ---
 
