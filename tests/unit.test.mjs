@@ -15,7 +15,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady } from '../team/scripts/work.mjs';
 import { diagnose } from '../team/scripts/doctor.mjs';
-import { globToRegex } from '../team/scripts/lib.mjs';
+import { globToRegex, parseLocalEnv } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -206,4 +206,8 @@ test('work seed: 선행이 출하됐거나 Q가 닫힌 unit만 열린다, 아니
   assert.deepEqual(pickReady({ order, items, units: [{ slug: 'db', state: 'shipped' }] }).unmet, ['Q1']);
   assert.equal(pickReady({ order, items, units: [{ slug: 'db', state: 'shipped' }], decisionsText: '- [x] Q1 (intake): x → y' }).slug, 'session');
   assert.equal(pickReady({ order, items, units: [{ slug: 'db', state: 'shipped' }, { slug: 'session', state: 'shipped' }] }).kind, 'done');
+});
+
+test('lib: env.local은 KEY=VALUE 줄만 읽고 주석은 무시한다', () => {
+  assert.deepEqual(parseLocalEnv('# 이 기계만\nGARAGISTE_RUNNER=setpriv --reuid=1000 env HOME=/tmp/x\nBAD LINE\nA=1'), { GARAGISTE_RUNNER: 'setpriv --reuid=1000 env HOME=/tmp/x', A: '1' });
 });

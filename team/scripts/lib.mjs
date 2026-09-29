@@ -10,9 +10,22 @@ export function sh(cmd, args, opts = {}) {
   return { status: r.status ?? 1, stdout: (r.stdout || '').trim(), stderr: (r.stderr || '').trim() };
 }
 export function git(args, cwd, env) { return sh('git', args, { cwd, env: env ? { ...process.env, ...env } : undefined }); }
-// team.json의 명령은 프로젝트가 직접 쓴 셸 문자열이라 그대로 돌린다(제품 코드의 subprocess 규칙과는 다른 층).
+// .garagiste/env.local — 이 기계에서만 쓰는 실행 환경(KEY=VALUE 줄, 추적 안 함). 예: GARAGISTE_RUNNER=setpriv --reuid=1000 …
+export function parseLocalEnv(text) {
+  const env = {};
+  for (const line of (text || '').split('\n')) {
+    const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line);
+    if (m && !line.trim().startsWith('#')) env[m[1]] = m[2].trim();
+  }
+  return env;
+}
+export function localEnv(cwd = process.cwd()) {
+  try { return parseLocalEnv(fs.readFileSync(path.join(mainRoot(cwd), '.garagiste', 'env.local'), 'utf8')); } catch { return {}; }
+}
+// team.json의 명령은 프로젝트가 직접 쓴 셸 문자열이라 그대로 돌린다(제품 코드의 subprocess 규칙과는 다른 층). env.local이 있으면 그 값이 환경에 더해진다.
 export function shell(cmdString, opts = {}) {
-  const r = spawnSync(cmdString, { shell: true, encoding: 'utf8', ...opts });
+  const env = { ...process.env, ...localEnv(opts.cwd), ...(opts.env || {}) };
+  const r = spawnSync(cmdString, { shell: true, encoding: 'utf8', ...opts, env });
   return { status: r.status ?? 1, stdout: r.stdout || '', stderr: r.stderr || '' };
 }
 export function repoRoot(cwd = process.cwd()) {
