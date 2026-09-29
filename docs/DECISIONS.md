@@ -8,3 +8,6 @@
 - 2026-09-29 · **팀 정본은 `.garagiste/`, 하네스 배선은 `.claude/`·`opencode.json`+`.opencode/`.** 스크립트·팩·HAZARDS·team.json·원장·unit 상태는 하네스와 무관하고, 경계 규칙도 `guard-rules.mjs` 하나를 Claude 훅과 opencode 플러그인이 같이 부른다. 규칙이 두 곳에 사는 순간 갈라진다(v1 parity-check가 그 증상이었다).
 - 2026-09-29 · **에이전트는 있다, 페르소나가 없다.** 팩 넷은 spawn 설정 한 장(모델·도구·"팩 경로 한 줄을 읽고 그대로 한다")으로만 존재한다. 정체는 쓰기 경계이고 그 경계는 훅/플러그인이 지킨다. opencode는 conductor를 primary agent(edit 권한 없음)로 하나 더 둔다 — 메인 세션이 곧 conductor인 Claude Code와 달리 opencode는 primary agent 정의가 필요하다.
 - 2026-09-29 · **opencode 모델은 기본 provider/model을 상속한다.** opencode 모델 id는 provider마다 다르고 자주 바뀌어 예산표에서 추측하지 않는다. 팩별 모델은 `.opencode/agents/<pack>.md` 앞머리에 CEO가 직접 쓴다.
+- 2026-09-29 · **입력 단위는 대화 전체다.** `work brief`가 원문을 축적하고 intake 팩이 BACKLOG unit 줄로 쪼갠다. "PRD를 넣을 곳이 없다"는 CEO가 부딛힌 첫 사고라 탄생 규칙 안에서 만들었다. intake는 파일을 쓰지 않는다 — `work add`·`work ask intake` 두 명령만.
+- 2026-09-29 · **선행은 관례가 아니라 간선이다.** BACKLOG 줄의 `needs`는 주장 그래프의 의존 간선이고, `work scope`가 닫힘을 계산해 "요청 n · 선행 m · 순서"로 역제안한다. CEO의 답은 둘뿐: 받는다(`seed`) · 선행을 뺀다(`--no-needs`, 원장 기록). hard 결정에 기대는 unit은 `needs: Q<n>`으로 답이 올 때까지 WAIT.
+- 2026-09-29 · **conductor는 쓰지 않는다 — 훅이 강제한다.** `.worktrees/` 밖 Edit/Write는 거부. 메인 worktree의 문서는 스크립트(work.mjs)만 쓴다. 일반 편집 세션은 `GARAGISTE_ADMIN=1`. 산문 규칙이었던 것을 코드로 옮긴 첫 사례.

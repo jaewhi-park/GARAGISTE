@@ -2,14 +2,14 @@
 
 > Coding is making claims true. Claims are tests, probes and invariants; the team is a scheduler over that graph; the human supplies direction, reality and accountability — and keeps the windows.
 
-GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are four packs that hand off only through files (spec · build · attack · spike), twelve judgment-free scripts, a boundary hook or plugin, and a ledger.
+GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are five packs that hand off only through files (intake · spec · build · attack · spike), twelve judgment-free scripts, a boundary hook or plugin, and a ledger.
 
 - **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
 - **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all seven conditions hold.
 - **The human gives one sentence, yes/no, and "tried it".** The first line of STATUS is all they read each day.
 
 ## There are agents — there are no personas
-The four packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
+The five packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
 
 ## Install
 ```
@@ -31,6 +31,20 @@ The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs ·
 
 Then fill `commands` (quick · full · test_file · run) in `.garagiste/team.json`. `quick` must exclude `tests/acceptance` and `tests/adversary` (they are committed red by design); `full` includes everything.
 
+## The entrance — from conversation to scope
+You do not speak one sentence at a time; the unit of input is the whole conversation.
+```
+conversation ─▶ work.mjs brief "<verbatim>" | --file PRD.md   accumulated verbatim in docs/BRIEF.md (no summarising)
+"build it"   ─▶ brief.mjs intake → intake pack spawn           BACKLOG lines: slug · milestone · needs · "one sentence" · one acceptance line
+                                                               hard-to-reverse choices become yes/no cards (work.mjs ask intake) → needs: Q<n>
+scope        ─▶ work.mjs scope login share | --milestone M1 | --range a..b
+                SCOPE requested 2 · prerequisites 2 · missing 0   ← the counter-proposal: the closure over `needs`, computed
+                - prerequisites: db (needed by session) · session (needed by login)
+                - order: db → session → login → share
+loop         ─▶ work.mjs seed → UNIT | WAIT <slug> needs … | SCOPE DONE
+```
+`needs` is not a human-team convention; it is an edge in the claim graph. "This needs that first" is the output of `closure()`, not a meeting, and the CEO either accepts (`seed`) or drops the prerequisites (`--no-needs`, recorded in the ledger).
+
 ## Life of a unit
 ```
 CEO sentence ─▶ work.mjs new <slug> "<verbatim>"      (boundary HIT → spike pack first)
@@ -45,8 +59,8 @@ Agents receive one pack file and never talk to each other. Build has never met a
 ## Scripts (zero judgment)
 | script | does |
 |---|---|
-| `work` | unit lifecycle: new · ask (hard-decision queue) · decide · default · tried · list |
-| `brief` | pack assembly ≤8 KB — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
+| `work` | entrance and unit lifecycle: brief (verbatim) · add · scope (closure over needs) · seed · new · ask · decide · default · tried · list |
+| `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
 | `redproof` | proves acceptance tests are red on base and green on head |
 | `boundary` | dependency · workflow · IPC · permission · egress keywords → spike required |
@@ -63,7 +77,7 @@ Agents receive one pack file and never talk to each other. Build has never met a
 
 ## Verify this repository
 ```
-node --test tests/unit.test.mjs   # 18 pure-function tests
+node --test tests/unit.test.mjs   # 22 pure-function tests
 node --test tests/e2e.test.mjs    # birth test (claude) + opencode install: empty repo → shipped unit, zero model calls, zero network
 ```
 

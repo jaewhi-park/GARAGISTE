@@ -2,7 +2,7 @@
 
 > 코딩은 주장을 참으로 만드는 일이다. 주장은 테스트·프로브·불변식이고, 팀은 그 그래프 위의 스케줄러이며, 사람은 방향·현실·책임 — 그리고 창이다.
 
-GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 네 팩(spec·build·attack·spike), 판단 없는 스크립트 열둘, 경계를 지키는 훅/플러그인, 그리고 원장이다.
+GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 다섯 팩(intake·spec·build·attack·spike), 판단 없는 스크립트 열둘, 경계를 지키는 훅/플러그인, 그리고 원장이다.
 
 - **실행되지 않은 것은 믿지 않는다.** 스펙은 red 인수 테스트, 승인은 exit code, 리뷰의 산출물은 실패하는 테스트.
 - **루프는 기계가 끝낸다.** 커밋 게이트가 원장과 tree를 대조하고, `ship`은 7조건이 전부 참일 때만 main에 닿는다.
@@ -31,6 +31,20 @@ GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**
 
 그 뒤 `.garagiste/team.json`의 `commands`(quick·full·test_file·run)를 채우면 팀이 산다. `quick`은 `tests/acceptance`·`tests/adversary`를 빼고(red 상태로 커밋되므로), `full`은 전부 포함한다.
 
+## 입구 — 구상에서 범위까지
+한 문장씩 말하지 않는다. 입력 단위는 대화 전체다.
+```
+구상(대화) ─▶ work.mjs brief "<원문>" | --file PRD.md      원문 그대로 docs/BRIEF.md에 축적 (요약 금지)
+"개발해"   ─▶ brief.mjs intake → intake 팩 spawn          BACKLOG에 unit 줄: slug · 마일스톤 · needs · "원문 한 문장" · 인수 한 줄
+                                                          되돌리기 어려운 것은 예/아니오 카드(work.mjs ask intake) → needs: Q<n>
+범위       ─▶ work.mjs scope login share | --milestone M1 | --range a..b
+              SCOPE 요청 2 · 선행 2 · 없는 선행 0            ← 역제안: needs 간선의 닫힘을 기계가 계산한 것
+              - 선행: db (session가 needs) · session (login가 needs)
+              - 순서: db → session → login → share
+루프       ─▶ work.mjs seed → UNIT | WAIT <slug> needs … | SCOPE DONE
+```
+`needs`는 인간 관례가 아니라 주장 그래프의 간선이다. "이걸 하려면 저게 먼저"는 회의가 아니라 `closure()`의 출력이고, CEO는 받거나(`seed`) 선행을 빼거나(`--no-needs`, 원장에 남는다) 둘 중 하나만 한다.
+
 ## 한 unit의 생애
 ```
 CEO 한 마디 ─▶ work.mjs new <slug> "<원문>"          (boundary HIT면 spike 팩부터)
@@ -45,8 +59,8 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 ## 스크립트 (판단 0)
 | 스크립트 | 하는 일 |
 |---|---|
-| `work` | unit 생애: new · ask(hard 결정 큐) · decide · default(팀이 정한 것) · tried · list |
-| `brief` | 팩 조립 ≤8 KB — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
+| `work` | 입구와 unit 생애: brief(원문 축적) · add · scope(선행 닫힘) · seed · new · ask · decide · default · tried · list |
+| `brief` | 팩 조립 ≤8 KB(intake는 32 KB) — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |
 | `redproof` | 인수 테스트가 base에서 red · head에서 green임을 증명 |
 | `boundary` | 의존성·워크플로·IPC·권한·유출 키워드 → spike 필수 |
@@ -64,7 +78,7 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 
 ## 이 저장소 검증
 ```
-node --test tests/unit.test.mjs   # 순수 함수 18
+node --test tests/unit.test.mjs   # 순수 함수 22
 node --test tests/e2e.test.mjs    # 탄생 시험(claude) + opencode 설치: 빈 저장소 → 출하까지, 모델 0 · 네트워크 0
 ```
 

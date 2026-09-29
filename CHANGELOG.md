@@ -15,6 +15,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - `docs/PRINCIPLES.md` · `docs/BIRTH.md` · `docs/catalogue/`(v2 설계는 계획이 아니라 후보 카탈로그) · `team/HAZARDS.md`(v1 사고 11건, 줄마다 경로와 검사).
 - `tests/unit.test.mjs` 18 · `tests/e2e.test.mjs` 탄생 시험(claude: 빈 저장소 → 출하 → 써봤다) + opencode 설치·doctor, 모델 0 · 네트워크 0. CI: ubuntu + windows(unit).
 
+- 입구: `work brief`(원문 축적) · intake 팩(BRIEF → BACKLOG unit 줄 + 예/아니오) · `work add` · `work scope`(needs 닫힘 → 선행 역제안, `--milestone`·`--range`·`--no-needs`) · `work seed`(다음 unit 자동, Q<n> 게이트, WAIT/DONE) · STATUS `## 범위`.
+- conductor 가드: `.worktrees/` 밖 Edit/Write 거부(GARAGISTE_ADMIN=1 예외). 팩 다섯(intake 추가), -Budget에 intake 모델.
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 
