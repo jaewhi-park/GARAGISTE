@@ -89,7 +89,10 @@ function main() {
   const ledgerDoc = path.join(c.main, c.team.paths.ledger_doc);
   if (!fs.existsSync(ledgerDoc)) fs.writeFileSync(ledgerDoc, '# LEDGER — 증명 커밋. 한 줄 = 출하 하나 = 기계가 확인한 사실의 목록.\n\n| 날짜 | unit | head | tree | full | redproof | attack | sensor |\n|---|---|---|---|---|---|---|---|\n');
   const at = [...ledger].reverse().find((e) => e.kind === 'attack' && e.slug === slug);
-  const row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'} | ${unit.kind === 'scaffold' ? '—' : `0/${at ? at.total : 0}`} | ${unit.sensor} |\n`;
+  // Q4 계측: attack이 선(先)발견한 결함 수 = 한 번이라도 red였던 adversary 파일의 합집합 — CEO의 tried fail(후발견)과 대조하는 열
+  const caught = new Set(ledger.filter((e) => e.kind === 'attack' && e.slug === slug && e.red > 0).flatMap((e) => e.files || [])).size;
+  const atCell = unit.kind === 'scaffold' ? '—' : `${caught}→0/${at ? at.total : 0}`;
+  const row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'} | ${atCell} | ${unit.sensor} |\n`;
   fs.appendFileSync(ledgerDoc, row);
   const backlog = path.join(c.main, c.team.paths.backlog);
   if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `));
@@ -110,7 +113,7 @@ function main() {
     fail(`FAIL ship: 머지 뒤 main quick FAIL — 머지를 되돌렸다(${short(head)} → ${short(prevHead)}). 원인은 통합: build 재spawn 뒤 다시 ship`);
   }
   appendLedger(c.main, c.team, { kind: 'ship', slug, head, tree: newTree, sensor: unit.sensor });
-  const msg = `ship(${slug}): ${unit.origin.replace(/\n/g, ' ').slice(0, 60)}\n\nUnit: ${slug}\nKind: ${unit.kind}\nHead: ${short(head)}\nFull: ${short(newTree)}\nRedproof: ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'}\nAttack: ${unit.kind === 'scaffold' ? '—' : `0/${at ? at.total : 0}`}\nSensor: ${unit.sensor}`;
+  const msg = `ship(${slug}): ${unit.origin.replace(/\n/g, ' ').slice(0, 60)}\n\nUnit: ${slug}\nKind: ${unit.kind}\nHead: ${short(head)}\nFull: ${short(newTree)}\nRedproof: ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'}\nAttack: ${atCell}\nSensor: ${unit.sensor}`;
   const cm = git(['commit', '-q', '-m', msg], c.main, { GARAGISTE_SHIP: '1' });
   if (cm.status) fail(`FAIL ship: 문서 커밋 실패 — ${cm.stderr}`);
   git(['worktree', 'remove', wt], c.main);
