@@ -47,6 +47,7 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
   const hooksPath = git(['config', 'core.hooksPath'], root).stdout;
   if (hooksPath !== '.githooks') p.push(`core.hooksPath=${hooksPath || '(없음)'} → git config core.hooksPath .githooks (커밋 게이트가 안 돈다)`);
   if (!fs.existsSync(path.join(root, '.githooks', 'pre-commit'))) p.push('.githooks/pre-commit 없음 → install.sh 다시');
+  else { const mode = git(['ls-files', '-s', '.githooks/pre-commit'], root).stdout.split(' ')[0]; if (mode && mode !== '100755') p.push(`.githooks/pre-commit이 인덱스에 ${mode}(실행 비트 없음) → git update-index --chmod=+x .githooks/pre-commit — 맥·리눅스에서 게이트가 조용히 무시된다`); }
   if (team && git(['rev-parse', '--verify', '-q', team.protected_branch], root).status) p.push(`보호 브랜치 ${team.protected_branch} 없음 → 첫 커밋을 만들어라`);
   const gi = readText(path.join(root, '.gitignore'));
   for (const l of ['/.garagiste/ledger/', '/.garagiste/units/', '/.garagiste/session/', '/.garagiste/scope.json', '/.worktrees/', '.garagiste-pack']) if (!gi.includes(l)) p.push(`.gitignore에 ${l} 없음 → team/gitignore.snippet 추가`);

@@ -30,6 +30,8 @@ run cp "$HERE"/team/scripts/*.mjs "$ROOT/.garagiste/scripts/"
 run cp "$HERE"/team/packs/*.md "$ROOT/.garagiste/packs/"
 run cp "$HERE/team/githooks/pre-commit" "$ROOT/.githooks/pre-commit"
 run chmod +x "$ROOT/.githooks/pre-commit"
+# 인덱스에도 실행 비트를 — Windows에서 만든 저장소를 맥·리눅스가 받았을 때 훅이 무시되지 않게
+[ "$DRY" = 0 ] && git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1 && { git -C "$ROOT" add .githooks/pre-commit >/dev/null 2>&1; git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit >/dev/null 2>&1; }
 [ -f "$ROOT/.garagiste/HAZARDS.md" ] || run cp "$HERE/team/HAZARDS.md" "$ROOT/.garagiste/HAZARDS.md"
 if [ ! -f "$ROOT/.garagiste/team.json" ]; then
   run cp "$HERE/team/team.json" "$ROOT/.garagiste/team.json"
@@ -71,7 +73,8 @@ fi
 run git -C "$ROOT" config core.hooksPath .githooks
 # 첫 커밋이 없으면 설치기가 만든다(첫 커밋은 원장이 있을 수 없어 게이트가 통과시킨다) — 그 뒤 main에 닿는 것은 ship.mjs뿐
 if [ "$DRY" = 0 ] && ! git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then
-  if git -C "$ROOT" add -A && GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]"; then echo "  첫 커밋: 팀 파일"; else echo "  ! 첫 커밋 실패 — 위 오류를 보고 다시: cd $ROOT && git add -A && GARAGISTE_SHIP=1 git commit -m 'scaffold(team): install'" >&2; fi
+  git -C "$ROOT" add -A && git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit
+  if GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]"; then echo "  첫 커밋: 팀 파일"; else echo "  ! 첫 커밋 실패 — 위 오류를 보고 다시: cd $ROOT && git add -A && GARAGISTE_SHIP=1 git commit -m 'scaffold(team): install'" >&2; fi
 fi
 echo "---"
 [ "$DRY" = 0 ] && { (cd "$ROOT" && node .garagiste/scripts/doctor.mjs) || true; }

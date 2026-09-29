@@ -40,7 +40,9 @@ team.commands = { quick: '', full: '', test_file: '', run: '' }; team.protected_
 fs.writeFileSync(teamPath, JSON.stringify(team, null, 2) + '\n');
 if (!fs.existsSync(path.join(tmp, 'CLAUDE.md'))) write('CLAUDE.md', '# {{PROJECT}}\n{{ONE_LINE}}\n\n## Commands\n- quick: {{QUICK}}\n- full: {{FULL}}\n- test one file: {{TEST_FILE}}\n- run: {{RUN}}\n');
 step('hooksPath', () => git(['config', 'core.hooksPath', '.githooks']));
-step('첫 커밋 (HEAD 없음 → 게이트 통과)', () => { git(['add', '-A']); return git(['commit', '-q', '-m', 'scaffold(team): selftest'], tmp, { GARAGISTE_SHIP: '1' }); });
+try { fs.chmodSync(path.join(tmp, '.githooks', 'pre-commit'), 0o755); } catch { /* Windows */ }
+step('훅 실행 비트 (원본 저장소의 인덱스)', () => git(['ls-files', '-s', '.githooks/pre-commit'], root), (r) => r.status === 0 && (r.out.startsWith('100755') || r.out === ''));
+step('첫 커밋 (HEAD 없음 → 게이트 통과)', () => { git(['add', '-A']); git(['update-index', '--chmod=+x', '.githooks/pre-commit']); return git(['commit', '-q', '-m', 'scaffold(team): selftest'], tmp, { GARAGISTE_SHIP: '1' }); });
 step('doctor (commands 비어 있음은 정상)', () => script('doctor', []), (r) => /commands\.quick 비어 있음/.test(r.out));
 step('work brief', () => script('work', ['brief', 'selftest: 터미널에서 hello를 출력하는 도구']), (r) => /^BRIEF/.test(r.out));
 step('work add boot', () => script('work', ['add', 'boot', '터미널에서 hello를 출력하는 도구', '--milestone', 'M1', '--accept', '진입점이 뜨고 quick·full이 PASS', '--kind', 'scaffold']), (r) => /^ADD boot/.test(r.out));

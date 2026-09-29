@@ -34,6 +34,7 @@ foreach ($d in ".garagiste\scripts", ".garagiste\packs", ".githooks") { Run { Ne
 Run { Copy-Item "$Here\team\scripts\*.mjs" (Join-Path $Root ".garagiste\scripts") -Force } "scripts"
 Run { Copy-Item "$Here\team\packs\*.md" (Join-Path $Root ".garagiste\packs") -Force } "packs"
 Run { Copy-Item "$Here\team\githooks\pre-commit" (Join-Path $Root ".githooks\pre-commit") -Force } "pre-commit"
+if (-not $DryRun) { $h = Invoke-Git -C $Root rev-parse --verify -q HEAD; if ($h.Code -eq 0) { Invoke-Git -C $Root add .githooks/pre-commit | Out-Null; Invoke-Git -C $Root update-index --chmod=+x .githooks/pre-commit | Out-Null } }
 if (-not (Test-Path (Join-Path $Root ".garagiste\HAZARDS.md"))) { Run { Copy-Item "$Here\team\HAZARDS.md" (Join-Path $Root ".garagiste\HAZARDS.md") } "HAZARDS" }
 $team = Join-Path $Root ".garagiste\team.json"
 if (-not (Test-Path $team)) {
@@ -69,6 +70,7 @@ if (-not $DryRun) {
   $head = Invoke-Git -C $Root rev-parse --verify -q HEAD
   if ($head.Code -ne 0) {
     Invoke-Git -C $Root add -A | Out-Null
+    Invoke-Git -C $Root update-index --chmod=+x .githooks/pre-commit | Out-Null   # NTFS엔 실행 비트가 없다 — 인덱스에 100755로 기록해야 맥·리눅스에서 훅이 돈다
     $env:GARAGISTE_SHIP = "1"
     $ident = @(); if ((Invoke-Git -C $Root config user.name).Code -ne 0) { $ident += @("-c", "user.name=garagiste", "-c", "user.email=garagiste@local") }
     $commit = Invoke-Git -C $Root @ident commit -q -m "scaffold(team): GARAGISTE install [$Flavor, budget $Budget]"

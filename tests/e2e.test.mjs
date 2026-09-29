@@ -168,6 +168,7 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.equal(inst.status, 0, inst.out);
   assert.match(inst.out, /git init/); assert.match(inst.out, /첫 커밋: 팀 파일/);
   assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): GARAGISTE 증거 팀 설치/);
+  assert.match(git(['ls-files', '-s', '.githooks/pre-commit'], repo).out, /^100755/, '훅의 실행 비트가 인덱스에 있다 — 없으면 맥·리눅스가 게이트를 무시한다');
   assert.match(script('doctor', [], repo).out, /commands.quick 비어 있음 → 첫 unit\(boot\)이 채운다/);
   // CEO는 말만 한다 — 이 아래는 conductor와 boot 팩의 일
   script('work', ['brief', '터미널 메모 도구. memo add로 남기고 memo list로 본다.'], repo);
