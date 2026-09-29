@@ -10,7 +10,7 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { evaluateShip, spikeComplete } from '../team/scripts/ship.mjs';
-import { fit, fence, matchHazards } from '../team/scripts/brief.mjs';
+import { fit, fence, matchHazards, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady } from '../team/scripts/work.mjs';
@@ -210,4 +210,10 @@ test('work seed: 선행이 출하됐거나 Q가 닫힌 unit만 열린다, 아니
 
 test('lib: env.local은 KEY=VALUE 줄만 읽고 주석은 무시한다', () => {
   assert.deepEqual(parseLocalEnv('# 이 기계만\nGARAGISTE_RUNNER=setpriv --reuid=1000 env HOME=/tmp/x\nBAD LINE\nA=1'), { GARAGISTE_RUNNER: 'setpriv --reuid=1000 env HOME=/tmp/x', A: '1' });
+});
+
+test('brief intake: BRIEF의 마지막 n절만 — intake는 증분이다', () => {
+  const t = '# BRIEF\n머리\n## 1\na\n## 2\nb\n## 3\nc\n';
+  assert.equal(tailSections(t, 2), '## 2\nb\n## 3\nc\n');
+  assert.equal(tailSections(t, 9), '## 1\na\n## 2\nb\n## 3\nc\n');
 });
