@@ -1,7 +1,7 @@
 // brief — 팩 조립. 에이전트가 받는 유일한 입력. ≤ pack_kb_max, 외부 텍스트는 데이터 펜스, 이어받기 절 포함.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, fail, git, isMain, listFiles, loadUnit, mergeBase, out, readLedger, readText, stamp, worktreeDir } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, fail, git, isMain, listFiles, loadUnit, mergeBase, out, readLedger, readText, saveUnit, stamp, worktreeDir } from './lib.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { backlogLine, parseBacklog } from './work.mjs';
 
@@ -107,7 +107,8 @@ function main() {
   const dir = path.join(c.main, c.team.paths.packs); fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${slug}-${pack}-${stamp()}.md`);
   fs.writeFileSync(file, r.text + '\n');
-  fs.writeFileSync(path.join(wt, '.garagiste-pack'), pack);
+  fs.writeFileSync(path.join(wt, '.garagiste-pack'), pack); // 표시용 — 가드의 정본은 unit 상태다
+  if (unit.state !== pack) { unit.state = pack; saveUnit(c.main, c.team, unit); }
   appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes });
   out(`PACK ${path.relative(c.main, file)} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
 }

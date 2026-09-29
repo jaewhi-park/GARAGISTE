@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { decide, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
+import { decide, makeCtx, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
 import { checkpoint } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
@@ -19,7 +19,7 @@ import { globToRegex, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scri
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
-const gctx = (marker) => ({ cwd: root, env: {}, worktreesDir: `${root}/.worktrees`, readMarker: () => marker });
+const gctx = (marker) => ({ cwd: root, env: {}, root, worktreesDir: `${root}/.worktrees`, readMarker: () => marker });
 const bash = (command, cwd = root) => ({ tool_name: 'Bash', tool_input: { command }, cwd });
 const write = (file_path, cwd = root) => ({ tool_name: 'Write', tool_input: { file_path }, cwd });
 
@@ -79,6 +79,29 @@ test('guard: R2 — tried·decide는 팩(worktree 컨텍스트)이 부르지 않
   assert.match(decide(bash('node ../../.garagiste/scripts/work.mjs decide 3 "B"', wt), gctx('build')) || '', /CEO 접점/);
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs tried hello ok'), gctx(null)), null, 'conductor(메인)는 CEO의 말을 중계한다');
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs default hello "포트 3000"', wt), gctx('build')), null, 'default는 팀의 기록 — 접점이 아니다');
+});
+test('guard: R5 — 팩 정체는 unit 상태가 정본, 마커 변조는 무효, 정체 불명은 fail-closed', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-marker-'));
+  fs.mkdirSync(path.join(d, '.garagiste', 'units'), { recursive: true });
+  fs.mkdirSync(path.join(d, '.worktrees', 'hello'), { recursive: true });
+  fs.writeFileSync(path.join(d, '.garagiste', 'units', 'hello.json'), JSON.stringify({ slug: 'hello', state: 'build' }));
+  fs.writeFileSync(path.join(d, '.worktrees', 'hello', '.garagiste-pack'), 'spec'); // 변조 시도
+  const c = makeCtx(d, { cwd: d, env: {}, fs });
+  assert.equal(c.readMarker(path.join(d, '.worktrees', 'hello')), 'build', 'unit 상태(.garagiste/units)가 마커 파일을 이긴다');
+  assert.ok(decide(write(path.join(d, '.worktrees', 'hello', 'tests/acceptance/x.test.mjs'), d), c), '변조된 마커로도 build는 acceptance에 못 쓴다');
+  assert.match(decide(write(`${root}/.worktrees/ghost/src/a.ts`), gctx(null)) || '', /정체 불명/, 'unit 상태도 마커도 없으면 worktree에도 쓰지 않는다');
+});
+test('guard: R4 — Bash 리다이렉트·in-place 편집도 쓰기 경계를 지킨다', () => {
+  const wt = `${root}/.worktrees/hello`;
+  assert.ok(decide(bash('sed -i "s/x/y/" tests/acceptance/hello.test.mjs', wt), gctx('build')), 'build의 sed -i → acceptance');
+  assert.ok(decide(bash(`cat > ${wt}/tests/acceptance/h.test.mjs <<EOF`), gctx('build')), '절대 경로 리다이렉트도 경계다');
+  assert.equal(decide(bash('echo x > src/a.mjs', wt), gctx('build')), null, 'build는 src에 쓴다');
+  assert.equal(decide(bash('cat > tests/acceptance/hello.test.mjs <<EOF', wt), gctx('spec')), null, 'spec은 acceptance에 쓴다');
+  assert.match(decide(bash('echo x > src/a.mjs'), gctx(null)) || '', /worktree 밖/, 'conductor의 리다이렉트 쓰기');
+  assert.match(decide(bash('echo x > ../../src/a.mjs', wt), gctx('build')) || '', /worktree 밖/, 'worktree 탈출 리다이렉트');
+  assert.equal(decide(bash('node --test > /dev/null 2>&1'), gctx(null)), null);
+  assert.equal(decide(bash('cmd > /tmp/out.log'), gctx(null)), null, '저장소 밖은 팀의 경계가 아니다');
+  assert.equal(decide(bash('git commit -m "a -> b"'), gctx(null)), null, '화살표는 리다이렉트가 아니다');
 });
 test('checkpoint: worktree가 없으면 조용히 빈 배열', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-cp-'));

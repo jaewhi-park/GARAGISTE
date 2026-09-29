@@ -21,6 +21,33 @@ export const PACK_RULES = {
   boot: { allow: [/^(package\.json|pnpm-workspace\.yaml|pnpm-lock\.yaml|package-lock\.json|pyproject\.toml|uv\.lock|requirements[^/]*\.txt|Cargo\.toml|go\.mod|\.node-version|\.python-version|\.nvmrc|\.tool-versions|\.gitignore|README(\.[a-z]{2})?\.md|CLAUDE\.md|AGENTS\.md|tsconfig[^/]*\.json|[^/]*\.config\.[a-z]+)$/, /^src\//, /^tests\/unit\//, /^tests\/harness\//, /^docs\/units\/[^/]+\//] },
 };
 const norm = (p) => p.replace(/\\/g, '/');
+// Bash도 쓰기다 — 리다이렉트 표적은 전부, in-place verb(sed -i·tee·mv·cp·rm·truncate)는 보호 구역 이름이 보일 때. 완전 차단이 아니라 최선 노력 — 법은 게이트(redproof·원장 tree 대조)다.
+const GUARDED_AREA = /(^|[\\/])(tests[\\/](acceptance|adversary)|fixtures[\\/]hostile|probes([\\/]|$)|docs[\\/]measurements[\\/]spike-)/;
+export function writeTargets(command) {
+  const out = [];
+  const redir = /(?:^|[^<>=-])>{1,2}\s*(?:"([^"]+)"|'([^']+)'|([^\s;&|<>]+))/g;
+  let m;
+  while ((m = redir.exec(command))) {
+    const t = m[1] ?? m[2] ?? m[3];
+    if (!t || t.startsWith('&') || t.startsWith('/dev/') || t.includes('"') || t.includes("'")) continue;
+    out.push(t);
+  }
+  const verb = /\b(?:sed\s+(?:-\S+\s+)*-i\S*|tee|truncate|mv|cp|rm)\b([^;&|>]*)/g;
+  while ((m = verb.exec(command))) {
+    for (const raw of m[1].trim().split(/\s+/)) {
+      const t = raw.replace(/^["']|["']$/g, '');
+      if (t && !t.startsWith('-') && GUARDED_AREA.test(t)) out.push(t);
+    }
+  }
+  return out;
+}
+function packWriteReason(marker, rel) {
+  const rule = PACK_RULES[marker];
+  if (!rule) return `팩 정체 불명(${marker || '없음'}) — unit 상태가 없으면 worktree에도 쓰지 않는다(fail-closed)`;
+  if (rule.deny && rule.deny.some((re) => re.test(rel))) return `${marker} 팩은 ${rel}에 쓸 수 없다 — 테스트·프로브·hostile은 다른 팩의 경계다.`;
+  if (rule.allow && !rule.allow.some((re) => re.test(rel))) return `${marker} 팩의 쓰기 경계 밖: ${rel}`;
+  return null;
+}
 export function worktreeOf(abs, worktreesDir) {
   const rel = norm(path.relative(worktreesDir, abs));
   if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
@@ -48,6 +75,12 @@ export function decide(input, ctx) {
       if (CEO_CMDS.test(c)) return 'tried·decide는 CEO 접점이다 — 팩은 부르지 않는다. conductor가 CEO의 말을 받아 메인에서 돌린다.';
       if (ctx.readMarker(w.dir) === 'spike' && /\bgit\s+commit\b/.test(c)) return 'spike는 커밋하지 않는다 — 측정 파일만 남긴다.';
     }
+    for (const target of writeTargets(c)) {
+      const abs = path.resolve(cwd, target);
+      const tw = worktreeOf(abs, ctx.worktreesDir);
+      if (tw) { const r = packWriteReason(ctx.readMarker(tw.dir), norm(tw.rel)); if (r) return `Bash 쓰기: ${r}`; continue; }
+      if (!admin && ctx.root && !norm(path.relative(ctx.root, abs)).startsWith('..')) return `Bash 쓰기(${target})가 worktree 밖이다 — 쓰기는 worktree 안 팩과 스크립트(work.mjs brief|add|…)만.`;
+    }
     return null;
   }
   if (['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(tool)) {
@@ -58,19 +91,19 @@ export function decide(input, ctx) {
     if (!admin && RULEBOOK.test(norm(abs))) return '규칙집·원장·unit 상태는 스크립트가 쓴다. 바꾸려면 hard 결정 → CEO가 GARAGISTE_ADMIN=1.';
     const w = worktreeOf(abs, ctx.worktreesDir);
     if (!w) return admin ? null : 'conductor는 쓰지 않는다 — 쓰기는 worktree 안의 팩과 스크립트(work.mjs brief|add)만. 일반 편집 세션은 GARAGISTE_ADMIN=1.';
-    {
-      const marker = ctx.readMarker(w.dir);
-      const rule = PACK_RULES[marker];
-      if (rule?.deny && rule.deny.some((re) => re.test(w.rel))) return `${marker} 팩은 ${w.rel}에 쓸 수 없다 — 테스트·프로브·hostile은 다른 팩의 경계다.`;
-      if (rule?.allow && !rule.allow.some((re) => re.test(w.rel))) return `${marker} 팩의 쓰기 경계 밖: ${w.rel}`;
-    }
-    return null;
+    return packWriteReason(ctx.readMarker(w.dir), norm(w.rel));
   }
   return null;
 }
 export function makeCtx(root, { cwd, env = process.env, fs }) {
+  const read = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch { return null; } };
   return {
-    cwd, env, worktreesDir: path.join(root, '.worktrees'),
-    readMarker: (dir) => { try { return fs.readFileSync(path.join(dir, '.garagiste-pack'), 'utf8').trim(); } catch { return null; } },
+    cwd, env, root, worktreesDir: path.join(root, '.worktrees'),
+    // 팩 정체의 정본은 unit 상태(.garagiste/units — 스크립트만 쓴다). worktree 안 마커 파일은 unit 상태가 없을 때의 fallback일 뿐이라, 변조해도 정체가 바뀌지 않는다.
+    readMarker: (dir) => {
+      const raw = read(path.join(root, '.garagiste', 'units', `${path.basename(dir)}.json`));
+      if (raw !== null) { try { const u = JSON.parse(raw.replace(/^﻿/, '')); return u?.state && u.state !== 'shipped' ? u.state : null; } catch { return null; } }
+      return (read(path.join(dir, '.garagiste-pack')) || '').trim() || null;
+    },
   };
 }
