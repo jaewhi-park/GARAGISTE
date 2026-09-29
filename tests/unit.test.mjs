@@ -15,7 +15,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady } from '../team/scripts/work.mjs';
 import { diagnose } from '../team/scripts/doctor.mjs';
-import { globToRegex, parseLocalEnv } from '../team/scripts/lib.mjs';
+import { globToRegex, parseLocalEnv, depDirs, linkDeps } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -216,4 +216,13 @@ test('brief intake: BRIEF의 마지막 n절만 — intake는 증분이다', () =
   const t = '# BRIEF\n머리\n## 1\na\n## 2\nb\n## 3\nc\n';
   assert.equal(tailSections(t, 2), '## 2\nb\n## 3\nc\n');
   assert.equal(tailSections(t, 9), '## 1\na\n## 2\nb\n## 3\nc\n');
+});
+
+test('lib: 워크스페이스 패키지의 node_modules까지 worktree에 링크한다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-deps-')); const wt = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-wt-'));
+  for (const d of ['node_modules/a', 'packages/core/node_modules/b', 'apps/desktop/node_modules/c', 'node_modules/x/node_modules/y']) fs.mkdirSync(path.join(root, d), { recursive: true });
+  assert.deepEqual(depDirs(root), ['apps/desktop/node_modules', 'node_modules', 'packages/core/node_modules']);
+  assert.deepEqual(linkDeps(root, wt), ['apps/desktop/node_modules', 'node_modules', 'packages/core/node_modules']);
+  assert.ok(fs.lstatSync(path.join(wt, 'packages/core/node_modules')).isSymbolicLink());
+  assert.deepEqual(linkDeps(root, wt), [], '두 번째는 아무것도 안 한다');
 });

@@ -132,12 +132,28 @@ export function touchCeo(main) {
   fs.writeFileSync(p, new Date().toISOString());
 }
 export function ceoTouch(main) { return readText(path.join(main, '.garagiste', 'session', 'ceo-touch')).trim() || null; }
+// 의존성 디렉터리(node_modules · .venv)는 .gitignore 밖이라 worktree에 없다 — 루트와 워크스페이스 패키지 것까지 심볼릭 링크로 재사용
+export function depDirs(root, depth = 3) {
+  const found = [];
+  const walk = (dir, d) => {
+    for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+      if (!e.isDirectory() || e.name.startsWith('.git') || e.name === '.worktrees') continue;
+      const p = path.join(dir, e.name);
+      if (e.name === 'node_modules' || e.name === '.venv') { found.push(path.relative(root, p)); continue; }
+      if (d < depth && !e.name.startsWith('.')) walk(p, d + 1);
+    }
+  };
+  walk(root, 0);
+  return found.sort();
+}
 export function linkDeps(root, dest) {
-  // 의존성 디렉터리는 .gitignore 밖이라 worktree에 없다 — 심볼릭 링크로 재사용
-  for (const d of ['node_modules', '.venv']) {
-    const src = path.join(root, d); const dst = path.join(dest, d);
-    if (fs.existsSync(src) && !fs.existsSync(dst)) { try { fs.symlinkSync(src, dst, 'junction'); } catch { /* 링크 불가 — 프로젝트가 설치한다 */ } }
+  const linked = [];
+  for (const rel of depDirs(root)) {
+    const src = path.join(root, rel); const dst = path.join(dest, rel);
+    if (fs.existsSync(dst)) continue;
+    try { fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.symlinkSync(src, dst, 'junction'); linked.push(rel); } catch { /* 링크 불가 — 프로젝트가 설치한다 */ }
   }
+  return linked;
 }
 export function out(line) { process.stdout.write(line + '\n'); }
 export function fail(line, code = 1) { out(line); process.exit(code); }
