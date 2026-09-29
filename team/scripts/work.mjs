@@ -294,7 +294,17 @@ function models(c, args) {
     }
   }
   appendLedger(c.main, c.team, { kind: 'models', models: next });
-  out(`MODELS ${Object.entries(next).map(([k, v]) => `${k}=${v}`).join(' ')} → ${touched.length} 에이전트 파일 갱신`);
+  // 규칙집 변경엔 커밋 경로가 있어야 한다 — 2차 실기 사고 6: models가 main을 더럽혀 ship이 막혔고 conductor에겐 커밋 수단이 없다.
+  // 내부 SHIP·WIP는 drop의 wip 커밋과 같은 승인된 차선(기계적 재생성 — 원장 PASS 불요). pathspec 커밋이라 다른 변경은 쓸려 들어가지 않는다.
+  const files = ['.garagiste/team.json', ...touched];
+  let committed = false;
+  if (git(['status', '--porcelain', '--', ...files], c.main).stdout.trim()) {
+    git(['add', '--', ...files], c.main);
+    const cm = git(['commit', '-q', '-m', `scaffold(team): models ${args.join(' ')}`, '--', ...files], c.main, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' });
+    if (cm.status) fail(`FAIL models 커밋: ${(cm.stderr || cm.stdout).split('\n')[0]}`);
+    committed = true;
+  }
+  out(`MODELS ${Object.entries(next).map(([k, v]) => `${k}=${v}`).join(' ')} → ${touched.length} 에이전트 파일 갱신${committed ? ' · scaffold(team) 커밋' : ''}`);
 }
 function spawned(c, slug, pack, flags) {
   if (!slug || !PACKS.includes(pack || '')) fail('사용법: work.mjs spawned <slug|intake> <팩> [--tokens N] [--minutes M] [--model m] [--note "…"]');
