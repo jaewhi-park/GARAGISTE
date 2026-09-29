@@ -8,6 +8,7 @@ permission:
   bash: allow
   task:
     "*": deny
+    "intake": allow
     "spec": allow
     "build": allow
     "attack": allow

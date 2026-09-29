@@ -18,9 +18,9 @@ ROOT="$(cd "$PROJECT" && git rev-parse --show-toplevel 2>/dev/null)" || { echo "
 command -v node >/dev/null || { echo "node가 없다 (20 이상)" >&2; exit 1; }
 run() { if [ "$DRY" = 1 ]; then echo "  [dry] $*"; else "$@"; fi; }
 case "$BUDGET" in
-  low)    M_SPEC=sonnet; M_BUILD=haiku;  M_ATTACK=sonnet; M_SPIKE=haiku ;;
-  high)   M_SPEC=opus;   M_BUILD=opus;   M_ATTACK=opus;   M_SPIKE=sonnet ;;
-  *)      M_SPEC=opus;   M_BUILD=sonnet; M_ATTACK=opus;   M_SPIKE=sonnet; BUDGET=medium ;;
+  low)    M_INTAKE=sonnet; M_SPEC=sonnet; M_BUILD=haiku;  M_ATTACK=sonnet; M_SPIKE=haiku ;;
+  high)   M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=opus;   M_ATTACK=opus;   M_SPIKE=sonnet ;;
+  *)      M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=sonnet; M_ATTACK=opus;   M_SPIKE=sonnet; BUDGET=medium ;;
 esac
 echo "GARAGISTE 증거 팀 [$FLAVOR] → $ROOT (budget: $BUDGET)"
 # 1. 팀 정본 — 하네스 중립
@@ -33,12 +33,12 @@ run chmod +x "$ROOT/.githooks/pre-commit"
 if [ ! -f "$ROOT/.garagiste/team.json" ]; then
   run cp "$HERE/team/team.json" "$ROOT/.garagiste/team.json"
   [ "$DRY" = 0 ] && node -e '
-    const fs=require("fs"); const [p,s,b,a,k]=process.argv.slice(1); const t=JSON.parse(fs.readFileSync(p,"utf8"));
-    t.models={spec:s,build:b,attack:a,spike:k}; fs.writeFileSync(p, JSON.stringify(t,null,2)+"\n");' "$ROOT/.garagiste/team.json" "$M_SPEC" "$M_BUILD" "$M_ATTACK" "$M_SPIKE"
+    const fs=require("fs"); const [p,i,s,b,a,k]=process.argv.slice(1); const t=JSON.parse(fs.readFileSync(p,"utf8"));
+    t.models={intake:i,spec:s,build:b,attack:a,spike:k}; fs.writeFileSync(p, JSON.stringify(t,null,2)+"\n");' "$ROOT/.garagiste/team.json" "$M_INTAKE" "$M_SPEC" "$M_BUILD" "$M_ATTACK" "$M_SPIKE"
   echo "  .garagiste/team.json — commands.quick·full·test_file·run을 프로젝트 명령으로 채워라"
 fi
 # 2. 하네스 배선
-sub() { sed -e "s/{{MODEL_SPEC}}/$M_SPEC/; s/{{MODEL_BUILD}}/$M_BUILD/; s/{{MODEL_ATTACK}}/$M_ATTACK/; s/{{MODEL_SPIKE}}/$M_SPIKE/" "$1" > "$2"; }
+sub() { sed -e "s/{{MODEL_INTAKE}}/$M_INTAKE/; s/{{MODEL_SPEC}}/$M_SPEC/; s/{{MODEL_BUILD}}/$M_BUILD/; s/{{MODEL_ATTACK}}/$M_ATTACK/; s/{{MODEL_SPIKE}}/$M_SPIKE/" "$1" > "$2"; }
 if [ "$FLAVOR" = claude ]; then
   run mkdir -p "$ROOT/.claude/hooks" "$ROOT/.claude/agents"
   run cp "$HERE"/team/claude/hooks/*.mjs "$ROOT/.claude/hooks/"

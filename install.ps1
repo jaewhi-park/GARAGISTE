@@ -7,7 +7,7 @@ $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Root = (git -C $Project rev-parse --show-toplevel 2>$null); if (-not $Root) { Write-Error "git 저장소가 아니다: $Project"; exit 1 }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Error "node가 없다 (20 이상)"; exit 1 }
 function Run([scriptblock]$b, [string]$what) { if ($DryRun) { Write-Host "  [dry] $what" } else { & $b } }
-$tiers = @{ low = @{spec="sonnet";build="haiku";attack="sonnet";spike="haiku"}; medium = @{spec="opus";build="sonnet";attack="opus";spike="sonnet"}; high = @{spec="opus";build="opus";attack="opus";spike="sonnet"} }
+$tiers = @{ low = @{intake="sonnet";spec="sonnet";build="haiku";attack="sonnet";spike="haiku"}; medium = @{intake="opus";spec="opus";build="sonnet";attack="opus";spike="sonnet"}; high = @{intake="opus";spec="opus";build="opus";attack="opus";spike="sonnet"} }
 if (-not $tiers.ContainsKey($Budget)) { $Budget = "medium" }; $M = $tiers[$Budget]
 Write-Host "GARAGISTE 증거 팀 [$Flavor] → $Root (budget: $Budget)"
 foreach ($d in ".garagiste\scripts", ".garagiste\packs", ".githooks") { Run { New-Item -ItemType Directory -Force -Path (Join-Path $Root $d) | Out-Null } "mkdir $d" }
@@ -21,7 +21,7 @@ if (-not (Test-Path $team)) {
   if (-not $DryRun) { $t = Get-Content $team -Raw | ConvertFrom-Json; $t.models = $M; $t | ConvertTo-Json -Depth 8 | Set-Content $team -Encoding UTF8 }
   Write-Host "  .garagiste/team.json — commands.quick·full·test_file·run을 채워라"
 }
-function Sub($src, $dst) { (Get-Content $src -Raw).Replace("{{MODEL_SPEC}}", $M.spec).Replace("{{MODEL_BUILD}}", $M.build).Replace("{{MODEL_ATTACK}}", $M.attack).Replace("{{MODEL_SPIKE}}", $M.spike) | Set-Content $dst -Encoding UTF8 -NoNewline }
+function Sub($src, $dst) { (Get-Content $src -Raw).Replace("{{MODEL_INTAKE}}", $M.intake).Replace("{{MODEL_SPEC}}", $M.spec).Replace("{{MODEL_BUILD}}", $M.build).Replace("{{MODEL_ATTACK}}", $M.attack).Replace("{{MODEL_SPIKE}}", $M.spike) | Set-Content $dst -Encoding UTF8 -NoNewline }
 if ($Flavor -eq "claude") {
   foreach ($d in ".claude\hooks", ".claude\agents") { Run { New-Item -ItemType Directory -Force -Path (Join-Path $Root $d) | Out-Null } "mkdir $d" }
   Run { Copy-Item "$Here\team\claude\hooks\*.mjs" (Join-Path $Root ".claude\hooks") -Force } "hooks"
