@@ -175,11 +175,12 @@ test('ship: 8조건 — 하나라도 빠지면 fail-closed', () => {
     { kind: 'redproof', slug: 'h', base_red: true, head_green: true, tree: 'T' },
     { kind: 'attack', slug: 'h', tree: 'T', red: 0, total: 2 },
   ];
-  const x = { unit, slug: 'h', worktreeExists: true, clean: true, tree: 'T', ledger, machineOs: ['linux'], requireAttack: true, spikeText: '', lastSubject: 'feat(x): y', stops: [], proseKb: 10, proseMax: 40 };
+  const x = { unit, slug: 'h', worktreeExists: true, clean: true, tree: 'T', ledger, requireAttack: true, spikeText: '', lastSubject: 'feat(x): y', stops: [], proseKb: 10, proseMax: 40 };
   assert.equal(evaluateShip(x).filter((k) => !k.ok).length, 0);
   assert.deepEqual(evaluateShip({ ...x, ledger: ledger.filter((e) => e.kind !== 'attack') }).filter((k) => !k.ok).map((k) => k.id), ['attack']);
   assert.deepEqual(evaluateShip({ ...x, ledger: [ledger[0], ledger[1], { ...ledger[2], red: 1 }] }).filter((k) => !k.ok).map((k) => k.id), ['attack']);
-  assert.deepEqual(evaluateShip({ ...x, ledger: [{ ...ledger[0], platform: 'win32' }, ledger[1], ledger[2]] }).filter((k) => !k.ok).map((k) => k.id), ['full'], '사람 OS 관측은 machine이 아니다');
+  assert.equal(evaluateShip({ ...x, ledger: [{ ...ledger[0], platform: 'win32' }, ledger[1], ledger[2]] }).filter((k) => !k.ok).length, 0, '첫 Windows 실기 사고: 이 기계에서 돈 full PASS는 platform과 무관하게 증거다 — platform 허용 목록(machine_os)은 대상-OS 보증을 못 하면서 정당한 증거만 거부했다. 대상-OS는 @sensor 태그·미관측 카운트의 일이고 platform은 원장 기록으로 남는다');
+  assert.equal(team.sensors.machine_os, undefined, 'machine_os 제거의 고정 — 검출 0·오탐 1 장치는 제거된다(제거 대칭)');
   assert.deepEqual(evaluateShip({ ...x, unit: { ...unit, boundary: { hit: true } } }).filter((k) => !k.ok).map((k) => k.id), ['spike']);
   assert.deepEqual(evaluateShip({ ...x, boundaryHit: true, boundaryWhy: 'file package.json' }).filter((k) => !k.ok).map((k) => k.id), ['spike'], 'diff가 boundary 파일을 건드려도 spike');
   assert.equal(evaluateShip({ ...x, boundaryHit: true, spikeText: '- wire: 없음\n- host: linux\n- license: MIT\n- default: 없음\n- os: 없음' }).filter((k) => !k.ok).length, 0);

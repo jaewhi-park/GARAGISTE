@@ -175,7 +175,7 @@ L1 시험 준비 완료: 사전 등록 = **docs/measurements/L1-TRIAL.md**(동�
 ## L4 — 영역 확장(웹 → 데스크톱 → 게임·슈퍼앱). 확장 축은 검증 가능성.
 
 - **Q14. 사람-증거 레인.** `@sensor human`을 일급으로: 스크린샷·녹화·플레이 빌드가 원장 증거, STATUS의 「안 본 것」과 별도 집계(`state.mjs:31`에 싹 있음). claims의 미태그 기본값(machine, `claims.mjs:8`)을 unknown으로 바꿔 누락이 보이게. 검사: human 센서 unit이 CEO 판정 전 done으로 집계되지 않음.
-- **Q15. 플랫폼 센서 일반화 — 센서 없는 플랫폼엔 주장도 없다.** `sensors.machine_os`를 대상 플랫폼 목록으로; 대상 플랫폼의 verify 기록 없으면 ship FAIL(tacit의 Linux 계획·AX 0046 존재하지 않는 zip의 재발 방지). 검사: Windows 타깃 unit이 linux full만으로 ship 시도 시 FAIL.
+- **Q15. 플랫폼 센서 일반화 — 센서 없는 플랫폼엔 주장도 없다.** 대상 플랫폼 목록(신규 설계 — 옛 `machine_os`는 검증 platform의 허용 목록이라 이 일을 못 했고 win32 오탐으로 2026-09-29 제거됨)에 대해, 대상 플랫폼의 verify 기록 없으면 ship FAIL(tacit의 Linux 계획·AX 0046 존재하지 않는 zip의 재발 방지). 재료는 원장의 `platform` 필드. 검사: Windows 타깃 unit이 linux full만으로 ship 시도 시 FAIL.
 - **Q16. 멀티모달 능력 매트릭스.** provider별 입력 능력(이미지 등)을 team.json에 — 불가 provider에서 디자인 자산 unit은 사람 주석을 요구하고 그렇게 말한다. 검사: 온프렘 프로파일에서 이미지 첨부 intake가 명시적 안내 출력.
 
 **L4 게이트: 자동화 불가 수용이 있는 도메인(UI 중심 앱 1개)에서 L2 신뢰 지표 유지.**

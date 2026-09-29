@@ -11,7 +11,7 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - Claude Code 배선 `team/claude/`: settings.json(deny + 훅 3) · hooks(guard · spawn-log · session-start — 규칙은 guard-rules.mjs를 부른다) · agents 넷(10줄 spawn 설정, 모델은 -Budget) · CLAUDE.md 템플릿.
 - opencode 배선 `team/opencode/`: opencode.json(default_agent conductor) · agents 다섯(conductor primary, edit 권한 없음 + 팩 넷 subagent) · plugins/guard.ts(tool.execute.before → 같은 guard-rules, task 뒤 → checkpoint) · AGENTS.md 템플릿.
 - 커밋 게이트(`.githooks/pre-commit` → `verify.mjs gate`): 모든 커밋은 원장에 그 tree의 quick PASS가 있어야 하고, 로직 변경엔 테스트 파일이, step은 로직 300줄(2×는 이유로도 불가), 보호 브랜치엔 ship만.
-- `ship.mjs` 8조건 fail-closed: unit·full(machine OS)·redproof·attack red 0·spike 필수 행·wip 아님·열린 질문 없음·예산(미검수 3·무인 출하 5·팀 자발 unit 연속 2·산문 40 KB).
+- `ship.mjs` 8조건 fail-closed: unit·full·redproof·attack red 0·spike 필수 행·wip 아님·열린 질문 없음·예산(미검수 3·무인 출하 5·팀 자발 unit 연속 2·산문 40 KB).
 - `docs/PRINCIPLES.md` · `docs/BIRTH.md` · `docs/catalogue/`(v2 설계는 계획이 아니라 후보 카탈로그) · `team/HAZARDS.md`(v1 사고 11건, 줄마다 경로와 검사).
 - `tests/unit.test.mjs`(순수 함수) · `tests/e2e.test.mjs` 탄생 시험(claude: 빈 저장소 → 출하 → 써봤다) + 출하 원자성 + opencode 설치·doctor, 모델 0 · 네트워크 0. CI 없음 — 검증은 로컬 quick/full(Actions 미사용은 CEO 결정 26d3e94).
 
@@ -37,6 +37,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - spawn 센서 — SubagentStop의 agent_type이 팩이면 원장 `spawn_stop`(무명 stop은 기록하지 않는다: v1 무명 stop 1,024건 사고의 백신). unit당 spawn은 `pack` 줄(의도)과 `spawn_stop`(완료)이 기계로 센다.
 - LEDGER attack 열이 「선발견→최종red/총」(예 1→0/1) — attack 검출률(Q4)을 tried fail과 대조하는 계측.
 - guard가 team.json `protected_branch`로의 push를 브랜치 이름과 무관하게 거부(main|master 고정이던 구멍).
+
+### Removed — 2026-09-29 sensors.machine_os와 ship의 platform 필터 (첫 Windows 실기의 사고)
+- Windows 첫 설치에서 selftest가 ship 조건 2에 막혔다: verify full은 PASS인데 platform `win32`가 기본 목록(`["linux","darwin"]`)에 없어 증거가 거부됐다. 이 필터는 「어디서 검증해도 되는가」의 허용 목록일 뿐 대상-OS 보증(HAZARDS 14)은 하지 못하면서 정당한 증거만 거부했다 — 검출 0·오탐 1로 제거. 대상-OS 보증은 `@sensor` 태그·STATUS의 target-OS 미관측 카운트가 계속 맡고, verify의 `platform`은 원장 필드로 계속 기록된다(L4 플랫폼 센서의 재료). 기존 설치본의 team.json에 남은 `machine_os` 키는 무해하게 무시된다 — 수정 불필요, 스크립트 재설치만 하면 된다.
 
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
