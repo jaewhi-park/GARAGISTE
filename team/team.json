@@ -51,6 +51,6 @@
     "step_logic_lines_max": 300,
     "spike_minutes": 30
   },
-  "sensors": { "machine_os": ["linux", "darwin"], "human_os": [] },
+  "sensors": { "human_os": [] },
   "require_attack": true
 }

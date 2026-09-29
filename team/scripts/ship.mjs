@@ -14,8 +14,9 @@ export function evaluateShip(x) {
   const scaffold = x.unit?.kind === 'scaffold';
   const teamChanged = !scaffold && (x.changed || []).includes('.garagiste/team.json'); // 검증 명령·예산의 재작성은 boot의 일이지 어느 팩의 일도 아니다 (HAZARDS 8형)
   c.push({ id: 'unit', ok: !!x.unit && x.unit.state !== 'shipped' && x.worktreeExists && x.clean && !teamChanged, why: !x.unit ? 'unit 없음' : x.unit.state === 'shipped' ? '이미 출하' : !x.worktreeExists ? 'worktree 없음' : !x.clean ? '작업 트리가 깨끗하지 않다' : teamChanged ? 'team.json 변경은 boot(scaffold) unit만 — 검증 명령·예산은 CEO 결정' : '' });
-  const full = x.ledger.find((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === x.tree && x.machineOs.includes(e.platform));
-  c.push({ id: 'full', ok: !!full, why: full ? '' : `이 tree(${short(x.tree)})의 verify full PASS(machine OS) 없음 — worktree에서 node .garagiste/scripts/verify.mjs full (마지막 커밋 뒤)` });
+  // platform은 원장에 기록만 한다 — 어디서 돌았든 이 tree의 full PASS가 증거다. 대상-OS 보증은 @sensor 태그·target-OS 미관측 카운트의 일(HAZARDS 14; 옛 machine_os 필터는 그 일을 못 하면서 win32의 정당한 증거를 거부했다 — 첫 Windows 실기 사고).
+  const full = x.ledger.find((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === x.tree);
+  c.push({ id: 'full', ok: !!full, why: full ? '' : `이 tree(${short(x.tree)})의 verify full PASS 없음 — worktree에서 node .garagiste/scripts/verify.mjs full (마지막 커밋 뒤)` });
   const rpAny = scaffold ? true : [...x.ledger].reverse().find((e) => e.kind === 'redproof' && e.slug === x.slug && e.base_red && e.head_green === true);
   const rp = scaffold || (rpAny && rpAny.tree === x.tree ? rpAny : null);
   c.push({ id: 'redproof', ok: !!rp, why: rp ? '' : rpAny ? `redproof가 이전 tree의 것 — 마지막 커밋 뒤 다시: node .garagiste/scripts/redproof.mjs ${x.slug}` : `base red · head green 증명 없음 — node .garagiste/scripts/redproof.mjs ${x.slug}` });
@@ -56,7 +57,7 @@ function main() {
   const changed = exists && base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
   const diffHit = checkBoundary(c.team, { files: changed });
   const conds = evaluateShip({
-    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, machineOs: c.team.sensors.machine_os,
+    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed,
     boundaryHit: !!unit.boundary?.hit || diffHit.hit, boundaryWhy: unit.boundary?.hit ? '원문' : diffHit.reasons.join(', '),
     requireAttack: c.team.require_attack !== false, spikeText: readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`)),
     lastSubject: exists ? git(['log', '-1', '--format=%s'], wt).stdout : '', stops: b.stops, proseKb: proseKb(c.main), proseMax: c.team.budgets.prose_kb_max,
