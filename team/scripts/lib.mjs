@@ -82,7 +82,11 @@ export function indexTree(cwd) { return git(['write-tree'], cwd).stdout; }
 export function headTree(cwd) { return git(['rev-parse', 'HEAD^{tree}'], cwd).stdout; }
 export function headSha(cwd) { return git(['rev-parse', 'HEAD'], cwd).stdout; }
 export function isClean(cwd) { return git(['status', '--porcelain'], cwd).stdout === ''; }
-export function dirtyFiles(cwd) { return git(['status', '--porcelain', '-uall'], cwd).stdout.split('\n').filter(Boolean).map((l) => l.slice(3)); }
+// 사고 12(2차 실기): sh()는 stdout을 trim한다 — porcelain 첫 줄이 ' M …'(비스테이징 수정)이면 선행 공백이 지워져 slice(3)이 경로 첫 글자를 먹는다(ocs/BACKLOG.md). 여기선 원문을 쓴다.
+export function dirtyFiles(cwd) {
+  const r = spawnSync('git', ['status', '--porcelain', '-uall'], { cwd, encoding: 'utf8' });
+  return (r.stdout || '').split('\n').filter(Boolean).map((l) => l.slice(3));
+}
 export function currentBranch(cwd) { return git(['rev-parse', '--abbrev-ref', 'HEAD'], cwd).stdout; }
 export function mergeBase(cwd, ref) { const r = git(['merge-base', 'HEAD', ref], cwd); return r.status ? null : r.stdout; }
 export function globToRegex(glob) {
