@@ -55,9 +55,11 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
   fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
   git(['add', '-A'], repo);
-  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 1, '설치 뒤 첫 커밋도 원장 PASS 없이는 닫힌다');
+  const c1 = git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' });
+  assert.equal(c1.status, 1, '설치 뒤 첫 커밋도 원장 PASS 없이는 닫힌다: ' + c1.out);
   assert.match(script('verify', ['quick'], repo).out, /^PASS verify:quick/);
-  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  const c2 = git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' });
+  assert.equal(c2.status, 0, c2.out); // 게이트가 거부하면 그 이유가 여기 찍힌다 (win32 진단 — 사고 18 후속)
   const doc = script('doctor', [], repo).out;
   assert.match(doc, /FAIL doctor 1\n- session-start alive 마커 없음/, '첫 세션 전엔 alive만 빠진다: ' + doc);
 
@@ -200,7 +202,8 @@ test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 
   fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
   git(['add', '-A'], repo);
   script('verify', ['quick'], repo);
-  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  const c9 = git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' });
+  assert.equal(c9.status, 0, c9.out); // win32 진단 — 게이트 거부 사유 노출
   script('work', ['new', 'atom', '원자성 확인'], repo);
   const wt = path.join(repo, '.worktrees', 'atom');
   write(wt, 'tests/acceptance/atom.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';\ntest('atom 산출물', () => { assert.ok(fs.existsSync('src/atom.mjs')); });\n");

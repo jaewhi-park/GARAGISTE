@@ -133,7 +133,7 @@ function createUnit(c, slug, origin, opts = {}) {
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec');
   const unit = {
     slug, kind, origin, origin_kind: from, milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
-    created: new Date().toISOString(), state: kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt), boundary,
+    created: new Date().toISOString(), state: kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt).replace(/\\/g, '/'), boundary, // 저장 경로는 /로 — listFiles와 같은 법(사고 18)
     defaults: [], questions: [], tried: null, shipped: null, sensor: null,
   };
   saveUnit(c.main, c.team, unit);
