@@ -165,7 +165,8 @@ function main() {
     // 새 base 위 공격 회귀는 머지 전 검사를 빠져나간다 — 세 증거 전부를 새 tree에 다시 묶는다(순수 기계 일).
     if (unit.kind !== 'scaffold') {
       const rp = sh(process.execPath, [path.join(c.main, '.garagiste', 'scripts', 'redproof.mjs'), slug], { cwd: c.main });
-      if (rp.status) fail(`FAIL ship: 통합 tree redproof FAIL\n${(rp.stdout || rp.stderr).trim()}`);
+      // 사고 24: redproof는 re-spec(정체 spec)의 head red를 RED(exit 0)로 낸다 — 통합 tree는 exit가 아니라 PASS 줄로만 통과한다
+      if (rp.status || !/^PASS redproof/.test(rp.stdout || '')) fail(`FAIL ship: 통합 tree redproof FAIL\n${(rp.stdout || rp.stderr).trim()}`);
       const ak = sh(process.execPath, [path.join(c.main, '.garagiste', 'scripts', 'verify.mjs'), 'attack', slug], { cwd: c.main });
       const akRed = /red (\d+)\//.exec(ak.stdout || '');
       if (ak.status || (akRed && Number(akRed[1]) > 0)) fail(`FAIL ship: 통합 tree attack red\n${(ak.stdout || ak.stderr).trim()}`);
