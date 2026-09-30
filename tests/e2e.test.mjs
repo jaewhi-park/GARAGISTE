@@ -168,8 +168,19 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(fs.readFileSync(path.join(repo, ip.out.split(' ')[1]), 'utf8'), /## 결정된 것[\s\S]*api\.example 하나만/, '닫힌 결정은 intake 팩에도 — 답 난 것을 다시 묻지 않는다');
   assert.match(script('work', ['add', 'session', '로그인한 사람만', '--milestone', 'M1', '--accept', 'POST /login → 200'], repo).out, /^ADD session M1/);
   assert.match(script('work', ['add', 'memo', '메모를 쓴다', '--milestone', 'M1', '--needs', 'session'], repo).out, /needs=session/);
-  assert.match(script('work', ['add', 'export', '메모는 내보낼 수 있다', '--milestone', 'M2', '--needs', 'memo,Q2'], repo).out, /^ADD export M2/);
-  assert.match(script('work', ['ask', 'intake', '내보내기 형식은 CSV 하나로 충분한가?'], repo).out, /^Q2 queued/);
+  // 사고 23(3차 실기): intake가 Q 번호를 짐작해 한 칸 밀려 적었다(needs 오연결 6 unit) — 없는 번호는 add가 거부하고, 번호는 ask --for가 잇는다
+  assert.match(script('work', ['add', 'export', '메모는 내보낼 수 있다', '--milestone', 'M2', '--needs', 'memo,Q2'], repo).out, /^FAIL needs Q2: DECISIONS에 없는 질문/);
+  assert.match(script('work', ['add', 'export', '메모는 내보낼 수 있다', '--milestone', 'M2', '--needs', 'memo'], repo).out, /^ADD export M2/);
+  assert.match(script('work', ['ask', 'intake', '내보내기 형식은 CSV 하나로 충분한가?', '--for', 'export'], repo).out, /^Q2 queued — needs에 연결: export/);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] export · M2 · needs: memo,Q2 · /, '번호는 스크립트가 잇는다 — 에이전트가 옮겨 적지 않는다');
+  // needs 수정 명령: 어긋난 선행을 conductor가 고친다(메인 전용 · 원장에 남는다)
+  assert.match(script('work', ['needs', 'memo', 'session,Q2'], repo).out, /^NEEDS memo session → session,Q2/);
+  assert.match(script('work', ['needs', 'memo', 'session'], repo).out, /^NEEDS memo session,Q2 → session/);
+  assert.match(script('work', ['needs', 'memo', 'Q9'], repo).out, /^FAIL needs Q9: DECISIONS에 없는 질문/);
+  assert.match(script('work', ['needs', 'memo', 'nosuch'], repo).out, /^FAIL needs nosuch: BACKLOG에 없는 unit/);
+  assert.match(script('work', ['needs', 'session', 'memo'], repo).out, /^FAIL needs 순환/);
+  assert.match(script('work', ['needs', 'memo', 'session'], path.join(repo, '.worktrees', 'net')).out, /^FAIL needs는 메인 저장소에서만/);
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"needs","slug":"memo","from":\["session","Q2"\],"to":\["session"\]/);
   assert.match(script('work', ['decide', '2', 'CSV 하나'], repo).out, /^PASS decide Q2/);
   const sc = script('work', ['scope', 'export'], repo).out;
   assert.match(sc, /^SCOPE 요청 1 · 선행 2 · 없는 선행 0\n- 선행: session \(memo가 needs\) · memo \(export가 needs\)\n- 순서: session → memo → export/, sc);

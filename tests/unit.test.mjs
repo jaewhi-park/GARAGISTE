@@ -11,11 +11,11 @@ import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
-import { evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
+import { attackCell, evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { closedDecisions, fit, fence, matchHazards, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS } from '../team/scripts/work.mjs';
+import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
 
@@ -87,6 +87,7 @@ test('guard: R2 — tried·decide는 팩(worktree 컨텍스트)이 부르지 않
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs tried hello ok'), gctx(null)), null, 'conductor(메인)는 CEO의 말을 중계한다');
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs default hello "포트 3000"', wt), gctx('build')), null, 'default는 팀의 기록 — 접점이 아니다');
   assert.match(decide(bash('node .garagiste/scripts/work.mjs drop hello "안 되겠다"', wt), gctx('build')) || '', /팩은 부르지 않는다/, '방향전환(drop)은 conductor의 일이다');
+  assert.match(decide(bash('node .garagiste/scripts/work.mjs needs memo session', wt), gctx('build')) || '', /팩은 부르지 않는다/, '사고 23: 선행 재배선(needs)도 conductor의 일 — 팩이 자기 WAIT를 풀지 않는다');
 });
 test('guard: 보호 브랜치가 main이 아니어도 push가 막힌다', () => {
   const pb = { ...gctx(null), protectedBranch: 'claude/quirky-wozniak-keqgbi' };
@@ -236,6 +237,19 @@ test('ship: 8조건 — 하나라도 빠지면 fail-closed', () => {
   assert.equal(evaluateShip({ ...x, unit: { ...unit, kind: 'scaffold' }, ledger: [ledger[0]] }).filter((k) => !k.ok).length, 0, 'scaffold(boot)는 redproof·attack 없이 full만으로 ship');
   assert.equal(evaluateShip({ ...x, unit: { ...unit, kind: 'scaffold' }, ledger: [ledger[0]], boundaryHit: true }).filter((k) => !k.ok).length, 0, 'scaffold의 매니페스트는 spike 대상이 아니다');
 });
+test('ship: attack 열 = 선발견→최종 red/총 — 선발견은 이 unit 생애의 attack 실행에서 한 번이라도 red였던 adversary 파일의 합집합 (사고 23 집계 정의)', () => {
+  const ledger = [
+    { ts: '2026-09-30T01:00:00Z', kind: 'attack', slug: 'h', red: 1, total: 1, files: ['tests/adversary/h-old.test.mjs'] }, // drop 전 생애
+    { ts: '2026-09-30T02:00:00Z', kind: 'attack', slug: 'h', red: 2, total: 3, files: ['tests/adversary/h-1.test.mjs', 'tests/adversary/h-2.test.mjs'] },
+    { ts: '2026-09-30T02:10:00Z', kind: 'attack', slug: 'h', red: 1, total: 3, files: ['tests/adversary/h-3.test.mjs'] },
+    { ts: '2026-09-30T02:20:00Z', kind: 'attack', slug: 'h', red: 1, total: 3, files: ['tests/adversary/h-1.test.mjs'] },
+    { ts: '2026-09-30T02:30:00Z', kind: 'attack', slug: 'h', red: 0, total: 3, files: [] },
+    { ts: '2026-09-30T02:40:00Z', kind: 'attack', slug: 'other', red: 5, total: 5, files: ['x'] },
+  ];
+  assert.equal(attackCell({ ledger, slug: 'h', since: '2026-09-30T01:30:00Z' }), '3→0/3', '원장 attack 한 줄(2/3)은 그 실행의 스냅숏 — 선발견은 실행 전체의 합집합, 같은 파일의 재-red는 한 번');
+  assert.equal(attackCell({ ledger, slug: 'h' }), '4→0/3', 'since 없이는 drop 전 생애까지 센다 — ship은 unit.created를 넘긴다');
+  assert.equal(attackCell({ ledger: [], slug: 'h', since: '' }), '0→0/0');
+});
 test('ship: team.json rebase 충돌은 키 단위 3-way — 겹치지 않으면 병합, 같은 키가 갈리면 없음 (2차 실기 사고 7)', () => {
   const base = { models: { build: 'sonnet' }, commands: { quick: '' }, paths: { ledger: 'x' } };
   const ours = { ...base, models: { build: 'opus' } };                 // main: models만 (work.mjs models)
@@ -316,6 +330,18 @@ test('work: 결정 큐 번호와 답 기록', () => {
   assert.equal(nextQuestionNumber(''), 1);
   assert.match(decideLine(t, 1, '예', '2026-09-30'), /- \[x\] Q1 \(a\): 빈 메모 저장\? → 예 \(2026-09-30\)/);
   assert.equal(decideLine(t, 2, '예', '2026-09-30'), null, '이미 닫힌 질문');
+});
+test('work: needs의 Q 번호는 ask가 준 것만 — intake가 번호를 짐작해 한 칸 밀려 적었다 (3차 실기 사고 23)', () => {
+  const dec = '# DECISIONS\n\n## 정해 주세요\n- [ ] Q2 (intake): CSV?\n\n## 정한 것\n- [x] Q1 (net): 호스트? → api (2026-09-30)\n';
+  assert.deepEqual(unknownQuestions(['memo', 'Q1', 'Q2', 'Q3'], dec), ['Q3'], '없는 번호는 짐작이다 — add·needs가 거부한다');
+  assert.deepEqual(unknownQuestions(['memo'], ''), []);
+  const bl = ['- [ ] memo · M1 · needs: session · "m" · 인수: -', '- [ ] export · M2 · needs: - · "e" · 인수: -', '- [x] session · M1 · needs: - · "s" · 인수: -'].join('\n') + '\n';
+  const t1 = setNeeds(bl, 'export', ['memo', 'Q2']);
+  assert.match(t1, /^- \[ \] export · M2 · needs: memo,Q2 · "e" · 인수: -$/m);
+  assert.equal(t1.replace(/^- \[ \] export .*$/m, ''), bl.replace(/^- \[ \] export .*$/m, ''), '다른 줄은 바이트 그대로');
+  assert.match(setNeeds(t1, 'export', []), /^- \[ \] export · M2 · needs: - · /m, '빈 목록은 -');
+  assert.equal(setNeeds(bl, 'session', ['memo']), null, '닫힌 줄은 고치지 않는다');
+  assert.equal(setNeeds(bl, 'nope', ['memo']), null);
 });
 test('doctor: R8 — fresh 항목(alive·빈 commands)만 통과, 구조 결함은 seed·ship을 막는다', () => {
   const probs = ['session-start alive 마커 없음 → 첫 세션이면 정상', 'team.json commands.quick 비어 있음 → boot이 채운다', 'core.hooksPath=(없음) → git config core.hooksPath .githooks'];

@@ -80,6 +80,10 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-10-01 intake의 Q 번호 밀림·needs 수정 명령 부재·attack 집계 정의 (3차 실기의 사고 23)
+- intake가 질문 번호를 짐작해(ask 전 add, 또는 계획 번호) 한 칸 밀려 적어 needs가 6 unit에 잘못 걸렸고, BACKLOG를 고칠 명령이 없어 CEO가 결정 전부로 우회했다. e2e 탄생 시험도 같은 꼴(`--needs memo,Q2`를 ask 전에)을 담고 있었다 — 그것이 재현 red. 수리: `add`·`needs`는 DECISIONS에 없는 Q<n>을 거부하고, `ask intake "<질문>" --for <slug,…>`가 받은 번호를 그 unit들의 needs에 스크립트로 잇는다(에이전트가 번호를 옮겨 적지 않는다 — 위치를 무의미하게 만든 사고 9와 같은 처방). 어긋난 선행은 `work.mjs needs <slug> <a,b|Q<n>|->`로 conductor가 고친다: 메인 전용(가드도 팩의 호출을 거부 — 팩이 자기 WAIT를 풀지 않는다), 없는 unit·Q·순환 거부, seed된 unit의 needs 사본 동기화, 원장 `needs` 줄(from·to).
+- attack 집계: 원장 attack 줄의 red/total(실행 한 번의 스냅숏, 예 2/3)과 LEDGER 열(선발견→최종 red/총, 예 3→0/3)이 다른 수로 읽혔다. 정의를 `attackCell` 하나로 고정 — 선발견 = 이 unit 생애(unit.created 이후, drop 전 생애 제외)의 attack 실행에서 한 번이라도 red였던 adversary 파일의 합집합, 최종 red = 0(ship 조건), 총 = 마지막 실행의 파일 수. LEDGER 머리 열 이름이 정의를 말한다. 검사: unknownQuestions·setNeeds·attackCell 단위 테스트 + e2e(짐작 번호 거부 → ask --for 연결 → needs 수정·거부 4종·원장 줄) + 가드 단위 테스트.
+
 ### Fixed — 2026-09-30 rebase 뒤 증거의 반쪽 재기록 (3차 실기의 사고 22)
 - ship의 rebase가 tree를 바꾸면 통합 full만 새 tree에 재기록됐다 — 롤백이 rebase된 worktree를 남기면 다음 ship이 「redproof·attack이 이전 tree」로 막히는 핑퐁이 되고(main이 또 움직이면 반복), 더 나쁘게는 **새 base 위에서 생긴 공격 회귀가 머지 전 검사를 빠져나갈 수 있었다**. 수리: tree 변경 시 ship이 redproof·attack도 스스로 재실행·재기록하고, 통합 tree의 attack red>0·redproof 실패는 머지 전에 FAIL — 「ship 한 번」이 main 이동과 무관하게 참이 된다. 검사: e2e(증거 기록 뒤 main 커밋 삽입 → ship 한 번에 SHIPPED).
 
