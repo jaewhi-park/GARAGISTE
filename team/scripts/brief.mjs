@@ -24,6 +24,16 @@ export function fit(sections, maxBytes) {
   }
   return { text: cur.map((x) => x.text).join('\n\n'), bytes: size(cur), ok: size(cur) <= maxBytes };
 }
+// 사고 25(4차 실기): FAIL은 fit이 부대물을 전부 포인터로 줄인 뒤에만 난다 — 넘는 것은 언제나 법이다.
+// 옛 안내(「acceptance면 unit split, 부대물이면 상한을 올려라」)는 split 명령이 없어 실행할 수 없었고, 둘째 갈래는 이 자리에서 참일 수 없었다.
+export function overflowAdvice({ bytes, capKb, slug, mult = 1 }) {
+  const need = Math.ceil(bytes / 1024 / mult);
+  return [
+    `- 부대물(diff·hazards·brief·이어받기·try·surface)은 이미 포인터로 줄였다 — 넘는 것은 법(인수·규칙·결정·원문)이다. conductor가 할 일은 없다: 이 줄을 CEO에게.`,
+    `- CEO 결정 ①: .garagiste/team.json budgets.pack_kb_max를 ${need} 이상으로(지금 ${capKb / mult}, CEO 커밋) — 인수가 이미 build 위에 있으면 이쪽이 싸다`,
+    `- CEO 결정 ②: unit을 나눈다 — 방향전환: work.mjs drop ${slug} "<사유>" 뒤 work.mjs add로 쪼갠 줄, scope 다시`,
+  ].join('\n');
+}
 export function matchHazards(hazardsText, files) {
   const lines = hazardsText.split('\n').filter((l) => l.startsWith('- '));
   const hit = [];
@@ -136,7 +146,7 @@ function main() {
   if (pack === 'attack' && base) sec('diff', 'diff (base..HEAD)', `\`\`\`diff\n${git(['diff', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`], wt).stdout}\n\`\`\``);
   const capKb = c.team.budgets.pack_kb_max * (pack === 'boot' ? 4 : 1); // boot는 intake처럼 BRIEF 전문을 진다
   const r = fit(sections, capKb * 1024);
-  if (!r.ok) fail(`FAIL 팩 ${Math.round(r.bytes / 1024)}KB > ${capKb}KB\n- 절별: ${packBreakdown(sections)}\n- 가장 큰 절이 acceptance면 unit을 나누고(unit split), 부대물이면 team.json budgets.pack_kb_max를 실측으로 올려라(CEO 커밋)`);
+  if (!r.ok) fail(`FAIL 팩 ${Math.round(r.bytes / 1024)}KB > ${capKb}KB\n- 절별: ${packBreakdown(sections)}\n${overflowAdvice({ bytes: r.bytes, capKb, slug, mult: pack === 'boot' ? 4 : 1 })}`);
   const dir = path.join(c.main, c.team.paths.packs); fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${slug}-${pack}-${stamp()}.md`);
   fs.writeFileSync(file, r.text + '\n');
