@@ -51,10 +51,22 @@ export function evaluateShip(x) {
   const head = !/^wip:/.test(x.lastSubject || '');
   c.push({ id: 'head', ok: head, why: head ? '' : 'HEAD가 wip 체크포인트 — build를 다시 띄워 끝내라' });
   const qs = x.openQuestions || []; // 이 unit이 올린 질문에 답이 없으면 출하하지 않는다 — 비가역 결정을 기본값이 대신하지 못하게
-  c.push({ id: 'questions', ok: !qs.length, why: qs.length ? `이 unit의 열린 질문 ${qs.join(' · ')} — node .garagiste/scripts/work.mjs decide <n> "<답>" 뒤에 ship` : '' });
+  const rs = (x.unit?.respec || []).map((r) => `Q${r.q}`); // 사고 17: 닫혔지만 spec이 아직 받지 않은 답 — 닫힘은 반영이 아니다
+  c.push({ id: 'questions', ok: !qs.length && !rs.length, why: [
+    qs.length ? `이 unit의 열린 질문 ${qs.join(' · ')} — node .garagiste/scripts/work.mjs decide <n> "<답>" 뒤에 ship` : '',
+    rs.length ? `${rs.join('·')}의 답이 진행 중에 왔는데 spec이 아직 받지 않았다 — node .garagiste/scripts/brief.mjs spec ${x.slug} → build → ship` : '',
+  ].filter(Boolean).join('; ') });
   const budgetOk = x.stops.length === 0 && x.proseKb <= x.proseMax;
   c.push({ id: 'budget', ok: budgetOk, why: budgetOk ? '' : [...x.stops, ...(x.proseKb > x.proseMax ? [`규칙 산문 ${x.proseKb}KB > ${x.proseMax}KB`] : [])].join('; ') });
   return c;
+}
+// LEDGER attack 열 = 「선발견→최종 red/총」 — 정의는 이 함수 하나다(사고 23: 원장 attack 줄 2/3과 LEDGER 3→0/3이 다른 수로 읽혔다).
+// 선발견 = 이 unit 생애(since = unit.created — drop 전 생애 제외)의 attack 실행에서 한 번이라도 red였던 adversary 파일의 합집합.
+// 원장 attack 줄의 red/total은 실행 한 번의 스냅숏이다. 최종 red는 0(ship 조건 attack이 보증), 총 = 마지막 실행의 adversary 파일 수.
+export function attackCell({ ledger, slug, since = '' }) {
+  const runs = ledger.filter((e) => e.kind === 'attack' && e.slug === slug && (e.ts || '') >= since);
+  const caught = new Set(runs.filter((e) => e.red > 0).flatMap((e) => e.files || [])).size;
+  return `${caught}→0/${runs.length ? runs[runs.length - 1].total : 0}`;
 }
 export function proseKb(main) {
   const files = ['CLAUDE.md', 'AGENTS.md', '.garagiste/HAZARDS.md', ...listFiles(path.join(main, '.garagiste', 'packs')).map((f) => path.join('.garagiste', 'packs', f))];
@@ -179,11 +191,9 @@ function main() {
   unit.sensor = tags.find((t) => t.sensor.startsWith('human'))?.sensor || 'machine';
   unit.state = 'shipped'; unit.shipped = new Date().toISOString(); unit.head = head; saveUnit(c.main, c.team, unit);
   const ledgerDoc = path.join(c.main, c.team.paths.ledger_doc);
-  if (!fs.existsSync(ledgerDoc)) fs.writeFileSync(ledgerDoc, '# LEDGER — 증명 커밋. 한 줄 = 출하 하나 = 기계가 확인한 사실의 목록.\n\n| 날짜 | unit | head | tree | full | redproof | attack | sensor |\n|---|---|---|---|---|---|---|---|\n');
-  const at = [...ledger].reverse().find((e) => e.kind === 'attack' && e.slug === slug);
-  // Q4 계측: attack이 선(先)발견한 결함 수 = 한 번이라도 red였던 adversary 파일의 합집합 — CEO의 tried fail(후발견)과 대조하는 열
-  const caught = new Set(ledger.filter((e) => e.kind === 'attack' && e.slug === slug && e.red > 0).flatMap((e) => e.files || [])).size;
-  const atCell = unit.kind === 'scaffold' ? '—' : `${caught}→0/${at ? at.total : 0}`;
+  if (!fs.existsSync(ledgerDoc)) fs.writeFileSync(ledgerDoc, '# LEDGER — 증명 커밋. 한 줄 = 출하 하나 = 기계가 확인한 사실의 목록.\n\n| 날짜 | unit | head | tree | full | redproof | attack 선발견→red/총 | sensor |\n|---|---|---|---|---|---|---|---|\n');
+  // Q4 계측: attack 선발견 — CEO의 tried fail(후발견)과 대조하는 열. 정의는 attackCell 하나(사고 23)
+  const atCell = unit.kind === 'scaffold' ? '—' : attackCell({ ledger, slug, since: unit.created });
   const row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'} | ${atCell} | ${unit.sensor} |\n`;
   fs.appendFileSync(ledgerDoc, row);
   const backlog = path.join(c.main, c.team.paths.backlog);

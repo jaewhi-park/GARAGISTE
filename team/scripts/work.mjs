@@ -1,9 +1,9 @@
-// work — unit의 생애와 입구: brief(구상 원문 축적) · add(BACKLOG unit 줄) · scope(범위 + 선행 닫힘) · seed(다음 unit 자동) · new · ask/decide · default · tried · list
+// work — unit의 생애와 입구: brief(구상 원문 축적) · add(BACKLOG unit 줄) · needs(선행 수정) · scope(범위 + 선행 닫힘) · seed(다음 unit 자동) · new · ask/decide · default · tried · list
 import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
-import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readText, saveUnit, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot'];
@@ -87,8 +87,28 @@ export function decideLine(text, n, answer, date) {
   if (!re.test(text)) return null;
   return text.replace(re, (_, rest) => `- [x] Q${n}${rest} → ${answer} (${date})`);
 }
+// 사고 23(3차 실기): intake가 Q 번호를 짐작해 한 칸 밀려 적었다 — needs의 Q<n>은 DECISIONS에 있는 번호(ask가 준 것)만
+export function unknownQuestions(needs, decisionsText) {
+  const known = new Set([...String(decisionsText || '').matchAll(/^- \[[ x]\] (Q\d+)/gm)].map((m) => m[1]));
+  return needs.filter((n) => /^Q\d+$/.test(n) && !known.has(n));
+}
+// 사고 17(2차 실기): 닫힘은 반영이 아니다 — Q<n>에 기대는 진행 중 unit 중 이번 생애(created 이후)에 spec이 답 없이 이미 돈 것.
+// 첫 spec 전이면 그 팩이 답을 담으므로 대상이 아니다. 출하·dropped는 끝났고, scaffold(boot)엔 spec이 없다.
+export function respecTargets({ units, ledger, n }) {
+  return units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped' && u.kind !== 'scaffold'
+    && ((u.questions || []).includes(n) || (u.needs || []).includes(`Q${n}`))
+    && ledger.some((e) => e.kind === 'pack' && e.pack === 'spec' && e.slug === u.slug && (e.ts || '') >= (u.created || '')))
+    .map((u) => u.slug);
+}
+// BACKLOG 열린 줄 하나의 needs만 바꾼다 — 다른 줄은 바이트 그대로, 닫힌 줄·없는 줄은 null
+export function setNeeds(text, slug, needs) {
+  const re = new RegExp(`^(- \\[ \\] ${slug} · \\S+ · needs: )\\S+( · .*)$`, 'm');
+  if (!re.test(text)) return null;
+  return text.replace(re, (_, head, tail) => `${head}${needs.length ? needs.join(',') : '-'}${tail}`);
+}
 
 const backlogPath = (c) => path.join(c.main, c.team.paths.backlog);
+const NO_GUESS = 'DECISIONS에 없는 질문 — 번호를 짐작하지 않는다: unit을 먼저 add하고 work.mjs ask intake "<질문>" --for <slug,…>가 번호를 needs에 잇는다';
 function readBacklog(c) { return readText(backlogPath(c)); }
 function appendBacklog(c, line) {
   const p = backlogPath(c); fs.mkdirSync(path.dirname(p), { recursive: true });
@@ -111,6 +131,8 @@ function add(c, slug, origin, flags) {
   if (!origin) fail('FAIL 원문이 없다: work.mjs add <slug> "<원문 한 문장>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"]');
   if (parseBacklog(readBacklog(c)).some((i) => i.slug === slug)) fail(`FAIL BACKLOG에 있음: ${slug}`);
   const needs = (flags.needs || '-') === '-' ? [] : flags.needs.split(',').map((s) => s.trim()).filter(Boolean);
+  const unknownQ = unknownQuestions(needs, readText(path.join(c.main, c.team.paths.decisions)));
+  if (unknownQ.length) fail(`FAIL needs ${unknownQ.join(',')}: ${NO_GUESS}`);
   appendBacklog(c, backlogLine({ slug, milestone: flags.milestone || 'M?', needs, origin, accept: flags.accept || '-', kind: flags.kind }));
   out(`ADD ${slug} ${flags.milestone || 'M?'} needs=${needs.join(',') || '-'}${flags.kind && flags.kind !== 'feature' ? ` kind=${flags.kind}` : ''}`);
 }
@@ -188,16 +210,53 @@ function decisionsFile(c) {
   if (!fs.existsSync(p)) { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, DECISIONS_TEMPLATE); }
   return p;
 }
-function ask(c, slug, question) {
+// 사고 23: 기대는 unit을 --for로 받으면 번호는 스크립트가 그 needs에 잇는다 — 에이전트가 번호를 옮겨 적지 않는다(짐작은 한 칸 밀렸다)
+function ask(c, slug, question, flags = {}) {
   if (!question) fail('FAIL 질문이 없다');
   const u = slug === 'intake' ? null : loadUnit(c.main, c.team, slug);
+  const forSlugs = flags.for ? flags.for.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  let bl = readBacklog(c);
+  const items = parseBacklog(bl);
+  const bad = forSlugs.filter((s) => !items.some((i) => i.slug === s && !i.done));
+  if (bad.length) fail(`FAIL --for ${bad.join(',')}: BACKLOG의 열린 unit이 아니다 — work.mjs add 먼저`);
   const p = decisionsFile(c);
   const text = readText(p);
   const n = nextQuestionNumber(text);
   const line = `- [ ] Q${n} (${slug}): ${q(question)}`;
   fs.writeFileSync(p, text.includes('## 정해 주세요') ? text.replace('## 정해 주세요\n', `## 정해 주세요\n${line}\n`) : text + `\n## 정해 주세요\n${line}\n`);
   if (u) { u.questions.push(n); saveUnit(c.main, c.team, u); }
-  out(`Q${n} queued — ${slug === 'intake' ? `needs: Q${n}으로 기대는 unit은 답이 올 때까지 WAIT` : `${slug}은 답이 올 때까지 이 질문 밖에서만 진행`}`);
+  for (const s of forSlugs) {
+    const needs = [...new Set([...items.find((i) => i.slug === s).needs, `Q${n}`])];
+    bl = setNeeds(bl, s, needs); syncUnitNeeds(c, s, needs);
+  }
+  if (forSlugs.length) fs.writeFileSync(backlogPath(c), bl);
+  out(`Q${n} queued — ${forSlugs.length ? `needs에 연결: ${forSlugs.join(',')} (답이 올 때까지 WAIT)` : slug === 'intake' ? `needs: Q${n}으로 기대는 unit은 답이 올 때까지 WAIT` : `${slug}은 답이 올 때까지 이 질문 밖에서만 진행`}`);
+}
+// seed된 unit의 needs 사본도 맞춘다 — 팩의 결정 스코프(scopedDecisions)가 unit.needs를 읽는다
+function syncUnitNeeds(c, slug, needs) {
+  const u = readJson(unitFile(c.main, c.team, slug), null);
+  if (u && u.state !== 'shipped' && u.state !== 'dropped') { u.needs = needs; saveUnit(c.main, c.team, u); }
+}
+// 사고 23(3차 실기): 번호 밀림으로 needs가 6 unit에 잘못 걸렸는데 고칠 명령이 없어 결정 전부로 우회했다 — 어긋난 선행은 conductor가 고치고 원장에 남는다
+function needsCmd(c, slug, list) {
+  if (c.root !== c.main) fail('FAIL needs는 메인 저장소에서만 — 선행 재배선은 conductor의 일이다, 팩이 자기 WAIT를 풀지 않는다');
+  if (!slug || list === undefined) fail('사용법: work.mjs needs <slug> <a,b|Q<n>|->');
+  const needs = list === '-' ? [] : [...new Set(list.split(',').map((s) => s.trim()).filter(Boolean))];
+  const text = readBacklog(c);
+  const items = parseBacklog(text);
+  const it = items.find((i) => i.slug === slug && !i.done);
+  if (!it) fail(`FAIL needs ${slug}: BACKLOG의 열린 unit이 아니다`);
+  const unknownQ = unknownQuestions(needs, readText(path.join(c.main, c.team.paths.decisions)));
+  if (unknownQ.length) fail(`FAIL needs ${unknownQ.join(',')}: ${NO_GUESS}`);
+  const unknownU = needs.filter((n) => !/^Q\d+$/.test(n) && !items.some((i) => i.slug === n));
+  if (unknownU.length) fail(`FAIL needs ${unknownU.join(',')}: BACKLOG에 없는 unit`);
+  const next = setNeeds(text, slug, needs);
+  const cl = closure(parseBacklog(next), [slug]);
+  if (cl.cycle) fail(`FAIL needs 순환: ${cl.cycle}`);
+  fs.writeFileSync(backlogPath(c), next);
+  syncUnitNeeds(c, slug, needs);
+  appendLedger(c.main, c.team, { kind: 'needs', slug, from: it.needs, to: needs });
+  out(`NEEDS ${slug} ${it.needs.join(',') || '-'} → ${needs.join(',') || '-'}`);
 }
 function decide(c, n, answer) {
   if (c.root !== c.main) fail('FAIL decide는 메인 저장소에서만 — 질문의 답은 CEO 접점이다, 팩이 만들지 않는다');
@@ -209,6 +268,14 @@ function decide(c, n, answer) {
   touchCeo(c.main);
   appendLedger(c.main, c.team, { kind: 'decide', q: Number(n), answer });
   out(`PASS decide Q${n}`);
+  // 사고 17: 진행 중에 온 답은 spec이 먼저 받는다 — build·attack 팩과 ship은 spec 팩이 다시 열릴 때까지 닫힌다(re-spec 경로 재사용)
+  const units = listUnits(c.main, c.team);
+  for (const slug of respecTargets({ units, ledger: readLedger(c.main, c.team), n: Number(n) })) {
+    const u = units.find((x) => x.slug === slug);
+    u.respec = [...(u.respec || []), { q: Number(n), at: new Date().toISOString() }]; saveUnit(c.main, c.team, u);
+    appendLedger(c.main, c.team, { kind: 'respec', slug, q: Number(n) });
+    out(`RESPEC ${slug} — Q${n}의 답이 진행 중에 왔다: spec이 답을 red 수용 테스트로 박는다 → node .garagiste/scripts/brief.mjs spec ${slug} (build·attack·ship은 그 뒤에 열린다)`);
+  }
 }
 // 방향전환의 원자 연산 — 작업을 버리되 잃지 않는다: wip 커밋 → 브랜치를 dropped/로 개명 → worktree 제거. BACKLOG 줄은 열려 있어 seed가 새로 연다(--forget이면 닫는다).
 function drop(c, slug, reason = '', flags = {}) {
@@ -326,7 +393,8 @@ function main() {
   if (cmd === 'scope') return scope(c, raw);
   if (cmd === 'seed') return seed(c);
   if (cmd === 'new') return createUnit(c, pos[0], pos[1], flags);
-  if (cmd === 'ask') return ask(c, pos[0], pos[1]);
+  if (cmd === 'ask') return ask(c, pos[0], pos[1], flags);
+  if (cmd === 'needs') return needsCmd(c, pos[0], pos[1]);
   if (cmd === 'decide') return decide(c, pos[0], pos[1]);
   if (cmd === 'default') return setDefault(c, pos[0], pos[1]);
   if (cmd === 'drop') return drop(c, pos[0], pos[1], flags);
@@ -336,6 +404,6 @@ function main() {
   if (cmd === 'commands') return commands(c, raw);
   if (cmd === 'rules') return rules(c, raw);
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
-  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug> <팩> [--tokens N --minutes M]');
+  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug> <팩> [--tokens N --minutes M]');
 }
 if (isMain(import.meta.url)) main();

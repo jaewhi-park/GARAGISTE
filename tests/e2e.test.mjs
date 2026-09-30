@@ -168,8 +168,19 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(fs.readFileSync(path.join(repo, ip.out.split(' ')[1]), 'utf8'), /## 결정된 것[\s\S]*api\.example 하나만/, '닫힌 결정은 intake 팩에도 — 답 난 것을 다시 묻지 않는다');
   assert.match(script('work', ['add', 'session', '로그인한 사람만', '--milestone', 'M1', '--accept', 'POST /login → 200'], repo).out, /^ADD session M1/);
   assert.match(script('work', ['add', 'memo', '메모를 쓴다', '--milestone', 'M1', '--needs', 'session'], repo).out, /needs=session/);
-  assert.match(script('work', ['add', 'export', '메모는 내보낼 수 있다', '--milestone', 'M2', '--needs', 'memo,Q2'], repo).out, /^ADD export M2/);
-  assert.match(script('work', ['ask', 'intake', '내보내기 형식은 CSV 하나로 충분한가?'], repo).out, /^Q2 queued/);
+  // 사고 23(3차 실기): intake가 Q 번호를 짐작해 한 칸 밀려 적었다(needs 오연결 6 unit) — 없는 번호는 add가 거부하고, 번호는 ask --for가 잇는다
+  assert.match(script('work', ['add', 'export', '메모는 내보낼 수 있다', '--milestone', 'M2', '--needs', 'memo,Q2'], repo).out, /^FAIL needs Q2: DECISIONS에 없는 질문/);
+  assert.match(script('work', ['add', 'export', '메모는 내보낼 수 있다', '--milestone', 'M2', '--needs', 'memo'], repo).out, /^ADD export M2/);
+  assert.match(script('work', ['ask', 'intake', '내보내기 형식은 CSV 하나로 충분한가?', '--for', 'export'], repo).out, /^Q2 queued — needs에 연결: export/);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] export · M2 · needs: memo,Q2 · /, '번호는 스크립트가 잇는다 — 에이전트가 옮겨 적지 않는다');
+  // needs 수정 명령: 어긋난 선행을 conductor가 고친다(메인 전용 · 원장에 남는다)
+  assert.match(script('work', ['needs', 'memo', 'session,Q2'], repo).out, /^NEEDS memo session → session,Q2/);
+  assert.match(script('work', ['needs', 'memo', 'session'], repo).out, /^NEEDS memo session,Q2 → session/);
+  assert.match(script('work', ['needs', 'memo', 'Q9'], repo).out, /^FAIL needs Q9: DECISIONS에 없는 질문/);
+  assert.match(script('work', ['needs', 'memo', 'nosuch'], repo).out, /^FAIL needs nosuch: BACKLOG에 없는 unit/);
+  assert.match(script('work', ['needs', 'session', 'memo'], repo).out, /^FAIL needs 순환/);
+  assert.match(script('work', ['needs', 'memo', 'session'], path.join(repo, '.worktrees', 'net')).out, /^FAIL needs는 메인 저장소에서만/);
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"needs","slug":"memo","from":\["session","Q2"\],"to":\["session"\]/);
   assert.match(script('work', ['decide', '2', 'CSV 하나'], repo).out, /^PASS decide Q2/);
   const sc = script('work', ['scope', 'export'], repo).out;
   assert.match(sc, /^SCOPE 요청 1 · 선행 2 · 없는 선행 0\n- 선행: session \(memo가 needs\) · memo \(export가 needs\)\n- 순서: session → memo → export/, sc);
@@ -186,6 +197,19 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.ok(rsPack.includes('## 결정된 것') && rsPack.includes('CSV 하나'), '전역(intake) 결정이 unit 팩에 있다 — 사고 4 회귀');
   assert.ok(!rsPack.includes('api.example'), '사고 13: 남의 unit(net) 결정은 스코프 밖 — 팩은 프로젝트 나이만큼 크지 않는다');
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).state, 'spec', '정체가 spec으로 돌아와 수용을 고칠 수 있다 — 「저게 낫겠더라」의 착지점');
+  // 사고 17(2차 실기): 진행 중 unit의 질문이 build 뒤에 닫혀 답이 구현되지 않은 채 출하됐다 — 닫힘은 반영이 아니다.
+  // decide가 spec 재개를 걸고, build·attack 팩과 ship은 spec이 답을 받을 때까지 열리지 않는다(re-spec 경로 재사용)
+  assert.match(script('work', ['ask', 'session', '세션 만료는 30분인가?'], repo).out, /^Q3 queued/);
+  assert.match(script('brief', ['build', 'session'], repo).out, /^PACK .*session-build-/);
+  const dq = script('work', ['decide', '3', '30분'], repo).out;
+  assert.match(dq, /^PASS decide Q3\nRESPEC session — Q3의 답이 진행 중에 왔다/, dq);
+  assert.match(script('brief', ['build', 'session'], repo).out, /^FAIL build 팩: Q3의 답이 진행 중에 왔다 — spec이 먼저/);
+  assert.match(script('brief', ['attack', 'session'], repo).out, /^FAIL attack 팩: Q3의 답이 진행 중에 왔다/);
+  assert.match(script('ship', ['session'], repo).out, /- questions: .*Q3.*brief\.mjs spec session/);
+  const rq = script('brief', ['spec', 'session'], repo);
+  assert.match(fs.readFileSync(path.join(repo, rq.out.split(' ')[1]), 'utf8'), /## 재-spec — 진행 중에 온 답[\s\S]*Q3[\s\S]*30분/, 'spec 팩이 그 답을 이유로 받는다');
+  assert.match(script('brief', ['build', 'session'], repo).out, /^PACK .*session-build-/, 'spec이 답을 받은 뒤에야 build가 열린다');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"respec","slug":"session","q":3/);
   assert.match(script('work', ['seed'], repo).out, /^WAIT memo needs session — 선행 unit이 먼저/, '진행 중인 선행이 끝나야 다음이 열린다');
   assert.match(script('state', [], repo).out, /안 본 것 0\/3/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 범위\n- 요청 1 · 선행 2 · 출하 0\/3\n- 순서: session → memo → export/);
