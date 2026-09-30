@@ -14,6 +14,6 @@
 - 침대 반영은 CEO가 PowerShell에 붙여넣는 블록으로 전달한다: `git fetch https://github.com/jaewhi-park/GARAGISTE <branch>` → `cmd /c "git show FETCH_HEAD:team/scripts/<f>.mjs > .garagiste\scripts\<f>.mjs"` → 커밋. 블록엔 **검증 줄 필수** — `git log -1 FETCH_HEAD --format=%h`(기대 해시를 블록에 명기) · `findstr /m "<마커 문자열>" <대상 파일>`. 수리가 main에 머지된 뒤에는 main에서 fetch가 기본.
 - CEO 환경: Windows PowerShell(`X=1 cmd` 같은 env 접두·heredoc 불가). 출력·저장되는 상대 경로는 전부 `/`, 플랫폼 표기는 계산용 절대 경로에만.
 
-## 상태 스냅샷 (2026-09-30, L1 4차 등록 시점 — 이후의 정본은 백로그·CHANGELOG)
-- **L1 게이트 원시값 통과** (3차 클린룸, 원격 fresh clone 설치 — `docs/measurements/L1-TRIAL.md`). 사고 원장 1~23 **전부 수리** + 테스트 봉인(17·23은 3차 뒤 — ca26d12·a7a5fb2). 테스트 51개 초록(linux — win32는 4차 클론이 확인).
-- 다음 걸음: **L1 4차(재현 시험)** — CEO 결정으로 17·23 수리 후 동결, 조건·예측은 L1-TRIAL.md 「재등록 — 4차」. 통과하면 **L2(무인 하루) 사전 등록** — 재료는 4차 시험대의 남은 SCOPE unit. session-start CEO 대기 항목 주입은 장치라 BIRTH대로 L2의 사고를 기다린다. CEO 「가」 대기 중: pack reason-lane · system-attack 팩.
+## 상태 스냅샷 (2026-10-01, L1 4차 종료 시점 — 이후의 정본은 백로그·CHANGELOG)
+- **L1 게이트 원시값 통과 — 3차·4차(재현)** (`docs/measurements/L1-TRIAL.md`). 사고 원장 1~25 전부 수리 + 테스트 봉인(24·25는 4차 중 — 사고 17 수리가 연 RESPEC 경로의 잠복 결함). 테스트 53개 초록.
+- 다음 걸음: **L2(무인 하루)** — 사전 등록 `docs/measurements/L2-TRIAL.md`(머지가 CEO 서명), 시험대 G2_TEST5, 동결 3b8aede. 대기: time-model try(CEO). CEO 「가」 대기 장치: pack reason-lane(사고 25가 첫 근거) · system-attack · session-start CEO 대기 항목 주입(L2 재개에서 사고가 나면).
