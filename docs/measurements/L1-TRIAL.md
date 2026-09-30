@@ -17,12 +17,22 @@
 - **CEO-분** = 서명(intake 결과 검토→scope)·decide·tried에 실제 쓴 분. 자가 스톱워치 — N=3이라 수용.
 - **spawn** = `pack` 줄(의도) · `spawn_stop` 줄(완료), unit별.
 
-## 표 (시험 후 이 자리에 기입)
+## 표 (2026-09-30 기입 — 원장에서, conductor 산출)
 | unit | 시도 | seed→ship(분) | spawn 의도/완료 | CEO-분 | attack 선발견 | tried | green 후 CEO 발견 결함 |
 |---|---|---|---|---|---|---|---|
-| ① |  |  |  |  |  |  |  |
-| ② |  |  |  |  |  |  |  |
-| ③ |  |  |  |  |  |  |  |
+| ① vault-schema | 1 | 48.2 (수리 대기 제외 ≈9.8) | 4/4 | (CEO 기입) | 3 (__proto__·정상 입력 거부·null 통과) | ok | 0 |
+| ② vault-open-ui | 1 | 696.5 (수리 대기 제외 ≈16.5) | 7/7 (+지연 종료 1) | (CEO 기입) | 3 (LACUNA_HOME·쓰기 불가 무창·BOM 소실) | ok (human@win32) | 0 |
+| ③ | — | 구성 불가: BACKLOG 원문에 boundary 키워드 없음(CEO 결정) — 단 ②가 ship 단계 diff-HIT로 spike 경로를 실제로 밟음 | | | | | |
+
+측정만 한 unit (판정 제외): boot 시도1·spawn2·tried ok(결함 1: vitest .worktrees 누출→boot-fix) · vault-load 7.0분/4spawn/ok(위임) · fixture-eoren 11.8분/4/ok(위임) · index-sqlite 33.0분/4/**fail(위임 — Q11 미반영→index-sqlite-fix)** · worlds-isolation 7.0분/4/ok(위임)
+
+## 판정 기록 (2026-09-30)
+- **L1 게이트: 원시값 미통과.** ① 48.2분 충족 · ② 696.5분 미충족(그중 671분은 사고 14~16 수리를 CEO가 처리하기를 기다린 구간). spawn ≤8 충족(4·7) · 미검수 ≤3 상시 충족(3에서 정상 정지). 시계 정의가 빼 주는 것은 decide·tried 대기뿐이므로 원시값으로 판정한다 — 각색하지 않는다.
+- **병목 지목(원장 ts)**: 팩 조립·spawn·검증이 아니라 **프레임워크 결함 수리 대기**(시험 중 사고 6~16, 11건 — 전부 정본 수리 + 테스트 봉인, 재시작 unit 0). 에이전트 실작업은 unit당 7~17분.
+- **부기**: attack 선발견 — 표 unit 6, 전체 21. tried 후발견 2(boot vitest 누출, index-sqlite Q11 미반영 — 둘 다 표 밖). Q4(attack의 선발견 우위) 데이터는 강함.
+- **처방(사전 등록 규칙대로)**: 장치를 더하지 않고 그 구간을 수리한 뒤 재시험 — 수리는 이미 끝났으므로(사고 16까지), **머지된 main + 새 클린룸에서 3차 재시험**이 다음 걸음. 예측: 수리 대기 0이면 unit당 원시 10~20분대.
+- **새 사고 후보(17)**: ship이 결정이 닫혔는지만 보고 반영됐는지는 못 본다 — Q11이 build 뒤에 닫혀 미구현 출하(try가 잡음). 수리 방향: 진행 중 unit의 Q를 decide하면 그 unit은 spec 재개(답을 red 수용으로 박기)가 기계 규칙. 백로그 등록.
+- 비고: tried 위임 4건(카드 실행, 표시 명기) · vault-load 커밋 trailer 누락(훅 heredoc 차단) · ② 첫 build 잔여 프로세스로 수명 64분/실작업 4.7분 · index-sqlite build의 배경 cat(무해).
 
 ## 판정 (BIRTH pass line)
 - **승인→출하 ≤75분 · unit당 spawn ≤8 · 미검수 ≤3 상시** — 셋 다 충족이면 L1 게이트 통과, L2(무인 하루)로.
