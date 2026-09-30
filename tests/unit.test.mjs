@@ -129,6 +129,22 @@ test('guard: 따옴표 안은 데이터 — 트레일러·메시지 속 언급�
   assert.ok(decide(bash('git commit -m "x" --no-verify'), gctx(null)), '따옴표 밖 --no-verify는 그대로 파괴다');
   assert.equal(stripQuoted(`echo 'a > b' "c > d" e`).includes('>'), false);
 });
+test('checkpoint: spike worktree는 wip로 커밋하지 않는다 — 측정이 tree를 바꿔 증거를 낡게 한다 (2차 실기 사고 15)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-ckpt-'));
+  const mk = (slug, state) => {
+    const wt = path.join(root, '.worktrees', slug);
+    fs.mkdirSync(wt, { recursive: true });
+    const g = (args) => spawnSync('git', args, { cwd: wt, encoding: 'utf8' });
+    g(['init', '-q']); g(['config', 'user.email', 'x@x']); g(['config', 'user.name', 'x']);
+    fs.writeFileSync(path.join(wt, 'a.md'), 'dirty\n');
+    fs.mkdirSync(path.join(root, '.garagiste', 'units'), { recursive: true });
+    fs.writeFileSync(path.join(root, '.garagiste', 'units', `${slug}.json`), JSON.stringify({ slug, state }));
+    return wt;
+  };
+  mk('sp', 'spike'); const bwt = mk('bd', 'build');
+  assert.deepEqual(checkpoint(root), ['bd'], 'spike는 건너뛰고 build는 커밋');
+  assert.match(spawnSync('git', ['log', '-1', '--format=%s'], { cwd: bwt, encoding: 'utf8' }).stdout, /^wip: bd checkpoint/);
+});
 test('checkpoint: worktree가 없으면 조용히 빈 배열', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-cp-'));
   assert.deepEqual(checkpoint(d), []);
@@ -230,6 +246,8 @@ test('ship: team.json rebase 충돌은 키 단위 3-way — 겹치지 않으면 
 test('ship: spike는 필수 행 다섯이 전부 있어야 끝난 것이다', () => {
   assert.equal(spikeComplete('- wire: 없음\n- host: linux node 22\n- license: MIT 동봉\n- default: 포트 3000\n- os: 없음'), true);
   assert.equal(spikeComplete('- wire: 없음\n- host: linux'), false);
+  assert.equal(spikeComplete('- wire: 없음\n- host: win11 node 24\n- license: 의존성 없음\n- default (팀이 정한 것 후보): 세계 폴더 안\n- os: 없음'), true, '사고 14: 괄호 부연이 붙은 행도 내용이 있으면 완성이다');
+  assert.equal(spikeComplete('- wire: 없음\n- host: w\n- license: 없음\n- default (후보):\n- os: 없음'), false, '부연이 있어도 내용이 비면 미완');
 });
 test('brief: 팩은 상한을 넘으면 diff→hazards→brief→이어받기→try→surface 순으로 포인터가 되고 acceptance는 절대 버리지 않는다 (사고 8)', () => {
   const big = 'x'.repeat(3000);

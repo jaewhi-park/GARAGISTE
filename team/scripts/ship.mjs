@@ -8,7 +8,8 @@ import { blocking, diagnose } from './doctor.mjs';
 import { budgetStatus, openQuestions, render } from './state.mjs';
 
 export const SPIKE_ROWS = ['wire', 'host', 'license', 'default', 'os'];
-export function spikeComplete(text) { return SPIKE_ROWS.every((r) => new RegExp(`^\\s*[-*]?\\s*${r}\\s*:\\s*\\S`, 'mi').test(text || '')); }
+// 사고 14(2차 실기): spike가 「default (팀이 정한 것 후보):」처럼 부연을 붙이자 내용 있는 행이 미완으로 읽혔다 — 괄호 부연은 행 이름의 일부로 허용
+export function spikeComplete(text) { return SPIKE_ROWS.every((r) => new RegExp(`^[ \\t]*[-*]?[ \\t]*${r}[ \\t]*(?:\\([^)]*\\))?[ \\t]*:[ \\t]*\\S`, 'mi').test(text || '')); }
 export function evaluateShip(x) {
   const c = [];
   const scaffold = x.unit?.kind === 'scaffold';

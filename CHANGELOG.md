@@ -72,6 +72,10 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 ### Fixed — 2026-09-29 결정 절이 프로젝트 나이만큼 팩을 키웠다 (2차 실기의 사고 13)
 - 사고 4의 수리('닫힌 결정 **전체**를 모든 팩에')가 단조 증가 벡터였다 — 결정이 쌓일수록·선행 사슬이 길수록 팩이 커져 build 팩이 15.7/16KB까지 닿았다. 당시 conductor의 원안(needs에 걸린 Q만)이 옳았다. 수리: unit 팩의 결정은 스코프로 — 전역(intake 슬러그) + 이 unit + needs의 unit·Q<n>; 슬러그를 못 읽는 줄은 버리지 않는다(결정을 떨어뜨리는 쪽이 더 위험). boot(세계 정의)·intake(전 그림) 팩은 전체 유지. 검사: scopedDecisions 단위 테스트 + e2e(남의 unit 결정 제외·전역 포함).
 
+### Fixed — 2026-09-30 spike 행 형식 불일치와 spike의 wip 체크포인트 (2차 실기의 사고 14·15)
+- 사고 14: spike가 「default (팀이 정한 것 후보): …」처럼 부연을 붙이자 `spikeComplete` 정규식(`행이름:`만 인정)이 내용 있는 행을 미완으로 봤다 — 팩에 형식 지시도 없어 재spawn해도 같은 형식이라 루프가 돌 수 없었다. 수리: 정규식이 괄호 부연 허용 + spike 팩에 행 형식 한 줄 명시(약한 모델 대비 이중 방어).
+- 사고 15: 커밋 금지 팩(spike — 가드도 spike의 commit을 거부)의 worktree를 체크포인트 훅이 wip로 커밋해 tree가 바뀌었다 — full·redproof·attack 증거가 전부 낡고 HEAD가 wip이 되어 build 한 라운드가 추가로 필요했다. 수리: checkpoint가 unit 상태 spike인 worktree를 건너뛴다(측정 파일은 초 단위 재실행이라 잃는 쪽이 싸다 — 늦은 boundary HIT로 spike가 뒤에 오면 재검증 비용은 tree 법의 정직한 비용으로 남는다).
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 
