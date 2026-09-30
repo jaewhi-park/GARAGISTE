@@ -80,7 +80,7 @@ function intake(c, args) {
   fs.writeFileSync(file, r.text + '\n');
   fs.writeFileSync(markPath, String(briefAll.length));
   appendLedger(c.main, c.team, { kind: 'pack', slug: 'intake', pack: 'intake', model: c.team.models.intake, bytes: r.bytes });
-  out(`PACK ${path.relative(c.main, file)} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=. model=${c.team.models.intake}`);
+  out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=. model=${c.team.models.intake}`);
 }
 function main() {
   const [pack, slug] = process.argv.slice(2);
@@ -136,6 +136,6 @@ function main() {
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), pack); // 표시용 — 가드의 정본은 unit 상태다
   if (unit.state !== pack) { unit.state = pack; saveUnit(c.main, c.team, unit); }
   appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes });
-  out(`PACK ${path.relative(c.main, file)} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
+  out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
 }
 if (isMain(import.meta.url)) main();

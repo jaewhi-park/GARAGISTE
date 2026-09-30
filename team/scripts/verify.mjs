@@ -44,10 +44,10 @@ function runMode(mode, c) {
   const r = shell(cmd, { cwd: c.root });
   fs.writeFileSync(log, `$ ${cmd}\n${r.stdout}\n${r.stderr}`);
   const tree = workTree(c.root);
-  appendLedger(c.main, c.team, { kind: 'verify', mode, tree, head: headSha(c.root), exit: r.status, log: path.relative(c.main, log), platform: process.platform, where: path.relative(c.main, c.root) || '.' });
+  appendLedger(c.main, c.team, { kind: 'verify', mode, tree, head: headSha(c.root), exit: r.status, log: path.relative(c.main, log).replace(/\\/g, '/'), platform: process.platform, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' }); // 원장 경로는 / — 팩의 「직전 verify」 매칭(where===unit.worktree)이 win32에서 어긋난다(사고 19 잔여)
   if (r.status === 0) return out(`PASS verify:${mode} ${short(tree)}`);
   const tail = (r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n');
-  out(`FAIL verify:${mode} ${short(tree)} ${path.relative(c.main, log)}\n${tail}`);
+  out(`FAIL verify:${mode} ${short(tree)} ${path.relative(c.main, log).replace(/\\/g, '/')}\n${tail}`);
   process.exit(1);
 }
 export function runFiles(c, files) {

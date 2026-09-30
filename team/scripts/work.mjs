@@ -264,7 +264,7 @@ function commands(c, args) {
     t.commands[m[1]] = m[2];
   }
   writeJson(teamPath, t);
-  appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root) || '.' });
+  appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' });
   out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`);
 }
 // 규칙 파일의 {{…}} 자리 — boot 팩이 채운다(CLAUDE.md 또는 AGENTS.md)
@@ -290,7 +290,7 @@ function models(c, args) {
   for (const [pack, model] of Object.entries(next)) {
     for (const f of [path.join(c.main, '.claude', 'agents', `${pack}.md`), path.join(c.main, '.opencode', 'agents', `${pack}.md`)]) {
       if (!fs.existsSync(f)) continue;
-      fs.writeFileSync(f, setFrontmatterModel(readText(f), model)); touched.push(path.relative(c.main, f));
+      fs.writeFileSync(f, setFrontmatterModel(readText(f), model)); touched.push(path.relative(c.main, f).replace(/\\/g, '/'));
     }
   }
   appendLedger(c.main, c.team, { kind: 'models', models: next });
