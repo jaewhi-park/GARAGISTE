@@ -268,6 +268,58 @@ test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 
   assert.match(script('ship', ['atom'], repo).out, /^SHIPPED atom/, '원인이 사라지면 같은 증거로 다시 ship된다');
 });
 
+test('사고 26(L2 1일차): 두 unit이 같은 파일을 고치면 ship은 rebase를 멈춘 자리에 두고, build가 표시를 풀면 ship이 잇는다', { timeout: 180000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-conflict-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/**/*.test.mjs"', test_file: 'node --test {file}', run: 'true' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  git(['add', '-A'], repo); script('verify', ['quick'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  // 두 unit을 같은 main에서 연다 — 둘 다 src/shared.mjs를 만든다(L2의 effect-conflict × record-layer의 cli.ts와 같은 꼴)
+  const open = (slug) => {
+    assert.match(script('work', ['new', slug, `${slug} 표시를 남긴다`], repo).out, new RegExp(`^UNIT ${slug} spec`));
+    const wt = path.join(repo, '.worktrees', slug);
+    write(wt, `tests/acceptance/${slug}.test.mjs`, `import test from 'node:test'; import fs from 'node:fs';\ntest('${slug} 표시', () => { if (!fs.readFileSync('src/shared.mjs', 'utf8').includes('${slug}')) throw new Error('red'); });\n`);
+    git(['add', '-A'], wt); script('verify', ['quick'], wt);
+    assert.equal(git(['commit', '-q', '-m', `test(${slug}): red`], wt).status, 0);
+    return wt;
+  };
+  const build = (slug, wt) => {
+    write(wt, 'src/shared.mjs', `export const mark = '${slug}';\n`);
+    write(wt, `tests/adversary/${slug}-1.test.mjs`, "import test from 'node:test'; import fs from 'node:fs';\ntest('비어 있지 않다', () => { if (!fs.readFileSync('src/shared.mjs', 'utf8').trim()) throw new Error('empty'); });\n");
+    git(['add', '-A'], wt); script('verify', ['quick'], wt);
+    assert.equal(git(['commit', '-q', '-m', `feat(${slug}): 표시\n\nUnit: ${slug}\nStep: 1`], wt).status, 0);
+    assert.match(script('redproof', [slug], wt).out, /^PASS redproof/);
+    assert.match(script('verify', ['attack', slug], wt).out, /red 0\/1/);
+    assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
+  };
+  const awt = open('alpha'); const bwt = open('beta');
+  build('alpha', awt); build('beta', bwt);
+  assert.match(script('ship', ['alpha'], repo).out, /^SHIPPED alpha/);
+  // 옛 ship은 rebase를 버리고 「build를 다시 띄워 main 위에서 해결」이라 했다 — build는 rebase·merge가 가드에 막혀 풀 길이 없었다
+  const s1 = script('ship', ['beta'], repo);
+  assert.match(s1.out, /^FAIL ship: main과 충돌 — src\/shared\.mjs\. rebase를 그 자리에 멈춰 두었다/, s1.out);
+  assert.match(fs.readFileSync(path.join(bwt, 'src/shared.mjs'), 'utf8'), /^<<<<<<< /m, '충돌 표시가 worktree에 있다 — 푸는 일은 파일 편집(build의 경계 안)이다');
+  assert.match(script('ship', ['beta'], repo).out, /^FAIL ship: main과의 충돌이 아직 남았다 — src\/shared\.mjs/, '안 풀고 다시 부르면 남은 파일을 말한다');
+  assert.match(fs.readFileSync(path.join(repo, script('brief', ['build', 'beta'], repo).out.split(' ')[1]), 'utf8'), /## main과의 충돌[\s\S]*src\/shared\.mjs[\s\S]*git add/, 'build 팩이 충돌 파일과 할 일을 받는다');
+  // build가 하는 일: 양쪽을 살려 풀고 git add까지 — 커밋·rebase 없이
+  write(bwt, 'src/shared.mjs', "export const mark = 'alpha';\nexport const mark2 = 'beta';\n");
+  git(['add', 'src/shared.mjs'], bwt);
+  const s2 = script('ship', ['beta'], repo);
+  assert.match(s2.out, /^SHIPPED beta/, s2.out);
+  const shared = fs.readFileSync(path.join(repo, 'src/shared.mjs'), 'utf8');
+  assert.ok(shared.includes('alpha') && shared.includes('beta'), 'main에 두 unit의 표시가 다 있다 — 통합 tree에서 두 인수가 다 green');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"ship_conflict","slug":"beta"/);
+});
+
 test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents·guard 플러그인이 깔리고 doctor가 OK', (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-oc-'));

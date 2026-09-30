@@ -87,6 +87,11 @@ export function indexTree(cwd) { return git(['write-tree'], cwd).stdout; }
 export function headTree(cwd) { return git(['rev-parse', 'HEAD^{tree}'], cwd).stdout; }
 export function headSha(cwd) { return git(['rev-parse', 'HEAD'], cwd).stdout; }
 export function isClean(cwd) { return git(['status', '--porcelain'], cwd).stdout === ''; }
+// 사고 26(L2 1일차): ship이 멈춰 둔 rebase — worktree의 git dir에 rebase-merge·rebase-apply가 있으면 진행 중이다
+export function rebaseInProgress(cwd) {
+  return ['rebase-merge', 'rebase-apply'].some((d) => { const p = git(['rev-parse', '--git-path', d], cwd).stdout; return !!p && fs.existsSync(path.resolve(cwd, p)); });
+}
+export function unmergedFiles(cwd) { return git(['diff', '--name-only', '--diff-filter=U'], cwd).stdout.split('\n').filter(Boolean); }
 // 사고 12(2차 실기): sh()는 stdout을 trim한다 — porcelain 첫 줄이 ' M …'(비스테이징 수정)이면 선행 공백이 지워져 slice(3)이 경로 첫 글자를 먹는다(ocs/BACKLOG.md). 여기선 원문을 쓴다.
 export function dirtyFiles(cwd) {
   const r = spawnSync('git', ['status', '--porcelain', '-uall'], { cwd, encoding: 'utf8' });

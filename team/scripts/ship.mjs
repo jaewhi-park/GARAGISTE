@@ -1,7 +1,7 @@
 // ship — 8조건 fail-closed. 통과하면 ff 머지 + LEDGER + STATUS. 이 스크립트만 보호 브랜치에 닿는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, readJson, readLedger, readText, saveUnit, sh, shell, short, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, readJson, readLedger, readText, rebaseInProgress, saveUnit, sh, shell, short, unmergedFiles, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles } from './lib.mjs';
 import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
@@ -104,6 +104,9 @@ function resolveRebaseTeamJson(wt) {
   }
   return false;
 }
+// 사고 26(L2 1일차): 코드 충돌은 rebase를 멈춘 자리에서 팩이 표시를 풀고(git add까지 — 파일 편집, 팩의 경계 안) ship이 잇는다.
+// 옛 안내 「build를 다시 띄워 main 위에서 해결」은 실행 불가였다 — 가드가 팩·conductor 모두의 rebase·merge를 막는다.
+const conflictFail = (mainBranch, files, slug, pk) => `FAIL ship: ${mainBranch}과 충돌 — ${files.join(' ')}. rebase를 그 자리에 멈춰 두었다(충돌 표시가 worktree에 있다) → node .garagiste/scripts/brief.mjs ${pk} ${slug} → ${pk}가 표시를 풀고 git add까지(커밋·rebase 없이) → node .garagiste/scripts/ship.mjs ${slug} — ship이 rebase를 잇고 통합 tree를 다시 검증한다`;
 function main() {
   const slug = process.argv[2];
   if (!slug) fail('사용법: ship.mjs <slug>');
@@ -113,6 +116,22 @@ function main() {
   const unit = loadUnit(c.main, c.team, slug);
   const wt = worktreeDir(c.main, c.team, slug);
   const exists = fs.existsSync(wt);
+  const pk = unit.kind === 'scaffold' ? 'boot' : 'build';
+  // 사고 26: 멈춰 둔 rebase를 잇는다. 증거는 멈추기 전 unit의 tree(원장 ship_conflict)로 보고, 통합 tree는 아래 사고 22 경로가 다시 검증한다.
+  let resumed = null;
+  if (exists && rebaseInProgress(wt)) {
+    const left = unmergedFiles(wt);
+    if (left.length) fail(`FAIL ship: ${c.team.protected_branch}과의 충돌이 아직 남았다 — ${left.join(' ')} → node .garagiste/scripts/brief.mjs ${pk} ${slug} → 표시를 풀고 git add까지 → ship 다시`);
+    const origin = [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'ship_conflict' && e.slug === slug) || null;
+    const cont = git(['rebase', '--continue'], wt, { GIT_EDITOR: 'true', GARAGISTE_WIP: '1' });
+    if (cont.status && !resolveRebaseTeamJson(wt)) {
+      const next = unmergedFiles(wt);
+      if (!next.length) { git(['rebase', '--abort'], wt); fail(`FAIL ship: rebase를 잇지 못했다 — ${(cont.stderr || cont.stdout).split('\n')[0]}`); }
+      appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files: next, tree: origin?.tree || null, head: origin?.head || null });
+      fail(conflictFail(c.team.protected_branch, next, slug, pk));
+    }
+    resumed = origin;
+  }
   // 사고 20(3차 실기): 사고 15가 spike 산출물의 커밋 경로를 없앴다 — 훅은 건너뛰고, 에이전트는 커밋 금지, conductor는 가드가 막는다.
   // 사고 16의 대칭으로 완성: spike 파일만 더러운 worktree는 ship이 docs(spike)로 스스로 커밋한다. 그 뒤 증거 재기록은 FAIL 문구의 재실행 명령이 안내한다.
   if (exists) {
@@ -122,7 +141,7 @@ function main() {
       git(['commit', '-q', '-m', `docs(spike): ${slug} 측정`], wt, { GARAGISTE_WIP: '1' });
     }
   }
-  const tree = exists ? workTree(wt) : null;
+  const tree = resumed?.tree || (exists ? workTree(wt) : null);
   const units = listUnits(c.main, c.team);
   const ledger = readLedger(c.main, c.team);
   const b = budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) });
@@ -148,10 +167,13 @@ function main() {
   const dirty = dirtyFiles(c.main).filter((f) => !DOC_OK(c.team).includes(f));
   if (dirty.length) fail(`FAIL ship: 메인 worktree에 미커밋 변경 — ${dirty.join(' ')}`);
   // 통합: unit을 main 위로 올리고, tree가 바뀌었으면 full을 다시 돌린다
+  const preHead = headSha(wt);
   const rb = git(['rebase', c.team.protected_branch], wt);
   if (rb.status && !resolveRebaseTeamJson(wt)) {
-    git(['rebase', '--abort'], wt);
-    fail(`FAIL ship: rebase 충돌 — ${unit.kind === 'scaffold' ? 'boot' : 'build'} 팩을 다시 띄워 ${c.team.protected_branch} 위에서 해결`);
+    const files = unmergedFiles(wt);
+    if (!files.length) { git(['rebase', '--abort'], wt); fail(`FAIL ship: rebase 실패 — ${(rb.stderr || rb.stdout).split('\n')[0]}`); }
+    appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files, tree, head: resumed?.head || preHead });
+    fail(conflictFail(c.team.protected_branch, files, slug, pk));
   }
   const newTree = headTree(wt);
   if (newTree !== tree) {
