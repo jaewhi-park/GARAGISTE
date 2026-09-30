@@ -258,8 +258,8 @@ function commands(c, args) {
     if (!u || u.kind !== 'scaffold') fail('FAIL commands는 boot(scaffold) unit의 worktree 또는 GARAGISTE_ADMIN=1(CEO)에서만 — 검증 명령의 변경은 CEO 결정이다');
   }
   for (const a of args) {
-    const m = /^(quick|full|test_file|run)=([\s\S]*)$/.exec(a);
-    if (!m) fail(`사용법: work.mjs commands quick="…" full="…" test_file="… {file}" run="…" — 받은 값: ${a}`);
+    const m = /^(quick|full|test_file|run|setup)=([\s\S]*)$/.exec(a); // setup: 의존성 설치(사고 21 — ship이 의존성 출하의 머지 직후 main에서 돌린다)
+    if (!m) fail(`사용법: work.mjs commands quick="…" full="…" test_file="… {file}" run="…" setup="…" — 받은 값: ${a}`);
     if (m[1] === 'test_file' && !m[2].includes('{file}')) fail('FAIL test_file에는 {file} 자리표시자가 있어야 한다');
     t.commands[m[1]] = m[2];
   }

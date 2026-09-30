@@ -1,12 +1,20 @@
 {
   "version": 2,
   "protected_branch": "main",
-  "models": { "intake": "opus", "spec": "opus", "build": "sonnet", "attack": "opus", "spike": "sonnet", "boot": "sonnet" },
+  "models": {
+    "intake": "opus",
+    "spec": "opus",
+    "build": "sonnet",
+    "attack": "opus",
+    "spike": "sonnet",
+    "boot": "sonnet"
+  },
   "commands": {
     "quick": "",
     "full": "",
     "test_file": "",
-    "run": ""
+    "run": "",
+    "setup": ""
   },
   "paths": {
     "acceptance": "tests/acceptance",
@@ -30,16 +38,40 @@
   },
   "boundary": {
     "files": [
-      "package.json", "package-lock.json", "pnpm-lock.yaml", "pyproject.toml", "uv.lock",
-      ".github/workflows/**", ".githooks/**", ".gitignore",
-      "**/electron/**", "**/preload*", "**/ipc/**",
-      "**/auth/**", "**/permission*", "**/migrations/**", "**/schema/**",
-      "**/installer*", "build/**"
+      "package.json",
+      "package-lock.json",
+      "pnpm-lock.yaml",
+      "pyproject.toml",
+      "uv.lock",
+      ".github/workflows/**",
+      ".githooks/**",
+      ".gitignore",
+      "**/electron/**",
+      "**/preload*",
+      "**/ipc/**",
+      "**/auth/**",
+      "**/permission*",
+      "**/migrations/**",
+      "**/schema/**",
+      "**/installer*",
+      "build/**"
     ],
     "keywords": [
-      "egress", "network", "socket", "subprocess", "child_process",
-      "license", "licence", "API_KEY", "secret", "credential",
-      "IPC", "installer", "bundle", "migration", "permission"
+      "egress",
+      "network",
+      "socket",
+      "subprocess",
+      "child_process",
+      "license",
+      "licence",
+      "API_KEY",
+      "secret",
+      "credential",
+      "IPC",
+      "installer",
+      "bundle",
+      "migration",
+      "permission"
     ]
   },
   "budgets": {
@@ -51,6 +83,8 @@
     "step_logic_lines_max": 300,
     "spike_minutes": 30
   },
-  "sensors": { "human_os": [] },
+  "sensors": {
+    "human_os": []
+  },
   "require_attack": true
 }

@@ -33,3 +33,4 @@
 - `.garagiste/scripts/lib.mjs` · workTree의 씨앗이 read-tree HEAD라 filemode=false(NTFS)에서 HEAD에 없는 chmod 파일(755)이 임시 인덱스에 644로 들어가 「인덱스 ≠ 작업 트리」 유령 불일치 — 내용 diff 0인데 게이트가 거부(win32 원격 검증) · 검사: 실제 인덱스 복사본을 씨앗으로 — filemode=false 재현 unit 테스트
 - `install.sh` `install.ps1` · 설치기가 첫 커밋 실패를 경고로 삼키고 성공을 선언했다(fail-open — doctor·selftest만 fail-closed였다) · 검사: 첫 커밋 실패 = 설치 FAIL(exit 1), git 출력이 이유로 남는다
 - `.garagiste/scripts/**` · 사고 15의 수리가 spike 산출물의 커밋 경로를 전부 닫았다 — 훅은 건너뛰고 에이전트는 금지, conductor는 가드에 막혀, 늦은 spike 뒤 ship이 「깨끗하지 않다 + 증거 낡음」 막다른 길에 갇혔다(3차 실기) · 검사: spike 파일만 더러운 worktree는 ship이 docs(spike)로 자기-커밋(사고 16의 대칭) — unit 테스트(spikeOnlyFiles) + 3차 실기 재실행
+- `.garagiste/scripts/**` `.garagiste/packs/boot.md` · 의존성을 새로 들이는 출하는 main 설치 없이 머지 뒤 quick이 반드시 red인데 설치는 머지 전엔 불가(닭·달걀) — R9가 매번 되돌리고 「build 재spawn」 오진 안내까지 했다(3차 실기) · 검사: commands.setup(boot가 등록) + ship이 매니페스트 변경 출하의 머지 직후 main에서 setup 실행 — e2e(.setup-ran 마커)

@@ -286,7 +286,7 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   write(wt, '.node-version', '22\n');
   write(wt, 'src/cli.mjs', "process.stdout.write('memo 0.0.0\\n');\n");
   write(wt, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('진입점이 뜬다', () => { assert.equal(spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }).status, 0); });\n");
-  assert.match(script('work', ['commands', 'quick=node --test "tests/unit/**/*.test.mjs"', 'full=node --test "tests/**/*.test.mjs"', 'test_file=node --test {file}', 'run=node src/cli.mjs'], wt).out, /^COMMANDS quick=/);
+  assert.match(script('work', ['commands', 'quick=node --test "tests/unit/**/*.test.mjs"', 'full=node --test "tests/**/*.test.mjs"', 'test_file=node --test {file}', 'run=node src/cli.mjs', `setup=node -e "require('fs').writeFileSync('.setup-ran','x')"`], wt).out, /^COMMANDS quick=/);
   assert.match(script('work', ['rules', 'project=memo', 'one_line=터미널 메모 도구'], wt).out, /^RULES CLAUDE\.md 자리 전부 채움/);
   assert.match(fs.readFileSync(path.join(wt, 'CLAUDE.md'), 'utf8'), /^# memo\n터미널 메모 도구\n[\s\S]*- quick: node --test/);
   git(['add', '-A'], wt);
@@ -301,7 +301,8 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   // 사고 7 회귀: main의 models 커밋 × boot의 commands 커밋 = team.json rebase 충돌 — ship이 키 병합으로 통과하고 통합 full까지 스스로 돌린다
   const ship = script('ship', ['boot'], repo);
   assert.match(ship.out, /^SHIPPED boot [0-9a-f]{7}/, ship.out);
-  assert.match(ship.out, /NOTE: 의존성 파일이 바뀌었다/, '사고 10: 매니페스트가 바뀐 출하는 메인 설치를 안내한다');
+  assert.match(ship.out, /NOTE: 의존성 파일이 바뀐 출하/, '사고 10: 매니페스트가 바뀐 출하는 메인 설치를 안내한다');
+  assert.ok(fs.existsSync(path.join(repo, '.setup-ran')), '사고 21: 의존성 출하는 main quick 전에 commands.setup이 main에서 돈다');
   const team = JSON.parse(fs.readFileSync(path.join(repo, '.garagiste', 'team.json'), 'utf8'));
   assert.match(team.commands.quick, /^node --test/);
   assert.equal(team.models.build, 'opus', '사고 7: main의 models와 boot의 commands가 함께 살아남는다');
