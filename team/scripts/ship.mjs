@@ -8,8 +8,28 @@ import { blocking, diagnose } from './doctor.mjs';
 import { budgetStatus, openQuestions, render } from './state.mjs';
 
 export const SPIKE_ROWS = ['wire', 'host', 'license', 'default', 'os'];
-// 사고 14(2차 실기): spike가 「default (팀이 정한 것 후보):」처럼 부연을 붙이자 내용 있는 행이 미완으로 읽혔다 — 괄호 부연은 행 이름의 일부로 허용
-export function spikeComplete(text) { return SPIKE_ROWS.every((r) => new RegExp(`^[ \\t]*[-*]?[ \\t]*${r}[ \\t]*(?:\\([^)]*\\))?[ \\t]*:[ \\t]*\\S`, 'mi').test(text || '')); }
+// 사고 14·16(2차 실기): 괄호 부연 허용 + 내용은 「같은 줄」 또는 「더 깊은 들여쓰기의 다음 줄(하위 불릿)」 —
+// 같은 깊이의 다음 행이 바로 오면 빈 행이다(빈 행이 다음 행을 내용으로 잡던 느슨함은 유지해서 조임).
+export function spikeComplete(text) {
+  const lines = String(text || '').split('\n');
+  return SPIKE_ROWS.every((r) => {
+    const re = new RegExp(`^([ \\t]*)[-*]?[ \\t]*${r}[ \\t]*(?:\\([^)]*\\))?[ \\t]*:[ \\t]*(.*)$`, 'i');
+    for (let i = 0; i < lines.length; i++) {
+      const m = re.exec(lines[i]);
+      if (!m) continue;
+      if (m[2].trim()) return true;
+      const indent = m[1].length;
+      for (let j = i + 1; j < lines.length; j++) {
+        if (!lines[j].trim()) continue;
+        return (lines[j].match(/^[ \t]*/) || [''])[0].length > indent;
+      }
+      return false;
+    }
+    return false;
+  });
+}
+// spike 파일만 든 wip HEAD인가 — 늦은 spike 뒤 build는 할 일이 없어 wip로 끝난다(사고 16). ship이 정식 메시지로 승격한다(tree 불변 → 증거 유효).
+export function spikeOnlyFiles(files, measurements) { return files.length > 0 && files.every((f) => f.replace(/\\/g, '/').startsWith(`${measurements}/spike-`)); }
 export function evaluateShip(x) {
   const c = [];
   const scaffold = x.unit?.kind === 'scaffold';
@@ -87,6 +107,11 @@ function main() {
   const base = exists ? git(['merge-base', 'HEAD', c.team.protected_branch], wt).stdout : '';
   const changed = exists && base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
   const diffHit = checkBoundary(c.team, { files: changed });
+  // 사고 16: 늦은 spike 뒤 측정 파일만 남으면 build는 할 일이 없어 wip로 끝난다 — spike 파일만의 wip HEAD는 정식 메시지로 승격(amend는 메시지만, tree 불변 → full·redproof·attack 증거 그대로 유효)
+  if (exists && /^wip:/.test(git(['log', '-1', '--format=%s'], wt).stdout)) {
+    const headFiles = git(['show', '--name-only', '--format='], wt).stdout.split('\n').filter(Boolean);
+    if (spikeOnlyFiles(headFiles, c.team.paths.measurements)) git(['commit', '--amend', '-q', '-m', `docs(spike): ${slug} 측정`], wt, { GARAGISTE_WIP: '1' });
+  }
   const conds = evaluateShip({
     unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed,
     boundaryHit: !!unit.boundary?.hit || diffHit.hit, boundaryWhy: unit.boundary?.hit ? '원문' : diffHit.reasons.join(', '),

@@ -10,7 +10,7 @@ import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
-import { evaluateShip, mergeTeamJson, spikeComplete } from '../team/scripts/ship.mjs';
+import { evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { closedDecisions, fit, fence, matchHazards, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
@@ -247,7 +247,11 @@ test('ship: spike는 필수 행 다섯이 전부 있어야 끝난 것이다', ()
   assert.equal(spikeComplete('- wire: 없음\n- host: linux node 22\n- license: MIT 동봉\n- default: 포트 3000\n- os: 없음'), true);
   assert.equal(spikeComplete('- wire: 없음\n- host: linux'), false);
   assert.equal(spikeComplete('- wire: 없음\n- host: win11 node 24\n- license: 의존성 없음\n- default (팀이 정한 것 후보): 세계 폴더 안\n- os: 없음'), true, '사고 14: 괄호 부연이 붙은 행도 내용이 있으면 완성이다');
-  assert.equal(spikeComplete('- wire: 없음\n- host: w\n- license: 없음\n- default (후보):\n- os: 없음'), false, '부연이 있어도 내용이 비면 미완');
+  assert.equal(spikeComplete('- wire: 없음\n- host: w\n- license: 없음\n- default (후보):\n- os: 없음'), false, '부연이 있어도 내용이 비면 미완 — 같은 깊이의 다음 행은 내용이 아니다');
+  assert.equal(spikeComplete('- wire: 없음\n- host: w\n- license: 없음\n- default (팀이 정한 것 후보):\n  - 인덱스 위치: 세계 폴더 안\n- os: 없음'), true, '사고 16: 하위 불릿(더 깊은 들여쓰기)에 둔 내용도 완성이다');
+  assert.equal(spikeOnlyFiles(['docs/measurements/spike-vault-open-ui.md'], 'docs/measurements'), true, '사고 16: spike 파일만의 wip HEAD는 ship이 승격한다');
+  assert.equal(spikeOnlyFiles(['docs/measurements/spike-x.md', 'src/a.ts'], 'docs/measurements'), false, '제품 코드가 섞이면 승격하지 않는다');
+  assert.equal(spikeOnlyFiles([], 'docs/measurements'), false);
 });
 test('brief: 팩은 상한을 넘으면 diff→hazards→brief→이어받기→try→surface 순으로 포인터가 되고 acceptance는 절대 버리지 않는다 (사고 8)', () => {
   const big = 'x'.repeat(3000);

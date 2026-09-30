@@ -28,3 +28,4 @@
 - `.garagiste/scripts/**` · '닫힌 결정 전체를 모든 팩에'(사고 4의 수리)가 프로젝트 나이에 비례해 팩을 키웠다 — 선행 사슬이 길수록 상한에 닿는다(2차 실기, build 팩 15.7/16KB) · 검사: 결정은 스코프(전역 intake + 이 unit + needs의 unit·Q; boot·intake 팩만 전체) — 단위·e2e 테스트
 - `.garagiste/scripts/**` `.garagiste/packs/spike.md` · spike가 「default (팀이 정한 것 후보):」처럼 부연을 붙이자 내용 있는 행이 미완으로 읽혔다 — 재spawn해도 같은 형식이라 루프가 돌 수 없었다(2차 실기) · 검사: spikeComplete가 괄호 부연 허용 + 팩에 행 형식 명시 — unit 테스트
 - `.garagiste/scripts/**` · 커밋 금지 팩(spike)의 worktree를 체크포인트 훅이 wip로 커밋해 tree가 바뀌었다 — full·redproof·attack 증거가 전부 낡고 HEAD가 wip이 됐다(2차 실기) · 검사: checkpoint는 unit 상태 spike를 건너뛴다(측정은 초 단위 재실행이 싸다) — unit 테스트
+- `.garagiste/scripts/**` · 사고 14·15 수리의 후속 — 하위 불릿에 내용을 둔 spike 행이 미완으로 읽혔고, 늦은 spike 뒤 build는 할 일이 없어 측정 파일을 다시 wip로 커밋해 ship이 같은 두 줄로 반복 실패했다(2차 실기) · 검사: 행 내용은 같은 줄 또는 더 깊은 들여쓰기 줄 + spike 파일만의 wip HEAD는 ship이 docs(spike)로 amend 승격(tree 불변·증거 유효) — unit 테스트

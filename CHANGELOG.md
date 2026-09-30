@@ -76,6 +76,10 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 사고 14: spike가 「default (팀이 정한 것 후보): …」처럼 부연을 붙이자 `spikeComplete` 정규식(`행이름:`만 인정)이 내용 있는 행을 미완으로 봤다 — 팩에 형식 지시도 없어 재spawn해도 같은 형식이라 루프가 돌 수 없었다. 수리: 정규식이 괄호 부연 허용 + spike 팩에 행 형식 한 줄 명시(약한 모델 대비 이중 방어).
 - 사고 15: 커밋 금지 팩(spike — 가드도 spike의 commit을 거부)의 worktree를 체크포인트 훅이 wip로 커밋해 tree가 바뀌었다 — full·redproof·attack 증거가 전부 낡고 HEAD가 wip이 되어 build 한 라운드가 추가로 필요했다. 수리: checkpoint가 unit 상태 spike인 worktree를 건너뛴다(측정 파일은 초 단위 재실행이라 잃는 쪽이 싸다 — 늦은 boundary HIT로 spike가 뒤에 오면 재검증 비용은 tree 법의 정직한 비용으로 남는다).
 
+### Fixed — 2026-09-30 사고 14·15 수리의 후속 두 건 (2차 실기의 사고 16)
+- 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
+- wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
+
 ### Removed from the install path
 - 계획·비평·리뷰 라운드, per-step verifier, self-check, 메모리 파일, STATUS-team·METRICS 12열, hotfix·kickoff·brainstorm·retro 스킬, 문서 예산 훅, opencode 패리티. 근거: docs/catalogue/V1-ANALYSIS.md.
 
