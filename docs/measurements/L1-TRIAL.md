@@ -50,3 +50,9 @@
 1. CLAUDE.md Flow 2~4 그대로: intake spawn → 열린 Q 예/아니오 → `scope`(CEO 서명 — 여기부터 시계) → seed 루프. 인터럽트는 Flow 7.
 2. 각 ship 뒤 CEO가 try 카드 → `tried ok|fail`. 미검수 3이면 멈춘다 — 그것이 정상 동작이다.
 3. 3 unit 출하 후: 이 표를 원장(`.garagiste/ledger/evidence.jsonl`)에서 채워 커밋. 판정과 다음 걸음은 표가 정한다.
+
+## 재등록 — 3차 (2026-09-30)
+- 목적: 2차의 처방 그대로 — 수리 대기 0 조건에서 pass line **원시값** 판정. 예측: unit당 원시 10~25분, 표 완성은 반나절 안, 프레임워크 FAIL 0건.
+- 동결: 94abdc7(사고 18·19 수리)을 포함한 머지 직후의 main. **설치 원본 = 원격 fresh clone**(로컬 드리프트 0) — 클론에서 `node --test "tests/*.test.mjs"` 전부 초록이 시험 개시 조건.
+- 시험대: 새 빈 폴더(클린룸 — 재사용 금지·remote 없음), `-Budget high`로 설치(이후 models 변경 금지 — 사고 6·7 경로 차단). 시험 중 재설치·수동 스크립트 편집 금지.
+- 입력: 2차와 동일 원문(BRIEF-draft)·동일 intake 답. unit 구성 ①②③ 규칙, tried 위임 3규칙(기계 판정 카드만·human@은 CEO·표시 명기), 시계·판정선은 1차 등록과 동일.
