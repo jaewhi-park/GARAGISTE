@@ -12,7 +12,7 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
-import { closedDecisions, fit, fence, matchHazards, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
+import { closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets } from '../team/scripts/work.mjs';
@@ -287,6 +287,15 @@ test('brief: 팩은 상한을 넘으면 diff→hazards→brief→이어받기→
   assert.match(r2.text, /## i\n\(팩 상한으로 생략 — worktree에서 git log/);
   assert.match(r2.text, /## t\n\(팩 상한으로 생략/);
   assert.equal(packBreakdown([{ key: 'a', text: 'x'.repeat(1024) }, { key: 'b', text: 'y' }]), 'a 1KB · b 0KB', 'FAIL은 절별 크기를 스스로 말한다');
+});
+test('brief: 팩 상한 FAIL은 법만으로 넘을 때 난다 — 안내는 CEO 결정 둘(상한 실측 이상·unit 나누기), conductor 몫은 없다 (4차 실기 사고 25)', () => {
+  const a = overflowAdvice({ bytes: 17.1 * 1024, capKb: 16, slug: 'time-model' });
+  assert.match(a, /넘는 것은 법\(인수·규칙·결정·원문\)/, 'fit이 부대물을 다 줄인 뒤에만 FAIL이 난다');
+  assert.match(a, /pack_kb_max를 18 이상으로/, '필요한 상한을 숫자로 — 실측');
+  assert.match(a, /work\.mjs drop time-model/, 'unit 나누기는 명령이 있는 방향전환(CEO)으로');
+  assert.doesNotMatch(a, /부대물이면/, '옛 둘째 갈래는 FAIL 시점에 참일 수 없었다');
+  assert.match(overflowAdvice({ bytes: 70 * 1024, capKb: 64, slug: 'boot', mult: 4 }), /pack_kb_max를 18 이상으로/, 'boot는 4× — 필요한 상한은 배수로 나눠 센다');
+  assert.ok(team.budgets.pack_kb_max >= 21, '기본 상한은 실측 이상 — 4차 time-model build 팩 전문 21KB(법만 17KB), 사고 8 선례대로 실측으로 올린다');
 });
 test('brief: 닫힌 결정만 골라낸다 — CEO의 답은 모든 팩의 전제다 (첫 실기 사고: boot가 Q1을 못 받았다)', () => {
   const t = '## 정해 주세요\n- [ ] Q2 (vault): 어디에 두나?\n- [x] Q1 (boot): 부록 스택으로 확정? → 예 (2026-09-29)\n산문 줄은 무시\n';
