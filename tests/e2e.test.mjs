@@ -128,6 +128,10 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('redproof', ['hello'], wt).out, /^PASS redproof/);
   assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
 
+  // 사고 22 재현: 증거 기록 뒤 main이 움직인다(CEO 동기화 커밋과 같은 꼴) — ship은 rebase 후 full·redproof·attack을 새 tree에 스스로 다시 묶고 한 번에 SHIPPED
+  write(repo, 'docs/NOTE.md', 'main moved\n');
+  git(['add', 'docs/NOTE.md'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'docs: note'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
   // ship: 7조건 통과 → main ff 머지 + LEDGER + STATUS
   const ship = script('ship', ['hello'], repo);
   assert.match(ship.out, /^SHIPPED hello [0-9a-f]{7} sensor=machine/, ship.out);

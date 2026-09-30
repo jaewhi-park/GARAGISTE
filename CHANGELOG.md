@@ -80,6 +80,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-09-30 rebase 뒤 증거의 반쪽 재기록 (3차 실기의 사고 22)
+- ship의 rebase가 tree를 바꾸면 통합 full만 새 tree에 재기록됐다 — 롤백이 rebase된 worktree를 남기면 다음 ship이 「redproof·attack이 이전 tree」로 막히는 핑퐁이 되고(main이 또 움직이면 반복), 더 나쁘게는 **새 base 위에서 생긴 공격 회귀가 머지 전 검사를 빠져나갈 수 있었다**. 수리: tree 변경 시 ship이 redproof·attack도 스스로 재실행·재기록하고, 통합 tree의 attack red>0·redproof 실패는 머지 전에 FAIL — 「ship 한 번」이 main 이동과 무관하게 참이 된다. 검사: e2e(증거 기록 뒤 main 커밋 삽입 → ship 한 번에 SHIPPED).
+
 ### Fixed — 2026-09-30 의존성 출하의 닭·달걀 (3차 실기의 사고 21)
 - 의존성을 새로 들이는 unit은 머지 뒤 main quick이 설치 없이는 반드시 red인데, 설치는 머지 전엔 불가능하다(새 매니페스트가 main에 없다) — R9 원자성이 매번 머지를 되돌리고, FAIL 안내는 「build 재spawn」이라는 오진까지 했다. 수리: `commands.setup`(의존성 설치 명령 — boot 팩이 등록, `work.mjs commands setup="npm ci"`) + **ship이 매니페스트 변경 출하의 머지 직후 main에서 setup을 실행**한 뒤 quick을 검사(설치 실패도 롤백·이유 출력). 롤백 문구는 의존성 출하일 때 setup 등록·수리를 안내한다. 검사: boot e2e(.setup-ran 마커 — setup이 main quick 전에 돈다).
 
