@@ -155,7 +155,7 @@ export function depDirs(root, depth = 3) {
     for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
       if (!e.isDirectory() || e.name.startsWith('.git') || e.name === '.worktrees') continue;
       const p = path.join(dir, e.name);
-      if (e.name === 'node_modules' || e.name === '.venv') { found.push(path.relative(root, p)); continue; }
+      if (e.name === 'node_modules' || e.name === '.venv') { found.push(path.relative(root, p).replace(/\\/g, '/')); continue; } // 구분자는 /로 정규화 — listFiles와 동일(사고 18: win32에서 테스트 거짓 실패)
       if (d < depth && !e.name.startsWith('.')) walk(p, d + 1);
     }
   };
