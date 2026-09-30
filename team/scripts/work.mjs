@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
-import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readText, saveUnit, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot'];
@@ -91,6 +91,14 @@ export function decideLine(text, n, answer, date) {
 export function unknownQuestions(needs, decisionsText) {
   const known = new Set([...String(decisionsText || '').matchAll(/^- \[[ x]\] (Q\d+)/gm)].map((m) => m[1]));
   return needs.filter((n) => /^Q\d+$/.test(n) && !known.has(n));
+}
+// 사고 17(2차 실기): 닫힘은 반영이 아니다 — Q<n>에 기대는 진행 중 unit 중 이번 생애(created 이후)에 spec이 답 없이 이미 돈 것.
+// 첫 spec 전이면 그 팩이 답을 담으므로 대상이 아니다. 출하·dropped는 끝났고, scaffold(boot)엔 spec이 없다.
+export function respecTargets({ units, ledger, n }) {
+  return units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped' && u.kind !== 'scaffold'
+    && ((u.questions || []).includes(n) || (u.needs || []).includes(`Q${n}`))
+    && ledger.some((e) => e.kind === 'pack' && e.pack === 'spec' && e.slug === u.slug && (e.ts || '') >= (u.created || '')))
+    .map((u) => u.slug);
 }
 // BACKLOG 열린 줄 하나의 needs만 바꾼다 — 다른 줄은 바이트 그대로, 닫힌 줄·없는 줄은 null
 export function setNeeds(text, slug, needs) {
@@ -260,6 +268,14 @@ function decide(c, n, answer) {
   touchCeo(c.main);
   appendLedger(c.main, c.team, { kind: 'decide', q: Number(n), answer });
   out(`PASS decide Q${n}`);
+  // 사고 17: 진행 중에 온 답은 spec이 먼저 받는다 — build·attack 팩과 ship은 spec 팩이 다시 열릴 때까지 닫힌다(re-spec 경로 재사용)
+  const units = listUnits(c.main, c.team);
+  for (const slug of respecTargets({ units, ledger: readLedger(c.main, c.team), n: Number(n) })) {
+    const u = units.find((x) => x.slug === slug);
+    u.respec = [...(u.respec || []), { q: Number(n), at: new Date().toISOString() }]; saveUnit(c.main, c.team, u);
+    appendLedger(c.main, c.team, { kind: 'respec', slug, q: Number(n) });
+    out(`RESPEC ${slug} — Q${n}의 답이 진행 중에 왔다: spec이 답을 red 수용 테스트로 박는다 → node .garagiste/scripts/brief.mjs spec ${slug} (build·attack·ship은 그 뒤에 열린다)`);
+  }
 }
 // 방향전환의 원자 연산 — 작업을 버리되 잃지 않는다: wip 커밋 → 브랜치를 dropped/로 개명 → worktree 제거. BACKLOG 줄은 열려 있어 seed가 새로 연다(--forget이면 닫는다).
 function drop(c, slug, reason = '', flags = {}) {

@@ -51,7 +51,11 @@ export function evaluateShip(x) {
   const head = !/^wip:/.test(x.lastSubject || '');
   c.push({ id: 'head', ok: head, why: head ? '' : 'HEAD가 wip 체크포인트 — build를 다시 띄워 끝내라' });
   const qs = x.openQuestions || []; // 이 unit이 올린 질문에 답이 없으면 출하하지 않는다 — 비가역 결정을 기본값이 대신하지 못하게
-  c.push({ id: 'questions', ok: !qs.length, why: qs.length ? `이 unit의 열린 질문 ${qs.join(' · ')} — node .garagiste/scripts/work.mjs decide <n> "<답>" 뒤에 ship` : '' });
+  const rs = (x.unit?.respec || []).map((r) => `Q${r.q}`); // 사고 17: 닫혔지만 spec이 아직 받지 않은 답 — 닫힘은 반영이 아니다
+  c.push({ id: 'questions', ok: !qs.length && !rs.length, why: [
+    qs.length ? `이 unit의 열린 질문 ${qs.join(' · ')} — node .garagiste/scripts/work.mjs decide <n> "<답>" 뒤에 ship` : '',
+    rs.length ? `${rs.join('·')}의 답이 진행 중에 왔는데 spec이 아직 받지 않았다 — node .garagiste/scripts/brief.mjs spec ${x.slug} → build → ship` : '',
+  ].filter(Boolean).join('; ') });
   const budgetOk = x.stops.length === 0 && x.proseKb <= x.proseMax;
   c.push({ id: 'budget', ok: budgetOk, why: budgetOk ? '' : [...x.stops, ...(x.proseKb > x.proseMax ? [`규칙 산문 ${x.proseKb}KB > ${x.proseMax}KB`] : [])].join('; ') });
   return c;

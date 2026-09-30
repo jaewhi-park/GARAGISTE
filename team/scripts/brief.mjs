@@ -90,6 +90,9 @@ function main() {
   const unit = loadUnit(c.main, c.team, slug);
   if (pack === 'boot' && unit.kind !== 'scaffold') fail(`FAIL boot 팩은 kind scaffold unit에만 — ${slug}은 ${unit.kind}`);
   if (pack !== 'boot' && unit.kind === 'scaffold') fail(`FAIL scaffold unit(${slug})은 boot 팩 하나로 끝난다 — spec·build·attack 없음`);
+  // 사고 17(2차 실기): 진행 중에 닫힌 질문의 답은 spec이 먼저 받는다 — 닫힘은 반영이 아니다(Q11이 build 뒤 닫혀 미구현 출하)
+  const respec = unit.respec || [];
+  if (respec.length && (pack === 'build' || pack === 'attack')) fail(`FAIL ${pack} 팩: ${respec.map((r) => `Q${r.q}`).join('·')}의 답이 진행 중에 왔다 — spec이 먼저(답을 red 수용 테스트로): node .garagiste/scripts/brief.mjs spec ${slug}`);
   const wt = worktreeDir(c.main, c.team, slug);
   if (!fs.existsSync(wt)) fail(`FAIL worktree 없음: ${unit.worktree}`);
   const base = mergeBase(wt, c.team.protected_branch);
@@ -101,6 +104,10 @@ function main() {
   sec('origin', '원문', fence(`CEO 말 그대로 (${unit.created.slice(0, 10)})`, unit.origin));
   const closed = scopedDecisions(readText(path.join(c.main, c.team.paths.decisions)), { pack, slug, needs: unit.needs });
   if (closed.length) sec('decided', '결정된 것 (CEO의 답 — 전제다, 조용한 기본값으로 덮지 않는다)', closed.join('\n'));
+  if (pack === 'spec' && respec.length) {
+    const qs = new Set(respec.map((r) => `Q${r.q}`));
+    sec('respec', '재-spec — 진행 중에 온 답 (어긋나는 주장만 고친다 · 이 답을 red 수용 테스트로 · 끝은 redproof RED)', closedDecisions(readText(path.join(c.main, c.team.paths.decisions))).filter((l) => qs.has((/Q\d+/.exec(l) || [''])[0])).join('\n') || [...qs].join(' · '));
+  }
   if (unit.boundary?.hit) sec('boundary', 'boundary', `HIT: ${unit.boundary.reasons.join(', ')}${pack !== 'spike' ? ` — spike 측정: docs/measurements/spike-${slug}.md` : ''}`);
   const spike = readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`));
   if (spike && pack !== 'spike') sec('spike', '측정된 사실 (spike)', fence('spike 측정 파일', spike));
@@ -134,7 +141,9 @@ function main() {
   const file = path.join(dir, `${slug}-${pack}-${stamp()}.md`);
   fs.writeFileSync(file, r.text + '\n');
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), pack); // 표시용 — 가드의 정본은 unit 상태다
-  if (unit.state !== pack) { unit.state = pack; saveUnit(c.main, c.team, unit); }
+  const consumed = pack === 'spec' && respec.length > 0; // spec 팩이 답을 실었다 — build·attack·ship이 다시 열린다
+  if (consumed) unit.respec = [];
+  if (unit.state !== pack || consumed) { unit.state = pack; saveUnit(c.main, c.team, unit); }
   appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes });
   out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
 }

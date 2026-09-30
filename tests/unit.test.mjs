@@ -15,7 +15,7 @@ import { attackCell, evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles 
 import { closedDecisions, fit, fence, matchHazards, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds } from '../team/scripts/work.mjs';
+import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
 
@@ -229,6 +229,7 @@ test('ship: 8조건 — 하나라도 빠지면 fail-closed', () => {
   assert.equal(evaluateShip({ ...x, unit: { ...unit, kind: 'scaffold' }, ledger: [ledger[0]], changed: ['.garagiste/team.json'] }).filter((k) => !k.ok).length, 0, 'boot는 명령을 채우는 unit이다');
   assert.deepEqual(evaluateShip({ ...x, lastSubject: 'wip: h checkpoint' }).filter((k) => !k.ok).map((k) => k.id), ['head']);
   assert.deepEqual(evaluateShip({ ...x, openQuestions: ['Q3'] }).filter((k) => !k.ok).map((k) => k.id), ['questions'], 'R12: 이 unit의 열린 질문이 ship을 막는다 — decide 뒤에');
+  assert.match(evaluateShip({ ...x, unit: { ...unit, respec: [{ q: 11, at: 'T' }] } }).filter((k) => !k.ok).map((k) => `${k.id}: ${k.why}`).join(), /^questions: .*Q11.*brief\.mjs spec h/, '사고 17: 닫혔지만 spec에 반영 전인 답도 ship을 막는다 — 닫힘은 반영이 아니다');
   assert.match(evaluateShip({ ...x, ledger: [ledger[0], { ...ledger[1], tree: 'OLD' }, ledger[2]] }).filter((k) => !k.ok).map((k) => k.why).join(), /이전 tree.*redproof\.mjs h/, 'R10: 낡은 증거엔 재실행 명령이 문구에 있다');
   assert.match(evaluateShip({ ...x, ledger: [ledger[0], ledger[1], { ...ledger[2], tree: 'OLD' }] }).filter((k) => !k.ok).map((k) => k.why).join(), /이전 tree.*verify\.mjs attack h/, 'R10: attack도 같다');
   assert.deepEqual(evaluateShip({ ...x, stops: ['미검수 3'] }).filter((k) => !k.ok).map((k) => k.id), ['budget']);
@@ -342,6 +343,29 @@ test('work: needs의 Q 번호는 ask가 준 것만 — intake가 번호를 짐�
   assert.match(setNeeds(t1, 'export', []), /^- \[ \] export · M2 · needs: - · /m, '빈 목록은 -');
   assert.equal(setNeeds(bl, 'session', ['memo']), null, '닫힌 줄은 고치지 않는다');
   assert.equal(setNeeds(bl, 'nope', ['memo']), null);
+});
+test('work decide: 진행 중 unit의 질문이 닫히면 spec 재개가 걸린다 — 답이 build 뒤에 와 미구현 출하됐다 (2차 실기 사고 17)', () => {
+  const at = '2026-09-30T01:00:00Z';
+  const units = [
+    { slug: 'idx', kind: 'feature', state: 'build', created: at, questions: [11], needs: [] },
+    { slug: 'fresh', kind: 'feature', state: 'spec', created: at, questions: [11], needs: [] },
+    { slug: 'hit', kind: 'feature', state: 'spike', created: at, questions: [], needs: ['Q11'] },
+    { slug: 'late', kind: 'feature', state: 'spike', created: at, questions: [], needs: ['Q11'] },
+    { slug: 'old', kind: 'feature', state: 'shipped', created: '2026-09-29T01:00:00Z', questions: [11], needs: [] },
+    { slug: 'gone', kind: 'feature', state: 'dropped', created: at, questions: [11], needs: [] },
+    { slug: 'other', kind: 'feature', state: 'build', created: at, questions: [12], needs: [] },
+    { slug: 'boot', kind: 'scaffold', state: 'boot', created: at, questions: [11], needs: [] },
+  ];
+  const ledger = [
+    { ts: '2026-09-29T02:00:00Z', kind: 'pack', slug: 'fresh', pack: 'spec' }, // 이전 생애(drop 전)의 spec — 세지 않는다
+    { ts: '2026-09-30T02:00:00Z', kind: 'pack', slug: 'idx', pack: 'spec' },
+    { ts: '2026-09-30T02:30:00Z', kind: 'pack', slug: 'idx', pack: 'build' },
+    { ts: '2026-09-30T02:00:00Z', kind: 'pack', slug: 'late', pack: 'spec' },
+    { ts: '2026-09-30T02:00:00Z', kind: 'pack', slug: 'gone', pack: 'spec' },
+    { ts: '2026-09-30T02:00:00Z', kind: 'pack', slug: 'other', pack: 'spec' },
+  ];
+  assert.deepEqual(respecTargets({ units, ledger, n: 11 }), ['idx', 'late'], 'spec이 답 없이 이미 돈 진행 중 unit만(늦은 spike 포함) — 첫 spec 전(fresh·hit)은 그 팩이 답을 담는다, 출하·dropped·scaffold는 대상이 아니다');
+  assert.deepEqual(respecTargets({ units, ledger, n: 13 }), []);
 });
 test('doctor: R8 — fresh 항목(alive·빈 commands)만 통과, 구조 결함은 seed·ship을 막는다', () => {
   const probs = ['session-start alive 마커 없음 → 첫 세션이면 정상', 'team.json commands.quick 비어 있음 → boot이 채운다', 'core.hooksPath=(없음) → git config core.hooksPath .githooks'];
