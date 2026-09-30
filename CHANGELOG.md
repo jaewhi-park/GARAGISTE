@@ -80,6 +80,10 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-09-30 workTree의 모드 비트 유령 불일치와 설치기 fail-open (사고 19)
+- win32 원격 검증의 「인덱스 ≠ 작업 트리」 확정 원인: workTree()가 임시 인덱스를 `read-tree HEAD`로 시작해, filemode=false(NTFS)에선 HEAD에 없는 chmod 파일(설치기가 실제 인덱스에 기록한 `.githooks/pre-commit` 755)이 임시엔 644로 들어갔다 — 내용 diff 0(unstaged 비어 있음)인데 tree만 달라 게이트가 거부. 수리: 임시 인덱스를 **실제 인덱스 복사본**으로 씨앗해 모드 기록을 물려받는다. 검사: `core.filemode=false` 강제 + chmod 재현 unit 테스트(리눅스에서 win32 재현).
+- 덤으로 드러난 독립 구멍: install(sh·ps1)이 첫 커밋 실패를 경고로 삼키고 설치 성공을 선언했다(fail-open). 첫 커밋 실패 = 설치 FAIL(exit 1), git 출력이 이유로 남는다. (직전의 autocrlf 고정·진단 첨부는 원인은 아니었지만 각각 결정론 강화·자기 진단으로 유효해 유지.)
+
 ### Fixed — 2026-09-30 게이트의 tree 동일성 vs 사용자 전역 개행 설정 (사고 18 계속)
 - win32 원격 클론 e2e에서 quick PASS 뒤 커밋이 「인덱스 ≠ 작업 트리」로 거부됐다(메인 저장소·비-WIP 커밋에서만). 게이트의 법은 tree 바이트 동일성인데, 프로젝트가 사용자 전역 `core.autocrlf`(Git for Windows 기본 true)의 개행 변환에 노출돼 유령 diff가 가능했다. 수리: install(sh·ps1)이 저장소-로컬 `core.autocrlf false`를 고정 — 개행은 쓰인 바이트 그대로가 정본. e2e 실패 메시지에 status·unstaged·autocrlf 출처를 첨부해 재발 시 원인이 바로 보인다.
 

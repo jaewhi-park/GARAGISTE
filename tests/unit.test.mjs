@@ -17,7 +17,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
-import { dirtyFiles, globToRegex, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot } from '../team/scripts/lib.mjs';
+import { dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -375,6 +375,15 @@ test('lib: dirtyFiles는 porcelain 선행 공백을 살린다 — 첫 줄이 비
   g(['add', '-A']); g(['commit', '-q', '-m', 'init']);
   fs.writeFileSync(path.join(d, 'docs', 'BACKLOG.md'), 'b\n'); // 수정만, 스테이징 없음 → ' M docs/BACKLOG.md'
   assert.deepEqual(dirtyFiles(d), ['docs/BACKLOG.md'], "'ocs/BACKLOG.md'가 아니다");
+});
+test('lib: workTree는 실제 인덱스를 씨앗으로 — filemode=false에서 chmod된 새 파일의 모드를 잃지 않는다 (win32 사고 19)', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-wt-'));
+  const g = (a) => spawnSync('git', a, { cwd: d, encoding: 'utf8' });
+  g(['init', '-q']); g(['config', 'user.email', 'x@x']); g(['config', 'user.name', 'x']); g(['config', 'core.filemode', 'false']); // NTFS 재현
+  fs.writeFileSync(path.join(d, 'a.txt'), 'x\n'); g(['add', '-A']); g(['commit', '-q', '-m', 'init']);
+  fs.writeFileSync(path.join(d, 'hook'), '#!/bin/sh\n'); // HEAD에 없는 새 파일
+  g(['add', 'hook']); g(['update-index', '--chmod=+x', 'hook']); // 실제 인덱스 100755
+  assert.equal(workTree(d), indexTree(d), '내용 diff 0이면 tree도 같아야 한다 — 모드 유령 불일치 금지');
 });
 test('lib: env.local은 KEY=VALUE 줄만 읽고 주석은 무시한다', () => {
   assert.deepEqual(parseLocalEnv('# 이 기계만\nGARAGISTE_RUNNER=setpriv --reuid=1000 env HOME=/tmp/x\nBAD LINE\nA=1'), { GARAGISTE_RUNNER: 'setpriv --reuid=1000 env HOME=/tmp/x', A: '1' });

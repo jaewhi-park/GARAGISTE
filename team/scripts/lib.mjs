@@ -68,12 +68,17 @@ export function readLedger(main, team) {
   if (!fs.existsSync(p)) return [];
   return fs.readFileSync(p, 'utf8').split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
 }
-// 작업 트리(추적 + 미추적, .gitignore 존중)의 tree 해시 — 임시 인덱스로 계산, 실제 인덱스는 건드리지 않는다
+// 작업 트리(추적 + 미추적, .gitignore 존중)의 tree 해시 — 임시 인덱스로 계산, 실제 인덱스는 건드리지 않는다.
+// 사고 19(win32 원격 검증): 씨앗을 read-tree HEAD로 하면 filemode=false(NTFS)에서 HEAD에 없는 chmod 파일(.githooks/pre-commit 755)이
+// 임시 인덱스엔 644로 들어가 내용 diff 0인데 tree만 다른 유령 불일치가 났다 — 실제 인덱스 복사본을 씨앗으로 모드 기록을 물려받는다.
 export function workTree(cwd) {
   const tmp = path.join(os.tmpdir(), `garagiste-index-${process.pid}-${Date.now()}`);
   const env = { GIT_INDEX_FILE: tmp };
   try {
-    if (!git(['rev-parse', '--verify', '-q', 'HEAD'], cwd).status) git(['read-tree', 'HEAD'], cwd, env);
+    const idx = git(['rev-parse', '--git-path', 'index'], cwd).stdout;
+    const idxAbs = idx ? path.resolve(cwd, idx) : '';
+    if (idxAbs && fs.existsSync(idxAbs)) fs.copyFileSync(idxAbs, tmp);
+    else if (!git(['rev-parse', '--verify', '-q', 'HEAD'], cwd).status) git(['read-tree', 'HEAD'], cwd, env);
     git(['add', '-A'], cwd, env);
     return git(['write-tree'], cwd, env).stdout;
   } finally { try { fs.unlinkSync(tmp); } catch { /* 없음 */ } }

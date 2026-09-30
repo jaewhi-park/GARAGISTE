@@ -81,7 +81,8 @@ if (-not $DryRun) {
     $ident = @(); if ((Invoke-Git -C $Root config user.name).Code -ne 0) { $ident += @("-c", "user.name=garagiste", "-c", "user.email=garagiste@local") }
     $commit = Invoke-Git -C $Root @ident commit -q -m "scaffold(team): GARAGISTE install [$Flavor, budget $Budget]"
     Remove-Item Env:GARAGISTE_SHIP -ErrorAction SilentlyContinue
-    if ($commit.Code -eq 0) { Write-Host "  첫 커밋: 팀 파일" } else { Write-Host "  ! 첫 커밋 실패:`n$($commit.Out)`n  다시: cd $Root; git add -A; `$env:GARAGISTE_SHIP=1; git commit -m 'scaffold(team): install'" }
+    # 사고 19: 첫 커밋 실패를 경고로 삼키면 '전부 스테이징된 채 HEAD 어긋남'으로 설치 성공을 선언한다 — fail-closed
+    if ($commit.Code -eq 0) { Write-Host "  첫 커밋: 팀 파일" } else { Write-Host "설치 FAIL — 첫 커밋이 닫히지 않았다:`n$($commit.Out)"; exit 1 }
   }
 }
 Write-Host "---"

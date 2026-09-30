@@ -81,7 +81,8 @@ run git -C "$ROOT" config core.autocrlf false # 게이트의 법은 tree 바이�
 # 첫 커밋이 없으면 설치기가 만든다(첫 커밋은 원장이 있을 수 없어 게이트가 통과시킨다) — 그 뒤 main에 닿는 것은 ship.mjs뿐
 if [ "$DRY" = 0 ] && ! git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then
   git -C "$ROOT" add -A && git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit
-  if GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]"; then echo "  첫 커밋: 팀 파일"; else echo "  ! 첫 커밋 실패 — 위 오류를 보고 다시: cd $ROOT && git add -A && GARAGISTE_SHIP=1 git commit -m 'scaffold(team): install'" >&2; fi
+  # 사고 19(win32 원격 검증): 첫 커밋 실패를 경고로 삼키면 설치가 '전부 스테이징된 채 HEAD 없음/어긋남'으로 성공을 선언한다 — fail-closed
+  if GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]"; then echo "  첫 커밋: 팀 파일"; else echo "설치 FAIL — 첫 커밋이 닫히지 않았다. 위 git 출력이 이유다." >&2; exit 1; fi
 fi
 echo "---"
 # fail-closed: 빨간 채로 설치 완료를 선언하지 않는다 — doctor(--fresh: alive·빈 commands는 정상)와 selftest가 PASS여야 설치다
