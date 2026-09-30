@@ -100,6 +100,15 @@ function main() {
   const unit = loadUnit(c.main, c.team, slug);
   const wt = worktreeDir(c.main, c.team, slug);
   const exists = fs.existsSync(wt);
+  // 사고 20(3차 실기): 사고 15가 spike 산출물의 커밋 경로를 없앴다 — 훅은 건너뛰고, 에이전트는 커밋 금지, conductor는 가드가 막는다.
+  // 사고 16의 대칭으로 완성: spike 파일만 더러운 worktree는 ship이 docs(spike)로 스스로 커밋한다. 그 뒤 증거 재기록은 FAIL 문구의 재실행 명령이 안내한다.
+  if (exists) {
+    const wtDirty = dirtyFiles(wt);
+    if (wtDirty.length && spikeOnlyFiles(wtDirty, c.team.paths.measurements)) {
+      git(['add', '-A'], wt);
+      git(['commit', '-q', '-m', `docs(spike): ${slug} 측정`], wt, { GARAGISTE_WIP: '1' });
+    }
+  }
   const tree = exists ? workTree(wt) : null;
   const units = listUnits(c.main, c.team);
   const ledger = readLedger(c.main, c.team);
