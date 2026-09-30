@@ -207,3 +207,8 @@ L1 시험 준비 완료: 사전 등록 = **docs/measurements/L1-TRIAL.md**(동�
 - 관찰(L1 4차, 1회 — 사고 아님, 안내대로 한 번에 풀림): intake mark가 팩 **조립** 때 전진한다 — 조립 뒤 spawn 없이 세션이 끝나면 다음 intake가 「더해진 BRIEF가 없다」로 `--all` 우회를 요구. 반복되면 사고로 — mark를 intake의 첫 add 때로 옮기는 수리. (2026-10-01)
 - 관찰(L1 4차): try 위임은 파일을 만드는 카드에서 불가 — conductor 쓰기는 가드가 worktree 밖을 거부(위임 1/3, 나머지 CEO-분). spec이 try용 fixture를 docs/units/<slug>/에 두면 카드가 파일 생성 없이 돈다 — L2 저녁 창 CEO-분 측정 뒤 판단. (2026-10-01)
 - 관찰(L1 4차): 팩 FAIL(brief.mjs)·가드 거부는 원장 줄이 없다 — FAIL 대기의 시작점을 이웃 ts로 추정했다. L2 표에서도 같으면 원장 `fail` 줄 후보(측정 빈틈). (2026-10-01)
+- 관찰(L2 1일차): 가드 LEDGER_SHELL이 원장 경로와 한 줄에 있는 `sed`(읽기)·`2>/dev/null`을 쓰기로 거부 — conductor의 표 산출을 방해했다. 규칙집 읽기 오탐(첫 Windows 실기)과 같은 수리 후보: 원장을 향한 쓰기 verb·리다이렉트만 거부. 반복되면 사고로. (2026-10-01)
+- 관찰(L2 1일차): conductor가 seed를 병렬로(22:47 두 번) — Flow 4는 순차인데 pickReady·가드는 병렬을 막지 않는다. 결과: spawn_stop(slug 없음) 귀속 어긋남(6/5·5/6), 같은 파일 충돌(사고 26의 토양). 둘 중 하나로 정한다 — 병렬을 계측까지 지원(spawn_stop에 slug) 또는 seed가 진행 중 unit이 있으면 WAIT. 3일 표 뒤. (2026-10-01)
+- 관찰(L2 1일차): seed가 예산 정지(미검수 3) 중에도 unit을 연다 — effect-conflict가 16:52에 열린 채 6시간 유휴, seed→ship 시계가 부풀고 base가 낡는다. 후보: 예산 정지면 seed도 STOP. (2026-10-01)
+- 관찰(L2 1일차): try 카드가 저장소 안에 만든 파일(eoren.sqlite)이 main을 더럽혀 ship FAIL — conductor가 CEO의 파일을 옮겼다(판단 개입). L1 4차의 try fixture 관찰과 한 묶음: 카드는 임시 폴더에서 돌거나 산출물을 .gitignore 안에 둔다. (2026-10-01)
+- 관찰(L2 1일차): 커밋 trailer 줄이 쓰기 경계에 막혀 빠짐 — 2차 실기(vault-load) 이후 두 번째. 셋째면 사고로. (2026-10-01)
