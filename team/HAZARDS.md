@@ -32,3 +32,4 @@
 - `tests/**` `.garagiste/scripts/lib.mjs` · 정본 테스트가 win32 원격 클론에서 6건 거짓 실패 — e2e의 bash 미탐색(spawn null)·URL.pathname 경로(/C:/…)·depDirs 역슬래시·폴더 이름(GARAGISTE) 가정(3차 준비 검증이 잡음) · 검사: bash 탐색 + 없으면 명시 SKIP, fileURLToPath, 구분자 정규화, 경로 비교 — win32 재실행이 확인
 - `.garagiste/scripts/lib.mjs` · workTree의 씨앗이 read-tree HEAD라 filemode=false(NTFS)에서 HEAD에 없는 chmod 파일(755)이 임시 인덱스에 644로 들어가 「인덱스 ≠ 작업 트리」 유령 불일치 — 내용 diff 0인데 게이트가 거부(win32 원격 검증) · 검사: 실제 인덱스 복사본을 씨앗으로 — filemode=false 재현 unit 테스트
 - `install.sh` `install.ps1` · 설치기가 첫 커밋 실패를 경고로 삼키고 성공을 선언했다(fail-open — doctor·selftest만 fail-closed였다) · 검사: 첫 커밋 실패 = 설치 FAIL(exit 1), git 출력이 이유로 남는다
+- `.garagiste/scripts/**` · 사고 15의 수리가 spike 산출물의 커밋 경로를 전부 닫았다 — 훅은 건너뛰고 에이전트는 금지, conductor는 가드에 막혀, 늦은 spike 뒤 ship이 「깨끗하지 않다 + 증거 낡음」 막다른 길에 갇혔다(3차 실기) · 검사: spike 파일만 더러운 worktree는 ship이 docs(spike)로 자기-커밋(사고 16의 대칭) — unit 테스트(spikeOnlyFiles) + 3차 실기 재실행
