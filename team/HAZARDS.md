@@ -34,3 +34,4 @@
 - `install.sh` `install.ps1` · 설치기가 첫 커밋 실패를 경고로 삼키고 성공을 선언했다(fail-open — doctor·selftest만 fail-closed였다) · 검사: 첫 커밋 실패 = 설치 FAIL(exit 1), git 출력이 이유로 남는다
 - `.garagiste/scripts/**` · 사고 15의 수리가 spike 산출물의 커밋 경로를 전부 닫았다 — 훅은 건너뛰고 에이전트는 금지, conductor는 가드에 막혀, 늦은 spike 뒤 ship이 「깨끗하지 않다 + 증거 낡음」 막다른 길에 갇혔다(3차 실기) · 검사: spike 파일만 더러운 worktree는 ship이 docs(spike)로 자기-커밋(사고 16의 대칭) — unit 테스트(spikeOnlyFiles) + 3차 실기 재실행
 - `.garagiste/scripts/**` `.garagiste/packs/boot.md` · 의존성을 새로 들이는 출하는 main 설치 없이 머지 뒤 quick이 반드시 red인데 설치는 머지 전엔 불가(닭·달걀) — R9가 매번 되돌리고 「build 재spawn」 오진 안내까지 했다(3차 실기) · 검사: commands.setup(boot가 등록) + ship이 매니페스트 변경 출하의 머지 직후 main에서 setup 실행 — e2e(.setup-ran 마커)
+- `.garagiste/scripts/**` · rebase가 tree를 바꾸면 ship이 full만 재기록해 — 롤백 뒤 재-ship이 「redproof·attack이 이전 tree」 핑퐁에 빠지고, 새 base 위 공격 회귀는 머지 전 검사를 빠져나갔다(3차 실기) · 검사: tree 변경 시 세 증거(full·redproof·attack) 전부 ship이 재기록·재검사 — e2e(증거 뒤 main 이동 → ship 한 번에 SHIPPED)

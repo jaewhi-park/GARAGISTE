@@ -1,7 +1,7 @@
 // ship — 8조건 fail-closed. 통과하면 ff 머지 + LEDGER + STATUS. 이 스크립트만 보호 브랜치에 닿는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, short, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, readJson, readLedger, readText, saveUnit, sh, shell, short, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles } from './lib.mjs';
 import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
@@ -149,6 +149,15 @@ function main() {
     const r = shell(fullCmd, { cwd: wt });
     appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true });
     if (r.status) fail('FAIL ship: 통합 tree에서 full FAIL — main이 움직였다, build 재spawn');
+    // 사고 22(3차 실기): full만 재기록하면 롤백 뒤 재-ship이 「redproof·attack이 이전 tree」 핑퐁에 빠지고,
+    // 새 base 위 공격 회귀는 머지 전 검사를 빠져나간다 — 세 증거 전부를 새 tree에 다시 묶는다(순수 기계 일).
+    if (unit.kind !== 'scaffold') {
+      const rp = sh(process.execPath, [path.join(c.main, '.garagiste', 'scripts', 'redproof.mjs'), slug], { cwd: c.main });
+      if (rp.status) fail(`FAIL ship: 통합 tree redproof FAIL\n${(rp.stdout || rp.stderr).trim()}`);
+      const ak = sh(process.execPath, [path.join(c.main, '.garagiste', 'scripts', 'verify.mjs'), 'attack', slug], { cwd: c.main });
+      const akRed = /red (\d+)\//.exec(ak.stdout || '');
+      if (ak.status || (akRed && Number(akRed[1]) > 0)) fail(`FAIL ship: 통합 tree attack red\n${(ak.stdout || ak.stderr).trim()}`);
+    }
   }
   const prevHead = headSha(c.main);
   const mg = git(['merge', '--ff-only', unit.branch], c.main);
