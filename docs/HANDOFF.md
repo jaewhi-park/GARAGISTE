@@ -16,4 +16,4 @@
 
 ## 상태 스냅샷 (2026-10-01, L1 4차 종료 시점 — 이후의 정본은 백로그·CHANGELOG)
 - **L1 게이트 원시값 통과 — 3차·4차(재현)** (`docs/measurements/L1-TRIAL.md`). 사고 원장 1~25 전부 수리 + 테스트 봉인(24·25는 4차 중 — 사고 17 수리가 연 RESPEC 경로의 잠복 결함). 테스트 53개 초록.
-- 다음 걸음: **L2(무인 하루)** — 사전 등록 `docs/measurements/L2-TRIAL.md`(머지가 CEO 서명), 시험대 G2_TEST5, 동결 3b8aede. 대기: time-model try(CEO). CEO 「가」 대기 장치: pack reason-lane(사고 25가 첫 근거) · system-attack · session-start CEO 대기 항목 주입(L2 재개에서 사고가 나면).
+- 다음 걸음: **L2(무인 하루)** — 사전 등록 `docs/measurements/L2-TRIAL.md`(머지가 CEO 서명), 시험대 G2_TEST5, 동결 3b8aede. CEO 「가」 대기 장치: pack reason-lane(사고 25가 첫 근거) · system-attack · session-start CEO 대기 항목 주입(L2 재개에서 사고가 나면).

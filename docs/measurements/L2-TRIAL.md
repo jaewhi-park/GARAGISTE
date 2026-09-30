@@ -14,7 +14,7 @@
 
 ## 준비 (첫 아침 전 1회)
 - 시험대를 동결에 맞춘다: L1 4차 중 반영한 넷(redproof·ship·brief·team.json 상한)에 더해 `.garagiste/HAZARDS.md`(사고 24·25 두 줄)만 남았다 — 반영 블록(fetch main → HAZARDS.md 교체 → 경로 지정 커밋).
-- 미검수 0으로 시작한다: L1 4차의 time-model try를 먼저 끝낸다(미검수가 남아 있으면 그날 출하 상한이 줄어든다).
+- 미검수 0으로 시작한다(미검수가 남아 있으면 그날 출하 상한이 줄어든다) — L1 4차의 time-model try가 끝나 지금 0이다.
 - 규칙집 기준선: `git rev-parse HEAD:.garagiste`를 그날 표 머리에 적는다 — 저녁에 같은 값이면 규칙 완화 드리프트 0(HAZARDS 11: 19시간 무인 완화 사고).
 
 ## 하루의 모양

@@ -85,12 +85,12 @@
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | boot | scaffold(측정만) | 1 | 0.9 | 1/1 | 24K | (CEO 기입) | — | — | ok(위임) | 0 | 0 | 0 |
 | vault-schema | ③ diff-HIT spike 경로(인수는 ①) | 1 | 8.6 | 5/5 | 170K | (CEO 기입) | 2→0/2 | base_red head_green | ok(CEO) | 0 | 0 | 0 |
-| time-model | ① | 1 | 27.9 (대기 15.1 — 사고 24 8.5 · 25 6.6) | 5/5 | 188K | (CEO 기입) | 1→0/1 | base_red head_green | (CEO 대기) | (대기) | 2 | 1 |
-| 계 | ② 미구성 | 3 | 37.4 (대기 15.1) | 11/11 | 382K (+intake 34K) | | 선발견 3 | | 2 ok · 1 대기 | 0(대기 1) | 2 | 1 |
+| time-model | ① | 1 | 27.9 (대기 15.1 — 사고 24 8.5 · 25 6.6) | 5/5 | 188K | (CEO 기입) | 1→0/1 | base_red head_green | ok(CEO) | 0 | 2 | 1 |
+| 계 | ② 미구성 | 3 | 37.4 (대기 15.1) | 11/11 | 382K (+intake 34K) | | 선발견 3 | | 3 ok(위임 1 · CEO 2) | 0 | 2 | 1 |
 
 - **판정: L1 통과 — 원시값, 재현.** 판정 unit 둘 다 ≤75분(8.6 · 27.9) · spawn 의도 ≤8(5 · 5) · 미검수 최대 1 ≤3. 짝 비교: vault-schema 3차 62:06 → 8.6분 — 3차의 사고 20~22 복도(늦은 spike → 의존성 출하)를 diff-HIT spike 경로로 다시 밟고 프레임워크 FAIL 0으로 통과.
-- 예측 채점: 1) 프레임워크 FAIL 0 ✗ — 2건(사고 24·25), 둘 다 사고 17 수리가 연 RESPEC 경로 위의 잠복 결함(수리가 만든 새 복도가 첫 실기에서 둘을 밟았다 — 20~22 복도는 0) 2) ① ≤20분: vault-schema(인수 ①) 8.6 ✓ · time-model 원시 27.9 ✗(FAIL 대기 15.1을 빼면 12.8) · ①+② ≤30: ② 미구성 — 채점 불가 3) needs 오연결 0 · needs 사용 0 ✓(decide 10 = intake Q1~9 · time-model Q10) 4) FAIL 처리 D 0 ✗(2) 5) RESPEC 1 → spec 재spawn → Q10 인수를 담은 tree에서 redproof base_red head_green으로 출하 ✓(미구현 출하 0 — CEO try 전, 기계 기준).
-- CEO 접점: decide 10 · 서명 1 · tried 2(위임 1) · FAIL 넘김 2 — 3차(결정 16 · FAIL 처리 D 5)보다 적다.
+- 예측 채점: 1) 프레임워크 FAIL 0 ✗ — 2건(사고 24·25), 둘 다 사고 17 수리가 연 RESPEC 경로 위의 잠복 결함(수리가 만든 새 복도가 첫 실기에서 둘을 밟았다 — 20~22 복도는 0) 2) ① ≤20분: vault-schema(인수 ①) 8.6 ✓ · time-model 원시 27.9 ✗(FAIL 대기 15.1을 빼면 12.8) · ①+② ≤30: ② 미구성 — 채점 불가 3) needs 오연결 0 · needs 사용 0 ✓(decide 10 = intake Q1~9 · time-model Q10) 4) FAIL 처리 D 0 ✗(2) 5) RESPEC 1 → spec 재spawn → Q10 인수를 담은 tree에서 redproof base_red head_green으로 출하, CEO try ok ✓(미구현 출하 0).
+- CEO 접점: decide 10 · 서명 1 · tried 3(위임 1) · FAIL 넘김 2 — 3차(결정 16 · FAIL 처리 D 5)보다 적다. green 후 CEO 발견 결함 0 · 미검수 0으로 종료.
 - 관찰(장치 아님 — 백로그 후보 셋 등록): ② 미구성 — 지시서의 「출하 3개(boot 포함)에서 멈춤」과 seed 순서로 실기동 스모크 unit 전에 끝났고 vault-schema의 인수가 이번엔 순수 로직이었다(하얀 화면 검사는 이 표에 없다 — L2 재료에 있다) · intake mark가 팩 조립 때 전진 — 개시 전 첫 세션의 조립(15:18:27Z)으로 두 번째 세션이 `--all`로 한 번에 우회 · try 위임은 파일을 만드는 카드에서 불가(가드가 worktree 밖 쓰기 거부 — 위임 1/3) · 팩 FAIL은 원장 줄이 없어 대기 시작점을 직전 redproof ts로 추정.
 - 비고: time-model build가 python REPL을 띄웠다 닫았다(64MB 로그 사본은 세션 폴더 — 게이트 무관).
-- 다음 걸음: time-model try(CEO) → tried·green 후 결함 칸 기입 → **L2(무인 하루)** — 사전 등록 docs/measurements/L2-TRIAL.md.
+- 다음 걸음: **L2(무인 하루)** — 사전 등록 docs/measurements/L2-TRIAL.md.
