@@ -14,7 +14,7 @@ import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { closedDecisions, fit, fence, matchHazards, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
-import { verdict } from '../team/scripts/redproof.mjs';
+import { outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
@@ -324,6 +324,14 @@ test('redproof: base에서 하나라도 green이면 테스트가 아니다', () 
   assert.equal(verdict([{ exit: 1 }], [{ exit: 1 }]).ok, false);
   assert.equal(verdict([{ exit: 1 }], null).ok, true, '코드 전엔 red만 본다');
   assert.equal(verdict([], null).ok, false);
+});
+test('redproof: head red의 뜻은 unit 정체가 가른다 — spec이면 기존 코드 위의 새 주장(RED), 그 밖이면 build 미완(FAIL) (4차 실기 사고 24)', () => {
+  assert.equal(outcome({ base_red: true, head_green: false, state: 'spec' }), 'RED', 'RESPEC·Flow 7 수정의 re-spec: spec 팩의 끝은 RED다');
+  assert.equal(outcome({ base_red: true, head_green: false, state: 'build' }), 'FAIL');
+  assert.equal(outcome({ base_red: true, head_green: false, state: 'attack' }), 'FAIL');
+  assert.equal(outcome({ base_red: true, head_green: true, state: 'spec' }), 'PASS');
+  assert.equal(outcome({ base_red: true, head_green: null, state: 'spec' }), 'RED', '코드 전');
+  assert.equal(outcome({ base_red: false, head_green: false, state: 'spec' }), 'FAIL', 'base에서 green이면 정체와 무관하게 테스트가 아니다');
 });
 test('work: 결정 큐 번호와 답 기록', () => {
   const t = '# DECISIONS\n\n## 정해 주세요\n- [ ] Q1 (a): 빈 메모 저장?\n- [x] Q2 (a): x → 예 (2026-09-29)\n';

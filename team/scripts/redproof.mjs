@@ -2,13 +2,21 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, fail, git, headSha, isMain, linkDeps, mergeBase, out, slugRoot, workTree } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, fail, git, headSha, isMain, linkDeps, mergeBase, out, readJson, slugRoot, unitFile, workTree } from './lib.mjs';
 import { runFiles } from './verify.mjs';
 
 export function verdict(baseResults, headResults) {
   const base_red = baseResults.length > 0 && baseResults.every((r) => r.exit !== 0);
   const head_green = headResults === null ? null : headResults.length > 0 && headResults.every((r) => r.exit === 0);
   return { base_red, head_green, ok: base_red && head_green !== false };
+}
+// 사고 24(4차 실기): 기존 코드 위의 re-spec(RESPEC·Flow 7 수정)에서 새 주장은 head에서 red가 정상이다 — spec 팩의 끝(RED)을
+// 코드가 있다는 이유로 FAIL로 만들자 루프가 안내 없이 멈췄다. head red의 뜻은 unit 정체가 가른다: spec이면 새 주장, 그 밖이면 build 미완.
+// 어느 쪽이든 원장엔 head_green:false가 남아 ship(조건 redproof: head_green === true)은 열리지 않는다.
+export function outcome({ base_red, head_green, state }) {
+  if (!base_red) return 'FAIL';
+  if (head_green === false) return state === 'spec' ? 'RED' : 'FAIL';
+  return head_green ? 'PASS' : 'RED';
 }
 function main() {
   const slug = process.argv[2];
@@ -35,9 +43,15 @@ function main() {
     linkDeps(c.root, tmp);
     baseRes = runFiles({ ...c, root: tmp }, files);
   } finally { git(['worktree', 'remove', '--force', tmp], c.root); }
-  const v = verdict(baseRes, runFiles(c, files));
+  const headRes = runFiles(c, files);
+  const v = verdict(baseRes, headRes);
   appendLedger(c.main, c.team, { kind: 'redproof', slug, tree, head: headSha(c.root), base, base_red: v.base_red, head_green: v.head_green, files: files.length });
-  if (v.ok) return out(`PASS redproof ${slug} base_red head_green`);
-  fail(`FAIL redproof ${slug} base_red=${v.base_red} head_green=${v.head_green}`);
+  const state = readJson(unitFile(c.main, c.team, slug), null)?.state;
+  const o = outcome({ ...v, state });
+  const redAtHead = headRes.filter((r) => r.exit !== 0).map((r) => r.file);
+  if (o === 'PASS') return out(`PASS redproof ${slug} base_red head_green${state === 'spec' ? ' — 기존 코드가 새 주장을 이미 만족한다(re-spec): build 불필요, attack·ship은 새 tree에서 다시' : ''}`);
+  if (o === 'RED') return out(`RED ${slug} ${redAtHead.length}/${files.length} — 기존 코드 위의 새 주장(re-spec): 다음은 build → node .garagiste/scripts/brief.mjs build ${slug}`);
+  if (!v.base_red) fail(`FAIL redproof ${slug} base_red=false — base에서 green: ${baseRes.filter((r) => r.exit === 0).map((r) => r.file).join(' ')} — old code에서도 통과하는 테스트는 테스트가 아니다`);
+  fail(`FAIL redproof ${slug} base_red=true head_green=false — head에서 red: ${redAtHead.join(' ')} → build가 덜 끝났다: node .garagiste/scripts/brief.mjs build ${slug} 뒤 재spawn`);
 }
 if (isMain(import.meta.url)) main();

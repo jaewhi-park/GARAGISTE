@@ -201,6 +201,10 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   // decide가 spec 재개를 걸고, build·attack 팩과 ship은 spec이 답을 받을 때까지 열리지 않는다(re-spec 경로 재사용)
   assert.match(script('work', ['ask', 'session', '세션 만료는 30분인가?'], repo).out, /^Q3 queued/);
   assert.match(script('brief', ['build', 'session'], repo).out, /^PACK .*session-build-/);
+  // 사고 24 준비: build가 제품 코드를 커밋한 상태 — 그 위에서 RESPEC의 re-spec이 새 red 주장을 쓴다
+  write(swt, 'src/session.mjs', 'export const ttl = 0;\n');
+  git(['add', '-A'], swt); assert.match(script('verify', ['quick'], swt).out, /^PASS verify:quick/);
+  assert.equal(git(['commit', '-q', '-m', 'feat(session): 세션\n\nUnit: session'], swt).status, 0);
   const dq = script('work', ['decide', '3', '30분'], repo).out;
   assert.match(dq, /^PASS decide Q3\nRESPEC session — Q3의 답이 진행 중에 왔다/, dq);
   assert.match(script('brief', ['build', 'session'], repo).out, /^FAIL build 팩: Q3의 답이 진행 중에 왔다 — spec이 먼저/);
@@ -208,7 +212,13 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('ship', ['session'], repo).out, /- questions: .*Q3.*brief\.mjs spec session/);
   const rq = script('brief', ['spec', 'session'], repo);
   assert.match(fs.readFileSync(path.join(repo, rq.out.split(' ')[1]), 'utf8'), /## 재-spec — 진행 중에 온 답[\s\S]*Q3[\s\S]*30분/, 'spec 팩이 그 답을 이유로 받는다');
+  // 사고 24(4차 실기): 기존 코드 위의 re-spec — 새 주장은 head에서 red가 정상인데 redproof가 head green을 요구해 안내 없는 FAIL로 루프가 멈췄다
+  write(swt, 'tests/acceptance/session-ttl.test.mjs', "import test from 'node:test'; import fs from 'node:fs'; test('만료 30분', () => { if (!fs.readFileSync('src/session.mjs', 'utf8').includes('ttl = 30')) throw new Error('red'); });\n");
+  git(['add', '-A'], swt); script('verify', ['quick'], swt);
+  assert.equal(git(['commit', '-q', '-m', 'test(session): Q3 red 주장'], swt).status, 0);
+  assert.match(script('redproof', ['session'], repo).out, /^RED session 2\/2 — 기존 코드 위의 새 주장\(re-spec\): 다음은 build/, '사고 24: re-spec(정체 spec)의 끝은 RED — 다음 할 일이 적혀 있다');
   assert.match(script('brief', ['build', 'session'], repo).out, /^PACK .*session-build-/, 'spec이 답을 받은 뒤에야 build가 열린다');
+  assert.match(script('redproof', ['session'], repo).out, /^FAIL redproof session base_red=true head_green=false — head에서 red: .*session-ttl.* → build가 덜 끝났다/, '사고 24: 정체가 build면 head red는 미완 — 이것도 다음 할 일을 말한다');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"respec","slug":"session","q":3/);
   assert.match(script('work', ['seed'], repo).out, /^WAIT memo needs session — 선행 unit이 먼저/, '진행 중인 선행이 끝나야 다음이 열린다');
   assert.match(script('state', [], repo).out, /안 본 것 0\/3/);
