@@ -76,6 +76,7 @@ export function mergeTeamJson(base, ours, theirs) {
   return merged;
 }
 const TEAM_JSON = '.garagiste/team.json';
+const DEP_MANIFEST = /(^|\/)(package(-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|uv\.lock|pyproject\.toml|requirements[^/]*\.txt|Cargo\.(toml|lock)|go\.(mod|sum))$/;
 function resolveRebaseTeamJson(wt) {
   for (let i = 0; i < 10; i++) {
     const un = git(['diff', '--name-only', '--diff-filter=U'], wt).stdout.split('\n').filter(Boolean);
@@ -154,6 +155,16 @@ function main() {
   if (mg.status) fail(`FAIL ship: ff 머지 실패 — ${mg.stderr}`);
   c.team = loadTeam(c.main); // boot unit이 team.json commands를 바꿨을 수 있다
   const head = headSha(c.main);
+  // 사고 21(3차 실기): 의존성을 새로 들이는 출하는 main 설치 없이 머지 뒤 quick이 반드시 red다 — 설치는 머지 전엔 불가(새 매니페스트가 main에 없다).
+  // 매니페스트가 바뀌었고 commands.setup이 있으면 main quick 전에 설치를 돌린다. build 재spawn은 이 실패의 해법이 아니다.
+  const depChanged = changed.some((f) => DEP_MANIFEST.test(f.replace(/\\/g, '/')));
+  if (depChanged && c.team.commands.setup) {
+    const su = shell(c.team.commands.setup, { cwd: c.main });
+    if (su.status) {
+      git(['reset', '--keep', prevHead], c.main);
+      fail(`FAIL ship: 의존성 설치(commands.setup) 실패 — 머지를 되돌렸다(${short(head)} → ${short(prevHead)}). 설치 명령을 고치고 다시 ship\n${(su.stderr || su.stdout).split('\n').slice(-5).join('\n')}`);
+    }
+  }
   const tags = acceptanceFiles(c.main, c.team, slug).map((f) => parseTags(readText(path.join(c.main, f))));
   const prevUnit = { state: unit.state, sensor: unit.sensor };
   unit.sensor = tags.find((t) => t.sensor.startsWith('human'))?.sensor || 'machine';
@@ -182,7 +193,7 @@ function main() {
     if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[x\\] ${slug} `, 'm'), `- [ ] ${slug} `));
     fs.writeFileSync(path.join(c.main, c.team.paths.status), render(c).text);
     appendLedger(c.main, c.team, { kind: 'ship_rollback', slug, from: head, to: prevHead, why: 'main quick FAIL' });
-    fail(`FAIL ship: 머지 뒤 main quick FAIL — 머지를 되돌렸다(${short(head)} → ${short(prevHead)}). 원인은 통합: build 재spawn 뒤 다시 ship`);
+    fail(`FAIL ship: 머지 뒤 main quick FAIL — 머지를 되돌렸다(${short(head)} → ${short(prevHead)}). ${depChanged ? '의존성 출하다 — commands.setup(설치 명령)을 등록·수리하고 다시 ship하라. build 재spawn은 해법이 아니다' : '원인은 통합: build 재spawn 뒤 다시 ship'}`);
   }
   appendLedger(c.main, c.team, { kind: 'ship', slug, head, tree: newTree, sensor: unit.sensor });
   const msg = `ship(${slug}): ${unit.origin.replace(/\n/g, ' ').slice(0, 60)}\n\nUnit: ${slug}\nKind: ${unit.kind}\nHead: ${short(head)}\nFull: ${short(newTree)}\nRedproof: ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'}\nAttack: ${atCell}\nSensor: ${unit.sensor}`;
@@ -191,8 +202,8 @@ function main() {
   git(['worktree', 'remove', wt], c.main);
   out(`SHIPPED ${slug} ${short(head)} sensor=${unit.sensor}`);
   // 사고 10(2차 실기): 의존성은 unit worktree에만 설치되고 worktree는 ship 뒤 사라진다 — 메인이 설치하지 않으면 다음 unit이 맨손이 되어 스펙(결정된 스택)을 우회한다
-  if (changed.some((f) => /(^|\/)(package(-lock)?\.json|pnpm-lock\.yaml|yarn\.lock|uv\.lock|pyproject\.toml|requirements[^/]*\.txt|Cargo\.(toml|lock)|go\.(mod|sum))$/.test(f)))
-    out('NOTE: 의존성 파일이 바뀌었다 — 메인 루트에서 설치를 한 번 돌려라(npm ci·uv sync 등). 다음 unit의 worktree가 그것을 물려받는다.');
+  if (depChanged)
+    out(`NOTE: 의존성 파일이 바뀐 출하 — ${c.team.commands.setup ? 'commands.setup을 main에서 이미 돌렸다' : '메인 루트에서 설치를 한 번 돌리고 commands.setup 등록을 권한다(npm ci·uv sync 등)'}. 다음 unit의 worktree가 물려받는다.`);
   // scaffold(boot)엔 try.md가 없다 — 써보기는 실행·검증 명령이다 (2차 실기: 빈 파일을 가리켜 conductor가 즉석 안내를 지어냈다)
   out(unit.kind === 'scaffold'
     ? `TRY: 실행 \`${c.team.commands.run || c.team.commands.quick}\` → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`
