@@ -80,6 +80,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-09-30 게이트의 tree 동일성 vs 사용자 전역 개행 설정 (사고 18 계속)
+- win32 원격 클론 e2e에서 quick PASS 뒤 커밋이 「인덱스 ≠ 작업 트리」로 거부됐다(메인 저장소·비-WIP 커밋에서만). 게이트의 법은 tree 바이트 동일성인데, 프로젝트가 사용자 전역 `core.autocrlf`(Git for Windows 기본 true)의 개행 변환에 노출돼 유령 diff가 가능했다. 수리: install(sh·ps1)이 저장소-로컬 `core.autocrlf false`를 고정 — 개행은 쓰인 바이트 그대로가 정본. e2e 실패 메시지에 status·unstaged·autocrlf 출처를 첨부해 재발 시 원인이 바로 보인다.
+
 ### Fixed — 2026-09-30 테스트 스위트의 win32 이식성 (사고 18 — 3차 준비의 원격 클론 검증이 잡음)
 - 원격 fresh 클론에서 `node --test`가 win32 최초 실행에서 6건 거짓 실패했다(원격 내용 결함 아님): e2e가 `bash`를 PATH에서만 찾아 spawn null(4건), e2e의 `URL.pathname`이 win32에서 `/C:/…`를 내놓아 경로 오염 가능, `depDirs`가 역슬래시 반환(기능 정상·테스트 실패), BOM 테스트가 저장소 폴더 이름을 'GARAGISTE'로 가정(fresh 클론·scratch worktree에서 거짓 실패 — 구 'v2check' 사건과 동일 결함). 수리: Git for Windows bash 탐색 + 정말 없으면 이유를 말하는 명시 SKIP, `fileURLToPath`, depDirs 구분자 정규화(listFiles와 동일), 폴더 이름 대신 경로 비교. Windows가 1급 대상인 이상 스위트도 크로스 플랫폼이 법이다.
 

@@ -71,6 +71,7 @@ if (-not (Test-Path $Rules)) { Run { Copy-Item $Template $Rules } (Split-Path -L
 $gi = Join-Path $Root ".gitignore"; if (-not (Test-Path $gi)) { WriteText $gi "" }
 if (-not ((ReadText $gi) -match "GARAGISTE")) { Run { WriteText $gi ((ReadText $gi) + "`n" + (ReadText "$Here\team\gitignore.snippet")) } ".gitignore" }
 Run { Invoke-Git -C $Root config core.hooksPath .githooks | Out-Null } "core.hooksPath"
+Run { Invoke-Git -C $Root config core.autocrlf false | Out-Null } "core.autocrlf false" # 게이트 tree 동일성 — 전역 autocrlf의 유령 diff 차단(사고 18)
 if (-not $DryRun) {
   $head = Invoke-Git -C $Root rev-parse --verify -q HEAD
   if ($head.Code -ne 0) {

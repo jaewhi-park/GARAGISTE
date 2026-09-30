@@ -77,6 +77,7 @@ if ! grep -q 'GARAGISTE 증거 팀' "$ROOT/.gitignore"; then
   if [ "$DRY" = 1 ]; then echo "  [dry] .gitignore += team/gitignore.snippet"; else { echo; cat "$HERE/team/gitignore.snippet"; } >> "$ROOT/.gitignore"; fi
 fi
 run git -C "$ROOT" config core.hooksPath .githooks
+run git -C "$ROOT" config core.autocrlf false # 게이트의 법은 tree 바이트 동일성 — 사용자 전역 개행 변환(win32 autocrlf=true)이 유령 diff를 만든다(사고 18)
 # 첫 커밋이 없으면 설치기가 만든다(첫 커밋은 원장이 있을 수 없어 게이트가 통과시킨다) — 그 뒤 main에 닿는 것은 ship.mjs뿐
 if [ "$DRY" = 0 ] && ! git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then
   git -C "$ROOT" add -A && git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit
