@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { decide, makeCtx, stripQuoted, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
@@ -416,5 +417,6 @@ test('lib: Windows PowerShell이 붙인 BOM이 있어도 team.json을 읽는다'
   fs.writeFileSync(path.join(d, '.garagiste', 'team.json'), '\uFEFF' + JSON.stringify(team));
   assert.equal(loadTeam(d).version, 2);
   assert.equal(readJson(path.join(d, '.garagiste', 'team.json'), null).version, 2);
-  assert.equal(path.basename(scriptRoot(new URL('../team/scripts/lib.mjs', import.meta.url).href)), 'GARAGISTE', '스크립트 위치에서 저장소 루트를 안다');
+  // 사고 18: 폴더 이름('GARAGISTE')을 가정하면 fresh 클론(GARAGISTE-fresh)·scratch worktree에서 거짓 실패 — 경로로 비교한다
+  assert.equal(scriptRoot(new URL('../team/scripts/lib.mjs', import.meta.url).href), path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), '스크립트 위치에서 저장소 루트를 안다');
 });
