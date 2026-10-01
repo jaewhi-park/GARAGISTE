@@ -42,3 +42,20 @@
 
 ## n일차 표·판정
 (1일차부터 이 아래에 — 양식은 `L2-TRIAL.md` 1일차 표와 같다. 1판과 다른 열: unit당 full 시간(사고 44), 저녁 try 사본 수.)
+
+### 리눅스 1일차 (2026-10-01 — 대리 CEO, 압축 낮)
+폴더 /tmp/l2-linux/todo(컨테이너) · 설치 44f4d62(프레임워크 = 9c677ec) · 규칙집 기준선 00d7f16(설치 직후) → f96424c(저녁) · conductor 세션 1b5b47cb(1일차 하나)
+- 아침 창: intake → unit 13(M1 8 · M2 5) · Q1~Q6 대리 답(Q4는 「보이는 번호 = 명령의 번호」 조건을 붙여 예) · 범위 M1 · 「가」. 아침 창 끝 15:28:06Z → 저녁 창 시작 15:37:08Z.
+- 낮: 접점 0 · 멈춤 미검수 3(list ship 15:36:21Z) · 낮 경과(→ 세 번째 ship) 8.2분 · 프레임워크 FAIL 0(안내대로 한 번에 풀린 FAIL 2 — spawned의 팩 이름(사고 52 안내) · boot ship의 main stray package-lock.json → 되돌림·보존·재spawn이 lockfile 커밋(사고 38)).
+- 규칙집 드리프트 1: bdb24c4 boot의 commands 기록(`.garagiste/team.json`) — 첫날 boot의 정상 일이지 완화가 아니다. 이후 날의 기준선은 f96424c.
+
+| 구간 | unit | 시도 | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | boot | 1 | 1.2 | 2/2 | 32K | — | scaffold | ok(대리 CEO) | 0 | 0 |
+| 무인 | add | 1 | 3.2 | 4/4 | 76K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 — 메모: 없는 날짜·형식 틀린 날짜가 그대로 기록(원문 「잘못된 입력」 줄 = bad-input unit에서 닫히는지 본다) | 0 |
+| 무인 | list | 1 | 3.8 | 4/4 | 91K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 | 0 |
+| 계 | 3 | | 8.2 | 10/10 | 198K | | | 3 ok | 0 | 0 |
+
+- 저녁: try 사본 3(카드마다 conductor가 열고 tried가 지움 — 저녁 뒤 `.worktrees` 비었고 main 깨끗) · 카드 3/3 ok · 팀이 정한 것 7.
+- 참고(사실): 권한 훅이 `$변수` 확장이 든 Bash 몇 번을 막았다(「Contains simple_expansion」 — 하네스 권한, 사고 43의 이웃) · `brief.mjs build` 인자 없이 한 번.
+- **판정: 리눅스 1일차 통과 — 게이트(리눅스) 1/3**, 누적 green 후 CEO 발견 결함 0.
