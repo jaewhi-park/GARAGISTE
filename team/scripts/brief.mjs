@@ -134,6 +134,10 @@ function main() {
     // spike는 spec보다 먼저 돈다(boundary HIT unit의 첫 팩) — 측정은 인수 테스트를 기다리지 않는다
     if (!acc.length && pack !== 'spike') fail(`FAIL ${pack} 팩: 인수 테스트 없음 — spec 팩이 먼저다`);
     if (acc.length) sec('acceptance', '인수 테스트 (red → green이 네 일)', acc.map((f) => `### ${f}\n\`\`\`\n${readText(path.join(wt, f)).trim()}\n\`\`\``).join('\n'));
+    // 사고 32(필드 시험 1): build가 받은 것은 인수 테스트뿐이었다 — full이 공격 파일을 안 집는 러너(파이썬 discover는 test*.py)면 build는 green만 보고 빈손으로 끝났다
+    const at = pack === 'build' ? [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'attack' && e.slug === slug) : null;
+    const reds = (at?.files || []).filter((f) => fs.existsSync(path.join(wt, f)));
+    if (reds.length) sec('adversary', `공격 테스트 — 지금 red (green이 네 일 · 끝은 verify.mjs attack ${slug} red 0)`, reds.map((f) => `### ${f}\n\`\`\`\n${readText(path.join(wt, f)).trim()}\n\`\`\``).join('\n'));
   }
   const udir = path.join(wt, c.team.paths.units_docs, slug);
   const tryMd = readText(path.join(udir, 'try.md')); const surface = readText(path.join(udir, 'surface.md'));

@@ -120,7 +120,10 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('ship', ['hello'], repo).out, /- attack: adversary red 1/);
 
   // build 재spawn: red → green, 이어받기 절이 팩에 있다
-  assert.match(fs.readFileSync(path.join(repo, script('brief', ['build', 'hello'], repo).out.split(' ')[1]), 'utf8'), /## 이어받기/);
+  const rebuild = fs.readFileSync(path.join(repo, script('brief', ['build', 'hello'], repo).out.split(' ')[1]), 'utf8');
+  assert.match(rebuild, /## 이어받기/);
+  // 사고 32(필드 시험 1): build 팩엔 인수 테스트만 있었다 — 프로젝트의 full이 공격 파일을 안 집으면(파이썬 discover는 test*.py만) build는 green만 보고 빈손으로 끝났다
+  assert.match(rebuild, /## 공격 테스트 — 지금 red[\s\S]*tests\/adversary\/hello-1\.test\.mjs[\s\S]*끝 공백 없음/, 'build 팩이 attack의 red 파일과 내용을 할 일로 받는다');
   write(wt, 'src/cli.mjs', "const n = process.argv[2]; process.stdout.write(n ? `hello ${n}\\n` : 'hello\\n');\n");
   git(['add', '-A'], wt); assert.match(script('verify', ['quick'], wt).out, /^PASS/);
   assert.equal(git(['commit', '-q', '-m', 'fix(hello): 이름 없을 때\n\nUnit: hello\nStep: 2'], wt).status, 0);

@@ -80,6 +80,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-10-01 build 팩이 attack의 red를 받지 못했다 (필드 시험 1의 사고 32)
+- 파이썬 필드의 add: attack이 결함 3(날짜 미검증 · `-`로 시작하는 메모 거부 · `0xff`에서 Traceback)을 `tests/adversary/add-{1,2,3}.py`로 남겼는데, build를 두 번 다시 띄워도 커밋 0 — build 팩의 할 일 절엔 인수 테스트만 있었고, 프로젝트의 full(`unittest discover`, 기본 패턴 test*.py)은 공격 파일을 돌리지 않아 build는 green만 봤다. 웹 필드(node --test "tests/**/*.test.js")는 full이 공격 파일을 집어 같은 틈이 가려져 있었다. 수리: build 팩이 마지막 attack 줄의 red 파일 전문을 「공격 테스트 — 지금 red」 절로 받고, build.md의 끝 검사에 `verify.mjs attack <slug>` red 0을 더한다(full이 그 파일을 안 돌릴 수 있다). 검사: e2e(attack red 1 → 다시 조립한 build 팩에 그 파일과 내용).
+
 ### Fixed — 2026-10-01 진행 중 unit에 정비가 닿지 않았다 (필드 시험 1의 사고 31)
 - 사고 30의 수리를 main에 반영했는데 add의 build가 같은 FAIL을 다시 봤다 — 팩은 worktree에서 `node .garagiste/scripts/redproof.mjs`를 치고, 그 파일은 `unit/add`가 갈라질 때의 사본(옛 법)이다. main에서 돌린 redproof는 PASS, worktree의 것은 FAIL — 법이 둘이었다. 시험대의 정비 반영(L1 4차·L2)은 「메인 루트에서 치라」는 지시로 비켜 갔었다. 수리: 모든 스크립트의 입구(`isMain`)가 worktree에서 불렸고 main의 같은 스크립트와 내용이 다르면 main의 것으로 넘긴다(인자·cwd·종료 코드 그대로 — cwd가 worktree라 ctx는 그대로 그 unit을 본다). 같은 법이면 넘기지 않는다. 이 수리를 가진 lib.mjs에서 갈라진 worktree부터 효력이 있다 — 그 전에 갈라진 진행 중 unit은 한 번 main 위로 올려야 한다(정비 반영 때 CEO 쪽 일). 검사: unit 테스트(main 정비 뒤 worktree 사본 호출 → main의 법, 인자·cwd·종료 코드 보존).
 
