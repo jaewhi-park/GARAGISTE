@@ -49,7 +49,7 @@ export function evaluateShip(x) {
   const sp = scaffold || !hit || spikeComplete(x.spikeText); // scaffold(boot)의 매니페스트는 그 unit의 일이라 spike를 요구하지 않는다
   c.push({ id: 'spike', ok: sp, why: sp ? '' : `boundary HIT(${x.boundaryWhy || '원문'})인데 spike 필수 행(${SPIKE_ROWS.join('·')}) 미완` });
   const head = !/^wip:/.test(x.lastSubject || '');
-  c.push({ id: 'head', ok: head, why: head ? '' : 'HEAD가 wip 체크포인트 — build를 다시 띄워 끝내라' });
+  c.push({ id: 'head', ok: head, why: head ? '' : `HEAD가 wip 체크포인트 — ${scaffold ? 'boot' : 'build'}를 다시 띄워 끝내라` }); // 필드 시험: scaffold(boot)에 build를 가리켰다(사고 7의 rebase 문구와 같은 결함)
   const qs = x.openQuestions || []; // 이 unit이 올린 질문에 답이 없으면 출하하지 않는다 — 비가역 결정을 기본값이 대신하지 못하게
   const rs = (x.unit?.respec || []).map((r) => `Q${r.q}`); // 사고 17: 닫혔지만 spec이 아직 받지 않은 답 — 닫힘은 반영이 아니다
   c.push({ id: 'questions', ok: !qs.length && !rs.length, why: [

@@ -393,10 +393,16 @@ function spawned(c, slug, pack, flags) {
   const e = appendLedger(c.main, c.team, { kind: 'spawn', slug, pack, model: flags.model || c.team.models[pack], tokens: flags.tokens ? Number(flags.tokens) : null, minutes: flags.minutes ? Number(flags.minutes) : null, note: flags.note || '' });
   out(`SPAWN ${slug} ${pack} ${e.model}${e.tokens ? ` ${e.tokens} tok` : ''}${e.minutes ? ` ${e.minutes} min` : ''}`);
 }
+// 필드 시험(두 프로젝트 공통): intake 직후 list가 「unit 없음」이었다 — Flow 2는 intake 뒤 list를 보라 하는데 seed 전 BACKLOG 줄이 안 보였다.
+// seed된 unit 다음에, 열린 unit이 없는 BACKLOG 열린 줄을 backlog로 덧붙인다(dropped의 열린 줄은 다시 열릴 backlog다).
+export function listLines({ units, items }) {
+  const live = new Set(units.filter((u) => u.state !== 'dropped').map((u) => u.slug));
+  const lines = units.map((u) => `${u.slug.padEnd(24)} ${u.state.padEnd(8)} ${(u.milestone || 'M?').padEnd(4)} tried=${u.tried ? u.tried.result : '-'}${u.boundary?.hit ? ' HIT' : ''}`);
+  for (const i of items) if (!i.done && !live.has(i.slug)) lines.push(`${i.slug.padEnd(24)} ${'backlog'.padEnd(8)} ${(i.milestone || 'M?').padEnd(4)} needs=${i.needs.join(',') || '-'}`);
+  return lines.length ? lines : ['unit 없음 · BACKLOG 없음 — work.mjs brief 뒤 intake'];
+}
 function list(c) {
-  const units = listUnits(c.main, c.team);
-  if (!units.length) return out('unit 없음');
-  for (const u of units) out(`${u.slug.padEnd(24)} ${u.state.padEnd(8)} ${(u.milestone || 'M?').padEnd(4)} tried=${u.tried ? u.tried.result : '-'} ${u.boundary.hit ? 'HIT' : ''}`);
+  for (const l of listLines({ units: listUnits(c.main, c.team), items: parseBacklog(readBacklog(c)) })) out(l);
 }
 function main() {
   const [cmd, ...raw] = process.argv.slice(2);

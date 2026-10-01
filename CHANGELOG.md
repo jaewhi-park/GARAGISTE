@@ -80,6 +80,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-10-01 필드 시험(Python CLI · 웹 앱) — boot 커밋 막힘 · 가드의 git 전역 옵션 구멍 · list (사고 27·28)
+- 사고 27: 두 필드 모두 첫 unit boot에서 멈췄다 — boot 팩은 worktree에서 `cd <wt> && git add …`·`git -C <wt> commit …`로 일하는데 settings.json 허용 목록에 `cd`·`git -C`가 없어 하위 에이전트의 명령이 승인 대기가 됐고(헤드리스는 거부), 체크포인트의 wip 커밋만 남아 `FAIL ship boot 1/8 - head: HEAD가 wip 체크포인트 — build를 다시 띄워 끝내라`. 그 안내도 scaffold에 build를 가리켰다(사고 7의 rebase 문구와 같은 결함). 수리: 허용 목록에 `Bash(cd:*)`·`Bash(git -C:*)`(쓰기 경계·파괴 명령은 가드 훅이 그대로 본다), wip HEAD 안내는 `boot`/`build`를 unit 정체로. 검사: settings·evaluateShip 단위 테스트.
+- 사고 28: 허용을 넓히기 전 가드 탐침 — `git -C x reset --hard`·`git -C x commit --no-verify`·worktree의 `git -C x push`가 통과했다(검사가 `git\s+<하위명령>`만 봤다). `git -c core.hooksPath=/dev/null commit`은 커밋 게이트(.githooks)를 통째로 껐다. 수리: 파괴·보호 push·worktree push·spike commit 검사가 전역 옵션(`-C <경로>`·`-c <키=값>`·`--git-dir=`·`--work-tree=`·`--namespace=`)을 건너 하위 명령을 본다; `-c core.hooksPath=`는 ADMIN 밖에서 「게이트 우회」로 거부. 검사: guard 단위 테스트(수리 전 red).
+- `work.mjs list`가 intake 뒤 「unit 없음」만 냈다 — Flow 2는 intake 뒤 list를 보라 하는데 seed 전 BACKLOG 줄이 안 보였다(두 필드 공통). 수리: 열린 BACKLOG 줄을 `backlog` 상태로 함께 보인다(dropped unit의 줄 포함). 검사: listLines 단위 테스트.
+
 ### Fixed — 2026-10-01 L2 1일차 관찰 여섯 — 순차 seed · 예산 중 seed · 가드 오탐 둘 · conductor 파일 이동 · 메모리 문구
 - **unit은 한 번에 하나**: conductor가 seed를 병렬로 열었다(22:47 두 번) — Flow 4는 순차인데 seed·가드가 막지 않았고, 같은 파일 충돌(사고 26)·spawn_stop 귀속 어긋남(6/5·5/6)의 토양이 됐다. 처리량은 미검수 3에 묶여 병렬의 이득은 없었다(순차로 3 unit 29분 뒤 6시간 대기). 수리: `seedGate` — 일하는 unit(출하·dropped 아님, CEO 질문에 걸리지 않음)이 있으면 `ACTIVE … 한 번에 하나`; 예외는 CEO 질문(열린 Q — 질문·needs)에 걸린 unit(Flow 6). 사고 26의 충돌 재개는 질문에 걸린 unit 뒤로 main이 움직이는 경우의 안전망으로 남는다.
 - **예산 정지 중엔 seed도 STOP**: 미검수 3인데 seed가 effect-conflict를 열어 6시간 유휴 — seed→ship 시계가 부풀고 base가 낡았다. 수리: seed가 ship과 같은 예산(budgetStatus)을 보고 `STOP <이유>`.

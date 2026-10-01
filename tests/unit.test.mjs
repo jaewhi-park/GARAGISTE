@@ -15,7 +15,7 @@ import { attackCell, evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles 
 import { closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { outcome, verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate } from '../team/scripts/work.mjs';
+import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
 
@@ -117,6 +117,23 @@ test('guard: L2 1일차 — 원장 읽기·heredoc trailer는 쓰기가 아니�
   assert.match(decide(bash('cd .worktrees/hello && rm ../../src/a.ts'), gctx('build')) || '', /옮기거나 지우지 않는다/, 'worktree 탈출은 여전히 막힌다');
   // 메모리 — 거부는 그대로, 이유를 말해 재시도를 멈춘다
   assert.match(decide(write('/home/u/.claude/projects/p/memory/MEMORY.md'), gctx(null)) || '', /메모리 파일은 쓰지 않는다/);
+});
+test('guard: 필드 시험 — git 전역 옵션(-C·-c) 뒤의 파괴 명령도 막고, -c core.hooksPath로 게이트를 끄는 우회를 막는다', () => {
+  const wt = `${root}/.worktrees/hello`;
+  assert.ok(decide(bash('git -C .worktrees/x reset --hard'), gctx(null)), '-C 뒤의 reset --hard — 붙은 형태만 보던 구멍');
+  assert.ok(decide(bash('git -C .worktrees/x commit --no-verify -m a'), gctx(null)));
+  assert.ok(decide(bash('git -C x -c user.name=a stash'), gctx(null)));
+  assert.ok(decide(bash('git -C x push origin main'), gctx(null)));
+  assert.match(decide(bash('git -c core.hooksPath=/dev/null commit -m a', wt), gctx('build')) || '', /게이트 우회/, '훅 경로를 바꾸면 커밋 게이트가 꺼진다');
+  assert.match(decide(bash('git -C x -c core.hookspath=x commit -m a'), gctx(null)) || '', /게이트 우회/, '대소문자 무관');
+  assert.match(decide(bash('git -C .worktrees/hello push'), gctx('build')) || '', /push하지 않는다/, 'worktree 안 push도 -C로 빠지지 않는다');
+  assert.equal(decide(bash(`git -C ${wt} add -A`), gctx('build')), null, '-C 자체는 정상 — 팩이 worktree에서 일하는 길');
+  assert.equal(decide(bash(`git -C ${wt} commit -m "feat: x"`), gctx('build')), null);
+  assert.equal(decide(bash('git -C x log --oneline'), gctx(null)), null);
+});
+test('settings: 팩이 worktree에서 일하는 명령(cd·git -C)이 허용 목록에 있다 — 없으면 헤드리스·신규 설치에서 boot가 커밋하지 못해 루프가 멈춘다 (필드 시험)', () => {
+  const st = JSON.parse(fs.readFileSync(new URL('../team/claude/settings.json', import.meta.url), 'utf8'));
+  for (const r of ['Bash(cd:*)', 'Bash(git -C:*)']) assert.ok(st.permissions.allow.includes(r), r);
 });
 test('guard: 보호 브랜치가 main이 아니어도 push가 막힌다', () => {
   const pb = { ...gctx(null), protectedBranch: 'claude/quirky-wozniak-keqgbi' };
@@ -255,6 +272,12 @@ test('claims: 태그 파싱, 기계 센서 커버리지, 다음 거짓 주장은
   const cs = [{ file: 'b', status: 'false', milestone: 'M3', sensor: 'machine' }, { file: 'a', status: 'false', milestone: 'M1', sensor: 'human' }, { file: 'c', status: 'true', milestone: 'M1', sensor: 'machine' }];
   assert.equal(pickNext(cs).file, 'a');
   assert.equal(coverage(cs).pct, 67);
+});
+test('ship: wip HEAD의 안내는 unit 정체의 팩을 가리킨다 — boot(scaffold)에 「build를 다시 띄워」라 했다 (필드 시험 두 곳 공통)', () => {
+  const base = { slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [], requireAttack: false, spikeText: '', lastSubject: 'wip: checkpoint', stops: [], proseKb: 10, proseMax: 40 };
+  const why = (unit) => evaluateShip({ ...base, unit }).find((k) => k.id === 'head').why;
+  assert.match(why({ kind: 'scaffold', state: 'build', boundary: { hit: false } }), /boot를 다시 띄워/);
+  assert.match(why({ state: 'build', boundary: { hit: false } }), /build를 다시 띄워/);
 });
 test('ship: 8조건 — 하나라도 빠지면 fail-closed', () => {
   const unit = { state: 'spec', boundary: { hit: false } };
@@ -473,6 +496,18 @@ test('work seed: unit은 한 번에 하나 — CEO 질문에 걸린 unit만 예�
   assert.equal(seedGate({ units: [{ slug: 'c', state: 'shipped' }, { slug: 'd', state: 'dropped' }], decisionsText: dec }), null);
   assert.equal(seedGate({ units: [{ slug: 'e', state: 'spec', questions: [], needs: ['Q5'] }], decisionsText: dec }), null, 'needs의 열린 Q도 질문에 걸린 것');
   assert.deepEqual(seedGate({ units: [], stops: ['미검수 3 ≥ 3'] }), { kind: 'stop', why: ['미검수 3 ≥ 3'] }, '예산 정지 중에 연 unit은 6시간 유휴·낡은 base였다');
+});
+test('work list: seed 전 BACKLOG 줄도 보인다 — Flow 2는 intake 뒤 list를 보라 하는데 「unit 없음」이었다 (필드 시험 두 곳 공통)', () => {
+  const items = parseBacklog(['- [ ] boot · M1 · needs: Q3 · "a" · 인수: -', '- [ ] add · M1 · needs: boot,Q1 · "b" · 인수: -', '- [x] old · M1 · needs: - · "c" · 인수: -'].join('\n'));
+  const l = listLines({ units: [], items });
+  assert.equal(l.length, 2, '닫힌 줄은 빠진다');
+  assert.match(l[0], /^boot\s+backlog\s+M1\s+needs=Q3/);
+  assert.match(l[1], /^add\s+backlog\s+M1\s+needs=boot,Q1/);
+  const l2 = listLines({ units: [{ slug: 'boot', state: 'build', milestone: 'M1', tried: null, boundary: { hit: false } }], items });
+  assert.match(l2[0], /^boot\s+build\s+M1\s+tried=-/);
+  assert.equal(l2.filter((x) => /^boot\s+backlog/.test(x)).length, 0, '열린 unit은 backlog 줄로 겹치지 않는다');
+  assert.ok(listLines({ units: [{ slug: 'add', state: 'dropped', milestone: 'M1', tried: null, boundary: { hit: false } }], items }).some((x) => /^add\s+backlog/.test(x)), 'dropped unit의 열린 줄은 다시 열릴 backlog다');
+  assert.deepEqual(listLines({ units: [], items: [] }), ['unit 없음 · BACKLOG 없음 — work.mjs brief 뒤 intake']);
 });
 test('work seed: dropped unit은 자리를 막지 않고 같은 slug가 새로 열린다', () => {
   const items = parseBacklog('- [ ] a · M1 · needs: - · "a" · 인수: -');

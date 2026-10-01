@@ -1,7 +1,11 @@
 // guard-rules — 하네스 중립 경계 규칙. Claude 훅(.claude/hooks/guard.mjs)과 opencode 플러그인(.opencode/plugins/guard.ts)이 같은 함수를 부른다.
 import path from 'node:path';
 
-const DESTRUCTIVE = /\bgit\s+(reset\s+--hard|clean\s+-\S*f|checkout\s+--\s+\.|stash\b|rebase\b|merge\b|branch\s+-D|push\s+(\S+\s+)?(-f\b|--force)|push\s+\S+\s+(main|master)\b|commit\s+(.*\s)?(--no-verify|-n)\b)/;
+// git 전역 옵션(-C <경로>·-c <키=값>·--git-dir= 등)은 하위 명령 앞에 끼어든다 — 필드 시험: `git -C x reset --hard`·`--no-verify`가 붙은 형태만 보던 검사를 빠져나갔다
+const GIT = String.raw`\bgit(?:\s+(?:-C|-c)\s+\S+|\s+--(?:git-dir|work-tree|namespace)=\S+)*\s+`;
+const DESTRUCTIVE = new RegExp(GIT + String.raw`(reset\s+--hard|clean\s+-\S*f|checkout\s+--\s+\.|stash\b|rebase\b|merge\b|branch\s+-D|push\s+(\S+\s+)?(-f\b|--force)|push\s+\S+\s+(main|master)\b|commit\s+(.*\s)?(--no-verify|-n)\b)`);
+// 명령 한 번짜리 훅 경로 변경은 커밋 게이트(.githooks)를 끈다 — --no-verify와 같은 우회다
+const HOOK_BYPASS = /\bgit\b[^;&|\n]*\s-c\s+core\.hookspath\s*=/i;
 const SECRET = /(^|[\\/])\.env(\.|$)|\.pem$|\.key$|credentials\.json$/i;
 // 규칙집 = 팀 정본(.garagiste) + 하네스 배선(.claude settings·hooks·agents / opencode.json·.opencode agents·plugins / .githooks)
 const RULEBOOK = /(^|[\\/])(\.garagiste[\\/](team\.json|HAZARDS\.md|scripts[\\/]|packs[\\/]|ledger[\\/]|units[\\/])|\.claude[\\/](settings\.json|hooks[\\/]|agents[\\/])|opencode\.json|\.opencode[\\/](agents|plugins)[\\/]|\.githooks[\\/])/;
@@ -109,15 +113,16 @@ export function decide(input, ctx) {
     // DESTRUCTIVE의 push 정규식은 main|master 고정 — 보호 브랜치가 다른 이름이면 여기서 막는다 (L0 부검의 발견)
     const pb = ctx.protectedBranch;
     if (!admin && pb && pb !== 'main' && pb !== 'master'
-      && new RegExp(`\\bgit\\s+push\\b[^;&|]*[\\s:]${pb.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')}(\\s|$)`).test(c)) return `보호 브랜치(${pb}) push — 머지는 ship.mjs만, 원격 push는 CEO의 일이다.`;
+      && new RegExp(`${GIT}push\\b[^;&|]*[\\s:]${pb.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')}(\\s|$)`).test(c)) return `보호 브랜치(${pb}) push — 머지는 ship.mjs만, 원격 push는 CEO의 일이다.`;
     if (!admin && ENV_BYPASS.test(c)) return '게이트 우회 금지 — GARAGISTE_SHIP·WIP·ADMIN 접두는 스크립트 내부와 CEO(ADMIN 세션)만 쓴다.';
+    if (!admin && HOOK_BYPASS.test(cq)) return '게이트 우회 금지 — git -c core.hooksPath=…는 커밋 게이트(.githooks)를 끈다.';
     if (LEDGER_SHELL.test(cq) || LEDGER_REDIR.test(cq)) return '원장·unit 상태는 스크립트만 쓴다.';
     if (!admin && (RULEBOOK_SHELL.test(cq) || RULEBOOK_REDIR.test(cq))) return '규칙집(.garagiste 정본·하네스 배선)은 hard 결정 뒤 CEO가 GARAGISTE_ADMIN=1로만 바꾼다. (읽기는 자유 — Read 툴이나 cat은 막지 않는다)';
     const w = worktreeOf(path.resolve(cwd), ctx.worktreesDir) || worktreeFromCommand(c, ctx.worktreesDir);
     if (w) {
-      if (/\bgit\s+push\b/.test(c)) return 'worktree에서 push하지 않는다 — ship.mjs가 main으로 올린다.';
+      if (new RegExp(GIT + 'push\\b').test(c)) return 'worktree에서 push하지 않는다 — ship.mjs가 main으로 올린다.';
       if (CEO_CMDS.test(c)) return 'tried·decide(CEO 접점)·drop(방향전환)·needs(선행 재배선)는 conductor의 일이다 — 팩은 부르지 않는다. conductor가 CEO의 말을 받아 메인에서 돌린다.';
-      if (ctx.readMarker(w.dir) === 'spike' && /\bgit\s+commit\b/.test(c)) return 'spike는 커밋하지 않는다 — 측정 파일만 남긴다.';
+      if (ctx.readMarker(w.dir) === 'spike' && new RegExp(GIT + 'commit\\b').test(c)) return 'spike는 커밋하지 않는다 — 측정 파일만 남긴다.';
     }
     const base = cdBase(c, cwd);
     for (const target of writeTargets(cq)) {
