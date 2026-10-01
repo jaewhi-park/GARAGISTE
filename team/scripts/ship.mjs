@@ -1,7 +1,7 @@
 // ship — 8조건 fail-closed. 통과하면 ff 머지 + LEDGER + STATUS. 이 스크립트만 보호 브랜치에 닿는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, readJson, readLedger, readText, rebaseInProgress, saveUnit, sh, shell, short, unmergedFiles, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, quarantineStray, readJson, readLedger, readText, rebaseInProgress, saveUnit, sh, shell, short, stamp, strayPaths, unmergedFiles, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles } from './lib.mjs';
 import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
@@ -47,7 +47,8 @@ export function evaluateShip(x) {
   c.push({ id: 'attack', ok: atOk, why: atOk ? '' : !atAny ? `attack 기록 없음 — brief.mjs attack ${x.slug} → 팩 spawn → node .garagiste/scripts/verify.mjs attack ${x.slug}` : !at ? `attack 기록이 이전 tree의 것 — 마지막 커밋 뒤 다시: node .garagiste/scripts/verify.mjs attack ${x.slug}` : at.total < 1 ? 'adversary 테스트 0개' : `adversary red ${at.red}` });
   const hit = x.boundaryHit ?? !!x.unit?.boundary?.hit;
   const sp = scaffold || !hit || spikeComplete(x.spikeText); // scaffold(boot)의 매니페스트는 그 unit의 일이라 spike를 요구하지 않는다
-  c.push({ id: 'spike', ok: sp, why: sp ? '' : `boundary HIT(${x.boundaryWhy || '원문'})인데 spike 필수 행(${SPIKE_ROWS.join('·')}) 미완` });
+  // 사고 39(필드 벤치 1): build가 산출물 무시 줄(.gitignore)을 더한 diff-HIT에서 이 줄엔 다음 할 일이 없었다 — conductor는 Flow 5(출력 밖 추측 금지)대로 멈췄다
+  c.push({ id: 'spike', ok: sp, why: sp ? '' : `boundary HIT(${x.boundaryWhy || '원문'})인데 spike 필수 행(${SPIKE_ROWS.join('·')}) 미완 → node .garagiste/scripts/brief.mjs spike ${x.slug} → 팩 spawn(${x.measurements || 'docs/measurements'}/spike-${x.slug}.md를 채운다) → node .garagiste/scripts/ship.mjs ${x.slug} 다시 — 측정 파일은 ship이 커밋한다, 측정이 허용 밖이면 그때 CEO에게` });
   const head = !/^wip:/.test(x.lastSubject || '');
   c.push({ id: 'head', ok: head, why: head ? '' : `HEAD가 wip 체크포인트 — ${scaffold ? 'boot' : 'build'}를 다시 띄워 끝내라` }); // 필드 시험: scaffold(boot)에 build를 가리켰다(사고 7의 rebase 문구와 같은 결함)
   const qs = x.openQuestions || []; // 이 unit이 올린 질문에 답이 없으면 출하하지 않는다 — 비가역 결정을 기본값이 대신하지 못하게
@@ -112,6 +113,10 @@ export function setupGap({ depChanged, setup }) {
   if (!depChanged || !/^\s*(true|:|exit\s+0)?\s*$/.test(setup || '')) return null;
   return `FAIL ship: 의존성 출하인데 설치 명령이 없다(commands.setup=${JSON.stringify(setup || '')}) — 머지하면 main과 다음 worktree에 그 의존성이 없다(머지 전에 멈췄다). CEO 결정 한 줄(메인 루트): GARAGISTE_ADMIN=1 node .garagiste/scripts/work.mjs commands setup="<설치 명령 — npm install · pip install -e . · uv sync …>" → 다시 ship`;
 }
+// 사고 38: 남은 것은 CEO 몫이 아니다 — 프로젝트가 그 산출물을 무시하거나(.gitignore) 저장소에 담는(lockfile 커밋) 일은 unit의 것이고, 팩이 이 목록을 받는다
+export function strayFail({ slug, pk, ran, stray, moved, span, leftNote = '' }) {
+  return `FAIL ship: main에서 돈 ${ran}이 저장소에 파일을 남겼다 — ${stray.join(' ')} — 머지를 되돌리고(${span}) 그 파일은 ${moved}/로 옮겼다(지우지 않았다)${leftNote}. CEO 몫이 아니다 — unit의 일: 무시할 산출물(캐시·빌드 메타데이터·의존성 디렉터리)이면 .gitignore에${pk === 'boot' ? '' : '(boundary 파일이라 spike 행이 따른다)'}, 저장소에 둘 것(lockfile 등)이면 worktree에서 같은 명령으로 만들어 커밋 → node .garagiste/scripts/brief.mjs ${pk} ${slug} 재spawn(팩이 이 목록을 받는다) → ship 다시`;
+}
 // 사고 29(필드 시험 1): rebase는 unit의 역사를 한 커밋씩 다시 놓는다 — .gitignore 전의 wip 체크포인트가 담은 산출물(__pycache__)이
 // worktree에 무시 파일로 남아 있으면 그 중간 커밋에서 「untracked would be overwritten」으로 멈췄다. 증거는 tree다: 역사를 그 tree 한 커밋으로 접고 올린다.
 function squashUnit(wt, base) {
@@ -173,7 +178,7 @@ function main() {
   const conds = evaluateShip({
     unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed,
     boundaryHit: !!unit.boundary?.hit || diffHit.hit, boundaryWhy: unit.boundary?.hit ? '원문' : diffHit.reasons.join(', '),
-    requireAttack: c.team.require_attack !== false, spikeText: readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`)),
+    requireAttack: c.team.require_attack !== false, spikeText: readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`)), measurements: c.team.paths.measurements,
     lastSubject: exists ? git(['log', '-1', '--format=%s'], wt).stdout : '', stops: b.stops, proseKb: proseKb(c.main), proseMax: c.team.budgets.prose_kb_max,
     openQuestions: openQuestions(readText(path.join(c.main, c.team.paths.decisions))).filter((l) => l.includes(`(${slug})`)).map((l) => (l.match(/Q\d+/) || [''])[0]),
   });
@@ -223,48 +228,60 @@ function main() {
   if (mg.status) fail(`FAIL ship: ff 머지 실패 — ${mg.stderr}`);
   c.team = loadTeam(c.main); // boot unit이 team.json commands를 바꿨을 수 있다
   const head = headSha(c.main);
+  const ledgerDoc = path.join(c.main, c.team.paths.ledger_doc);
+  const backlog = path.join(c.main, c.team.paths.backlog);
+  const prevUnit = { state: unit.state, sensor: unit.sensor };
+  let row = null;
+  // 원자성(R9): 머지 뒤 어느 FAIL도 main에 「머지는 됐는데 …」를 남기지 않는다 — 되돌리기는 이 한 곳이다 (증거 jsonl은 append-only라 ship_rollback 줄로 남긴다).
+  // 사고 38: main에서 돈 명령이 남긴 것은 먼저 보존 폴더로 옮긴다 — 남겨 두면 다음 ship이 그것을 CEO의 것으로 읽었다. 바뀐 추적 파일이 reset --keep을 막지도 않는다.
+  const undo = (why) => {
+    const stray = strayPaths(c.main, DOC_OK(c.team));
+    const dir = path.join(c.main, '.garagiste', 'session', 'ship-stray', `${slug}-${stamp()}`);
+    const left = stray.length ? quarantineStray(c.main, stray, dir) : [];
+    const moved = stray.length ? path.relative(c.main, dir).replace(/\\/g, '/') : null;
+    const rs = git(['reset', '--keep', prevHead], c.main);
+    if (row) {
+      unit.state = prevUnit.state; unit.sensor = prevUnit.sensor; unit.shipped = null; delete unit.head; saveUnit(c.main, c.team, unit);
+      const led = readText(ledgerDoc);
+      if (led.endsWith(row)) fs.writeFileSync(ledgerDoc, led.slice(0, -row.length));
+      if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[x\\] ${slug} `, 'm'), `- [ ] ${slug} `));
+      fs.writeFileSync(path.join(c.main, c.team.paths.status), render(c).text);
+    }
+    appendLedger(c.main, c.team, { kind: 'ship_rollback', slug, from: head, to: prevHead, why, ...(moved ? { stray: stray.map((e) => e.path), moved, left } : {}) });
+    const span = `${short(head)} → ${short(prevHead)}`;
+    const leftNote = `${left.length ? ` (옮기지 못해 그 자리에 둠: ${left.join(' ')} — 잡고 있는 프로세스를 닫고 지운다)` : ''}${rs.status ? ` — 단 reset --keep이 실패해 main은 머지된 채다(${short(head)}): ${(rs.stderr || rs.stdout).split('\n')[0]} — CEO가 git status로 본다` : ''}`;
+    return { stray: stray.map((e) => e.path), moved, span, leftNote, back: `머지를 되돌렸다(${span})${moved ? ` · main에 남은 ${stray.map((e) => e.path).join(' ')}은 ${moved}/로 옮겼다` : ''}${leftNote}` };
+  };
   // 사고 21(3차 실기): 의존성을 새로 들이는 출하는 main 설치 없이 머지 뒤 quick이 반드시 red다 — 설치는 머지 전엔 불가(새 매니페스트가 main에 없다).
   // 매니페스트가 바뀌었고 commands.setup이 있으면 main quick 전에 설치를 돌린다. build 재spawn은 이 실패의 해법이 아니다.
   const depChanged = changed.some((f) => DEP_MANIFEST.test(f.replace(/\\/g, '/')));
-  if (depChanged && c.team.commands.setup) {
+  const ranSetup = !!(depChanged && c.team.commands.setup);
+  if (ranSetup) {
     const su = shell(c.team.commands.setup, { cwd: c.main });
-    if (su.status) {
-      git(['reset', '--keep', prevHead], c.main);
-      fail(`FAIL ship: 의존성 설치(commands.setup) 실패 — 머지를 되돌렸다(${short(head)} → ${short(prevHead)}). 설치 명령을 고치고 다시 ship\n${(su.stderr || su.stdout).split('\n').slice(-5).join('\n')}`);
-    }
+    if (su.status) fail(`FAIL ship: 의존성 설치(commands.setup) 실패 — ${undo('setup FAIL').back}. 설치 명령을 고치고 다시 ship\n${(su.stderr || su.stdout).split('\n').slice(-5).join('\n')}`);
   }
   const tags = acceptanceFiles(c.main, c.team, slug).map((f) => parseTags(readText(path.join(c.main, f))));
-  const prevUnit = { state: unit.state, sensor: unit.sensor };
   unit.sensor = tags.find((t) => t.sensor.startsWith('human'))?.sensor || 'machine';
   unit.state = 'shipped'; unit.shipped = new Date().toISOString(); unit.head = head; saveUnit(c.main, c.team, unit);
-  const ledgerDoc = path.join(c.main, c.team.paths.ledger_doc);
   if (!fs.existsSync(ledgerDoc)) fs.writeFileSync(ledgerDoc, '# LEDGER — 증명 커밋. 한 줄 = 출하 하나 = 기계가 확인한 사실의 목록.\n\n| 날짜 | unit | head | tree | full | redproof | attack 선발견→red/총 | sensor |\n|---|---|---|---|---|---|---|---|\n');
   // Q4 계측: attack 선발견 — CEO의 tried fail(후발견)과 대조하는 열. 정의는 attackCell 하나(사고 23)
   const atCell = unit.kind === 'scaffold' ? '—' : attackCell({ ledger, slug, since: unit.created });
-  const row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'} | ${atCell} | ${unit.sensor} |\n`;
+  row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'} | ${atCell} | ${unit.sensor} |\n`;
   fs.appendFileSync(ledgerDoc, row);
-  const backlog = path.join(c.main, c.team.paths.backlog);
   if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `));
   fs.writeFileSync(path.join(c.main, c.team.paths.status), render(c).text);
   const docs = DOC_OK(c.team).filter((f) => fs.existsSync(path.join(c.main, f)));
   git(['add', ...docs], c.main);
   const q = shell(c.team.commands.quick, { cwd: c.main });
   appendLedger(c.main, c.team, { kind: 'verify', mode: 'quick', tree: workTree(c.main), head, exit: q.status, platform: process.platform, where: '.', ship: true });
-  if (q.status) {
-    // 원자성: 머지와 출하 기록을 전부 되돌린다 — main에 「머지는 됐는데 빨간」 상태를 남기지 않는다 (증거 jsonl은 append-only라 ship_rollback 줄로 남긴다)
-    git(['reset', '--keep', prevHead], c.main);
-    unit.state = prevUnit.state; unit.sensor = prevUnit.sensor; unit.shipped = null; delete unit.head; saveUnit(c.main, c.team, unit);
-    const led = readText(ledgerDoc);
-    if (led.endsWith(row)) fs.writeFileSync(ledgerDoc, led.slice(0, -row.length));
-    if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[x\\] ${slug} `, 'm'), `- [ ] ${slug} `));
-    fs.writeFileSync(path.join(c.main, c.team.paths.status), render(c).text);
-    appendLedger(c.main, c.team, { kind: 'ship_rollback', slug, from: head, to: prevHead, why: 'main quick FAIL' });
-    fail(`FAIL ship: 머지 뒤 main quick FAIL — 머지를 되돌렸다(${short(head)} → ${short(prevHead)}). ${depChanged ? '의존성 출하다 — commands.setup(설치 명령)을 등록·수리하고 다시 ship하라. build 재spawn은 해법이 아니다' : '원인은 통합: build 재spawn 뒤 다시 ship'}`);
-  }
-  appendLedger(c.main, c.team, { kind: 'ship', slug, head, tree: newTree, sensor: unit.sensor });
+  if (q.status) fail(`FAIL ship: 머지 뒤 main quick FAIL — ${undo('main quick FAIL').back}. ${depChanged ? '의존성 출하다 — commands.setup(설치 명령)을 등록·수리하고 다시 ship하라. build 재spawn은 해법이 아니다' : '원인은 통합: build 재spawn 뒤 다시 ship'}`);
+  // 사고 38(필드 벤치 두 곳): main에서 돈 setup·quick의 산출물(package-lock.json · *.egg-info · __pycache__)이 남아 문서 커밋이 게이트(인덱스 ≠ 작업 트리)에 막혔다 —
+  // 머지·shipped·ship 줄만 남은 반쪽 출하였고(재ship은 「이미 출하」), 남은 것은 다음 ship을 「CEO가 치운다」로 막았다. 무시할지 커밋할지는 unit의 일이다.
+  if (strayPaths(c.main, DOC_OK(c.team)).length) fail(strayFail({ slug, pk, ran: ranSetup ? 'setup·quick' : 'quick', ...undo('main stray') }));
   const msg = `ship(${slug}): ${unit.origin.replace(/\n/g, ' ').slice(0, 60)}\n\nUnit: ${slug}\nKind: ${unit.kind}\nHead: ${short(head)}\nFull: ${short(newTree)}\nRedproof: ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'}\nAttack: ${atCell}\nSensor: ${unit.sensor}`;
   const cm = git(['commit', '-q', '-m', msg], c.main, { GARAGISTE_SHIP: '1' });
-  if (cm.status) fail(`FAIL ship: 문서 커밋 실패 — ${cm.stderr}`);
+  if (cm.status) fail(`FAIL ship: 문서 커밋 실패 — ${undo('docs commit FAIL').back}\n${(cm.stderr || cm.stdout).trim()}`);
+  appendLedger(c.main, c.team, { kind: 'ship', slug, head, tree: newTree, sensor: unit.sensor }); // 문서 커밋 뒤에만 — 유령 출하 줄이 무인 카운터에 잡히지 않게
   git(['worktree', 'remove', wt], c.main);
   out(`SHIPPED ${slug} ${short(head)} sensor=${unit.sensor}`);
   // 사고 10(2차 실기): 의존성은 unit worktree에만 설치되고 worktree는 ship 뒤 사라진다 — 메인이 설치하지 않으면 다음 unit이 맨손이 되어 스펙(결정된 스택)을 우회한다

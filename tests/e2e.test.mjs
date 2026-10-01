@@ -282,6 +282,70 @@ test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 
   assert.match(script('ship', ['atom'], repo).out, /^SHIPPED atom/, '원인이 사라지면 같은 증거로 다시 ship된다');
 });
 
+test('사고 38·39(필드 벤치): main의 setup·quick이 남긴 산출물은 반쪽 출하 대신 되돌림·보존·unit 안내, unit이 무시 줄(.gitignore)을 더하면 spike FAIL이 다음 명령을 준다', { timeout: 180000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-stray-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  write(repo, 'requirements-dev.txt', 'a\n');
+  write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
+  // pip install -e . · npm install의 꼴: 설치가 저장소 안에 메타데이터 디렉터리와 잠금 파일을 남긴다
+  write(repo, 'tools/setup.mjs', "import fs from 'node:fs'; fs.mkdirSync('meta.egg-info', { recursive: true }); fs.writeFileSync('meta.egg-info/PKG-INFO', 'x'); fs.writeFileSync('deps.lock', '{}\\n');\n");
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/**/*.test.mjs"', test_file: 'node --test {file}', run: 'true', setup: 'node tools/setup.mjs' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  git(['add', '-A'], repo); script('verify', ['quick'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  script('work', ['new', 'dep', '개발 의존성 b를 더한다'], repo);
+  const wt = path.join(repo, '.worktrees', 'dep');
+  const evidence = () => { assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/); assert.match(script('redproof', ['dep'], wt).out, /^PASS redproof/); assert.match(script('verify', ['attack', 'dep'], wt).out, /red 0\/1/); };
+  write(wt, 'tests/acceptance/dep.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';\ntest('b가 개발 의존성', () => { assert.match(fs.readFileSync('requirements-dev.txt', 'utf8'), /^b$/m); });\n");
+  assert.match(script('redproof', ['dep'], wt).out, /^RED dep/);
+  git(['add', '-A'], wt); script('verify', ['quick'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'test(dep): red'], wt).status, 0);
+  write(wt, 'requirements-dev.txt', 'a\nb\n');
+  write(wt, 'tests/adversary/dep-1.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';\ntest('줄 끝 개행', () => { assert.ok(fs.readFileSync('requirements-dev.txt', 'utf8').endsWith('\\n')); });\n");
+  git(['add', '-A'], wt); script('verify', ['quick'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'feat(dep): b\n\nUnit: dep\nStep: 1'], wt).status, 0);
+  evidence();
+  const prevHead = git(['rev-parse', 'main'], repo).out.trim();
+  // 필드 벤치: 문서 커밋이 게이트(인덱스 ≠ 작업 트리)에 막혀 머지·shipped·ship 줄만 남고 문서는 스테이지 채, worktree 잔류 — 재ship은 「이미 출하」
+  const s1 = script('ship', ['dep'], repo);
+  assert.match(s1.out, /^FAIL ship: main에서 돈 setup·quick이 저장소에 파일을 남겼다 — deps\.lock meta\.egg-info\/ — 머지를 되돌리고/, s1.out);
+  assert.match(s1.out, /\.garagiste\/session\/ship-stray\/dep-[^ ]*\/로 옮겼다[\s\S]*CEO 몫이 아니다[\s\S]*brief\.mjs build dep/, s1.out);
+  assert.equal(git(['rev-parse', 'main'], repo).out.trim(), prevHead, 'main이 머지 전으로 돌아온다 — 반쪽 출하 없음');
+  assert.notEqual(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/dep.json'), 'utf8')).state, 'shipped');
+  assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] dep · /);
+  assert.equal(git(['status', '--porcelain', '-uall'], repo).out.split('\n').filter((l) => l && !/ docs\//.test(l)).join('\n'), '', '남은 것은 CEO 문서뿐 — 다음 ship이 「CEO가 치운다」로 막히지 않는다(오귀속)');
+  const moved = fs.readdirSync(path.join(repo, '.garagiste/session/ship-stray'));
+  assert.ok(fs.existsSync(path.join(repo, '.garagiste/session/ship-stray', moved[0], 'meta.egg-info/PKG-INFO')), '지우지 않고 옮겼다');
+  assert.ok(fs.existsSync(wt), 'worktree는 그대로 — unit이 고친다');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"ship_rollback","slug":"dep".*"stray":\["deps\.lock","meta\.egg-info\/"\]/);
+  assert.doesNotMatch(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"ship","slug":"dep"/, '유령 출하 줄이 없다');
+  const bp = fs.readFileSync(path.join(repo, script('brief', ['build', 'dep'], repo).out.split(' ')[1]), 'utf8');
+  assert.match(bp, /## ship이 되돌렸다 — main에서 setup·quick이 남긴 파일[\s\S]*- deps\.lock\n- meta\.egg-info\//, 'build 팩이 그 목록을 할 일로 받는다');
+  // unit의 일: 산출물은 무시 줄로 — .gitignore는 boundary 파일이다
+  fs.appendFileSync(path.join(wt, '.gitignore'), 'meta.egg-info/\ndeps.lock\n');
+  git(['add', '-A'], wt); script('verify', ['quick'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'chore(dep): 설치 산출물 무시'], wt).status, 0);
+  evidence();
+  // 사고 39(필드 벤치 1): spike 미완 FAIL에 다음 할 일이 없어 conductor가 멈췄다
+  const s2 = script('ship', ['dep'], repo);
+  assert.match(s2.out, /- spike: boundary HIT\(file \.gitignore\)인데 .*→ node \.garagiste\/scripts\/brief\.mjs spike dep → 팩 spawn/, s2.out);
+  assert.match(script('brief', ['spike', 'dep'], repo).out, /^PACK .*dep-spike-/, '안내대로 spike 팩이 열린다');
+  write(wt, 'docs/measurements/spike-dep.md', '- wire: 없음\n- host: 없음\n- license: 없음\n- default: 설치 산출물은 무시\n- os: 없음\n');
+  assert.match(script('ship', ['dep'], repo).out, /- full: 이 tree.*verify\.mjs full/, 'ship이 측정 파일을 커밋한다 — 낡은 증거는 문구의 명령대로');
+  evidence();
+  const s4 = script('ship', ['dep'], repo);
+  assert.match(s4.out, /^SHIPPED dep/, s4.out);
+  assert.equal(git(['status', '--porcelain', '-uall'], repo).out.trim(), '', 'main은 깨끗하다 — 설치 산출물은 무시된 채 그 자리에');
+  assert.ok(fs.existsSync(path.join(repo, 'meta.egg-info/PKG-INFO')), 'setup은 main에서 돌았다');
+});
+
 test('사고 26(L2 1일차): 두 unit이 같은 파일을 고치면 ship은 rebase를 멈춘 자리에 두고, build가 표시를 풀면 ship이 잇는다', { timeout: 180000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-conflict-'));

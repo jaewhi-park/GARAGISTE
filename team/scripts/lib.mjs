@@ -97,6 +97,43 @@ export function dirtyFiles(cwd) {
   const r = spawnSync('git', ['status', '--porcelain', '-uall'], { cwd, encoding: 'utf8' });
   return (r.stdout || '').split('\n').filter(Boolean).map((l) => l.slice(3));
 }
+// 사고 38(필드 벤치 두 곳): ship이 main에서 돌린 setup·quick이 남긴 것 — 바뀐 추적 파일과 추적 안 된 새 경로(git이 접은 디렉터리 그대로).
+// keep(스크립트가 쓰는 CEO 문서)은 빼고, 그 문서가 접힌 디렉터리 안에 있으면 그 디렉터리만 펼친다. -z: 한글 경로가 따옴표로 바뀌지 않게.
+function statusEntries(cwd, extra = []) {
+  const parts = (spawnSync('git', ['status', '--porcelain', '-z', ...extra], { cwd, encoding: 'utf8' }).stdout || '').split('\0');
+  const out = [];
+  for (let i = 0; i < parts.length; i++) {
+    if (!parts[i]) continue;
+    out.push({ code: parts[i].slice(0, 2), path: parts[i].slice(3) });
+    if (/^[RC]/.test(parts[i])) i++; // 이름 바꿈의 옛 경로
+  }
+  return out;
+}
+export function strayPaths(cwd, keep = []) {
+  const res = [];
+  for (const e of statusEntries(cwd)) {
+    if (keep.includes(e.path)) continue;
+    if (e.code === '??' && e.path.endsWith('/') && keep.some((k) => k.startsWith(e.path))) res.push(...statusEntries(cwd, ['-uall', '--', e.path]).filter((f) => !keep.includes(f.path)));
+    else res.push(e);
+  }
+  return res;
+}
+// 지우지 않고 옮긴다 — 같은 순간 CEO가 메인 루트에 만든 파일이 섞여도 잃지 않는다. 바뀐 추적 파일은 사본을 두고 HEAD로 되돌린다.
+// 옮기지 못한 것(win32: 켜 둔 서버가 잡은 파일)은 그 자리에 두고 돌려준다 — 되돌리기 도중에 죽으면 반쪽 출하가 다시 생긴다.
+export function quarantineStray(cwd, entries, dest) {
+  const left = [];
+  for (const { code, path: rel } of entries) {
+    const src = path.join(cwd, rel.replace(/\/$/, '')); const dst = path.join(dest, rel.replace(/\/$/, ''));
+    try {
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      if (code === '??') { fs.renameSync(src, dst); continue; }
+      if (fs.existsSync(src)) fs.cpSync(src, dst, { recursive: true });
+      if (code[0] === 'A') { git(['rm', '-q', '--cached', '--', rel], cwd); if (fs.existsSync(src)) fs.rmSync(src, { recursive: true }); }
+      else git(['checkout', 'HEAD', '--', rel], cwd);
+    } catch { left.push(rel); }
+  }
+  return left;
+}
 export function currentBranch(cwd) { return git(['rev-parse', '--abbrev-ref', 'HEAD'], cwd).stdout; }
 export function mergeBase(cwd, ref) { const r = git(['merge-base', 'HEAD', ref], cwd); return r.status ? null : r.stdout; }
 export function globToRegex(glob) {
