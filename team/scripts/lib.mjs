@@ -41,6 +41,9 @@ export function mainRoot(cwd = process.cwd()) {
   const r = git(['rev-parse', '--git-common-dir'], cwd);
   return canon(path.dirname(path.resolve(cwd, r.stdout)));
 }
+// test_file 자리표시자: {file}은 파일 하나(계약), {files}는 여러 파일을 한 번에 받는 러너(공백으로 이은 경로 — 하나여도 된다)
+export const hasFileSlot = (tpl) => /\{files?\}/.test(tpl || '');
+export const fileCmd = (tpl, files) => (tpl.includes('{files}') ? tpl.replaceAll('{files}', files.join(' ')) : tpl.replaceAll('{file}', files[0]));
 export const REQUIRED_TEAM_KEYS = ['version', 'protected_branch', 'models', 'commands', 'paths', 'boundary', 'budgets', 'sensors'];
 export function loadTeam(root) {
   const p = path.join(root, '.garagiste', 'team.json');

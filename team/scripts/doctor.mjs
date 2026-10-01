@@ -1,7 +1,7 @@
 // doctor — 감별 진단. 무엇이 죽었고 무엇을 치면 되는지 한 줄씩. 훅·플러그인이 조용히 죽는 일을 막는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { REQUIRED_TEAM_KEYS, git, isMain, out, readJson, readText, scriptRoot } from './lib.mjs';
+import { REQUIRED_TEAM_KEYS, git, hasFileSlot, isMain, out, readJson, readText, scriptRoot } from './lib.mjs';
 
 export const SCRIPTS = ['lib', 'verify', 'redproof', 'work', 'brief', 'boundary', 'ship', 'state', 'claims', 'doctor', 'guard-rules', 'checkpoint', 'selftest'];
 // 갓 설치된 저장소에서 정상인 항목 — 이것만 빼고 전부가 설치(--fresh)·seed·ship을 fail-closed로 막는다(훅 침묵사 계열이 여기 들어오면 안 된다)
@@ -21,7 +21,7 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
   else {
     for (const k of REQUIRED_TEAM_KEYS.filter((k2) => !(k2 in team))) p.push(`team.json 키 없음: ${k} → team.json 확인`);
     for (const k of ['quick', 'full', 'test_file']) if (!team.commands?.[k]) p.push(`team.json commands.${k} 비어 있음 → 첫 unit(boot)이 채운다: 세션을 열고 만들 것을 말하라`);
-    if (team.commands?.test_file && !team.commands.test_file.includes('{file}')) p.push('commands.test_file에 {file} 자리표시자 없음');
+    if (team.commands?.test_file && !hasFileSlot(team.commands.test_file)) p.push('commands.test_file에 {file}·{files} 자리표시자 없음');
   }
   for (const s of SCRIPTS) if (!fs.existsSync(path.join(root, '.garagiste', 'scripts', `${s}.mjs`))) p.push(`.garagiste/scripts/${s}.mjs 없음 → install.sh 다시`);
   for (const k of ['intake', 'spec', 'build', 'attack', 'spike', 'boot']) if (!fs.existsSync(path.join(root, '.garagiste', 'packs', `${k}.md`))) p.push(`.garagiste/packs/${k}.md 없음 → install.sh 다시`);

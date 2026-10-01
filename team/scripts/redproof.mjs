@@ -15,9 +15,13 @@ export function verdict(baseResults, headResults) {
 // 어느 쪽이든 원장엔 head_green:false가 남아 ship(조건 redproof: head_green === true)은 열리지 않는다.
 // 사고 36(필드 시험 2): 앞 unit이 이미 만든 기능(save-memo가 data/memos.json에 써서 「재시작 뒤 보존」이 참)의 주장은 base에서 green이다 — spec은 옳게 red를 지어내지 않았지만
 // FAIL엔 다음 할 일이 없었다. 둘 다 CEO 결정이다: 이미 충족으로 닫거나(drop --forget — 이 unit을 기다리는 unit의 선행이 풀린다), 원문을 더 말해 다시 spec.
-export function baseGreenAdvice(slug, files) {
+// 사고 47(필드 벤치 넷): 먼저 출하된 unit이 주장의 일부만 채우면(BOM 처리) drop은 남은 red 주장(CEO가 정한 CP949)까지 닫는다 — 충족된 파일만 빼는 길
+export function baseGreenAdvice(slug, files, red = []) {
+  if (red.length) return `FAIL redproof ${slug}: 부분 충족 — base에서 green ${files.join(' ')} · base에서 red ${red.join(' ')} — drop은 red 주장까지 닫는다. CEO 결정(예/아니오로 묻는다): 이미 충족된 주장만 뺀다 → node .garagiste/scripts/brief.mjs spec ${slug} --met "<CEO 말 그대로>" → 팩 spawn(그 파일만 뺀다) → redproof 다시 · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec ${slug} 재spawn`;
   return `FAIL redproof ${slug}: base에서 green — ${files.join(' ')} — 기존 코드가 이 주장을 이미 만족한다(old code에서도 통과하는 테스트는 테스트가 아니다). CEO 결정(예/아니오로 묻는다): 이미 충족으로 닫는다 → node .garagiste/scripts/work.mjs drop ${slug} "이미 충족 — <근거>" --forget (주장 파일은 dropped 브랜치에 남는다) · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec ${slug} 재spawn`;
 }
+const split = (res) => [res.filter((r) => r.exit === 0).map((r) => r.file), res.filter((r) => r.exit !== 0).map((r) => r.file)];
+const greenRed = (res) => { const [g] = split(res); return g.length && g.length < res.length ? { base_green: g } : {}; }; // 부분 충족의 증거 — brief.mjs spec --met가 읽는다
 export function outcome({ base_red, head_green, state }) {
   if (!base_red) return 'FAIL';
   if (head_green === false) return state === 'spec' ? 'RED' : 'FAIL';
@@ -37,8 +41,8 @@ function main() {
     // 아직 제품 코드가 없다: 지금 자리에서 red면 충분하다
     const res = runFiles(c, files);
     const v = verdict(res, null);
-    appendLedger(c.main, c.team, { kind: 'redproof', slug, tree, head: headSha(c.root), base, base_red: v.base_red, head_green: null, files: files.length });
-    return v.base_red ? out(`RED ${slug} ${files.length}/${files.length}`) : fail(baseGreenAdvice(slug, res.filter((r) => r.exit === 0).map((r) => r.file)));
+    appendLedger(c.main, c.team, { kind: 'redproof', slug, tree, head: headSha(c.root), base, base_red: v.base_red, head_green: null, files: files.length, ...greenRed(res) });
+    return v.base_red ? out(`RED ${slug} ${files.length}/${files.length}`) : fail(baseGreenAdvice(slug, ...split(res)));
   }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-redproof-'));
   let baseRes;
@@ -51,13 +55,13 @@ function main() {
   } finally { git(['worktree', 'remove', '--force', tmp], c.root); }
   const headRes = runFiles(c, files);
   const v = verdict(baseRes, headRes);
-  appendLedger(c.main, c.team, { kind: 'redproof', slug, tree, head: headSha(c.root), base, base_red: v.base_red, head_green: v.head_green, files: files.length });
+  appendLedger(c.main, c.team, { kind: 'redproof', slug, tree, head: headSha(c.root), base, base_red: v.base_red, head_green: v.head_green, files: files.length, ...greenRed(baseRes) });
   const state = readJson(unitFile(c.main, c.team, slug), null)?.state;
   const o = outcome({ ...v, state });
   const redAtHead = headRes.filter((r) => r.exit !== 0).map((r) => r.file);
   if (o === 'PASS') return out(`PASS redproof ${slug} base_red head_green${state === 'spec' ? ' — 기존 코드가 새 주장을 이미 만족한다(re-spec): build 불필요, attack·ship은 새 tree에서 다시' : ''}`);
   if (o === 'RED') return out(`RED ${slug} ${redAtHead.length}/${files.length} — 기존 코드 위의 새 주장(re-spec): 다음은 build → node .garagiste/scripts/brief.mjs build ${slug}`);
-  if (!v.base_red) fail(baseGreenAdvice(slug, baseRes.filter((r) => r.exit === 0).map((r) => r.file)));
+  if (!v.base_red) fail(baseGreenAdvice(slug, ...split(baseRes)));
   fail(`FAIL redproof ${slug} base_red=true head_green=false — head에서 red: ${redAtHead.join(' ')} → build가 덜 끝났다: node .garagiste/scripts/brief.mjs build ${slug} 뒤 재spawn (build가 spec: 줄을 남겼으면 그 줄로: node .garagiste/scripts/brief.mjs spec ${slug} --return "<그 줄>")`);
 }
 if (isMain(import.meta.url)) main();

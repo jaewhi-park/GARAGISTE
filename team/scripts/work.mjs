@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
-import { appendLedger, ceoTouch, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { appendLedger, ceoTouch, ctx, fail, git, hasFileSlot, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 import { budgetStatus } from './state.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
@@ -321,11 +321,21 @@ function tried(c, slug, result, note = '') {
   if (!['ok', 'fail'].includes(result)) fail('사용법: work.mjs tried <slug> ok|fail ["메모"]');
   const u = loadUnit(c.main, c.team, slug);
   if (u.state !== 'shipped') fail(`FAIL ${slug} 아직 출하 전(${u.state})`);
+  // 사고 45(필드 벤치 넷): 말 없는 fail은 -fix의 원문을 「써봤는데 실패」로 비워 spec이 재현을 CEO에게 되물었다
+  if (result === 'fail' && !note.trim()) fail(`FAIL tried ${slug} fail에는 CEO의 말이 있어야 한다 — 무엇이 달랐는지 그대로: node .garagiste/scripts/work.mjs tried ${slug} fail "<CEO 말 그대로>" (그 줄이 ${slug}-fix의 원문·재현이다)`);
   u.tried = { result, note, at: new Date().toISOString() }; saveUnit(c.main, c.team, u);
   touchCeo(c.main);
   appendLedger(c.main, c.team, { kind: 'tried', slug, result, note });
-  if (result === 'fail') appendBacklog(c, backlogLine({ slug: `${slug}-fix`, milestone: u.milestone, origin: note || '써봤는데 실패 — 스펙 정정', accept: '-' }));
-  out(`PASS tried ${slug} ${result}`);
+  if (result !== 'fail') return out(`PASS tried ${slug} ${result}`);
+  const fix = `${slug}-fix`;
+  appendBacklog(c, backlogLine({ slug: fix, milestone: u.milestone, origin: note, accept: '-' }));
+  // 사고 46: scope는 slug 목록이라 -fix가 범위 밖에 남았다 — CEO의 fail이 곧 「고쳐라」, 새 기능보다 먼저
+  const sc = readJson(scopePath(c), null);
+  if (sc) {
+    writeJson(scopePath(c), { ...sc, requested: [fix, ...sc.requested.filter((s) => s !== fix)], order: [fix, ...sc.order.filter((s) => s !== fix)] });
+    appendLedger(c.main, c.team, { kind: 'scope_fix', slug: fix, from: slug });
+  }
+  out(`PASS tried ${slug} fail · ${fix}${sc ? '이 범위 맨 앞에 — 다음 seed가 연다' : ' BACKLOG에 — 범위는 work.mjs scope'}`);
 }
 // boot 팩의 쓰기 경로: team.json commands는 스크립트만 쓴다 — 그리고 boot(scaffold) 컨텍스트만. 다른 팩이 검증 명령을 바꾸는 것은 초록 조작이다.
 function commands(c, args) {
@@ -342,7 +352,7 @@ function commands(c, args) {
   for (const a of args) {
     const m = /^(quick|full|test_file|run|setup)=([\s\S]*)$/.exec(a); // setup: 의존성 설치(사고 21 — ship이 의존성 출하의 머지 직후 main에서 돌린다)
     if (!m) fail(`사용법: work.mjs commands quick="…" full="…" test_file="… {file}" run="…" setup="…" — 받은 값: ${a}`);
-    if (m[1] === 'test_file' && !m[2].includes('{file}')) fail('FAIL test_file에는 {file} 자리표시자가 있어야 한다');
+    if (m[1] === 'test_file' && !hasFileSlot(m[2])) fail('FAIL test_file에는 {file}(파일 하나) 또는 {files}(여러 파일을 한 번에) 자리표시자가 있어야 한다');
     t.commands[m[1]] = m[2];
   }
   writeJson(teamPath, t);
