@@ -288,6 +288,28 @@ test('lib: 사고 30(필드 시험 1) — 수용·공격 파일은 저장소의 
   fs.rmSync(path.join(root, 'tests/acceptance/add_test.py'));
   assert.deepEqual(acceptanceFiles(root, team, 'add'), ['tests/acceptance/add_more_test.py'], '지운 파일은 인덱스에 남아도 없다');
 });
+test('lib: 사고 31(필드 시험 1) — worktree에서 불린 스크립트는 main의 법으로 돈다: 갈라진 뒤 main에 든 정비가 진행 중 unit에 닿는다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-law-'));
+  const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+  const g = (...a) => spawnSync('git', a, { cwd: root, encoding: 'utf8', env });
+  g('init', '-q');
+  const dir = path.join(root, '.garagiste', 'scripts');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.copyFileSync(new URL('../team/scripts/lib.mjs', import.meta.url), path.join(dir, 'lib.mjs'));
+  const probe = (v, code) => `import { isMain } from './lib.mjs';\nif (isMain(import.meta.url)) { console.log('law ${v} ' + process.argv.slice(2).join(',') + ' ' + process.cwd()); process.exitCode = ${code}; }\n`;
+  fs.writeFileSync(path.join(dir, 'probe.mjs'), probe('v1', 0));
+  g('add', '-A'); g('commit', '-q', '-m', 'x');
+  g('worktree', 'add', '-q', '.worktrees/u', '-b', 'unit/u');
+  const wt = path.join(root, '.worktrees', 'u');
+  const run = () => spawnSync(process.execPath, [path.join(wt, '.garagiste', 'scripts', 'probe.mjs'), 'a', 'b'], { cwd: wt, encoding: 'utf8', env });
+  assert.equal(run().stdout.trim().split(' ')[1], 'v1', '같은 법이면 그대로');
+  fs.writeFileSync(path.join(dir, 'probe.mjs'), probe('v2', 3)); // 정비 반영(main)
+  const r = run();
+  const [, v, args, cwd] = r.stdout.trim().split(' ');
+  assert.equal(v, 'v2', '진행 중 unit의 worktree 사본(v1)이 아니라 main의 법(v2)');
+  assert.equal(args, 'a,b'); assert.equal(fs.realpathSync(cwd), fs.realpathSync(wt), '인자와 cwd(worktree)는 그대로');
+  assert.equal(r.status, 3, '종료 코드도 그대로');
+});
 test('ship: wip HEAD의 안내는 unit 정체의 팩을 가리킨다 — boot(scaffold)에 「build를 다시 띄워」라 했다 (필드 시험 두 곳 공통)', () => {
   const base = { slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [], requireAttack: false, spikeText: '', lastSubject: 'wip: checkpoint', stops: [], proseKb: 10, proseMax: 40 };
   const why = (unit) => evaluateShip({ ...base, unit }).find((k) => k.id === 'head').why;

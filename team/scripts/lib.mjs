@@ -191,6 +191,22 @@ export function linkDeps(root, dest) {
 }
 export function out(line) { process.stdout.write(line + '\n'); }
 export function fail(line, code = 1) { out(line); process.exit(code); }
-export function isMain(metaUrl) { return !!process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(metaUrl); }
+export function isMain(metaUrl) {
+  if (!process.argv[1] || path.resolve(process.argv[1]) !== fileURLToPath(metaUrl)) return false;
+  lawFromMain(metaUrl);
+  return true;
+}
+// 사고 31(필드 시험 1): worktree의 .garagiste/scripts는 그 브랜치가 갈라질 때의 사본이다 — main에 든 정비가 진행 중 unit에 닿지 않아
+// build가 옛 redproof로 고쳐진 FAIL을 다시 봤다. 법은 하나: worktree에서 불린 스크립트는 main의 같은 스크립트로 넘긴다(인자·cwd·종료 코드 그대로).
+function lawFromMain(metaUrl) {
+  const self = fileURLToPath(metaUrl);
+  const root = scriptRoot(metaUrl);
+  const r = git(['rev-parse', '--git-common-dir'], root);
+  if (r.status) return;
+  const target = path.join(path.dirname(path.resolve(root, r.stdout)), path.relative(root, self));
+  if (!fs.existsSync(target) || fs.readFileSync(target, 'utf8') === fs.readFileSync(self, 'utf8')) return; // main 자신이거나 같은 법
+  const run = spawnSync(process.execPath, [target, ...process.argv.slice(2)], { stdio: 'inherit' });
+  process.exit(run.status ?? 1);
+}
 export function short(sha) { return (sha || '').slice(0, 7); }
 export function stamp() { return new Date().toISOString().replace(/[:.]/g, '-'); }
