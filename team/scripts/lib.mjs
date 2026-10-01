@@ -223,6 +223,15 @@ export function depDirs(root, depth = 3) {
   walk(root, 0);
   return found.sort();
 }
+// 사본을 지우기 전에 의존성 링크를 먼저 끊는다 — Windows의 정션을 지우는 도구가 링크를 따라가면 main의 의존성이 지워진다(링크 자리만, 실물은 건드리지 않는다)
+export function unlinkDeps(root, dest) {
+  for (const rel of depDirs(root)) {
+    const p = path.join(dest, rel);
+    let st; try { st = fs.lstatSync(p); } catch { continue; }
+    if (!st.isSymbolicLink()) continue;
+    try { fs.unlinkSync(p); } catch { try { fs.rmdirSync(p); } catch { /* 남긴다 — 아래 정리가 링크로 지운다 */ } }
+  }
+}
 export function linkDeps(root, dest) {
   const linked = [];
   for (const rel of depDirs(root)) {
