@@ -210,5 +210,5 @@ L1 시험 준비 완료: 사전 등록 = **docs/measurements/L1-TRIAL.md**(동�
 - 관찰(L2 1일차): 가드 LEDGER_SHELL이 원장 경로와 한 줄에 있는 `sed`(읽기)·`2>/dev/null`을 쓰기로 거부 — conductor의 표 산출을 방해했다. 규칙집 읽기 오탐(첫 Windows 실기)과 같은 수리 후보: 원장을 향한 쓰기 verb·리다이렉트만 거부. 반복되면 사고로. (2026-10-01)
 - 관찰(L2 1일차): conductor가 seed를 병렬로(22:47 두 번) — Flow 4는 순차인데 pickReady·가드는 병렬을 막지 않는다. 결과: spawn_stop(slug 없음) 귀속 어긋남(6/5·5/6), 같은 파일 충돌(사고 26의 토양). 둘 중 하나로 정한다 — 병렬을 계측까지 지원(spawn_stop에 slug) 또는 seed가 진행 중 unit이 있으면 WAIT. 3일 표 뒤. (2026-10-01)
 - 관찰(L2 1일차): seed가 예산 정지(미검수 3) 중에도 unit을 연다 — effect-conflict가 16:52에 열린 채 6시간 유휴, seed→ship 시계가 부풀고 base가 낡는다. 후보: 예산 정지면 seed도 STOP. (2026-10-01)
-- 관찰(L2 1일차): try 카드가 저장소 안에 만든 파일(eoren.sqlite)이 main을 더럽혀 ship FAIL — conductor가 CEO의 파일을 옮겼다(판단 개입). L1 4차의 try fixture 관찰과 한 묶음: 카드는 임시 폴더에서 돌거나 산출물을 .gitignore 안에 둔다. (2026-10-01)
+- 관찰(L2 1일차): try 카드가 저장소 안에 만든 파일(eoren.sqlite)이 main을 더럽혀 ship FAIL — conductor가 CEO의 파일을 옮겼다(판단 개입). 둘로 나눈다(CEO 지적): **프로젝트 몫** — 카드 작성법(입력 파일은 docs/units/<slug>/ 아래 미리, 산출은 저장소 밖)은 이 제품(파일을 읽고 DB를 쓰는 CLI)의 성질이라 CEO의 말(BRIEF)로 둔다, 둘의 규칙(BIRTH): 두 번째 제품에서 같은 일이 나면 spec 팩으로. **프레임워크 몫** — 가드가 conductor의 리다이렉트는 worktree 밖이면 거부하면서 `mv`·`rm`·`cp`는 보호 구역에서만 검사해 CEO 파일 이동이 통과했다(재현 확인) — 「conductor는 쓰지 않는다」의 구멍, 수리 후보. (2026-10-01)
 - 관찰(L2 1일차): 커밋 trailer 줄이 쓰기 경계에 막혀 빠짐 — 2차 실기(vault-load) 이후 두 번째. 셋째면 사고로. (2026-10-01)
