@@ -6,6 +6,7 @@
 1. 레포는 **GARAGISTE 하나만** 붙인다. 시험대(침대)는 CEO PC의 로컬 폴더라 세션에 붙이지 않는다.
 2. 읽는 순서: 이 문서 → `docs/V2-REPAIR-BACKLOG.md`(대기 작업) → `docs/measurements/L1-TRIAL.md`(시험 이력·판정) → `CHANGELOG.md` 최근 절 → `team/HAZARDS.md` 끝부분(사고 목록).
 3. `node --test "tests/*.test.mjs"` 전부 초록을 확인한 뒤 작업을 시작하고, 현재 상태를 CEO에게 한 줄로 보고한다.
+4. CEO가 「필드 벤치」를 말하면 `docs/measurements/FIELD-BENCH.md` 그대로(기본 측정 모드, 도구 `tests/field/`) — 결과는 그 문서의 결과 원장에 한 행씩 적고 푸시한다(컨테이너의 필드 폴더는 사라진다).
 
 ## 상시 규칙
 - 역할: 정본 수리 · 시험 기록 · 백로그 처리. 침대(conductor 세션)에서 릴레이된 FAIL은 **그 줄 그대로** 받는다 — 임의 우회 · 침대에서만의 수리 금지.
