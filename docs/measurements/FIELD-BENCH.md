@@ -44,6 +44,8 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-01 | 측정 | 46a53ca | 1 파이썬 CLI | 정지 — ledger-add ship(unit 2/6) | 1/0 | 1 (ledger-add ship · spike 안내 없음) | 0/0 | 0 | 8 | 191K | 1.2 (정지 10.7) | $2.11 |
 | 2026-10-01 | 측정 | 46a53ca | 2 Node 웹 | SCOPE DONE | 5/2 | 0 | 5/0 | 0 | 20 | 564K | 35.4 | $6.13 |
 | 2026-10-01 | 정비(측정 정지에서 이어) | 46a53ca → b9e1561 | 1 파이썬 CLI | SCOPE DONE | 6/1 | 2 (39·40) | 5/1 | 1 (ledger-add 없는 날짜 → ledger-add-fix) | 28 | 671K | 99.6 | $7.40 |
+| 2026-10-01 | 측정 | cfbcf3a | 1 파이썬 CLI | SCOPE DONE(M1 — export는 intake가 M2로) | 6/0 | 0 | 4/2 | 2 (없는 날짜 · 0 없는 날짜 — 각각 버그 unit 출하·ok) | 23 | 521K | 22.0 | $5.28 |
+| 2026-10-01 | 측정 | cfbcf3a | 2 Node 웹 | 정지 — serve-list ship(unit 2/6) | 1/0 | 1 (serve-list ship · attack 파일만 든 wip HEAD) | 0/0 | 0 | 18 | 358K | 1.0 (정지 19) | $3.48 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -66,3 +68,18 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 - **정비 모드 이어서(필드 1, 같은 폴더)**: 사고 38·39 수리(6f9182b) 반영 → 옛 판 boot가 남긴 egg-info·__pycache__는 보존 폴더로 옮김 → ledger-add가 새 spike 줄대로 spike 팩을 거쳐 출하(39 확인), 그 뒤 ship 4건 모두 main 깨끗(38 — 되돌림 경로 자체는 boot가 옛 판으로 출하돼 이 필드에선 안 밟았다, e2e가 재현). 정비 중 새 사고 40: 헤드리스에서 `cd <worktree> && …`가 막혀 build가 worktree의 verify를 경로로 불렀는데 셸이 main 루트라 main을 검증 → worktree 게이트 「quick PASS 없음」 반복 → wip HEAD로 정지. 수리(b9e1561) 뒤 바로 출하.
 - **green 후 CEO 발견 결함 1**: ledger-add가 `2026-13-01`을 exit 0으로 기록(어느 달에도 안 잡힘 — attack이 못 봤다) → tried fail → 버그 unit ledger-add-fix 출하, try ok. conductor는 spec의 Q5(재현 줄)에 CEO 말을 그대로 옮겨 답하고 그렇게 밝혔다.
 - 다음: b9e1561 이후 판으로 측정 모드 재벤치 — 38의 되돌림이 실제 boot에서 돌고 두 필드가 FAIL 0으로 닿는지.
+
+### 2026-10-01 측정 cfbcf3a(main — 사고 38~40 포함) — 기록
+- 차림은 위와 같다(같은 원문·첫 두 말·대리 규칙). intake 편차: 파이썬은 unit 5(export를 M2로, no-network 없음) — 1회차와 범위가 다르니 분·팩 비교는 주의. 웹은 unit 6 · Q1(Playwright) — 규칙 1대로 「예 + Chromium 사실」.
+- **사고 38 실필드 확인**: 웹 boot ship → `ship_rollback`(why main stray, `package-lock.json`) → boot 재spawn이 lockfile을 커밋 → 30초 뒤 출하, main 깨끗·worktree 없음. 파이썬 boot는 처음부터 `__pycache__/`·`*.egg-info/`를 무시해 되돌림 없이 출하.
+- **필드 2 정지 줄**(06:00Z 무렵 — 안내대로 build 재spawn 뒤 같은 FAIL):
+  ```
+  FAIL ship serve-list 1/8
+  - head: HEAD가 wip 체크포인트 — build를 다시 띄워 끝내라
+  ```
+  wip HEAD에 attack 산출물 `tests/adversary/serve-list-13.test.mjs` 하나만 있었다(attack red 0/13). build는 고칠 것이 없고 그 파일을 커밋할 주체가 없다 — build가 wip를 풀어도 체크포인트가 다시 덮는다. 사고 16(spike 파일만 든 wip HEAD 승격)과 같은 꼴 — 결함 후보.
+- **예측 채점**(「b9e1561 이후 판은 38의 되돌림이 실제 boot에서 돌고 두 필드가 FAIL 0으로」): 38 ✓ · 필드 1 FAIL 0 ✓ · 필드 2 ✗(새 꼴의 FAIL).
+- **필드 1 — green 후 CEO 발견 결함 2**: add-entry가 `2026-13-01`·`2026-02-30`을 기록(1회차와 같은 결함 — attack이 또 놓침) → add-entry-fix 출하 → `2026-1-5`가 그대로 기록돼 어느 달에도 안 잡힘 → add-entry-fix2 출하·ok. 날짜 경계는 두 판 연속 attack이 못 본 계급이다(system-attack 방아쇠 기록 — 장치 아님).
+- **관찰**: tried fail의 자동 줄(`add-entry-fix-fix`)과 conductor의 `work.mjs new add-entry-fix2`가 같은 일로 둘 다 생겨 하나가 BACKLOG에 남았다(BENCH 「열린 줄 2」 = export(M2) + 이것) · jsonl-read의 첫 build가 Bash 승인에 막혀 검증·커밋을 못 해 같은 팩으로 재spawn · 웹 serve-list는 attack 7회(공격 파일 13)로 출하 전에 결함을 많이 닫았다.
+- 결함 후보(새): ① attack 파일만 든 wip HEAD에서 ship이 멈춘다(필드 2 정지) ② 버그 unit 중복 생성(tried fail 자동 줄 + conductor new).
+
