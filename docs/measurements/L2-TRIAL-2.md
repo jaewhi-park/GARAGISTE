@@ -95,3 +95,24 @@
 - 예측 채점(리눅스): 1) ✓ 미검수 3 정지 — 세 번째 ship까지 8.2분·24.0분(3일차는 SCOPE DONE) 2) ✓ 낮 접점 0 3) ✓ FAIL 0/일 4) ✓ try 산출물로 막힌 ship 0 5) ✓ green 후 결함 0 6) — (윈도우) 7) 윈도우 표 대기.
 - 한계(등록문 그대로): 대리 CEO는 팀과 같은 모델 계열 · 낮은 압축(실제 부재 없음) · 저녁의 카드·경계 입력은 FIELD-BENCH 대리 규칙. 대리가 「결함 아님」으로 판단한 회색 하나(BOM 붙은 todo.json 거부 — cross-os M2)를 남긴다.
 - 이 원문은 리눅스에서 측정됐다 — 윈도우 표가 나올 때까지 이 원문으로 정비하지 않는다(윈도우 쪽이 같은 원문의 처음 측정이어야 한다).
+
+### 윈도우 1일차 (2026-10-01~02 — CEO, CEO PC · conductor 표를 정비 채널이 옮김)
+- 아침 창 끝 15:47:56Z(scope) → 저녁 창 시작 22:24:03Z(tried boot) · **무인 396.1분** · 낮 경과(→ 세 번째 ship) **249.3분**.
+- 낮: 접점 0(decide·tried·scope 0 · BRIEF 새 절 0) · 멈춤 미검수 3(add-due-tag ship 19:57:12Z 뒤 seed) · 프레임워크 FAIL 0(boot 첫 ship의 main stray package-lock.json은 안내대로 한 번에 — 리눅스와 같다) · 규칙집 드리프트 1: 5f6b752 boot의 commands 기록(`.garagiste/team.json` — 첫날 boot의 정상 일, JSON 재들여쓰기 포함) · 이후 기준선 e63af61.
+
+| 구간 | unit | seed→ship(분) | spawn | 토큰 | attack(선발견→red/총) | redproof | tried | green 후 결함 | FAIL |
+|---|---|---|---|---|---|---|---|---|---|
+| 무인 | boot | 0.8 | 2/2 | 33K | — | scaffold | ok(CEO) | 0 | 0 |
+| 무인 | add | 173.7 | 58/61※ | 1,852K | 34→0/35 (attack 28바퀴) | base_red head_green | ok(CEO) | 0 | 0 |
+| 무인 | add-due-tag | 74.6 | 42/43※ | 1,337K | 33→0/33 (attack 20바퀴) | base_red head_green | ok(CEO) | 0 | 0 |
+| 계 | 3 | 249.1 | 102/106 | **3,222K** | 선발견 67 | 2 PASS | 3 ok | 0 | 0 |
+
+※ 끝난 build가 남긴 백그라운드 명령의 늦은 완료 알림이 spawn_stop으로 따로 찍혀 slug 귀속이 어긋났다(계측 빈틈).
+- 저녁: CEO가 「저녁」 전에 직접 검수하고 「검수 완료 모두ok」 → conductor가 tried 3 ok. **try 사본은 열리지 않았다**(사본 흐름은 이날 미검증) · main 변경은 STATUS뿐 · 팀이 정한 것 3 · spec 반려 2(add — 테스트 정규식 이스케이프, 수용 · add-due-tag — 공격 파일 문법 오류, spec이 attack 소관으로 기각 → 다음 attack이 자기 파일을 고침).
+- 참고(사실): build가 300줄 step을 `GARAGISTE_LARGE_STEP`(게이트의 정상 경로 — 이유 선언·원장 기록)으로 1회 넘김 · build 셋이 백그라운드 명령(python·heredoc 편집 시도)을 남겨 시간 제한으로 끝남 · 한 build의 `fix(add)` 커밋이 wip 체크포인트 둘로 남았다고 보고(원인 미확인) · attack의 platform 메모: PowerShell 5.1(cp949)에서 `todo list`를 파이프로 받으면 한글이 깨진다(콘솔 직접 출력은 정상 — 셸의 해독 문제).
+- **판정: 윈도우 1일차 통과 — 게이트(윈도우) 1/3**, 누적 green 후 CEO 발견 결함 0.
+
+#### 리눅스와의 차이 — 이 표의 첫 발견
+- **같은 원문의 같은 몫(boot·add·그다음 하나)에 토큰 3,222K 대 198K(16배), 세 번째 ship까지 249분 대 8분.** 차이는 거의 전부 attack↔build 왕복이다: add 28바퀴(리눅스 1), add-due-tag 20바퀴, 선발견 67(리눅스 2).
+- conductor의 기록: 「저장 방식(제자리 쓰기 ↔ 바꿔치기)과 잠금 문턱 결함이 방향을 바꿔 가며 되풀이됐다」 — 한 쪽을 고치면 다른 쪽이 깨지는 **진동**이다(윈도우에서 파일 바꿔치기·잠금의 의미가 POSIX와 다르다). 프레임워크엔 attack 바퀴 상한도 진동 감지도 없어, 수렴은 했지만 비용·시간 상한이 없다.
+- 이것은 FAIL이 아니고 동결 중이라 수리하지 않는다 — 표 이후 후보 1순위로 올린다(attack 바퀴 상한 · 같은 파일의 반복 반전 감지 → CEO 질문). 예측 1(낮 경과 ≤90분)은 윈도우에서 ✗.
