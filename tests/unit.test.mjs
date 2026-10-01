@@ -15,7 +15,7 @@ import { attackCell, evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles 
 import { closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { outcome, verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets } from '../team/scripts/work.mjs';
+import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
 
@@ -88,6 +88,35 @@ test('guard: R2 — tried·decide는 팩(worktree 컨텍스트)이 부르지 않
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs default hello "포트 3000"', wt), gctx('build')), null, 'default는 팀의 기록 — 접점이 아니다');
   assert.match(decide(bash('node .garagiste/scripts/work.mjs drop hello "안 되겠다"', wt), gctx('build')) || '', /팩은 부르지 않는다/, '방향전환(drop)은 conductor의 일이다');
   assert.match(decide(bash('node .garagiste/scripts/work.mjs needs memo session', wt), gctx('build')) || '', /팩은 부르지 않는다/, '사고 23: 선행 재배선(needs)도 conductor의 일 — 팩이 자기 WAIT를 풀지 않는다');
+});
+test('guard: L2 1일차 — 원장 읽기·heredoc trailer는 쓰기가 아니고, conductor의 mv·rm·cp·tee는 worktree 밖이면 쓰기다', () => {
+  // 오탐 둘 — 막혀서는 안 되는 것
+  assert.equal(decide(bash('grep spawn .garagiste/ledger/evidence.jsonl | sed -n 1,5p'), gctx(null)), null, '원장 읽기(sed -n)는 쓰기가 아니다 — 표 산출이 막혔다');
+  assert.equal(decide(bash('cat .garagiste/ledger/evidence.jsonl 2>/dev/null | tail -3'), gctx(null)), null, '2>/dev/null은 원장을 향하지 않는다');
+  const trailer = "git -C .worktrees/hello commit -F - <<'EOF'\nfeat: y\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_1\nEOF";
+  assert.equal(decide(bash(trailer), gctx('build')), null, 'heredoc 본문은 데이터 — <…>의 >를 리다이렉트로 읽어 다음 줄을 쓰기 대상으로 거부했다');
+  // 원장 쓰기는 그대로 막힌다
+  assert.ok(decide(bash('echo x >> .garagiste/ledger/evidence.jsonl'), gctx(null)));
+  assert.ok(decide(bash('sed -i "s/a/b/" .garagiste/units/hello.json'), gctx(null)));
+  assert.ok(decide(bash('rm .garagiste/ledger/evidence.jsonl'), gctx(null)));
+  // heredoc 뒤의 리다이렉트와 따옴표 없는 본문의 $()는 여전히 셸이다
+  assert.match(decide(bash('cat <<EOF > notes.txt\nhello\nEOF'), gctx(null)) || '', /worktree 밖/);
+  assert.ok(decide(bash('cat <<EOF\n$(echo x > .garagiste/team.json)\nEOF'), gctx(null)), '따옴표 없는 heredoc의 $()는 실행된다');
+  // 구멍 — conductor의 mv·rm·cp·tee는 리다이렉트와 같은 쓰기다
+  assert.match(decide(bash('mv eoren.sqlite /tmp/scratch/'), gctx(null)) || '', /옮기거나 지우지 않는다/, 'CEO의 파일이 옮겨졌다(L2 1일차)');
+  assert.match(decide(bash('rm fixtures/eoren/eoren.sqlite'), gctx(null)) || '', /옮기거나 지우지 않는다/);
+  assert.match(decide(bash('cp a.md b.md'), gctx(null)) || '', /옮기거나 지우지 않는다/);
+  assert.match(decide(bash('echo x | tee notes.txt'), gctx(null)) || '', /옮기거나 지우지 않는다/);
+  assert.equal(decide(bash('rm -rf /tmp/scratch/x'), gctx(null)), null, '저장소 밖은 팀의 경계가 아니다');
+  assert.equal(decide(bash('cp /tmp/a.log /tmp/b.log'), gctx(null)), null);
+  assert.equal(decide(bash('cat src/rm/notes.md'), gctx(null)), null, '경로 속 rm은 명령이 아니다');
+  assert.equal(decide(bash('mv eoren.sqlite /tmp/x'), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null, 'CEO(ADMIN) 세션은 예외');
+  assert.equal(decide(bash('rm -rf dist', `${root}/.worktrees/hello`), gctx('build')), null, '팩의 worktree 안 정리는 그대로');
+  assert.equal(decide(bash('cd .worktrees/hello && rm -rf dist'), gctx('build')), null, '한 명령 안의 cd는 상대 경로의 뿌리다 — 훅의 cwd는 명령 전 위치');
+  assert.equal(decide(bash('cd .worktrees/hello && echo x > src/a.mjs'), gctx('build')), null, '리다이렉트도 같은 뿌리로');
+  assert.match(decide(bash('cd .worktrees/hello && rm ../../src/a.ts'), gctx('build')) || '', /옮기거나 지우지 않는다/, 'worktree 탈출은 여전히 막힌다');
+  // 메모리 — 거부는 그대로, 이유를 말해 재시도를 멈춘다
+  assert.match(decide(write('/home/u/.claude/projects/p/memory/MEMORY.md'), gctx(null)) || '', /메모리 파일은 쓰지 않는다/);
 });
 test('guard: 보호 브랜치가 main이 아니어도 push가 막힌다', () => {
   const pb = { ...gctx(null), protectedBranch: 'claude/quirky-wozniak-keqgbi' };
@@ -436,6 +465,14 @@ test('work scope: 선행은 needs 간선의 닫힘이고 순서는 선행 먼저
   const done = parseBacklog('- [x] db · M1 · needs: - · "db" · 인수: -\n- [ ] session · M1 · needs: db · "s" · 인수: -');
   assert.deepEqual(closure(done, ['session']).order, ['session'], '끝난 선행은 순서에 없다');
   assert.equal(closure(parseBacklog('- [ ] a · M1 · needs: b · "a" · 인수: -\n- [ ] b · M1 · needs: a · "b" · 인수: -'), ['a']).cycle, 'a');
+});
+test('work seed: unit은 한 번에 하나 — CEO 질문에 걸린 unit만 예외, 예산 정지면 seed도 STOP (L2 1일차)', () => {
+  const dec = '- [ ] Q5 (a): 형식?\n- [x] Q6 (b): x → y (2026-10-01)\n';
+  assert.equal(seedGate({ units: [{ slug: 'a', state: 'build', questions: [5] }], decisionsText: dec }), null, 'CEO 질문에 걸린 unit은 자리를 막지 않는다(Flow 6)');
+  assert.deepEqual(seedGate({ units: [{ slug: 'b', state: 'build', questions: [6] }], decisionsText: dec }), { kind: 'active', slugs: ['b'] }, '일하는 unit이 있으면 다음은 열리지 않는다 — 병렬 seed가 사고 26의 토양이었다');
+  assert.equal(seedGate({ units: [{ slug: 'c', state: 'shipped' }, { slug: 'd', state: 'dropped' }], decisionsText: dec }), null);
+  assert.equal(seedGate({ units: [{ slug: 'e', state: 'spec', questions: [], needs: ['Q5'] }], decisionsText: dec }), null, 'needs의 열린 Q도 질문에 걸린 것');
+  assert.deepEqual(seedGate({ units: [], stops: ['미검수 3 ≥ 3'] }), { kind: 'stop', why: ['미검수 3 ≥ 3'] }, '예산 정지 중에 연 unit은 6시간 유휴·낡은 base였다');
 });
 test('work seed: dropped unit은 자리를 막지 않고 같은 slug가 새로 열린다', () => {
   const items = parseBacklog('- [ ] a · M1 · needs: - · "a" · 인수: -');
