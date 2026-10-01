@@ -47,6 +47,8 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-01 | 측정 | cfbcf3a | 1 파이썬 CLI | SCOPE DONE(M1 — export는 intake가 M2로) | 6/0 | 0 | 4/2 | 2 (없는 날짜 · 0 없는 날짜 — 각각 버그 unit 출하·ok) | 23 | 521K | 22.0 | $5.28 |
 | 2026-10-01 | 측정 | cfbcf3a | 2 Node 웹 | 정지 — serve-list ship(unit 2/6) | 1/0 | 1 (serve-list ship · attack 파일만 든 wip HEAD) | 0/0 | 0 | 18 | 358K | 1.0 (정지 19) | $3.48 |
 | 2026-10-01 | 정비(측정 정지에서 이어) | cfbcf3a → acce789 | 2 Node 웹 | SCOPE DONE | 6/0 | 3 (41·42·43) | 6/0 | 0 | 83 | 2519K | 194.5 | $26.14 |
+| 2026-10-01 | 측정 | 79c3ebf | 1 파이썬 CLI | SCOPE DONE | 6/0 | 0 | 6/0 | 0 | 21 | 537K | 24.5 | $5.93 |
+| 2026-10-01 | 측정 | 79c3ebf | 2 Node 웹 | SCOPE DONE | 6/0 | 0 | 6/0 | 0 | 24 | 590K | 28.6 | $6.11 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -87,4 +89,13 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 - **원장 밖 CEO 접점(웹)**: 팩 상한 결정 ① 3회(24→25 memo-delete · 25→29·29→31 memo-persist) — attack 라운드마다 build 팩의 공격 절이 자라 같은 unit에서 사슬이 된다(「팩 상한 이유-차선」 장치 후보의 근거 추가, CEO 「가」 대기) · 「고쳐라」 1(42) · Q2 예 1.
 - **비용 관찰**: 웹 unit마다 build·attack이 7~10회 돌았다(attack 35회 · 선발견 43 · 팩 83 · 2.5M 토큰 · $26) — 1회차 웹(팩 22 · 531K · $6.96)의 약 4배. attack이 결함을 계속 찾는 한 수렴 상한이 없다. 산출(green 후 결함 0)은 좋지만 비용 축의 장치 후보(attack 라운드 상한 또는 build 팩 공격 절의 크기) — 둘의 규칙 대기.
 - 산문 예산: 설치본 ≈37KB/40KB — HAZARDS가 사고마다 한 줄씩 자라 여유가 3KB 남짓.
+
+### 2026-10-01 측정 79c3ebf(main — 사고 38~43 포함) — 기록
+- **두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE · try 12장 전부 ok · green 후 CEO 발견 결함 0** — 「b9e1561 이후 판은 두 필드 FAIL 0으로」의 예측이 이 판에서 처음 맞았다(1회차 46a53ca: 웹만 · 2회차 cfbcf3a: 파이썬만).
+- intake: 파이썬 unit 5(전부 M1 — no-network 없음) · Q3, 웹 unit 6 · Q2(Playwright — 규칙 1대로 「예 + Chromium 사실」). 범위가 회차마다 조금씩 다르다(intake 편차) — 분·팩 비교는 그만큼 주의.
+- **사고 38 두 필드 실필드**: 파이썬 boot → `ship_rollback` main stray(`src/ledger.egg-info/` · `__pycache__` 둘) → 재spawn → 출하, 웹 boot → `ship_rollback` main stray(`package-lock.json`) → 재spawn이 lockfile 커밋 → 출하. 반쪽 출하·CEO 치움 0.
+- 증거 낡음 FAIL은 셋(파이썬 1 · 웹 2 — spike 커밋 뒤) — 전부 안내대로 재기록해 한 번에 풀렸다(정지 아님).
+- 원장 밖 CEO 접점: 파이썬 — 보안 지적 「고쳐라」 1(CSV 수식 실행 — attack이 짚었는데 build가 고치지 않았고 conductor가 「확인하지 않은 위험」으로 올렸다 → export-csv-fix 출하·ok, 1회차와 같은 처리). 웹 — 0(팩 상한 FAIL·try 잔여물 없음 — `data/`·`node_modules`는 팀이 무시 목록에).
+- attack 선발견이 날짜 경계를 이번엔 출하 전에 잡았다(앞 두 회차는 CEO try가 후발견). 웹은 DNS 리바인딩·CSRF·깨진/BOM 파일 덮어쓰기 등.
+- **관찰(결함 후보 4의 둘째 근거)**: 파이썬 필드의 full(`tests/harness/run_all.py` — unittest discover)이 1건(unit 스모크)만 돈다 — 하이픈 이름의 인수·공격 파일 17개는 한 번도 안 돈다. 출하 전 증거(redproof·attack·통합 재검증)는 파일 단위라 게이트는 속지 않지만, 출하 뒤 다음 unit들의 full은 앞 기능의 회귀를 지키지 않는다. conductor가 spec의 보고로 두 번 「확인하지 않은 위험」으로 올렸다. 웹(node --test glob)은 해당 없음.
 
