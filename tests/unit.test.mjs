@@ -147,6 +147,24 @@ test('checkpoint: spike worktree는 wip로 커밋하지 않는다 — 측정이 
   assert.deepEqual(checkpoint(root), ['bd'], 'spike는 건너뛰고 build는 커밋');
   assert.match(spawnSync('git', ['log', '-1', '--format=%s'], { cwd: bwt, encoding: 'utf8' }).stdout, /^wip: bd checkpoint/);
 });
+test('checkpoint: ship이 멈춰 둔 rebase 한가운데서는 wip를 커밋하지 않는다 — 잇는 것은 ship이다 (L2 1일차 사고 26)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-ckpt-rb-'));
+  const wt = path.join(root, '.worktrees', 'rb');
+  fs.mkdirSync(wt, { recursive: true });
+  const g = (args) => spawnSync('git', args, { cwd: wt, encoding: 'utf8' });
+  g(['init', '-q', '-b', 'main']); g(['config', 'user.email', 'x@x']); g(['config', 'user.name', 'x']);
+  fs.writeFileSync(path.join(wt, 'f.txt'), 'base\n'); g(['add', '-A']); g(['commit', '-q', '-m', 'base']);
+  g(['checkout', '-q', '-b', 'u']); fs.writeFileSync(path.join(wt, 'f.txt'), 'unit\n'); g(['commit', '-q', '-am', 'unit']);
+  g(['checkout', '-q', 'main']); fs.writeFileSync(path.join(wt, 'f.txt'), 'main\n'); g(['commit', '-q', '-am', 'main']);
+  g(['checkout', '-q', 'u']);
+  assert.notEqual(g(['rebase', 'main']).status, 0, '충돌로 rebase가 멈춘다');
+  fs.mkdirSync(path.join(root, '.garagiste', 'units'), { recursive: true });
+  fs.writeFileSync(path.join(root, '.garagiste', 'units', 'rb.json'), JSON.stringify({ slug: 'rb', state: 'build' }));
+  const head = g(['rev-parse', 'HEAD']).stdout;
+  assert.deepEqual(checkpoint(root), [], '충돌 중인 worktree는 건너뛴다');
+  assert.equal(g(['rev-parse', 'HEAD']).stdout, head, 'HEAD 그대로');
+  assert.ok(fs.existsSync(path.join(wt, '.git', 'rebase-merge')), 'rebase는 멈춘 그대로 — ship이 잇는다');
+});
 test('checkpoint: worktree가 없으면 조용히 빈 배열', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-cp-'));
   assert.deepEqual(checkpoint(d), []);

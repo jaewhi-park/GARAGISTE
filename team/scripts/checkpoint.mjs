@@ -21,6 +21,9 @@ export function checkpoint(root) {
     // 사고 15(2차 실기): spike는 커밋하지 않는 팩(가드도 spike의 commit을 거부)인데 훅이 wip로 커밋해 tree가 바뀌었다 —
     // full·redproof·attack 증거가 전부 낡고 HEAD가 wip이 됐다. 측정 파일은 초 단위 재실행이라 잃는 쪽이 싸다.
     if (packState(root, slug, wt) === 'spike') continue;
+    // 사고 26(L2 1일차): ship이 멈춰 둔 rebase 한가운데서 wip를 커밋하지 않는다 — 풀린 표시는 git add까지, 잇는 것은 ship이다
+    const inRebase = ['rebase-merge', 'rebase-apply'].some((d) => { const p = spawnSync('git', ['rev-parse', '--git-path', d], { cwd: wt, encoding: 'utf8' }).stdout.trim(); return !!p && fs.existsSync(path.resolve(wt, p)); });
+    if (inRebase) continue;
     const st = spawnSync('git', ['status', '--porcelain'], { cwd: wt, encoding: 'utf8' }).stdout.trim();
     if (!st) continue;
     spawnSync('git', ['add', '-A'], { cwd: wt });
