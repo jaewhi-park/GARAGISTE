@@ -60,6 +60,9 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-01 | 측정 | 486fd74 | 2 Node 웹 | SCOPE DONE | 4/2 | 0 | 4/0 | 0 | 15 | 395K | 29.2 | $4.50 |
 | 2026-10-01 | 측정(홀드아웃 첫 측정) | 0ae7c70 | H Go CLI(dupfind) | 정지 — intake(unit 0/9, boot 전) | 0/0 | 1 (BACKLOG 줄을 고칠 길 없음 · drop이 예외로 죽는다) | 0/0 | 0 | 1 | — | — | $0.44 |
 | 2026-10-01 | 정비(홀드아웃 정지에서 이어 — 소진, 이제 필드 3) | 0ae7c70 → d5cf39d | 3 Go CLI(dupfind) | SCOPE DONE | 7/2 (+깨진 줄 정정 drop 2) | 4 (49~52 · 53 · 54·55 · 56) | 7/0 | 0 | 29 | 830K | 95.2 | $9.76 |
+| 2026-10-01 | 측정 | 621a426 | 1 파이썬 CLI | SCOPE DONE | 5/0 | 0 | 5/0 | 0 | 20 | 450K | 19.6 | $4.62 |
+| 2026-10-01 | 측정 | 621a426 | 2 Node 웹 | SCOPE DONE | 4/2 | 0 | 4/0 | 0 | 18 | 432K | 31.3 | $4.83 |
+| 2026-10-01 | 측정 | 621a426 | 3 Go CLI(회귀) | SCOPE DONE(M1 4 — 5 unit은 intake가 M2로) | 4/0 | 0 | 4/0 | 0 | 12 | 268K | 13.4 | $2.96 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -142,3 +145,12 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 - 그 뒤 4 unit은 FAIL 없이 — 이미 충족 2(no-symlink · read-only — 대리가 실제로 확인하고 「예」) · attack 선발견(큰 단위 오버플로·비 UTF-8 이름·stdout 쓰기 실패). try 7장 전부 ok(unreadable-warn은 root가 아닌 사용자로).
 - 원장 밖 CEO 접점: BRIEF 치움 1(측정 구간) · 정비 답 3(test_file 그대로 「아니오」 · smoke-fix unit 「아니오」 · 인수 파일은 혼자 돈다 「예」 — 마지막은 두 번째 spec 반려로 CEO에게 간 것. 첫 반려는 사고 55가 만든 것이라 「팀 안에서 안 풀린 둘」이 아니었다).
 - **산문 예산**: 이번 회의 HAZARDS 줄(45~56)을 압축하고도 설치본 39KB(한도 40 — 남은 약 1.4KB). 다음 사고 한두 줄이면 ship의 budget 조건이 막힌다 — 코드(테스트)로 넘어간 오래된 HAZARDS 줄을 걷어 낼지·한도를 바꿀지는 CEO 결정.
+
+### 2026-10-01 측정 621a426(사고 38~56 · HAZARDS 35줄 정리 포함) — 기록
+- **세 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE · try 13장 전부 ok · green 후 CEO 발견 결함 0** — 합계 $12.41. 필드 1·2는 세 회 연속 FAIL 0. 필드 3(소진된 홀드아웃 Go)은 첫 측정에서 intake 정지였던 원문이 회귀로 FAIL 0.
+- 필드 3: intake가 `--min-size 1M…` 원문을 그대로 남겼다(사고 49) · boot가 다시 `test_file="go test {files}"`를 골랐고 full은 디렉터리마다 한 번에(사고 53) 전부 green · 캐시 낡은 ok·혼자 안 도는 인수 파일 없음(사고 54~56). intake가 9 unit 중 5를 M2로 둬 범위가 4 unit — 대리는 벤치 규칙대로 M2를 「아니오」.
+- 사고 38 경로(boot의 main stray → 되돌림·보존·재spawn)는 필드 1·2에서 한 번씩 — 반쪽 출하·CEO 치움 0.
+- 원장 밖 CEO 접점: 웹 — try 잔여물 치움 1(`data/memos.json`이 memo-delete ship을 막음 — 486fd74와 같다: try 사본 장치 후보의 셋째 근거) · 이미 충족 「예」 2(memo-persist · browser-reload). 파이썬·Go — 0.
+- 관찰(결함 아님): 파이썬 export-csv의 CSV 수식(`=1+1` 메모)을 이번 attack은 짚지 않았다(1·3회차는 짚었다) — 원문 밖이라 대리는 지적하지 않았다(규칙 3: 팀이 짚은 것만). month-summary의 try 카드가 「급여 5000」이라 적었는데 동작은 「급여 -5000」(원문대로 음수가 수입 — 카드의 부호가 틀렸다).
+- 산문 예산: 설치본 26KB(HAZARDS 29줄).
+- **다음 범용성 측정엔 새 홀드아웃이 필요하다**(지금 없음 — 필드 1~3 모두 회귀).
