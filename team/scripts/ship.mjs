@@ -199,7 +199,7 @@ function main() {
   if (currentBranch(c.main) !== c.team.protected_branch) fail(`FAIL ship: 메인 worktree가 ${c.team.protected_branch}에 있지 않다`);
   const dirty = dirtyFiles(c.main).filter((f) => !DOC_OK(c.team).includes(f));
   // 필드 시험 2(L2 1일차에 이은 둘째): CEO의 try가 메인 루트에 남긴 산출물(data/memos.json)이 출하를 막았는데 다음 할 일이 없었다 — conductor는 그 파일을 못 옮긴다(가드)
-  if (dirty.length) fail(`FAIL ship: 메인 worktree에 미커밋 변경 — ${dirty.join(' ')} — 팀의 것이 아니다(팩·conductor는 main을 쓰지 않는다): CEO가 치운다(try 산출물이면 지우거나 옮기거나 .gitignore — CEO 결정) → ship 다시`);
+  if (dirty.length) fail(`FAIL ship: 메인 worktree에 미커밋 변경 — ${dirty.join(' ')} — 팀의 것이 아니다(팩·conductor는 main을 쓰지 않는다): CEO가 치운다(try 산출물이면 지우거나 옮기거나 .gitignore — CEO 결정) → ship 다시 · 다음 try는 node .garagiste/scripts/work.mjs try <slug>의 사본에서(main에 남지 않는다)`);
   // 통합: unit을 main 위로 올리고, tree가 바뀌었으면 full을 다시 돌린다
   // boot은 설치 명령을 자기 worktree의 team.json에 쓴다(머지 전 main엔 없다 — 사고 7의 통합 full과 같은 자리)
   const setupNow = unit.kind === 'scaffold' ? readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.setup : c.team.commands.setup;
