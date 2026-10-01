@@ -17,7 +17,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
-import { acceptanceFiles, adversaryFiles, dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
+import { acceptanceFiles, adversaryFiles, dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -310,6 +310,24 @@ test('lib: 사고 31(필드 시험 1) — worktree에서 불린 스크립트는 
   assert.equal(args, 'a,b'); assert.equal(fs.realpathSync(cwd), fs.realpathSync(wt), '인자와 cwd(worktree)는 그대로');
   assert.equal(r.status, 3, '종료 코드도 그대로');
 });
+test('lib: 사고 40(필드 벤치 1 정비) — worktree의 스크립트를 밖(main 루트)에서 경로로 부르면 그 worktree가 뿌리다: build의 verify quick이 main을 검증해 게이트가 끝없이 거부했다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-where-'));
+  const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+  const g = (...a) => spawnSync('git', a, { cwd: root, encoding: 'utf8', env });
+  g('init', '-q');
+  const dir = path.join(root, '.garagiste', 'scripts');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.copyFileSync(new URL('../team/scripts/lib.mjs', import.meta.url), path.join(dir, 'lib.mjs'));
+  fs.writeFileSync(path.join(dir, 'probe.mjs'), "import { isMain, repoRoot } from './lib.mjs';\nif (isMain(import.meta.url)) console.log(repoRoot());\n");
+  g('add', '-A'); g('commit', '-q', '-m', 'x');
+  g('worktree', 'add', '-q', '.worktrees/u', '-b', 'unit/u');
+  const wt = path.join(root, '.worktrees', 'u');
+  const at = (script, cwd) => fs.realpathSync(spawnSync(process.execPath, [script], { cwd, encoding: 'utf8', env }).stdout.trim());
+  assert.equal(at(path.join(wt, '.garagiste', 'scripts', 'probe.mjs'), root), fs.realpathSync(wt), 'headless에서 cd가 막혀 build가 worktree 스크립트를 경로로 불렀다 — main이 아니라 그 worktree를 본다');
+  assert.equal(at(path.join(root, '.garagiste', 'scripts', 'probe.mjs'), wt), fs.realpathSync(wt), 'cwd가 스크립트의 저장소 안이면 cwd가 뿌리다(main의 스크립트를 worktree에서)');
+  assert.equal(at(path.join(root, '.garagiste', 'scripts', 'probe.mjs'), root), fs.realpathSync(root));
+  assert.equal(at(path.join(wt, '.garagiste', 'scripts', 'probe.mjs'), os.tmpdir()), fs.realpathSync(wt), '저장소 밖에서 불러도 그 스크립트의 저장소');
+});
 test('ship: 사고 34(필드 시험 2) — 의존성 출하인데 설치 명령이 없거나 무동작(true)이면 머지 전에 멈추고 CEO의 한 줄을 준다', () => {
   for (const setup of [undefined, '', 'true', ' : ', 'exit 0']) assert.match(setupGap({ depChanged: true, setup }), /의존성 출하인데 설치 명령이 없다[\s\S]*GARAGISTE_ADMIN=1 node \.garagiste\/scripts\/work\.mjs commands setup=/, String(setup));
   assert.equal(setupGap({ depChanged: true, setup: 'npm install' }), null);
@@ -390,6 +408,14 @@ test('ship: spike는 필수 행 다섯이 전부 있어야 끝난 것이다', ()
   assert.equal(spikeOnlyFiles(['docs/measurements/spike-vault-open-ui.md'], 'docs/measurements'), true, '사고 16: spike 파일만의 wip HEAD는 ship이 승격한다');
   assert.equal(spikeOnlyFiles(['docs/measurements/spike-x.md', 'src/a.ts'], 'docs/measurements'), false, '제품 코드가 섞이면 승격하지 않는다');
   assert.equal(spikeOnlyFiles([], 'docs/measurements'), false);
+});
+test('ship: 사고 39(필드 벤치 1) — spike 미완 FAIL은 다음 할 일을 명령으로 준다: build가 산출물 무시 줄(.gitignore)을 더한 diff-HIT에서 conductor가 멈췄다', () => {
+  const ledger = [{ kind: 'verify', mode: 'full', exit: 0, tree: 'T' }, { kind: 'redproof', slug: 'ledger-add', base_red: true, head_green: true, tree: 'T' }, { kind: 'attack', slug: 'ledger-add', tree: 'T', red: 0, total: 4 }];
+  const x = { unit: { state: 'build' }, slug: 'ledger-add', worktreeExists: true, clean: true, tree: 'T', ledger, requireAttack: true, spikeText: '', lastSubject: 'feat(x): y', stops: [], proseKb: 10, proseMax: 40, boundaryHit: true, boundaryWhy: 'file .gitignore' };
+  const why = evaluateShip(x).find((k) => k.id === 'spike').why;
+  assert.match(why, /boundary HIT\(file \.gitignore\)/);
+  assert.match(why, /→ node \.garagiste\/scripts\/brief\.mjs spike ledger-add → 팩 spawn.* → node \.garagiste\/scripts\/ship\.mjs ledger-add 다시/, why);
+  assert.match(why, /docs\/measurements\/spike-ledger-add\.md/, '채울 파일이 문구에 있다');
 });
 test('brief: 팩은 상한을 넘으면 diff→hazards→brief→이어받기→try→surface 순으로 포인터가 되고 acceptance는 절대 버리지 않는다 (사고 8)', () => {
   const big = 'x'.repeat(3000);
@@ -584,6 +610,34 @@ test('lib: dirtyFiles는 porcelain 선행 공백을 살린다 — 첫 줄이 비
   g(['add', '-A']); g(['commit', '-q', '-m', 'init']);
   fs.writeFileSync(path.join(d, 'docs', 'BACKLOG.md'), 'b\n'); // 수정만, 스테이징 없음 → ' M docs/BACKLOG.md'
   assert.deepEqual(dirtyFiles(d), ['docs/BACKLOG.md'], "'ocs/BACKLOG.md'가 아니다");
+});
+test('lib: 사고 38(필드 벤치 두 곳) — main에 남은 것(setup·quick 산출물)을 고르고 지우지 않고 옮긴다: CEO 문서는 빼고, 새 디렉터리는 접힌 채, 바뀐 추적 파일은 사본을 두고 되돌린다', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-stray-'));
+  const g = (...a) => spawnSync('git', a, { cwd: d, encoding: 'utf8' });
+  g('init', '-q'); g('config', 'user.email', 'x@x'); g('config', 'user.name', 'x');
+  fs.mkdirSync(path.join(d, 'src', 'ledger'), { recursive: true });
+  fs.writeFileSync(path.join(d, 'src', 'ledger', 'cli.py'), 'x\n'); fs.writeFileSync(path.join(d, 'package-lock.json'), '{}\n');
+  g('add', '-A'); g('commit', '-q', '-m', 'init');
+  // 스크립트가 쓰는 CEO 문서 — 추적 파일 없는 새 디렉터리(git이 docs/로 접는다) 안에 있어도 남은 것이 아니다
+  fs.mkdirSync(path.join(d, 'docs')); fs.writeFileSync(path.join(d, 'docs', 'BACKLOG.md'), '- [x] boot\n');
+  // pip install -e . · quick · npm install이 남긴 것
+  fs.mkdirSync(path.join(d, 'src', 'ledger.egg-info')); fs.writeFileSync(path.join(d, 'src', 'ledger.egg-info', 'PKG-INFO'), 'p\n');
+  fs.mkdirSync(path.join(d, 'src', 'ledger', '__pycache__')); fs.writeFileSync(path.join(d, 'src', 'ledger', '__pycache__', 'cli.pyc'), 'c');
+  fs.writeFileSync(path.join(d, 'package-lock.json'), '{ "rewritten": true }\n');
+  fs.writeFileSync(path.join(d, 'npm-debug 로그.txt'), 'n\n');
+  const stray = strayPaths(d, ['docs/BACKLOG.md']);
+  assert.deepEqual(stray.map((e) => e.path).sort(), ['npm-debug 로그.txt', 'package-lock.json', 'src/ledger.egg-info/', 'src/ledger/__pycache__/'], JSON.stringify(stray));
+  assert.ok(!stray.some((e) => e.path.startsWith('docs')), 'CEO 문서는 남은 것이 아니다 — 접힌 docs/ 안에 있어도');
+  const dest = path.join(d, '.garagiste', 'session', 'ship-stray', 'boot-1');
+  fs.mkdirSync(path.join(d, '.garagiste')); fs.writeFileSync(path.join(d, '.git', 'info', 'exclude'), '/.garagiste/\n');
+  assert.deepEqual(quarantineStray(d, stray, dest), [], '전부 옮겼다');
+  assert.equal(g('status', '--porcelain', '-uall').stdout, '?? docs/BACKLOG.md\n', 'main은 ship 전 그대로 — CEO 문서만 남는다');
+  fs.writeFileSync(path.join(d, 'held.tmp'), 'h'); fs.writeFileSync(path.join(d, '.garagiste', 'blocked'), 'f');
+  assert.deepEqual(quarantineStray(d, [{ code: '??', path: 'held.tmp' }], path.join(d, '.garagiste', 'blocked', 'x')), ['held.tmp'], '옮기지 못한 것은 던지지 않고 돌려준다 — 되돌리기 도중에 죽지 않는다(win32: 켜 둔 서버가 잡은 파일)');
+  assert.ok(fs.existsSync(path.join(d, 'held.tmp')), '그 자리에 남는다');
+  assert.equal(fs.readFileSync(path.join(d, 'package-lock.json'), 'utf8'), '{}\n', '바뀐 추적 파일은 커밋된 내용으로 되돌린다');
+  assert.equal(fs.readFileSync(path.join(dest, 'package-lock.json'), 'utf8'), '{ "rewritten": true }\n', '바뀐 내용은 사본으로 남는다');
+  assert.ok(fs.existsSync(path.join(dest, 'src', 'ledger.egg-info', 'PKG-INFO')) && fs.existsSync(path.join(dest, 'src', 'ledger', '__pycache__', 'cli.pyc')) && fs.existsSync(path.join(dest, 'npm-debug 로그.txt')), '지우지 않고 옮긴다');
 });
 test('lib: workTree는 실제 인덱스를 씨앗으로 — filemode=false에서 chmod된 새 파일의 모드를 잃지 않는다 (win32 사고 19)', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-wt-'));

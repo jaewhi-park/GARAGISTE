@@ -122,6 +122,14 @@ function main() {
     '- 풀었으면 `git add <파일>`까지. 커밋·rebase·merge는 하지 않는다 — conductor가 ship을 다시 부르면 ship이 잇고 통합 tree를 다시 검증한다.',
     '- 인수·adversary 테스트가 충돌했으면 네 경계 밖이다 — 마지막 줄에 `spec: 충돌 <파일>`을 쓰고 멈춘다.',
   ].join('\n'));
+  // 사고 38(필드 벤치 두 곳): ship이 main에서 돌린 setup·quick의 산출물로 되돌렸다면 그 목록이 이 팩의 할 일이다 — 가장 최근 되돌림의 것만
+  const rb = pack === 'build' || pack === 'boot' ? [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'ship_rollback' && e.slug === slug && e.ts >= unit.created) : null;
+  if (rb?.stray?.length) sec('stray', 'ship이 되돌렸다 — main에서 setup·quick이 남긴 파일', [
+    ...rb.stray.map((f) => `- ${f}`),
+    '',
+    `- 무시할 산출물(캐시·빌드 메타데이터·의존성 디렉터리)이면 .gitignore에 — 저장소에 둘 것(lockfile 등)이면 worktree에서 같은 명령(commands.setup·quick)으로 만들어 커밋한다.`,
+    `- 옮겨 둔 원본: ${rb.moved}/ (main은 ship 전 그대로다). 끝은 worktree에서 같은 명령을 돌려도 git status가 깨끗한 것.`,
+  ].join('\n'));
   sec('origin', '원문', fence(`CEO 말 그대로 (${unit.created.slice(0, 10)})`, unit.origin));
   const closed = scopedDecisions(readText(path.join(c.main, c.team.paths.decisions)), { pack, slug, needs: unit.needs });
   if (closed.length) sec('decided', '결정된 것 (CEO의 답 — 전제다, 조용한 기본값으로 덮지 않는다)', closed.join('\n'));
