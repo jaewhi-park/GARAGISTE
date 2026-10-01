@@ -17,7 +17,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
-import { dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
+import { acceptanceFiles, adversaryFiles, dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -272,6 +272,21 @@ test('claims: 태그 파싱, 기계 센서 커버리지, 다음 거짓 주장은
   const cs = [{ file: 'b', status: 'false', milestone: 'M3', sensor: 'machine' }, { file: 'a', status: 'false', milestone: 'M1', sensor: 'human' }, { file: 'c', status: 'true', milestone: 'M1', sensor: 'machine' }];
   assert.equal(pickNext(cs).file, 'a');
   assert.equal(coverage(cs).pct, 67);
+});
+test('lib: 사고 30(필드 시험 1) — 수용·공격 파일은 저장소의 눈으로 센다: 무시 파일(__pycache__/*.pyc)은 테스트가 아니고, 아직 커밋 안 한 새 테스트는 테스트다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-files-'));
+  const g = (...a) => spawnSync('git', a, { cwd: root, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+  g('init', '-q');
+  const w = (rel, text = 'x') => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); };
+  w('.gitignore', '__pycache__/\n');
+  w('tests/acceptance/add_test.py'); w('tests/adversary/add-1.py');
+  g('add', '-A'); g('commit', '-q', '-m', 'x');
+  w('tests/acceptance/__pycache__/add_test.cpython-311.pyc'); w('tests/adversary/__pycache__/add-1.cpython-311.pyc');
+  w('tests/acceptance/add_more_test.py'); // spec이 막 쓴, 아직 커밋 안 한 주장
+  assert.deepEqual(acceptanceFiles(root, team, 'add'), ['tests/acceptance/add_more_test.py', 'tests/acceptance/add_test.py']);
+  assert.deepEqual(adversaryFiles(root, team, 'add'), ['tests/adversary/add-1.py']);
+  fs.rmSync(path.join(root, 'tests/acceptance/add_test.py'));
+  assert.deepEqual(acceptanceFiles(root, team, 'add'), ['tests/acceptance/add_more_test.py'], '지운 파일은 인덱스에 남아도 없다');
 });
 test('ship: wip HEAD의 안내는 unit 정체의 팩을 가리킨다 — boot(scaffold)에 「build를 다시 띄워」라 했다 (필드 시험 두 곳 공통)', () => {
   const base = { slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [], requireAttack: false, spikeText: '', lastSubject: 'wip: checkpoint', stops: [], proseKb: 10, proseMax: 40 };

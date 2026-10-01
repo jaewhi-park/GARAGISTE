@@ -1,7 +1,7 @@
 // claims — 팀이 보는 것: 주장 그래프. 주장 = 인수 테스트·프로브 파일 하나. 상태는 참·거짓·미검수(사람 센서 대기)·불명.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ctx, isMain, listFiles, listUnits, out, readLedger, readText, worktreeDir, headTree } from './lib.mjs';
+import { ctx, isMain, repoFiles, listUnits, out, readLedger, readText, worktreeDir, headTree } from './lib.mjs';
 
 export function parseTags(content) {
   const g = (re) => { const m = content.match(re); return m ? m[1].trim() : null; };
@@ -23,7 +23,7 @@ export function collect(c) {
   const mainFull = ledger.some((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === mainTree);
   const claims = [];
   const scan = (root, dir, mk) => {
-    for (const f of listFiles(path.join(root, dir))) {
+    for (const f of repoFiles(root, dir)) { // 사고 30: 무시 파일은 주장이 아니다
       const rel = path.posix.join(dir, f);
       claims.push({ file: rel, ...parseTags(readText(path.join(root, rel))), ...mk(rel) });
     }

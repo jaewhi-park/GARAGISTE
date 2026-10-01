@@ -146,11 +146,19 @@ export function listFiles(dir, base = dir) {
   }
   return out.sort();
 }
+// 사고 30(필드 시험 1): 디렉터리 걷기는 무시 파일(__pycache__/*.pyc)까지 수용·공격 테스트로 셌다 — redproof가 head red, attack이 6/6.
+// 저장소의 눈으로 본다: 추적 + 무시 안 된 미추적(spec이 막 쓴 주장), 지금 디스크에 있는 것만. git 밖이면 옛 걷기.
+export function repoFiles(root, dir) {
+  const r = git(['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', dir], root);
+  if (r.status !== 0) return listFiles(path.join(root, dir));
+  const pre = dir.replace(/\/+$/, '') + '/';
+  return [...new Set(r.stdout.split('\0').filter((f) => f.startsWith(pre) && fs.existsSync(path.join(root, f))).map((f) => f.slice(pre.length)))].sort();
+}
 export function acceptanceFiles(root, team, slug) {
-  return listFiles(path.join(root, team.paths.acceptance)).filter((f) => path.basename(f).startsWith(slug)).map((f) => path.posix.join(team.paths.acceptance, f));
+  return repoFiles(root, team.paths.acceptance).filter((f) => path.basename(f).startsWith(slug)).map((f) => path.posix.join(team.paths.acceptance, f));
 }
 export function adversaryFiles(root, team, slug) {
-  return listFiles(path.join(root, team.paths.adversary)).filter((f) => path.basename(f).startsWith(`${slug}-`)).map((f) => path.posix.join(team.paths.adversary, f));
+  return repoFiles(root, team.paths.adversary).filter((f) => path.basename(f).startsWith(`${slug}-`)).map((f) => path.posix.join(team.paths.adversary, f));
 }
 export function touchCeo(main) {
   const p = path.join(main, '.garagiste', 'session', 'ceo-touch');
