@@ -58,6 +58,7 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-01 | 측정 | 79c3ebf | 2 Node 웹 | SCOPE DONE | 6/0 | 0 | 6/0 | 0 | 24 | 590K | 28.6 | $6.11 |
 | 2026-10-01 | 측정 | 486fd74 | 1 파이썬 CLI | SCOPE DONE(M1 + ledger-add-fix — export는 intake가 M2로) | 6/0 | 0 | 5/1 | 1 (없는 날짜 2026-02-30 → ledger-add-fix 출하·ok) | 28 | 734K | 40.4 | $7.97 |
 | 2026-10-01 | 측정 | 486fd74 | 2 Node 웹 | SCOPE DONE | 4/2 | 0 | 4/0 | 0 | 15 | 395K | 29.2 | $4.50 |
+| 2026-10-01 | 측정(홀드아웃 첫 측정) | 0ae7c70 | H Go CLI(dupfind) | 정지 — intake(unit 0/9, boot 전) | 0/0 | 1 (BACKLOG 줄을 고칠 길 없음 · drop이 예외로 죽는다) | 0/0 | 0 | 1 | — | — | $0.44 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -119,3 +120,14 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
   7. **tried fail의 재현이 버려진다**: conductor가 `tried ledger-add fail`을 note 없이 남겨(대리 말에는 재현 한 줄이 있었다) -fix unit의 원문이 「써봤는데 실패 — 스펙 정정」뿐 → spec이 재현을 Q5로 되묻고 멈춤(팩 2 · CEO 접점 1). 46a53ca 정비의 Q5와 같은 꼴 — 프레임워크가 fail에 빈 note를 받는다.
   8. **-fix unit이 고정 범위 밖**: scope는 slug 목록이라 tried fail이 만든 ledger-add-fix(M1)가 SCOPE DONE 뒤에 남았다 → CEO scope 1. cfbcf3a는 conductor가 `work.mjs new`로 우회했던 자리(버그 unit 중복의 원인) — 이번엔 규율대로 물었다.
 - **과적합 — 이 벤치가 말하지 못하는 것**: 원문 둘(작은 greenfield · 파이썬 표준 라이브러리 · Node 무의존)·Linux 컨테이너·Claude Code 헤드리스·budget medium·규칙대로 답하는 대리. opencode 배선·기존 코드가 있는 저장소·컴파일 언어·긴 빌드·사람 CEO는 한 번도 안 밟았다. 판끼리 비교(회귀)는 이 두 원문으로 계속하고, 범용성은 수리에 쓰지 않은 새 원문(홀드아웃)으로만 잴 수 있다 — CEO 결정 대기.
+
+### 2026-10-01 홀드아웃 첫 측정 0ae7c70(사고 38~48 포함) — 기록
+- **범용성 점수: 처음 보는 원문에서 intake에서 정지 — boot 전.** 필드 1·2가 두 회 연속 FAIL 0이던 판이다 — 「과적합」의 우려가 한 줄로 확인됐다: 필드 1(파이썬 CLI)의 원문엔 `--`로 시작하는 줄이 없었고, CLI 도구의 원문은 흔히 옵션(`--min-size`·`--json`)을 말한다.
+- 정지 줄(conductor가 그대로 넘김): `work.mjs drop min-size … --forget` → `Error: unit 없음: min-size — work.mjs new 먼저` + 스택(한 줄 출력 규칙 위반 · 잡히지 않은 예외), `work.mjs add min-size …` → `FAIL BACKLOG에 있음: min-size` — 깨진 BACKLOG 줄을 고치거나 지울 명령이 없다(실행 불가). conductor의 차선 제안(두 줄 없이 나머지 M1)은 대리 재량이라 고르지 않았다(측정 규칙).
+- **홀드아웃 결함(측정 모드라 수리하지 않았다 — 수리하면 이 원문은 소진, 필드 3으로)**:
+  H1. **`--`로 시작하는 원문이 플래그로 먹힌다**: intake의 `work.mjs add min-size "--min-size 1M처럼…" --milestone M1`이 원문을 「M1」, 마일스톤을 `M?`로 남겼다(json-out 같음) · `ask`의 질문 「--json …」도 먹혀 Q1이 「json-out」 한 단어. 정지의 뿌리.
+  H2. **unit 없는 BACKLOG 줄의 정정·삭제 길이 없다**: drop은 unit을 요구해 예외로 죽고(H1 없이도 intake의 잘못 쓴 줄 하나면 같은 막다른 길), add는 중복을 거부한다.
+  H3. **`work.mjs brief --help`가 「--help」를 CEO 원문에 쌓았다** — 팀은 BRIEF를 못 지운다(훅) → CEO 치움 1(대리가 지우고 「치웠다」).
+  H4. **`spawned` 사용법의 `<팩>`이 이름인지 경로인지 모호** — conductor가 팩 파일 경로를 넣고 같은 사용법을 두 번 받고 포기(486fd74 필드 1도 한 번 — 둘째 근거). 기록만 막혀 진행엔 영향 없음.
+- 원장 밖 CEO 접점: BRIEF 치움 1 · intake 질문 4(그중 둘은 H1이 만든 것).
+- 홀드아웃의 첫 측정 줄이 이 원문의 점수다 — H1·H2를 수리하면 이 원문은 필드 3(회귀 · 정비 모드 허용)이 되고, 다음 범용성 측정엔 새 홀드아웃(다른 생태계·모양 — 예: 기존 코드가 있는 저장소)이 필요하다.
