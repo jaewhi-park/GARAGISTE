@@ -504,6 +504,14 @@ test('brief: 결정은 스코프 — 전역(intake)+이 unit+needs만, 전체는
   assert.equal(scopedDecisions(t, { pack: 'boot', slug: 'boot', needs: [] }).length, 4, 'boot는 전체 — 세계 정의');
   assert.equal(scopedDecisions('- [x] Q9 슬러그 없는 줄 → 답', { pack: 'spec', slug: 'x', needs: [] }).length, 1, '못 읽는 줄은 버리지 않는다(fail-open 포함)');
 });
+test('HAZARDS: 줄마다 팩에 닿는 경로가 있다 — 규칙집(.garagiste/**)·main 전용 문서만 가리키는 줄은 팩에 영영 안 떠 산문 예산만 먹었다(35줄 · 15KB)', () => {
+  const text = fs.readFileSync(new URL('../team/HAZARDS.md', import.meta.url), 'utf8');
+  const unreachable = /^(\.garagiste\/(?!team\.json$)|docs\/(BACKLOG|STATUS|LEDGER|DECISIONS|BRIEF)\.md$)/; // team.json은 boot가 worktree에서 바꾼다(work.mjs commands)
+  for (const l of text.split('\n').filter((x) => x.startsWith('- '))) {
+    const globs = [...l.split(' · ')[0].matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+    assert.ok(globs.some((g) => !unreachable.test(g)), `팩에 닿지 않는 줄 — 기록은 CHANGELOG로: ${l.slice(0, 70)}`);
+  }
+});
 test('brief: HAZARDS는 경로가 맞는 줄만 팩에 들어간다', () => {
   const hz = '- `**/electron/**` · 하얀 화면 · 검사: smoke\n- `docs/**` · 문서 커밋 · 검사: gate\n- 경로 없는 줄 · 무시\n- `**` · 전역 · 검사: x';
   const hit = matchHazards(hz, ['app/electron/main.ts']);

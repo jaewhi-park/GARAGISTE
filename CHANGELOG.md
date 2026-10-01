@@ -80,6 +80,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Changed — 2026-10-01 HAZARDS에서 팩에 닿지 않는 35줄을 걷어 냈다 (산문 예산 39KB → 26KB)
+- HAZARDS 줄은 경로 패턴이 unit의 바뀐 파일과 맞을 때만 팩(「HAZARDS — 이 경로에서 난 사고」 절)에 뜬다(`matchHazards`). 경로가 규칙집(`.garagiste/scripts/**`·`.garagiste/packs/**` 등)이나 main 전용 문서(`docs/BACKLOG.md` 등)뿐인 줄은 팩이 그 경로를 바꾸지 못해(가드) 영영 뜨지 않는다 — 프레임워크 자신의 사고 기록 35줄(약 15KB)이 산문 예산(40KB)만 먹어 설치본이 39KB, 다음 사고 한두 줄이면 ship의 budget 조건이 막힐 참이었다. 그 사고들의 기록은 이 CHANGELOG에 그대로 있다(첫 Windows 실기 · 2차 실기 · L2 · 필드 시험 · 필드 벤치 · 홀드아웃). `.garagiste/team.json`이 든 줄은 남겼다 — boot가 worktree에서 `work.mjs commands`로 바꾸는 경로다. 검사: unit(HAZARDS의 모든 줄에 팩에 닿는 경로가 있다 — 옛 파일에서 red) + HAZARDS 머리말.
+
 ### Fixed — 2026-10-01 인수 파일이 혼자 돌지 않았다 — Go의 패키지 (홀드아웃 정비의 사고 56)
 - 사고 54·55 반영 뒤 필드 3(Go)의 sort-waste: build가 스모크를 고쳐 quick·full PASS까지 갔지만 redproof의 파일 단위 실행(`go test tests/acceptance/sort-waste_test.go`)이 `undefined: findDupsFixture`로 컴파일 실패 — spec이 쓴 인수 파일이 출하된 `find-dups_test.go`의 도우미를 썼다. Go는 한 디렉터리가 한 패키지라 파일끼리 이름을 공유하지만, 프레임워크의 증명(redproof·attack·full의 판정)은 파일 하나씩이다. build는 인수 파일을 못 고쳐 `spec:` 반려 — 앞의 반려(사고 55의 스모크)와 합쳐 두 번째라 CEO에게 갔다(안내는 실행 가능 — 정지는 아님). 수리: spec·attack 팩의 명령 절, test_file 줄에 「증명은 파일 하나씩(이 명령에 그 파일 하나): 네가 쓰는 테스트 파일은 혼자 돈다, 다른 테스트 파일의 도우미에 기대지 않는다(필요한 도우미는 그 파일 안에)」 — 실제 명령 옆에 brief.mjs가 싣는다. 검사: e2e(spec 팩 · attack 팩의 test_file 줄).
 
