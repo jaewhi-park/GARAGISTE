@@ -187,6 +187,19 @@ export function linkDeps(root, dest) {
     if (fs.existsSync(dst)) continue;
     try { fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.symlinkSync(src, dst, 'junction'); linked.push(rel); } catch { /* 링크 불가 — 프로젝트가 설치한다 */ }
   }
+  // 사고 35(필드 시험 2): 링크는 디렉터리가 아니라 `.gitignore`의 `node_modules/`에 안 걸린다 — 미추적으로 보여 체크포인트(git add -A)가 이 기계의 경로를 커밋했다.
+  // 링크는 프레임워크의 것: 저장소 규칙을 고치지 않고 로컬 제외(info/exclude — 모든 worktree 공용, 커밋 안 됨)에 둔다.
+  const loose = linked.filter((rel) => git(['check-ignore', '-q', rel], dest).status !== 0);
+  if (loose.length) {
+    const ex = git(['rev-parse', '--git-path', 'info/exclude'], dest);
+    if (!ex.status) {
+      const p = path.resolve(dest, ex.stdout);
+      fs.mkdirSync(path.dirname(p), { recursive: true });
+      const have = readText(p);
+      const lines = loose.map((rel) => `/${rel}`).filter((l) => !have.split('\n').includes(l));
+      if (lines.length) fs.appendFileSync(p, `${have && !have.endsWith('\n') ? '\n' : ''}# GARAGISTE 의존성 링크(사고 35)\n${lines.join('\n')}\n`);
+    }
+  }
   return linked;
 }
 export function out(line) { process.stdout.write(line + '\n'); }

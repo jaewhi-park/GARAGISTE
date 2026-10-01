@@ -588,6 +588,21 @@ test('lib: env.local은 KEY=VALUE 줄만 읽고 주석은 무시한다', () => {
   assert.deepEqual(parseLocalEnv('# 이 기계만\nGARAGISTE_RUNNER=setpriv --reuid=1000 env HOME=/tmp/x\nBAD LINE\nA=1'), { GARAGISTE_RUNNER: 'setpriv --reuid=1000 env HOME=/tmp/x', A: '1' });
 });
 
+test('lib: 사고 35(필드 시험 2) — 의존성 링크는 .gitignore의 `node_modules/`(디렉터리 패턴)에 안 걸린다: 링크는 프레임워크의 것이니 스스로 로컬 제외에 둔다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-link-'));
+  const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+  const g = (cwd, ...a) => spawnSync('git', a, { cwd, encoding: 'utf8', env });
+  g(root, 'init', '-q');
+  fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules/\n/.worktrees/\n');
+  g(root, 'add', '-A'); g(root, 'commit', '-q', '-m', 'x');
+  fs.mkdirSync(path.join(root, 'node_modules', 'dep'), { recursive: true });
+  g(root, 'worktree', 'add', '-q', '.worktrees/u', '-b', 'unit/u');
+  const wt = path.join(root, '.worktrees', 'u');
+  assert.deepEqual(linkDeps(root, wt), ['node_modules']);
+  assert.equal(g(wt, 'status', '--porcelain').stdout.trim(), '', '링크가 미추적으로 보이면 체크포인트(git add -A)가 이 기계의 경로를 커밋한다');
+  assert.equal(g(root, 'status', '--porcelain').stdout.trim(), '', 'main도 그대로');
+  assert.deepEqual(linkDeps(root, wt), []);
+});
 test('brief intake: BRIEF의 마지막 n절만 — intake는 증분이다', () => {
   const t = '# BRIEF\n머리\n## 1\na\n## 2\nb\n## 3\nc\n';
   assert.equal(tailSections(t, 2), '## 2\nb\n## 3\nc\n');

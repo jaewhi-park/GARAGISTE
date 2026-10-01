@@ -411,6 +411,10 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): models high/);
   assert.ok(!script('work', ['models', 'high'], repo).out.includes('커밋'), '변경 없으면 커밋도 없다');
   // 사고 7 회귀: main의 models 커밋 × boot의 commands 커밋 = team.json rebase 충돌 — ship이 키 병합으로 통과하고 통합 full까지 스스로 돌린다
+  // 필드 시험 2: CEO의 try가 메인 루트에 남긴 산출물 — 출하를 막는 것은 맞지만 다음 할 일(누가 치우나)을 말해야 한다
+  write(repo, 'data/try.json', '[]');
+  assert.match(script('ship', ['boot'], repo).out, /^FAIL ship: 메인 worktree에 미커밋 변경 — data\/try\.json — 팀의 것이 아니다[\s\S]*CEO가 치운다/);
+  fs.rmSync(path.join(repo, 'data'), { recursive: true });
   const ship = script('ship', ['boot'], repo);
   assert.match(ship.out, /^SHIPPED boot [0-9a-f]{7}/, ship.out);
   assert.equal(git(['ls-files', 'cache'], repo).out.trim(), '', '사고 29: 증거는 tree다 — unit의 역사는 그 tree 한 커밋으로 접혀 올라가고, 중간 wip의 산출물은 main에 오지 않는다');
