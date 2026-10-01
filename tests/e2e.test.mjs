@@ -122,6 +122,8 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   // build 재spawn: red → green, 이어받기 절이 팩에 있다
   const rebuild = fs.readFileSync(path.join(repo, script('brief', ['build', 'hello'], repo).out.split(' ')[1]), 'utf8');
   assert.match(rebuild, /## 이어받기/);
+  // 사고 43(필드 벤치 2 웹 정비): 헤드리스에선 `cd <wt> && …`와 명령 앞 환경 변수 접두(`X=1 npm …`)가 승인 대기로 막혀 build가 의존성을 못 깔았다 — 팩이 막히지 않는 꼴을 준다
+  assert.match(rebuild, /승인 대기로 막히는 꼴[\s\S]*X=1 cmd[\s\S]*git -C [^ ]*hello[\s\S]*npm --prefix [^ ]*hello/, '팩이 headless의 함정과 대안(git -C · npm --prefix · 이미 설정된 환경)을 말한다');
   // 사고 32(필드 시험 1): build 팩엔 인수 테스트만 있었다 — 프로젝트의 full이 공격 파일을 안 집으면(파이썬 discover는 test*.py만) build는 green만 보고 빈손으로 끝났다
   assert.match(rebuild, /## 공격 테스트 — 지금 red[\s\S]*tests\/adversary\/hello-1\.test\.mjs[\s\S]*끝 공백 없음/, 'build 팩이 attack의 red 파일과 내용을 할 일로 받는다');
   write(wt, 'src/cli.mjs', "const n = process.argv[2]; process.stdout.write(n ? `hello ${n}\\n` : 'hello\\n');\n");

@@ -26,6 +26,10 @@ export function fit(sections, maxBytes) {
 }
 // 사고 25(4차 실기): FAIL은 fit이 부대물을 전부 포인터로 줄인 뒤에만 난다 — 넘는 것은 언제나 법이다.
 // 옛 안내(「acceptance면 unit split, 부대물이면 상한을 올려라」)는 split 명령이 없어 실행할 수 없었고, 둘째 갈래는 이 자리에서 참일 수 없었다.
+// 사고 27·40·43(필드): 헤드리스(무인)엔 승인 대화가 없다 — `cd <dir> && …`와 명령 앞 환경 변수 접두(`X=1 npm …`)는 허용 목록과 맞지 않아 승인 대기로 막혔다(43: build가 의존성을 못 깔았다)
+export function headlessNote(wt) {
+  return `헤드리스(무인)에선 승인 대기로 막히는 꼴이 있다 — \`cd <dir> && …\`와 명령 앞 환경 변수 접두(\`X=1 cmd\`). 막히지 않는 꼴: git은 \`git -C ${wt} …\`, npm은 \`npm --prefix ${wt} …\`, 스크립트는 경로로(\`node ${wt}/.garagiste/scripts/<스크립트>\` — 그 worktree가 뿌리), 환경 변수는 이미 설정된 것을 쓴다(기계별 값은 .garagiste/env.local).`;
+}
 // 사고 42: 두 번째 반려는 CEO에게 간다 — 그 답이 갈 길을 명령으로(수용을 바꾸라 · 기존 공격 테스트를 고치라)
 export function revisePaths(slug) {
   return [
@@ -126,7 +130,7 @@ function main() {
   const changed = base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
   const sections = [];
   const sec = (key, title, body) => body && sections.push({ key, title, text: `## ${title}\n${body.trim()}` });
-  sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.garagiste', 'packs', `${pack}.md`))}\n\n작업 디렉터리(절대 경로, 모든 명령은 여기서): \`${wt}\` (브랜치 ${unit.branch}). 저장소 루트: \`${c.main}\`. 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.`);
+  sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.garagiste', 'packs', `${pack}.md`))}\n\n작업 디렉터리(절대 경로, 모든 명령은 여기서): \`${wt}\` (브랜치 ${unit.branch}). 저장소 루트: \`${c.main}\`. 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.\n${headlessNote(wt)}`);
   sec('commands', '명령', Object.entries(c.team.commands).filter(([, v]) => v).map(([k, v]) => `- ${k}: \`${v}\``).join('\n'));
   // 사고 26(L2 1일차): ship이 멈춰 둔 rebase — 충돌 표시를 푸는 것은 파일 편집이다(팩의 경계 안), 잇는 것은 ship이다
   const conflicted = rebaseInProgress(wt) ? unmergedFiles(wt) : [];
