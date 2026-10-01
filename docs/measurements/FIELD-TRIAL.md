@@ -26,6 +26,9 @@
 | 32 | 1 | build 팩에 attack의 red가 없음 + 파이썬 discover는 `add-1.py`를 안 돌림 → build는 green만 보고 빈손, 「red>0 → build」 무한 | build 팩에 마지막 attack의 red 파일 전문, 끝 검사에 attack red 0 (13e73e3) |
 | 33 | 1 | spec이 서로 어긋난 주장(-30000 ⊃ 3000)을 씀 → build의 `spec:` 줄을 받을 길이 Flow에 없고 redproof는 build 재spawn만 | `brief.mjs spec <slug> --return "<줄>"`, 두 번째 반려는 CEO (d18e671) |
 | 34 | 2 | boot이 setup="true" → 뒤 unit의 dev 의존성이 main·worktree에 안 깔림, ship NOTE는 「돌렸다」 | 설치 명령 없는 의존성 출하는 머지 전 FAIL + CEO 한 줄, 메인 commands는 커밋·설치, verify가 의존성을 잇는다 (d18e671) |
+| 35 | 2 | worktree의 node_modules 링크가 `.gitignore`의 `node_modules/`(디렉터리 패턴)에 안 걸려 커밋에 이 기계 경로가 들어감(사고 34 수리가 링크를 늘려 드러남) · try 산출물의 main dirt FAIL에 할 일 없음 | 링크는 로컬 제외(info/exclude)에 스스로 · 그 FAIL은 「CEO가 치운다」 (a1c7bc8) |
+| 36 | 2 | 앞 unit이 이미 만든 기능(persist)의 주장이 base green → redproof FAIL에 다음 할 일 없음, conductor는 질문을 못 냄 | 그 FAIL이 CEO의 두 길(drop --forget · 다시 spec)을 명령으로 (628e730) |
+| 37 | 2 | 맨 끝의 `--forget`이 다음 인자(없음)를 값으로 먹어 꺼짐 → 닫은 unit의 BACKLOG 줄이 열린 채, scope가 다시 잡음 | 불리언 플래그는 값을 먹지 않는다 (3bb2f20) |
 
 ## 관찰 (장치 아님 — 백로그 후보)
 - **try 잔여물, 두 번째 프로젝트**: CEO가 카드대로 메인 루트에서 `npm start` → 저장 → `data/memos.json`이 main에 미추적으로 남았다. L2 1일차 eoren.sqlite에 이은 두 번째 — 「try 샌드박스」(L2 표 이후 1순위 후보)의 둘의 규칙이 찼다.
@@ -33,3 +36,7 @@
 - 웹 boot가 spawn마다 `node --test tests/unit/`(디렉터리 — node 22에선 실패)를 먼저 쓰고 verify를 보고 glob으로 고쳤다. 팩이 직전 commands를 보여 주면 줄어든다.
 - boot이 고른 것: 파이썬은 의존성 0 · unittest · `pip install -e .`(설치기는 main에서 시스템에 `ledger`를 깔았다), 웹은 의존성 0 · node:test · setup `true`(사고 34).
 - `work.mjs list | head`에서 EPIPE 스택 — out()이 닫힌 파이프를 다루지 않는다(사소).
+- **이미 충족된 주장을 증거로 박는 길이 없다**: 웹의 persist·browser-check가 둘 다 base green(save-memo가 이미 파일에 쓰고, 브라우저 흐름도 이미 됨). 지금 길은 drop --forget뿐이라 spec이 쓴 재시작·실브라우저 테스트가 dropped 브랜치로 간다 — 특히 browser-check는 원문(「실제 브라우저에서 확인돼야 한다」)의 산출물이 그 테스트 자체다. 후보: CEO 서명으로 「박기」(base green 주장을 회귀 증거로 출하). 한 프로젝트 두 번 — 둘의 규칙 대기.
+- conductor가 spec의 보고(「CEO 몫: drop 또는 원문 구체화」)를 질문으로 내지 못하고 「위 persist 질문」이라고만 했다 — 사고 36의 FAIL 안내 뒤엔 질문 문장을 그대로 냈다.
+- 웹 build가 테스트가 쓴 `data/memos.json`과 node_modules 링크를 공격 결함으로 찾아 `.gitignore`에 넣었다 — 그 뒤 CEO try의 산출물도 무시되어 main을 더럽히지 않았다(프로젝트 몫의 해법).
+- 공격이 「CSV 수식 주입」을 보안 항목으로 짚었지만 원문 밖이라 테스트로 남기지 않았고, conductor가 CEO 결정으로 올렸다 — CEO가 고치라 해 버그 unit(인터럽트 경로)으로.
