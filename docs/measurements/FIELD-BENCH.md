@@ -46,6 +46,7 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-01 | 정비(측정 정지에서 이어) | 46a53ca → b9e1561 | 1 파이썬 CLI | SCOPE DONE | 6/1 | 2 (39·40) | 5/1 | 1 (ledger-add 없는 날짜 → ledger-add-fix) | 28 | 671K | 99.6 | $7.40 |
 | 2026-10-01 | 측정 | cfbcf3a | 1 파이썬 CLI | SCOPE DONE(M1 — export는 intake가 M2로) | 6/0 | 0 | 4/2 | 2 (없는 날짜 · 0 없는 날짜 — 각각 버그 unit 출하·ok) | 23 | 521K | 22.0 | $5.28 |
 | 2026-10-01 | 측정 | cfbcf3a | 2 Node 웹 | 정지 — serve-list ship(unit 2/6) | 1/0 | 1 (serve-list ship · attack 파일만 든 wip HEAD) | 0/0 | 0 | 18 | 358K | 1.0 (정지 19) | $3.48 |
+| 2026-10-01 | 정비(측정 정지에서 이어) | cfbcf3a → acce789 | 2 Node 웹 | SCOPE DONE | 6/0 | 3 (41·42·43) | 6/0 | 0 | 83 | 2519K | 194.5 | $26.14 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -82,4 +83,8 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 - **필드 1 — green 후 CEO 발견 결함 2**: add-entry가 `2026-13-01`·`2026-02-30`을 기록(1회차와 같은 결함 — attack이 또 놓침) → add-entry-fix 출하 → `2026-1-5`가 그대로 기록돼 어느 달에도 안 잡힘 → add-entry-fix2 출하·ok. 날짜 경계는 두 판 연속 attack이 못 본 계급이다(system-attack 방아쇠 기록 — 장치 아님).
 - **관찰**: tried fail의 자동 줄(`add-entry-fix-fix`)과 conductor의 `work.mjs new add-entry-fix2`가 같은 일로 둘 다 생겨 하나가 BACKLOG에 남았다(BENCH 「열린 줄 2」 = export(M2) + 이것) · jsonl-read의 첫 build가 Bash 승인에 막혀 검증·커밋을 못 해 같은 팩으로 재spawn · 웹 serve-list는 attack 7회(공격 파일 13)로 출하 전에 결함을 많이 닫았다.
 - 결함 후보(새): ① attack 파일만 든 wip HEAD에서 ship이 멈춘다(필드 2 정지) ② 버그 unit 중복 생성(tried fail 자동 줄 + conductor new).
+- **정비 모드 이어서(웹, 같은 폴더)**: 사고 41(a2e9ac7) 반영 → serve-list의 wip가 `test(serve-list): attack 산출물`로 승격돼 출하. 이어 새 사고 둘: 42 — memo-delete의 수용(메모 옆 삭제 폼)이 출하된 memo-save의 과잉 단언 공격 테스트와 충돌, 두 번째 반려 → CEO 「고쳐라」 → 그 unit의 spec을 열 길이 없음(`FAIL worktree 없음`) → 수리(69d024a, `brief.mjs attack <slug> --revise`) 뒤 원장 `adversary_revise` → 출하. 43 — browser-reload의 build가 `X=1 npm install …`(환경 변수 접두)로 승인 대기에 막힘 → 수리(acce789, 팩이 headless 함정·대안을 준다) 뒤 `npm --prefix` 설치 → 출하. try 6장 전부 ok(실 Chromium) — green 후 결함 0.
+- **원장 밖 CEO 접점(웹)**: 팩 상한 결정 ① 3회(24→25 memo-delete · 25→29·29→31 memo-persist) — attack 라운드마다 build 팩의 공격 절이 자라 같은 unit에서 사슬이 된다(「팩 상한 이유-차선」 장치 후보의 근거 추가, CEO 「가」 대기) · 「고쳐라」 1(42) · Q2 예 1.
+- **비용 관찰**: 웹 unit마다 build·attack이 7~10회 돌았다(attack 35회 · 선발견 43 · 팩 83 · 2.5M 토큰 · $26) — 1회차 웹(팩 22 · 531K · $6.96)의 약 4배. attack이 결함을 계속 찾는 한 수렴 상한이 없다. 산출(green 후 결함 0)은 좋지만 비용 축의 장치 후보(attack 라운드 상한 또는 build 팩 공격 절의 크기) — 둘의 규칙 대기.
+- 산문 예산: 설치본 ≈37KB/40KB — HAZARDS가 사고마다 한 줄씩 자라 여유가 3KB 남짓.
 
