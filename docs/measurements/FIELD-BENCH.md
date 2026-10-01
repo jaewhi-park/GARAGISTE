@@ -49,6 +49,8 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-01 | 정비(측정 정지에서 이어) | cfbcf3a → acce789 | 2 Node 웹 | SCOPE DONE | 6/0 | 3 (41·42·43) | 6/0 | 0 | 83 | 2519K | 194.5 | $26.14 |
 | 2026-10-01 | 측정 | 79c3ebf | 1 파이썬 CLI | SCOPE DONE | 6/0 | 0 | 6/0 | 0 | 21 | 537K | 24.5 | $5.93 |
 | 2026-10-01 | 측정 | 79c3ebf | 2 Node 웹 | SCOPE DONE | 6/0 | 0 | 6/0 | 0 | 24 | 590K | 28.6 | $6.11 |
+| 2026-10-01 | 측정 | 486fd74 | 1 파이썬 CLI | SCOPE DONE(M1 + ledger-add-fix — export는 intake가 M2로) | 6/0 | 0 | 5/1 | 1 (없는 날짜 2026-02-30 → ledger-add-fix 출하·ok) | 28 | 734K | 40.4 | $7.97 |
+| 2026-10-01 | 측정 | 486fd74 | 2 Node 웹 | SCOPE DONE | 4/2 | 0 | 4/0 | 0 | 15 | 395K | 29.2 | $4.50 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -99,3 +101,14 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 - attack 선발견이 날짜 경계를 이번엔 출하 전에 잡았다(앞 두 회차는 CEO try가 후발견). 웹은 DNS 리바인딩·CSRF·깨진/BOM 파일 덮어쓰기 등.
 - **관찰(결함 후보 4의 둘째 근거 → 사고 44로 정비 수리)**: 파이썬 필드의 full(`tests/harness/run_all.py` — unittest discover)이 1건(unit 스모크)만 돈다 — 하이픈 이름의 인수·공격 파일 17개는 한 번도 안 돈다. 출하 전 증거(redproof·attack·통합 재검증)는 파일 단위라 게이트는 속지 않지만, 출하 뒤 다음 unit들의 full은 앞 기능의 회귀를 지키지 않는다. conductor가 spec의 보고로 두 번 「확인하지 않은 위험」으로 올렸다. 웹(node --test glob)은 해당 없음.
 
+### 2026-10-01 측정 486fd74(main — 사고 38~44 포함) — 기록
+- **두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE — 2회 연속**(79c3ebf에 이어). 이 두 원문에 대해선 회귀 확인이지 범용성 증거가 아니다 — 사고 38~44가 전부 이 두 원문에서 나왔다(아래 「과적합」).
+- intake: 파이썬 unit 7(M1 5 · M2 export·no-network — cfbcf3a처럼 export가 M2로) · Q3 + 진행 중 Q4(CP949 읽기 — 규칙 1대로 「예」) · Q5(-fix의 재현), 웹 unit 6 · Q2(규칙 1 「예 + Chromium 사실」).
+- **사고 44 실필드**: 파이썬 full이 discover 뒤 인수·공격 파일을 test_file로 하나씩 돈다(ledger-month 시점 13개, 전부 exit 0). **비용(웹)**: 같은 main에서 러너(`node --test` glob, 병렬) 20.5초 · 추가 파일 10개 직렬 50.8초 — full이 약 20초 → 71초(3.5배). full은 unit마다 2회(worktree · 통합)라 웹 unit당 1~2분 늘었다.
+- **사고 38 실필드**: 파이썬 boot → main stray(`src/ledger.egg-info/`) → 되돌림·보존 → 재spawn이 .gitignore → 출하. 반쪽 출하·CEO 치움 0.
+- 원장 밖 CEO 접점: 웹 — try 잔여물 치움 1(save try의 `data/memos.json`이 delete ship을 「CEO가 치운다」로 막음 — 규칙 2대로 접점 1, 79c3ebf는 팀이 `data/`를 무시 목록에 넣어 0이었다) · 이미 충족 「예 — 닫아라」 2(persist · browser-reload). 파이썬 — 부분 충족 「아니오」 1 · -fix 범위 1.
+- **관찰(결함 후보 — 측정 모드라 수리하지 않았다)**:
+  6. **부분 충족에 길이 없다(사고 36 계열)**: jsonl-store(손편집·BOM + Q4 CP949)의 통합 tree redproof가 `jsonl-store_handedit.py` base green으로 FAIL — 먼저 출하된 broken-lines가 BOM 처리를 main에 넣었다. 안내는 drop(남은 red 주장 CP949까지 닫힌다) 아니면 re-spec 둘뿐 — 대리가 「아니오 — 이미 main에 있는 주장은 빼고 CP949를 남겨라」로 답해 re-spec이 그 파일을 빼고 출하(안내대로 풀려 정지 아님 · spec 1·CEO 접점 1 비용).
+  7. **tried fail의 재현이 버려진다**: conductor가 `tried ledger-add fail`을 note 없이 남겨(대리 말에는 재현 한 줄이 있었다) -fix unit의 원문이 「써봤는데 실패 — 스펙 정정」뿐 → spec이 재현을 Q5로 되묻고 멈춤(팩 2 · CEO 접점 1). 46a53ca 정비의 Q5와 같은 꼴 — 프레임워크가 fail에 빈 note를 받는다.
+  8. **-fix unit이 고정 범위 밖**: scope는 slug 목록이라 tried fail이 만든 ledger-add-fix(M1)가 SCOPE DONE 뒤에 남았다 → CEO scope 1. cfbcf3a는 conductor가 `work.mjs new`로 우회했던 자리(버그 unit 중복의 원인) — 이번엔 규율대로 물었다.
+- **과적합 — 이 벤치가 말하지 못하는 것**: 원문 둘(작은 greenfield · 파이썬 표준 라이브러리 · Node 무의존)·Linux 컨테이너·Claude Code 헤드리스·budget medium·규칙대로 답하는 대리. opencode 배선·기존 코드가 있는 저장소·컴파일 언어·긴 빌드·사람 CEO는 한 번도 안 밟았다. 판끼리 비교(회귀)는 이 두 원문으로 계속하고, 범용성은 수리에 쓰지 않은 새 원문(홀드아웃)으로만 잴 수 있다 — CEO 결정 대기.
