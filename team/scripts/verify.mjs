@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  acceptanceFiles, adversaryFiles, appendLedger, ctx, currentBranch, fail, git, headSha, indexTree, isMain, matchAny,
+  acceptanceFiles, adversaryFiles, appendLedger, ctx, currentBranch, fail, fileCmd, git, headSha, indexTree, isMain, matchAny,
   linkDeps, listUnits, mergeBase, out, readLedger, shell, short, slugRoot, stamp, workTree,
 } from './lib.mjs';
 
@@ -47,14 +47,13 @@ export function fullRun({ main, team, root, cmd, testFile }) {
   const r = shell(cmd, { cwd: root });
   let log = `$ ${cmd}\n${r.stdout}\n${r.stderr}`;
   const files = testFile ? unitTestFiles(main, team, root) : [];
-  const reds = [];
-  for (const file of files) {
-    const x = shell(testFile.replaceAll('{file}', file), { cwd: root });
-    log += `\n$ ${testFile.replaceAll('{file}', file)} → exit ${x.status}\n${x.stdout}\n${x.stderr}`;
-    if (x.status) reds.push(file);
-  }
-  const note = reds.length ? `인수·공격 파일 red ${reds.length}/${files.length}: ${reds.join(' ')}` : '';
-  return { status: r.status || (reds.length ? 1 : 0), log, tail: [(r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n'), note].filter(Boolean).join('\n') };
+  const run1 = (fl) => { const x = shell(fileCmd(testFile, fl), { cwd: root }); log += `\n$ ${fileCmd(testFile, fl)} → exit ${x.status}\n${x.stdout}\n${x.stderr}`; return x.status; };
+  // 사고 48(필드 벤치 넷 측정): 파일 하나씩 직렬로는 웹 full이 20초 → 71초(브라우저 테스트 10개) — {files} 러너는 한 번에, red일 때만 파일별로 다시(어느 파일인지)
+  const batch = files.length > 1 && testFile.includes('{files}') ? run1(files) : null;
+  const reds = batch === 0 ? [] : files.filter((f) => run1([f]));
+  const together = batch > 0 && !reds.length; // 함께 돌릴 때만 red — 파일끼리 간섭도 「전부」의 red다
+  const note = reds.length ? `인수·공격 파일 red ${reds.length}/${files.length}: ${reds.join(' ')}` : together ? `인수·공격 파일 ${files.length}개를 함께 돌리면 red(하나씩은 green) — 로그` : '';
+  return { status: r.status || (reds.length || together ? 1 : 0), log, tail: [(r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n'), note].filter(Boolean).join('\n') };
 }
 
 function runMode(mode, c) {
@@ -75,7 +74,7 @@ function runMode(mode, c) {
 export function runFiles(c, files) {
   const tpl = c.team.commands.test_file;
   if (!tpl) fail('FAIL commands.test_file 비어 있음 — .garagiste/team.json ({file} 자리표시자)');
-  return files.map((file) => ({ file, exit: shell(tpl.replaceAll('{file}', file), { cwd: c.root }).status }));
+  return files.map((file) => ({ file, exit: shell(fileCmd(tpl, [file]), { cwd: c.root }).status }));
 }
 function red(slug, c) {
   const files = acceptanceFiles(c.root, c.team, slug);

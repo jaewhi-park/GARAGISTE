@@ -17,7 +17,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
-import { acceptanceFiles, adversaryFiles, dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
+import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -337,6 +337,12 @@ test('redproof: 사고 36(필드 시험 2) — base에서 green(앞 unit이 이�
   const m = baseGreenAdvice('persist', ['tests/acceptance/persist.test.js']);
   assert.match(m, /^FAIL redproof persist: base에서 green — tests\/acceptance\/persist\.test\.js — 기존 코드가 이 주장을 이미 만족한다/);
   assert.match(m, /CEO 결정[\s\S]*work\.mjs drop persist "이미 충족 — <근거>" --forget[\s\S]*brief\.mjs spec persist 재spawn/);
+});
+test('lib: 사고 48 — test_file은 {file}(파일 하나) 또는 {files}(여러 파일을 한 번에)', () => {
+  assert.ok(hasFileSlot('node --test {file}') && hasFileSlot('node --test {files}') && !hasFileSlot('node --test') && !hasFileSlot(undefined));
+  assert.equal(fileCmd('pytest {file}', ['a.py']), 'pytest a.py');
+  assert.equal(fileCmd('node --test {files}', ['a.js', 'b.js']), 'node --test a.js b.js');
+  assert.equal(fileCmd('node --test {files}', ['a.js']), 'node --test a.js', '파일 하나(redproof·attack)도 {files}로');
 });
 test('redproof: 사고 47(필드 벤치 넷) — 일부만 base green(먼저 출하된 unit이 한 주장을 채웠다)이면 drop을 주지 않고 충족된 파일만 빼는 길을 준다', () => {
   const m = baseGreenAdvice('jsonl-store', ['tests/acceptance/jsonl-store_handedit.py'], ['tests/acceptance/jsonl-store_cp949.py']);
