@@ -15,7 +15,7 @@
 
 ## 홀드아웃 — 범용성은 수리에 쓰지 않은 원문으로만 잰다
 필드 1·2는 사고 27~47을 낳은 원문이라 그 점수는 **회귀**(수리가 유지되는가)다 — 같은 원문으로 다시 재면 FAIL 0이 나와도 처음 보는 프로젝트에 대한 증거가 아니다(2026-10-01 측정 486fd74의 「과적합」). 그래서:
-- **홀드아웃 원문** 하나를 따로 둔다 — 지금: `tests/field/briefs/holdout-dupfind.md`(Go CLI · 표준 라이브러리 · 파일 시스템 걷기, 2026-10-01 작성 — 필드 1·2와 생태계·모양이 다르다: 컴파일 언어, 테스트가 파일이 아니라 패키지 단위). 원문은 첫 측정 전에 고정하고 결과를 본 뒤 고치지 않는다.
+- **홀드아웃 원문** 하나를 따로 둔다 — 지금: **없음(CEO 결정 대기)**. 첫 홀드아웃 `tests/field/briefs/holdout-dupfind.md`(Go CLI)는 2026-10-01 첫 측정(intake 정지) 뒤 사고 49~56 수리로 **소진 → 필드 3(회귀)**. 다음 후보: 기존 코드가 있는 저장소에 기능 하나(brownfield) — 필드 1~3이 모두 빈 폴더에서 시작한다. 원문은 첫 측정 전에 고정하고 결과를 본 뒤 고치지 않는다.
 - **측정 모드로만** 돈다(정비 모드 금지 — 멈춘 자리에서 고치며 이어 가면 그 원문은 훈련 데이터가 된다). 첫 말·둘째 말·대리 규칙은 필드 1·2와 같다.
 - 홀드아웃이 낸 결함은 사고로 수리한다 — 그 수리가 들어간 순간 그 원문은 **소진**: 필드 3(회귀)으로 옮기고, 다음 측정 전에 새 홀드아웃(다른 생태계·모양 — 예: 기존 코드가 있는 저장소에 기능 하나)을 쓴다. 홀드아웃의 첫 측정 줄만이 범용성의 점수다.
 
@@ -31,7 +31,7 @@
 B=/tmp/bench-$(date +%m%d-%H%M); mkdir -p $B          # 컨테이너 밖에 남지 않는다 — 결과는 이 문서에 적고 푸시
 tests/field/setup.sh tests/field/briefs/ledger-cli.md $B/field1
 tests/field/setup.sh tests/field/briefs/web-memo.md  $B/field2
-tests/field/setup.sh tests/field/briefs/holdout-dupfind.md $B/holdout   # 홀드아웃 — 측정 모드로만
+tests/field/setup.sh tests/field/briefs/holdout-dupfind.md $B/field3   # 필드 3(소진된 홀드아웃 — Go, 회귀)
 tests/field/turn.sh $B/field1 1 "<첫 말>"             # 출력의 session id를 적어 둔다
 tests/field/turn.sh $B/field1 2 "<둘째 말>" <sid>      # 이후 매 턴 --resume
 tests/field/watch.sh $B/field1:2 $B/field2:2          # Monitor로 걸면 ship·턴 끝마다 알림
@@ -59,6 +59,7 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-01 | 측정 | 486fd74 | 1 파이썬 CLI | SCOPE DONE(M1 + ledger-add-fix — export는 intake가 M2로) | 6/0 | 0 | 5/1 | 1 (없는 날짜 2026-02-30 → ledger-add-fix 출하·ok) | 28 | 734K | 40.4 | $7.97 |
 | 2026-10-01 | 측정 | 486fd74 | 2 Node 웹 | SCOPE DONE | 4/2 | 0 | 4/0 | 0 | 15 | 395K | 29.2 | $4.50 |
 | 2026-10-01 | 측정(홀드아웃 첫 측정) | 0ae7c70 | H Go CLI(dupfind) | 정지 — intake(unit 0/9, boot 전) | 0/0 | 1 (BACKLOG 줄을 고칠 길 없음 · drop이 예외로 죽는다) | 0/0 | 0 | 1 | — | — | $0.44 |
+| 2026-10-01 | 정비(홀드아웃 정지에서 이어 — 소진, 이제 필드 3) | 0ae7c70 → d5cf39d | 3 Go CLI(dupfind) | SCOPE DONE | 7/2 (+깨진 줄 정정 drop 2) | 4 (49~52 · 53 · 54·55 · 56) | 7/0 | 0 | 29 | 830K | 95.2 | $9.76 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -131,3 +132,13 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
   H4. **`spawned` 사용법의 `<팩>`이 이름인지 경로인지 모호** — conductor가 팩 파일 경로를 넣고 같은 사용법을 두 번 받고 포기(486fd74 필드 1도 한 번 — 둘째 근거). 기록만 막혀 진행엔 영향 없음.
 - 원장 밖 CEO 접점: BRIEF 치움 1 · intake 질문 4(그중 둘은 H1이 만든 것).
 - 홀드아웃의 첫 측정 줄이 이 원문의 점수다 — H1·H2를 수리하면 이 원문은 필드 3(회귀 · 정비 모드 허용)이 되고, 다음 범용성 측정엔 새 홀드아웃(다른 생태계·모양 — 예: 기존 코드가 있는 저장소)이 필요하다.
+
+### 2026-10-01 정비 — 필드 3(소진된 홀드아웃, Go) intake 정지에서 SCOPE DONE까지
+- 사고 49~52 반영(5b8141e) → conductor는 깨진 두 줄을 새 FAIL의 안내대로 `drop … --forget`(unit 없는 줄) 뒤 새 slug(min-size-flag · json-flag)로 다시 넣었다 → boot가 `test_file="go test {files}"`를 골랐다(사고 48의 선택지가 처음 보는 생태계에서 쓰였다).
+- 이어 나온 셋은 모두 **「증명은 파일 하나씩」이 Go의 패키지 모델과 만난 자리** — 필드 1·2(파이썬·Node — 파일이 곧 모듈)에선 안 보이던 가정이다:
+  - 사고 53: `go test {files}`는 한 디렉터리의 파일만 받는다 → 「함께 red」 거짓 FAIL, conductor는 test_file을 패키지 경로로 바꾸자고 물었다(아니오 — {files}는 디렉터리마다, 판정은 파일 단위).
+  - 사고 54·55: go test의 결과 캐시가 스모크가 부른 `go run ../../src`의 입력 변화를 몰라 낡은 ok — find-dups가 main quick이 빨간 채 출하됐고, 다음 build는 build.md의 「테스트를 고쳐 초록을 만드는 길은 없다」를 스모크까지로 읽어 멈췄다(GOFLAGS -count=1 · 산문=훅).
+  - 사고 56: 인수 파일이 같은 패키지의 다른 테스트 파일 도우미를 써 혼자 컴파일되지 않았다(spec·attack 팩의 test_file 줄 「혼자 돈다」).
+- 그 뒤 4 unit은 FAIL 없이 — 이미 충족 2(no-symlink · read-only — 대리가 실제로 확인하고 「예」) · attack 선발견(큰 단위 오버플로·비 UTF-8 이름·stdout 쓰기 실패). try 7장 전부 ok(unreadable-warn은 root가 아닌 사용자로).
+- 원장 밖 CEO 접점: BRIEF 치움 1(측정 구간) · 정비 답 3(test_file 그대로 「아니오」 · smoke-fix unit 「아니오」 · 인수 파일은 혼자 돈다 「예」 — 마지막은 두 번째 spec 반려로 CEO에게 간 것. 첫 반려는 사고 55가 만든 것이라 「팀 안에서 안 풀린 둘」이 아니었다).
+- **산문 예산**: 이번 회의 HAZARDS 줄(45~56)을 압축하고도 설치본 39KB(한도 40 — 남은 약 1.4KB). 다음 사고 한두 줄이면 ship의 budget 조건이 막힌다 — 코드(테스트)로 넘어간 오래된 HAZARDS 줄을 걷어 낼지·한도를 바꿀지는 CEO 결정.
