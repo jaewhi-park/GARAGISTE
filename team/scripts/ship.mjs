@@ -6,6 +6,7 @@ import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
 import { budgetStatus, openQuestions, render } from './state.mjs';
+import { fullRun } from './verify.mjs';
 
 export const SPIKE_ROWS = ['wire', 'host', 'license', 'default', 'os'];
 // 사고 14·16(2차 실기): 괄호 부연 허용 + 내용은 「같은 줄」 또는 「더 깊은 들여쓰기의 다음 줄(하위 불릿)」 —
@@ -217,11 +218,12 @@ function main() {
   const newTree = headTree(wt);
   if (newTree !== tree) {
     // 통합 tree는 자기 자신의 명령으로 검증한다 — boot의 commands는 머지 전 main엔 없다(사고 7에서 노출: main의 빈 full로 crash)
-    const fullCmd = readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.full || c.team.commands.full;
+    const wtCmds = readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands || {};
+    const fullCmd = wtCmds.full || c.team.commands.full;
     if (!fullCmd) fail('FAIL ship: 통합 tree 재검증 불가 — commands.full 비어 있음');
-    const r = shell(fullCmd, { cwd: wt });
+    const r = fullRun({ main: c.main, team: c.team, root: wt, cmd: fullCmd, testFile: wtCmds.test_file || c.team.commands.test_file }); // 사고 44: 통합 tree의 full도 「전부」
     appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true });
-    if (r.status) fail('FAIL ship: 통합 tree에서 full FAIL — main이 움직였다, build 재spawn');
+    if (r.status) fail(`FAIL ship: 통합 tree에서 full FAIL — main이 움직였다, build 재spawn\n${r.tail}`);
     // 사고 22(3차 실기): full만 재기록하면 롤백 뒤 재-ship이 「redproof·attack이 이전 tree」 핑퐁에 빠지고,
     // 새 base 위 공격 회귀는 머지 전 검사를 빠져나간다 — 세 증거 전부를 새 tree에 다시 묶는다(순수 기계 일).
     if (unit.kind !== 'scaffold') {
