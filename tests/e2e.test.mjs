@@ -334,7 +334,31 @@ test('사고 44(필드 벤치 셋): full은 「전부」다 — 프로젝트 러
   assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/, '전부 green이면 PASS — unit 파일이 아닌 도우미는 돌리지 않는다');
 });
 
-test('사고 38·39(필드 벤치): main의 setup·quick이 남긴 산출물은 반쪽 출하 대신 되돌림·보존·unit 안내, unit이 무시 줄(.gitignore)을 더하면 spike FAIL이 다음 명령을 준다', { timeout: 180000 }, (t) => {
+test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원문으로 받고, -fix는 지금 범위의 맨 앞에 든다', { timeout: 60000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-tried-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'README.md', '# p\n');
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  script('work', ['add', 'ledger-add', '지출을 기록한다', '--milestone', 'M1'], repo);
+  script('work', ['add', 'ledger-month', '달 합계를 본다', '--milestone', 'M1'], repo);
+  assert.match(script('work', ['scope', '--milestone', 'M1'], repo).out, /순서: ledger-add → ledger-month/);
+  assert.match(script('work', ['seed'], repo).out, /^UNIT ledger-add spec/);
+  const unitPath = path.join(repo, '.garagiste/units/ledger-add.json');
+  fs.writeFileSync(unitPath, JSON.stringify({ ...JSON.parse(fs.readFileSync(unitPath, 'utf8')), state: 'shipped' }, null, 2)); // 출하는 ship의 일 — 여기선 상태만
+  const backlog = () => fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8');
+  // 사고 45: conductor가 note 없이 남기자 -fix의 원문이 「써봤는데 실패」뿐이라 spec이 재현을 CEO에게 되물었다
+  assert.match(script('work', ['tried', 'ledger-add', 'fail'], repo).out, /^FAIL tried ledger-add fail에는 CEO의 말이 있어야 한다[\s\S]*work\.mjs tried ledger-add fail "<CEO 말 그대로>"/);
+  assert.ok(!backlog().includes('ledger-add-fix'), '말 없는 fail은 아무것도 남기지 않는다');
+  assert.match(script('work', ['tried', 'ledger-add', 'fail', '없는 날짜 2026-02-30이 오류 없이 기록된다'], repo).out, /^PASS tried ledger-add fail · ledger-add-fix/);
+  assert.match(backlog(), /- \[ \] ledger-add-fix · M1 · needs: - · "없는 날짜 2026-02-30이 오류 없이 기록된다"/, 'CEO의 말이 -fix의 원문(재현)이다');
+  // 사고 46: scope는 slug 목록이라 -fix가 범위 밖에 남아 SCOPE DONE 뒤 CEO가 다시 범위를 줘야 했다(앞 회차엔 conductor가 work.mjs new로 우회 — 버그 unit 중복)
+  assert.match(script('work', ['seed'], repo).out, /^UNIT ledger-add-fix spec/, '고칠 것이 새 기능보다 먼저 열린다');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"scope_fix","slug":"ledger-add-fix","from":"ledger-add"/);
+});
+
+test('사고 38·39(필드 벤치):main의 setup·quick이 남긴 산출물은 반쪽 출하 대신 되돌림·보존·unit 안내, unit이 무시 줄(.gitignore)을 더하면 spike FAIL이 다음 명령을 준다', { timeout: 180000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-stray-'));
   git(['init', '-q', '-b', 'main'], repo);
