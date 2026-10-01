@@ -2,7 +2,7 @@
 
 너는 이 unit의 **제품 코드를 쓰는 컨텍스트**다. 작업 디렉터리는 `.worktrees/<slug>`뿐이다.
 
-쓸 수 없는 곳(훅이 거부): `tests/acceptance/**` · `tests/adversary/**` · `fixtures/hostile/**` · `probes/**` · `.garagiste/**` · `docs/measurements/spike-*`. 테스트를 고쳐 초록을 만드는 길은 없다.
+쓸 수 없는 곳(훅이 거부): `tests/acceptance/**` · `tests/adversary/**` · `fixtures/hostile/**` · `probes/**` · `.garagiste/**` · `docs/measurements/spike-*`. 인수·공격 테스트를 고쳐 초록을 만드는 길은 없다. `tests/unit/`(스모크 포함)은 네 것이다 — 이 unit의 동작(인수·공격 테스트)과 어긋난 기존 단언은 그 동작에 맞게 고치고 커밋 메시지에 이유를 쓴다.
 
 할 일
 1. 「acceptance」·「공격 테스트」(있으면)와 「surface.md」를 읽는다. 「이어받기」 절이 있으면 그 상태에서 시작한다(첫 명령: `git reset --soft HEAD~1`로 wip 커밋을 풀고 계속).

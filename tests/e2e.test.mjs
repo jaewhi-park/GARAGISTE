@@ -378,6 +378,26 @@ test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원�
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"scope_fix","slug":"ledger-add-fix","from":"ledger-add"/);
 });
 
+test('사고 54(홀드아웃 Go): verify quick은 go test의 낡은 캐시 ok를 증거로 받지 않는다 — 테스트가 부른 프로세스가 읽는 파일은 캐시가 모른다', { timeout: 180000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  if (spawnSync('go', ['version'], { encoding: 'utf8' }).status !== 0) return t.skip('go 없음 — Go 생태계 재현');
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-gocache-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'go.mod', 'module x\n\ngo 1.21\n');
+  // 필드 3의 꼴: 스모크가 `go run ../../src`를 부른다 — 진입점(src)이 바뀌어도 테스트 바이너리는 같아 캐시가 ok를 돌려줬다
+  write(repo, 'tests/unit/run_test.go', 'package unit\nimport ("os/exec"; "testing")\nfunc TestEntrypoint(t *testing.T) { if err := exec.Command("sh", "-c", "exit $(cat ../../state)").Run(); err != nil { t.Fatal(err) } }\n');
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'go test ./tests/unit/...', full: 'go test ./tests/...', test_file: 'go test {files}', run: 'true' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  write(repo, 'state', '0');
+  assert.match(script('verify', ['quick'], repo).out, /^PASS verify:quick/);
+  write(repo, 'state', '1'); // 진입점의 동작이 바뀌었다(find-dups: 인자 없으면 exit 2)
+  assert.match(script('verify', ['quick'], repo).out, /^FAIL verify:quick/, 'go test가 「ok (cached)」를 내고 PASS — find-dups가 main quick이 빨간 채 출하됐다');
+});
+
 test('사고 49~52(홀드아웃 — Go CLI): --로 시작하는 원문 · BACKLOG 줄 정정 · --help 탐침 · spawned의 팩 경로 — intake가 막다른 길에 서지 않는다', { timeout: 60000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-holdout-'));
