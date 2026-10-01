@@ -13,6 +13,12 @@
 - 둘째 말(답 + 서명 + 루프 규칙): `Q1 예. Q2 예 …` 뒤에 그대로 —
   > 남은 질문이 있으면 이어서 물어라. 다 끝나면 범위는 M1 전부 — 가. 이제 Flow 4 루프를 돌려라(unit은 한 번에 하나). 미검수 3이 되면 멈추고 try 카드를 나에게 내라. FAIL 줄이 안내대로 해도 풀리지 않거나 안내가 실행 불가면 그 줄 전문을 그대로 나에게 넘기고 멈춰라 — 우회·스크립트 편집 금지. 매 spawn 뒤 work.mjs spawned를 남겨라.
 
+## 홀드아웃 — 범용성은 수리에 쓰지 않은 원문으로만 잰다
+필드 1·2는 사고 27~47을 낳은 원문이라 그 점수는 **회귀**(수리가 유지되는가)다 — 같은 원문으로 다시 재면 FAIL 0이 나와도 처음 보는 프로젝트에 대한 증거가 아니다(2026-10-01 측정 486fd74의 「과적합」). 그래서:
+- **홀드아웃 원문** 하나를 따로 둔다 — 지금: `tests/field/briefs/holdout-dupfind.md`(Go CLI · 표준 라이브러리 · 파일 시스템 걷기, 2026-10-01 작성 — 필드 1·2와 생태계·모양이 다르다: 컴파일 언어, 테스트가 파일이 아니라 패키지 단위). 원문은 첫 측정 전에 고정하고 결과를 본 뒤 고치지 않는다.
+- **측정 모드로만** 돈다(정비 모드 금지 — 멈춘 자리에서 고치며 이어 가면 그 원문은 훈련 데이터가 된다). 첫 말·둘째 말·대리 규칙은 필드 1·2와 같다.
+- 홀드아웃이 낸 결함은 사고로 수리한다 — 그 수리가 들어간 순간 그 원문은 **소진**: 필드 3(회귀)으로 옮기고, 다음 측정 전에 새 홀드아웃(다른 생태계·모양 — 예: 기존 코드가 있는 저장소에 기능 하나)을 쓴다. 홀드아웃의 첫 측정 줄만이 범용성의 점수다.
+
 ## CEO 대리 규칙 — 대리의 재량이 점수를 흔들지 않게
 1. intake 질문: 원문과 어긋나지 않으면 「예」. 이 기계의 사실이 필요하면 사실을 붙여 「예」(브라우저: `Chromium이 /opt/pw-browsers에 있다(PLAYWRIGHT_BROWSERS_PATH 설정됨, 다운로드하지 않는다)`).
 2. try 카드: 카드대로 **메인 루트에서** 실제로 친다(CLI는 임시 폴더, 웹은 실제 Chromium — 저장소 밖에 `npm i playwright-core@1.56.1`로 운전) + 원문의 경계 입력 2~3개. 답은 `<slug> ok — 「한 줄」` 또는 `fail — 「한 줄」`. try 산출물은 미리 치우지 않는다(실제 CEO처럼). ship이 「CEO가 치운다」로 막으면 그때 치우고 「치웠다」고 말한다 — 프레임워크 FAIL이 아니라 CEO 접점 1로 센다(try 사본 장치가 들어오면 0이 되어야 한다).
@@ -25,6 +31,7 @@
 B=/tmp/bench-$(date +%m%d-%H%M); mkdir -p $B          # 컨테이너 밖에 남지 않는다 — 결과는 이 문서에 적고 푸시
 tests/field/setup.sh tests/field/briefs/ledger-cli.md $B/field1
 tests/field/setup.sh tests/field/briefs/web-memo.md  $B/field2
+tests/field/setup.sh tests/field/briefs/holdout-dupfind.md $B/holdout   # 홀드아웃 — 측정 모드로만
 tests/field/turn.sh $B/field1 1 "<첫 말>"             # 출력의 session id를 적어 둔다
 tests/field/turn.sh $B/field1 2 "<둘째 말>" <sid>      # 이후 매 턴 --resume
 tests/field/watch.sh $B/field1:2 $B/field2:2          # Monitor로 걸면 ship·턴 끝마다 알림
