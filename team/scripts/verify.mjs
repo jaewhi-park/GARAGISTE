@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   acceptanceFiles, adversaryFiles, appendLedger, ctx, currentBranch, fail, git, headSha, indexTree, isMain, matchAny,
-  linkDeps, mergeBase, out, readLedger, shell, short, slugRoot, stamp, workTree,
+  linkDeps, listUnits, mergeBase, out, readLedger, shell, short, slugRoot, stamp, workTree,
 } from './lib.mjs';
 
 export const LOGIC_EXCLUDE = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', '**/*.config.*', '**/tsconfig*.json', 'docs/**', '.garagiste/**', '.claude/**', '.opencode/**', 'opencode.json', 'fixtures/**', 'probes/**',
@@ -36,18 +36,39 @@ export function gateDecision({ index, work, ledger, staged, branchFiles = [], nu
   return { ok: reasons.length === 0, reasons, logic, wip: false };
 }
 
+// 사고 44(필드 벤치 셋): full은 「전부」다 — 파이썬 필드의 full(unittest discover)은 test*.py만 집어 하이픈 slug의 인수·공격 파일 17개를 한 번도 돌리지 않았다
+// (출하 전 증거는 파일 단위라 게이트는 속지 않았지만, 출하 뒤 다음 unit들의 full이 앞 기능의 회귀를 지키지 않았다). 러너가 무엇을 집든 unit의 인수·공격 파일은 test_file로 돌린다.
+export function unitTestFiles(main, team, root) {
+  const files = new Set();
+  for (const u of listUnits(main, team)) for (const f of [...acceptanceFiles(root, team, u.slug), ...adversaryFiles(root, team, u.slug)]) files.add(f);
+  return [...files].sort();
+}
+export function fullRun({ main, team, root, cmd, testFile }) {
+  const r = shell(cmd, { cwd: root });
+  let log = `$ ${cmd}\n${r.stdout}\n${r.stderr}`;
+  const files = testFile ? unitTestFiles(main, team, root) : [];
+  const reds = [];
+  for (const file of files) {
+    const x = shell(testFile.replaceAll('{file}', file), { cwd: root });
+    log += `\n$ ${testFile.replaceAll('{file}', file)} → exit ${x.status}\n${x.stdout}\n${x.stderr}`;
+    if (x.status) reds.push(file);
+  }
+  const note = reds.length ? `인수·공격 파일 red ${reds.length}/${files.length}: ${reds.join(' ')}` : '';
+  return { status: r.status || (reds.length ? 1 : 0), log, tail: [(r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n'), note].filter(Boolean).join('\n') };
+}
+
 function runMode(mode, c) {
   const cmd = c.team.commands[mode];
   if (!cmd) fail(`FAIL verify:${mode} commands.${mode} 비어 있음 — .garagiste/team.json`);
   const logDir = path.join(c.main, c.team.paths.logs); fs.mkdirSync(logDir, { recursive: true });
   const log = path.join(logDir, `verify-${mode}-${stamp()}.log`);
   if (c.root !== c.main) linkDeps(c.main, c.root); // 사고 34: seed 뒤 main에 깔린 의존성(설치 명령 변경)도 열린 worktree가 잇는다 — 없는 것만 링크
-  const r = shell(cmd, { cwd: c.root });
-  fs.writeFileSync(log, `$ ${cmd}\n${r.stdout}\n${r.stderr}`);
+  const r = mode === 'full' ? fullRun({ main: c.main, team: c.team, root: c.root, cmd, testFile: c.team.commands.test_file }) : shell(cmd, { cwd: c.root });
+  fs.writeFileSync(log, r.log ?? `$ ${cmd}\n${r.stdout}\n${r.stderr}`);
   const tree = workTree(c.root);
   appendLedger(c.main, c.team, { kind: 'verify', mode, tree, head: headSha(c.root), exit: r.status, log: path.relative(c.main, log).replace(/\\/g, '/'), platform: process.platform, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' }); // 원장 경로는 / — 팩의 「직전 verify」 매칭(where===unit.worktree)이 win32에서 어긋난다(사고 19 잔여)
   if (r.status === 0) return out(`PASS verify:${mode} ${short(tree)}`);
-  const tail = (r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n');
+  const tail = r.tail ?? (r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n');
   out(`FAIL verify:${mode} ${short(tree)} ${path.relative(c.main, log).replace(/\\/g, '/')}\n${tail}`);
   process.exit(1);
 }

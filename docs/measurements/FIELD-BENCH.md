@@ -97,5 +97,5 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 - 증거 낡음 FAIL은 셋(파이썬 1 · 웹 2 — spike 커밋 뒤) — 전부 안내대로 재기록해 한 번에 풀렸다(정지 아님).
 - 원장 밖 CEO 접점: 파이썬 — 보안 지적 「고쳐라」 1(CSV 수식 실행 — attack이 짚었는데 build가 고치지 않았고 conductor가 「확인하지 않은 위험」으로 올렸다 → export-csv-fix 출하·ok, 1회차와 같은 처리). 웹 — 0(팩 상한 FAIL·try 잔여물 없음 — `data/`·`node_modules`는 팀이 무시 목록에).
 - attack 선발견이 날짜 경계를 이번엔 출하 전에 잡았다(앞 두 회차는 CEO try가 후발견). 웹은 DNS 리바인딩·CSRF·깨진/BOM 파일 덮어쓰기 등.
-- **관찰(결함 후보 4의 둘째 근거)**: 파이썬 필드의 full(`tests/harness/run_all.py` — unittest discover)이 1건(unit 스모크)만 돈다 — 하이픈 이름의 인수·공격 파일 17개는 한 번도 안 돈다. 출하 전 증거(redproof·attack·통합 재검증)는 파일 단위라 게이트는 속지 않지만, 출하 뒤 다음 unit들의 full은 앞 기능의 회귀를 지키지 않는다. conductor가 spec의 보고로 두 번 「확인하지 않은 위험」으로 올렸다. 웹(node --test glob)은 해당 없음.
+- **관찰(결함 후보 4의 둘째 근거 → 사고 44로 정비 수리)**: 파이썬 필드의 full(`tests/harness/run_all.py` — unittest discover)이 1건(unit 스모크)만 돈다 — 하이픈 이름의 인수·공격 파일 17개는 한 번도 안 돈다. 출하 전 증거(redproof·attack·통합 재검증)는 파일 단위라 게이트는 속지 않지만, 출하 뒤 다음 unit들의 full은 앞 기능의 회귀를 지키지 않는다. conductor가 spec의 보고로 두 번 「확인하지 않은 위험」으로 올렸다. 웹(node --test glob)은 해당 없음.
 

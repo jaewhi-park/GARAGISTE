@@ -305,6 +305,35 @@ test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 
   assert.doesNotMatch(log, /^wip:/m, 'main 역사에 wip가 없다');
 });
 
+test('사고 44(필드 벤치 셋): full은 「전부」다 — 프로젝트 러너가 못 집는 인수·공격 파일(파이썬 discover는 test*.py만, 하이픈 slug 파일은 0건)도 test_file로 돌린다', { timeout: 120000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-full-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  // 필드 벤치 3 파이썬의 꼴: full이 tests/unit만 집는다(unittest discover — 하이픈 파일을 못 읽는다)
+  team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/unit/**/*.test.mjs"', test_file: 'node --test {file}', run: 'true' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  git(['add', '-A'], repo); script('verify', ['quick'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  script('work', ['new', 'add-entry', '지출을 기록한다'], repo);
+  const wt = path.join(repo, '.worktrees', 'add-entry');
+  write(wt, 'tests/acceptance/add-entry.test.mjs', "import test from 'node:test'; import fs from 'node:fs'; test('기록', () => { if (!fs.existsSync('src/add.mjs')) throw new Error('red'); });\n");
+  write(wt, 'tests/acceptance/helpers.mjs', "throw new Error('unit의 파일이 아닌 도우미는 돌리지 않는다');\n");
+  const f1 = script('verify', ['full'], wt);
+  assert.match(f1.out, /^FAIL verify:full [\s\S]*인수·공격 파일 red 1\/1: tests\/acceptance\/add-entry\.test\.mjs/, '러너가 못 집은 red 인수 파일이 full을 FAIL로 만든다: ' + f1.out);
+  write(wt, 'src/add.mjs', 'export const add = 1;\n');
+  write(wt, 'tests/adversary/add-entry-1.test.mjs', "import test from 'node:test'; test('공격', () => { throw new Error('red'); });\n");
+  assert.match(script('verify', ['full'], wt).out, /^FAIL verify:full [\s\S]*red 1\/2: tests\/adversary\/add-entry-1\.test\.mjs/, '공격 파일도');
+  write(wt, 'tests/adversary/add-entry-1.test.mjs', "import test from 'node:test'; test('공격', () => {});\n");
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/, '전부 green이면 PASS — unit 파일이 아닌 도우미는 돌리지 않는다');
+});
+
 test('사고 38·39(필드 벤치): main의 setup·quick이 남긴 산출물은 반쪽 출하 대신 되돌림·보존·unit 안내, unit이 무시 줄(.gitignore)을 더하면 spike FAIL이 다음 명령을 준다', { timeout: 180000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-stray-'));
