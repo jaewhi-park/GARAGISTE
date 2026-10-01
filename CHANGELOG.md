@@ -80,6 +80,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-10-01 맨 끝의 `--forget`이 꺼졌다 (필드 시험 2의 사고 37)
+- 사고 36의 안내대로 conductor가 `work.mjs drop persist "이미 충족 — …" --forget`을 쳤는데 출력은 「BACKLOG 줄은 열려 있어 seed가 새로 연다」, 원장은 `forget:false` — 플래그 파서가 모든 `--x`에 다음 인자를 값으로 먹였고 맨 끝이라 undefined였다. `scope --milestone M1`이 persist를 다시 잡았고 conductor는 browser-check의 needs를 고쳐 비켜 갔다. `--forget`은 출시 이래 시험된 적이 없었다. 수리: 파서를 `parseArgs`로 꺼내 불리언 플래그(`forget`)는 값을 먹지 않게(앞에 와도 사유를 삼키지 않는다). 검사: parseArgs 단위 테스트.
+
 ### Fixed — 2026-10-01 이미 충족된 unit의 redproof 막다른 길 (필드 시험 2의 사고 36)
 - 웹 필드의 persist(「서버를 다시 켜도 남는다」): save-memo가 이미 `data/memos.json`에 쓰고 있어 spec이 쓴 재시작 주장 3개가 base에서 green — spec은 원문에 없는 요구로 red를 지어내지 않았고 「CEO 몫: drop 또는 원문 구체화」를 보고했지만, redproof FAIL(`base에서 green인 테스트가 있다 — 테스트가 아니다`)엔 다음 할 일이 없었고 conductor는 그 질문을 CEO에게 내지 못한 채 「위 persist 질문」만 말했다. intake가 기능을 unit으로 쪼개면 앞 unit이 뒤 unit의 일을 겸하는 것은 흔하다. 수리(안내만, 장치 없음): 두 base-green FAIL이 green 파일과 CEO의 두 길을 명령으로 준다 — 이미 충족이면 `work.mjs drop <slug> "이미 충족 — <근거>" --forget`(BACKLOG 줄이 닫혀 이 unit을 기다리는 unit의 선행이 풀린다, 주장 파일은 dropped 브랜치에), 아니면 CEO의 말을 brief로 받고 spec 재spawn. 검사: baseGreenAdvice 단위 테스트.
 

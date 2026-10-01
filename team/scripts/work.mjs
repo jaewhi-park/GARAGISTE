@@ -402,6 +402,15 @@ function spawned(c, slug, pack, flags) {
 }
 // 필드 시험(두 프로젝트 공통): intake 직후 list가 「unit 없음」이었다 — Flow 2는 intake 뒤 list를 보라 하는데 seed 전 BACKLOG 줄이 안 보였다.
 // seed된 unit 다음에, 열린 unit이 없는 BACKLOG 열린 줄을 backlog로 덧붙인다(dropped의 열린 줄은 다시 열릴 backlog다).
+// 사고 37(필드 시험 2): 값 없는 플래그가 맨 끝이면 「다음 인자」가 없어 undefined가 됐다 — `drop persist "<사유>" --forget`의 forget이 꺼져 BACKLOG 줄이 열린 채 남았다
+const BOOL_FLAGS = new Set(['forget']);
+export function parseArgs(raw, cmd) {
+  const flags = {}; const pos = [];
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i].startsWith('--') && !['brief', 'scope', 'models', 'commands', 'rules'].includes(cmd)) { const k = raw[i].slice(2); flags[k] = BOOL_FLAGS.has(k) ? true : raw[++i]; } else pos.push(raw[i]);
+  }
+  return { flags, pos };
+}
 export function listLines({ units, items }) {
   const live = new Set(units.filter((u) => u.state !== 'dropped').map((u) => u.slug));
   const lines = units.map((u) => `${u.slug.padEnd(24)} ${u.state.padEnd(8)} ${(u.milestone || 'M?').padEnd(4)} tried=${u.tried ? u.tried.result : '-'}${u.boundary?.hit ? ' HIT' : ''}`);
@@ -414,8 +423,7 @@ function list(c) {
 function main() {
   const [cmd, ...raw] = process.argv.slice(2);
   const c = ctx();
-  const flags = {}; const pos = [];
-  for (let i = 0; i < raw.length; i++) { if (raw[i].startsWith('--') && !['brief', 'scope', 'models', 'commands', 'rules'].includes(cmd)) flags[raw[i].slice(2)] = raw[++i]; else pos.push(raw[i]); }
+  const { flags, pos } = parseArgs(raw, cmd);
   if (cmd === 'brief') return brief(c, raw);
   if (cmd === 'add') return add(c, pos[0], pos[1], flags);
   if (cmd === 'scope') return scope(c, raw);
