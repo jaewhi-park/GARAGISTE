@@ -348,7 +348,8 @@ function tried(c, slug, result, note = '') {
   u.tried = { result, note, at: new Date().toISOString() }; saveUnit(c.main, c.team, u);
   touchCeo(c.main);
   appendLedger(c.main, c.team, { kind: 'tried', slug, result, note });
-  if (result !== 'fail') return out(`PASS tried ${slug} ${result}`);
+  const gone = removeTry(c, slug) ? ' · try 사본을 지웠다' : '';
+  if (result !== 'fail') return out(`PASS tried ${slug} ${result}${gone}`);
   const fix = `${slug}-fix`;
   appendBacklog(c, backlogLine({ slug: fix, milestone: u.milestone, origin: note, accept: '-' }));
   // 사고 46: scope는 slug 목록이라 -fix가 범위 밖에 남았다 — CEO의 fail이 곧 「고쳐라」, 새 기능보다 먼저
@@ -357,7 +358,31 @@ function tried(c, slug, result, note = '') {
     writeJson(scopePath(c), { ...sc, requested: [fix, ...sc.requested.filter((s) => s !== fix)], order: [fix, ...sc.order.filter((s) => s !== fix)] });
     appendLedger(c.main, c.team, { kind: 'scope_fix', slug: fix, from: slug });
   }
-  out(`PASS tried ${slug} fail · ${fix}${sc ? '이 범위 맨 앞에 — 다음 seed가 연다' : ' BACKLOG에 — 범위는 work.mjs scope'}`);
+  out(`PASS tried ${slug} fail · ${fix}${sc ? '이 범위 맨 앞에 — 다음 seed가 연다' : ' BACKLOG에 — 범위는 work.mjs scope'}${gone}`);
+}
+// try 사본(L2 1일차 eoren.sqlite · 필드 벤치 웹 data/memos.json ×3): CEO가 메인 루트에서 친 try의 산출물이 main을 더럽혀 다음 ship이 「CEO가 치운다」로 막혔다.
+// 남은 파일을 찾아 지우면 CEO의 의도된 파일을 지울 수 있고 카드 작성 규칙은 제품마다 다르다 — 처음부터 main에 닿지 않게: main 현재 커밋을 버릴 checkout으로 열고 tried가 지운다.
+// 한계: 저장소 밖 부작용(홈·네트워크)은 범위 밖.
+const tryDir = (c, slug) => path.join(c.main, '.worktrees', `try-${slug}`);
+function removeTry(c, slug) {
+  const dir = tryDir(c, slug);
+  if (!fs.existsSync(dir)) return false;
+  if (git(['worktree', 'remove', '--force', dir], c.main).status) { fs.rmSync(dir, { recursive: true, force: true }); git(['worktree', 'prune'], c.main); }
+  return true;
+}
+function tryCopy(c, slug) {
+  if (c.root !== c.main) fail('FAIL try는 메인 저장소에서만 — 써보는 것은 CEO의 일이다(팩은 자기 unit을 검수하지 않는다)');
+  const u = readJson(unitFile(c.main, c.team, slug), null);
+  if (!u) fail(`FAIL unit 없음: ${slug}`);
+  if (u.state !== 'shipped') fail(`FAIL ${slug} 아직 출하 전(${u.state}) — try는 출하된 unit을 main 위에서 쓴다`);
+  if (readJson(unitFile(c.main, c.team, `try-${slug}`), null)) fail(`FAIL .worktrees/try-${slug}는 unit try-${slug}의 자리다`);
+  removeTry(c, slug); // 다시 열면 새 사본 — main이 움직였을 수 있다
+  const dir = tryDir(c, slug);
+  const r = git(['worktree', 'add', '--detach', '-q', dir, c.team.protected_branch], c.main);
+  if (r.status) fail(`FAIL try 사본 생성 실패 — ${(r.stderr || '').trim()}`);
+  linkDeps(c.main, dir);
+  const head = git(['rev-parse', '--short', 'HEAD'], dir).stdout.trim();
+  out(`TRY ${slug} → .worktrees/try-${slug} (main ${head}) — 카드(${c.team.paths.units_docs}/${slug}/try.md)는 이 폴더에서 친다: 만든 파일은 사본에 남고 main은 깨끗하다 · 끝나면 메인에서 node .garagiste/scripts/work.mjs tried ${slug} ok|fail "<말>" (사본은 tried가 지운다)`);
 }
 // boot 팩의 쓰기 경로: team.json commands는 스크립트만 쓴다 — 그리고 boot(scaffold) 컨텍스트만. 다른 팩이 검증 명령을 바꾸는 것은 초록 조작이다.
 function commands(c, args) {
@@ -483,6 +508,7 @@ function main() {
   if (cmd === 'default') return setDefault(c, pos[0], pos[1]);
   if (cmd === 'drop') return drop(c, pos[0], pos[1], flags);
   if (cmd === 'tried') return tried(c, pos[0], pos[1], pos[2]);
+  if (cmd === 'try') return tryCopy(c, pos[0]);
   if (cmd === 'list') return list(c);
   if (cmd === 'models') return models(c, raw);
   if (cmd === 'commands') return commands(c, raw);
@@ -490,5 +516,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();

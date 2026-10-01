@@ -80,6 +80,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Added — 2026-10-01 try 사본 — CEO의 try는 버릴 checkout에서 (백로그 1순위 · L2 재등록 A안)
+- CEO가 try 카드를 메인 루트에서 치면 산출물이 main 작업 트리에 남아 다음 ship이 「메인 worktree에 미커밋 변경 — CEO가 치운다」로 막혔다: L2 1일차(eoren.sqlite — conductor가 CEO의 파일을 옮기는 판단 개입까지), 필드 벤치 웹 486fd74 · 621a426과 필드 시험 2(data/memos.json). 남은 파일을 찾아 지우는 사후 복구는 CEO의 의도된 파일을 지울 위험이 있고, 카드 작성 규칙은 제품마다 달라 범용이 아니다.
+- 추가: `work.mjs try <slug>`(메인에서만 · 출하된 unit만)가 main 현재 커밋을 `.worktrees/try-<slug>`에 버릴 checkout으로 열고(main의 의존성 링크 — linkDeps), CEO는 카드를 그 폴더에서 친다 — 만든 파일은 사본에 남고 main은 깨끗하다(`.worktrees/`는 무시 목록). 다시 열면 새 사본. `tried`가 사본을 지운다(링크만 — main의 의존성은 그대로). STATUS 「써볼 것」 카드와 ship의 main dirt FAIL이 이 명령을 말하고, 두 규칙 파일 템플릿의 try 줄도 그렇다. 한계: 저장소 밖 부작용(홈·네트워크)은 범위 밖. 덤으로 기대한 위임(conductor가 파일을 만드는 카드를 치기)은 가드가 사본 안 쓰기를 fail-closed로 막아 아직 아니다.
+- 시점: 백로그는 「L2 3일 표 뒤」였으나 CEO가 L2를 이 판으로 재등록(A안 — 게이트 0/3부터)하기로 해 앞당겼다. 검사: e2e(메인 밖 FAIL · 출하 전 FAIL · 사본 = main 커밋 + 의존성 링크 · 사본에 쓴 파일은 main에 없음 · STATUS 카드의 명령 · 다시 열면 새 사본 · tried가 사본을 지우고 main 의존성은 남음).
+
 ### Changed — 2026-10-01 HAZARDS에서 팩에 닿지 않는 35줄을 걷어 냈다 (산문 예산 39KB → 26KB)
 - HAZARDS 줄은 경로 패턴이 unit의 바뀐 파일과 맞을 때만 팩(「HAZARDS — 이 경로에서 난 사고」 절)에 뜬다(`matchHazards`). 경로가 규칙집(`.garagiste/scripts/**`·`.garagiste/packs/**` 등)이나 main 전용 문서(`docs/BACKLOG.md` 등)뿐인 줄은 팩이 그 경로를 바꾸지 못해(가드) 영영 뜨지 않는다 — 프레임워크 자신의 사고 기록 35줄(약 15KB)이 산문 예산(40KB)만 먹어 설치본이 39KB, 다음 사고 한두 줄이면 ship의 budget 조건이 막힐 참이었다. 그 사고들의 기록은 이 CHANGELOG에 그대로 있다(첫 Windows 실기 · 2차 실기 · L2 · 필드 시험 · 필드 벤치 · 홀드아웃). `.garagiste/team.json`이 든 줄은 남겼다 — boot가 worktree에서 `work.mjs commands`로 바꾸는 경로다. 검사: unit(HAZARDS의 모든 줄에 팩에 닿는 경로가 있다 — 옛 파일에서 red) + HAZARDS 머리말.
 

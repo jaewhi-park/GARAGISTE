@@ -31,3 +31,4 @@
 - `.garagiste/scripts/redproof.mjs` `tests/acceptance/**` · 앞 unit이 주장 하나를 채우자 redproof의 길이 drop뿐 — 남은 red 주장까지 닫힐 뻔했다(사고 47) · 검사: 부분 충족은 brief.mjs spec --met — unit·e2e
 - `tests/unit/**` `go.mod` · go test 캐시가 스모크가 부른 `go run`의 입력 변화를 몰라 낡은 ok — main quick이 빨간 채 출하됐고, build는 스모크를 못 고친다고 읽었다(사고 54·55) · 검사: GOFLAGS -count=1 · tests/unit은 build의 것 — unit·e2e
 - `tests/acceptance/**` `tests/adversary/**` · Go는 한 디렉터리가 한 패키지 — 인수 파일이 다른 테스트 파일의 도우미를 써 파일 하나로는 컴파일되지 않았다(사고 56) · 검사: spec·attack 팩의 test_file 줄 「혼자 돈다」 — e2e
+- `docs/units/**` · CEO가 메인 루트에서 친 try 카드의 산출물(eoren.sqlite · data/memos.json)이 main을 더럽혀 다음 ship이 「CEO가 치운다」로 막혔다(L2 1일차 · 필드 벤치 웹 ×3) · 검사: try는 `work.mjs try <slug>`의 사본에서(카드는 그 폴더 기준), tried가 지운다 — e2e

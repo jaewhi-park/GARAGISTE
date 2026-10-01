@@ -379,6 +379,38 @@ test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원�
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"scope_fix","slug":"ledger-add-fix","from":"ledger-add"/);
 });
 
+test('try 사본(L2 1일차 eoren.sqlite · 필드 벤치 웹 data/memos.json ×3): CEO의 try는 버릴 checkout에서 — 산출물이 main에 닿지 않고 tried가 사본을 지운다', { timeout: 60000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-try-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "memo", "private": true }\n');
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  git(['add', '-A'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
+  fs.mkdirSync(path.join(repo, 'node_modules', 'dep'), { recursive: true }); // main에 깔린 의존성
+  script('work', ['new', 'save', '저장하면 목록 맨 위에'], repo);
+  script('work', ['new', 'delete', '메모 옆 삭제'], repo);
+  const unitPath = path.join(repo, '.garagiste/units/save.json');
+  fs.writeFileSync(unitPath, JSON.stringify({ ...JSON.parse(fs.readFileSync(unitPath, 'utf8')), state: 'shipped', shipped: '2026-10-01' }, null, 2)); // 출하는 ship의 일 — 여기선 상태만
+  assert.match(run(process.execPath, [path.join(repo, '.garagiste', 'scripts', 'work.mjs'), 'try', 'save'], path.join(repo, '.worktrees', 'save')).out, /^FAIL try는 메인 저장소에서만/);
+  assert.match(script('work', ['try', 'delete'], repo).out, /^FAIL delete 아직 출하 전/);
+  const tr = script('work', ['try', 'save'], repo);
+  assert.match(tr.out, /^TRY save → \.worktrees\/try-save \(main [0-9a-f]{7}\)[\s\S]*work\.mjs tried save ok\|fail/, tr.out);
+  const copy = path.join(repo, '.worktrees', 'try-save');
+  assert.ok(fs.existsSync(path.join(copy, 'package.json')) && fs.existsSync(path.join(copy, 'node_modules', 'dep')), '사본은 main 현재 커밋 + main의 의존성 링크');
+  write(copy, 'data/memos.json', '[{"text":"장보기"}]'); // CEO가 카드대로 npm start → 저장
+  assert.equal(git(['status', '--porcelain', '--', 'data'], repo).out.trim(), '', 'try 산출물은 main에 닿지 않는다 — 다음 ship이 「CEO가 치운다」로 막히지 않는다');
+  script('state', [], repo);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /- \*\*save\*\*[\s\S]*work\.mjs try save/, 'STATUS의 카드가 사본 명령을 준다');
+  assert.match(script('work', ['try', 'save'], repo).out, /^TRY save/);
+  assert.ok(!fs.existsSync(path.join(copy, 'data/memos.json')), '다시 열면 새 사본(main 현재 커밋)');
+  write(copy, 'data/memos.json', '[]');
+  assert.match(script('work', ['tried', 'save', 'ok'], repo).out, /^PASS tried save ok · try 사본을 지웠다/);
+  assert.ok(!fs.existsSync(copy) && !git(['worktree', 'list'], repo).out.includes('try-save'), 'tried가 사본을 지운다');
+  assert.ok(fs.existsSync(path.join(repo, 'node_modules', 'dep')), '링크만 지운다 — main의 의존성은 그대로');
+});
+
 test('사고 54(홀드아웃 Go): verify quick은 go test의 낡은 캐시 ok를 증거로 받지 않는다 — 테스트가 부른 프로세스가 읽는 파일은 캐시가 모른다', { timeout: 180000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   if (spawnSync('go', ['version'], { encoding: 'utf8' }).status !== 0) return t.skip('go 없음 — Go 생태계 재현');
