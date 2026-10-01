@@ -335,17 +335,23 @@ test('사고 44(필드 벤치 셋): full은 「전부」다 — 프로젝트 러
   // 사고 48(필드 벤치 넷 측정): 파일 하나씩 직렬로 돌리자 웹 full이 20초 → 71초(브라우저 테스트 10개) — 여러 파일을 받는 러너({files})면 한 번에, red일 때만 파일별로
   const lastLog = () => { const v = fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8').trim().split('\n').map(JSON.parse).filter((e) => e.kind === 'verify').pop(); return fs.readFileSync(path.join(repo, v.log), 'utf8'); };
   assert.equal((lastLog().match(/→ exit/g) || []).length, 2, '{file} 러너는 파일마다 한 번(계약 그대로)');
+  write(wt, 'tests/adversary/add-entry-2.test.mjs', "import test from 'node:test'; test('공격 2', () => {});\n");
   team.commands.test_file = 'node --test {files}';
   for (const root of [repo, wt]) fs.writeFileSync(path.join(root, '.garagiste', 'team.json'), JSON.stringify(team, null, 2)); // verify는 worktree의 것을, redproof(메인에서 부름)는 메인의 것을 읽는다
   assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
-  assert.deepEqual(lastLog().match(/^\$ .*→ exit \d+$/gm), ['$ node --test tests/acceptance/add-entry.test.mjs tests/adversary/add-entry-1.test.mjs → exit 0'], '{files} 러너는 전부 green이면 한 번');
+  // 사고 53(홀드아웃 Go): go test는 한 디렉터리의 파일만 받는다 — {files}는 디렉터리마다 한 번
+  assert.deepEqual(lastLog().match(/^\$ .*→ exit \d+$/gm), ['$ node --test tests/acceptance/add-entry.test.mjs → exit 0', '$ node --test tests/adversary/add-entry-1.test.mjs tests/adversary/add-entry-2.test.mjs → exit 0'], '{files} 러너는 전부 green이면 디렉터리마다 한 번');
   write(wt, 'tests/adversary/add-entry-1.test.mjs', "import test from 'node:test'; test('공격', () => { throw new Error('red'); });\n");
-  assert.match(script('verify', ['full'], wt).out, /^FAIL verify:full [\s\S]*red 1\/2: tests\/adversary\/add-entry-1\.test\.mjs$/m, 'red면 파일별로 다시 돌려 그 파일을 말한다');
+  assert.match(script('verify', ['full'], wt).out, /^FAIL verify:full [\s\S]*red 1\/3: tests\/adversary\/add-entry-1\.test\.mjs$/m, 'red면 그 디렉터리의 파일을 하나씩 다시 돌려 그 파일을 말한다');
   assert.match(script('redproof', ['add-entry'], repo).out, /^FAIL redproof add-entry: base에서 green/, 'redproof의 파일 단위 실행도 {files}에 파일 하나를 넣는다');
   write(wt, 'tests/adversary/add-entry-1.test.mjs', "import test from 'node:test'; test('공격', () => {});\n");
-  team.commands.test_file = 'node -e "process.exit(process.argv.length > 2 ? 1 : 0)" {files}'; // 파일끼리 간섭하는 꼴 — 함께면 red, 하나씩은 green
+  team.commands.test_file = `node -e "process.exit(new Set(process.argv.slice(1).map((f) => f.split('/').slice(0, -1).join('/'))).size > 1 ? 1 : 0)" {files}`; // go test의 꼴: 여러 디렉터리면 러너가 거부
   fs.writeFileSync(path.join(wt, '.garagiste', 'team.json'), JSON.stringify(team, null, 2));
-  assert.match(script('verify', ['full'], wt).out, /^FAIL verify:full [\s\S]*인수·공격 파일 2개를 함께 돌리면 red\(하나씩은 green\)/, '함께 돌릴 때의 red도 「전부」의 red다');
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/, '홀드아웃: 두 디렉터리를 한 번에 넘기자 러너가 거부해 「함께 red」 거짓 FAIL이 났다');
+  team.commands.test_file = 'node -e "process.exit(process.argv.length > 2 ? 1 : 0)" {files}'; // 함께면 exit≠0, 하나씩은 green — 러너의 제약인지 간섭인지 exit로는 모른다
+  fs.writeFileSync(path.join(wt, '.garagiste', 'team.json'), JSON.stringify(team, null, 2));
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/, '판정은 파일 단위(사고 44의 계약) — 한 번에는 빠른 길일 뿐');
+  assert.match(lastLog(), /^\$ node -e .* tests\/adversary\/add-entry-1\.test\.mjs tests\/adversary\/add-entry-2\.test\.mjs → exit 1$/m, '빠른 길의 실패는 로그에 남는다');
 });
 
 test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원문으로 받고, -fix는 지금 범위의 맨 앞에 든다', { timeout: 60000 }, (t) => {

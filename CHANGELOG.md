@@ -80,6 +80,9 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-10-01 {files}를 한 번에 넘기자 Go 러너가 거부했다 (홀드아웃 정비의 사고 53 — 사고 48의 후속)
+- 사고 49~52 반영 뒤 필드 3(소진된 홀드아웃, Go CLI)의 boot는 `test_file="go test {files}"`를 골랐다(사고 48의 선택지). find-dups의 ship이 `full: 이 tree의 verify full PASS 없음`에서 멈췄다 — full이 `tests/acceptance`·`tests/adversary`의 파일을 한 번에 넘기자 go test가 `named files must all be in one directory`로 거부했고, 하나씩은 전부 green이라 사고 48의 「함께 돌리면 red(하나씩은 green)」가 FAIL을 냈다. build의 spec 반려는 기각됐고(테스트는 원문과 맞다) 두 번째 반려가 CEO에게 「test_file을 패키지 경로(go test ./tests/...)로 바꿔도 되나」로 올라왔다 — 파일 단위 계약을 깨는 길. 수리: (1) `{files}`의 한 번에는 디렉터리마다 (2) 한 번에는 빠른 길일 뿐 — 판정은 파일 단위(사고 44의 계약): 한 번에가 실패하면 그 디렉터리의 파일을 하나씩 돌려 그 결과로 판정한다(러너의 제약인지 파일끼리의 간섭인지 exit로는 모른다 — 간섭은 프로젝트 러너의 full이 본다). 빠른 길의 실패는 로그에 남는다. 검사: 사고 44 e2e 확장(디렉터리마다 한 번 · red면 그 파일 · go test 꼴의 디렉터리 제약 → PASS · 함께면 exit≠0인 러너 → 파일 단위로 PASS·로그) + 필드 3의 find-dups worktree에서 2.9초 PASS(디렉터리 둘).
+
 ### Fixed — 2026-10-01 처음 보는 원문에서 intake가 막다른 길에 섰다 (홀드아웃 Go CLI의 사고 49~52)
 - 필드 1·2가 두 회 연속 FAIL 0이던 판(0ae7c70)으로 수리에 쓰지 않은 원문(`tests/field/briefs/holdout-dupfind.md` — Go CLI)을 처음 측정했더니 boot 전, intake에서 멈췄다. CLI 도구의 원문은 흔히 옵션을 말하는데 필드 1의 원문엔 `--`로 시작하는 줄이 없었다.
 - 사고 49: `work.mjs add min-size "--min-size 1M처럼…" --milestone M1`의 원문이 플래그로 먹혀 원문 「M1」·마일스톤 `M?`가 됐다(json-out 같음 · `ask`의 질문 「--json …」도 먹혀 Q1이 「json-out」 한 단어). 수리: 명령마다 아는 플래그만 플래그(`add`·`new`·`ask`·`drop`·`spawned`), 한 낱말 플래그 꼴(`--milestne`)은 오타라 `FAIL 알 수 없는 플래그 — <명령>이 받는 것: …`, 나머지는 원문.
