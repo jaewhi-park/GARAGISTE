@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
-import { appendLedger, ceoTouch, ctx, fail, git, hasFileSlot, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { appendLedger, ceoTouch, ctx, fail, git, hasFileSlot, isMain, linkDeps, unlinkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 import { budgetStatus } from './state.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
@@ -367,6 +367,7 @@ const tryDir = (c, slug) => path.join(c.main, '.worktrees', `try-${slug}`);
 function removeTry(c, slug) {
   const dir = tryDir(c, slug);
   if (!fs.existsSync(dir)) return false;
+  unlinkDeps(c.main, dir);
   if (git(['worktree', 'remove', '--force', dir], c.main).status) { fs.rmSync(dir, { recursive: true, force: true }); git(['worktree', 'prune'], c.main); }
   return true;
 }

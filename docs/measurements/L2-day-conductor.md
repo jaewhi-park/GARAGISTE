@@ -32,10 +32,12 @@
    - 아직 돌고 있으면 지금 단계만 끝내고 새 seed·spawn은 하지 않는다.
 
 1. try 카드 — 표보다 먼저
-   - docs/STATUS.md 「써볼 것」의 카드를 전부 CEO에게 하나씩 낸다. 위임 없음: tried는 전부 CEO다.
-   - CEO가 「<slug> ok」 또는 「<slug> fail + 한 줄」로 답하면 work.mjs tried <slug> ok|fail "<메모>".
+   - docs/STATUS.md 「써볼 것」의 카드를 전부 CEO에게 하나씩 낸다. 카드마다 먼저 node .garagiste/scripts/work.mjs try <slug>를
+     돌려 그 사본 폴더(.worktrees/try-<slug>)를 함께 준다 — CEO는 그 폴더에서 카드를 친다(main은 깨끗하게 남는다). 위임 없음: tried는 전부 CEO다.
+   - CEO가 「<slug> ok」 또는 「<slug> fail + 한 줄」로 답하면 work.mjs tried <slug> ok|fail "<CEO 말 그대로>"
+     (fail엔 말이 필수 — 그 말이 <slug>-fix의 재현이다. 사본은 tried가 지운다).
    - 열린 질문(docs/DECISIONS.md 「정해 주세요」)이 있으면 그다음에 예/아니오로 묻고 decide.
-   - try 카드가 저장소 안에 파일을 만들었으면 지우거나 옮기지 말고 CEO에게 그 경로를 말한다.
+   - 사본 밖(메인 루트·저장소 밖)에 파일이 생겼으면 지우거나 옮기지 말고 CEO에게 그 경로를 말한다.
    - 카드와 질문이 끝난 뒤에 표를 만든다. 카드가 끝나도 새 unit은 seed하지 않는다 — 그날은 여기까지다.
 
 2. 경계 (원장 ts로)
@@ -83,3 +85,6 @@
 ## 1일차 판과의 차이 (2026-10-01 정정)
 - 경계: 1일차 판은 「아침 창 끝 = 첫 unit 직전의 마지막 접점」, 「저녁 창 = 마지막 ship 뒤 첫 tried」로 등록문(L2-TRIAL.md)과 달랐다 — CEO 복귀 뒤 루프가 다시 돈 유인 구간까지 「낮」에 들어가 낮 접점이 8로 나왔다(등록문 정의로는 0). 지금 판은 등록문 정의이고, 복귀 뒤에 돈 unit은 「연장(유인)」으로 따로 센다.
 - 아침 절(낮 규칙)을 새로 두었다 — 1일차의 관찰(병렬 seed · 예산 정지 중 seed · CEO 파일 이동 · 프레임워크 FAIL 뒤 다른 unit 계속 · 메모리 쓰기 시도)을 그날의 규칙으로 못 박는다. 등록된 Flow 4(순차)·Flow 6(멈춤 여섯)·등록문(FAIL이면 그날 멈춤)의 재진술이며 새 규칙이 아니다.
+
+## 2판(재등록 — L2-TRIAL-2.md)의 차이
+- 저녁 1번: 카드마다 `work.mjs try <slug>` 사본을 먼저 열어 준다(try 산출물이 main을 더럽혀 ship을 막던 일 — 1일차 eoren.sqlite). tried fail엔 CEO 말이 필수(사고 45)이고, 그 fail로 생긴 `<slug>-fix`는 범위 맨 앞에 든다(사고 46) — 다음 아침 첫 unit이다.

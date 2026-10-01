@@ -80,6 +80,10 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Changed — 2026-10-01 try 사본이 지우기 전에 의존성 링크를 먼저 끊는다 · L2 재등록(2판)
+- Windows에서 linkDeps의 링크는 정션이다 — 사본을 지우는 도구(`git worktree remove --force`·재귀 삭제)가 정션을 따라가면 main의 의존성이 지워진다. 이 컨테이너에선 확인할 수 없어, try 사본은 지우기 전에 링크 자리만 먼저 끊는다(`unlinkDeps` — 실물 디렉터리는 건드리지 않는다). unit worktree를 지우는 ship 경로는 그대로 두고 L2 2판 준비의 정션 점검으로 본다. 검사: unit(링크만 끊고 main 의존성·사본의 실물은 남음).
+- L2 재등록: `docs/measurements/L2-TRIAL-2.md`(동결 = 이 등록의 머지 커밋, 게이트 0/3부터, 1판 1일차는 기록) · 저녁 지시서(`L2-day-conductor.md`)가 카드마다 try 사본을 열어 주고 tried fail엔 CEO 말을 그대로.
+
 ### Added — 2026-10-01 try 사본 — CEO의 try는 버릴 checkout에서 (백로그 1순위 · L2 재등록 A안)
 - CEO가 try 카드를 메인 루트에서 치면 산출물이 main 작업 트리에 남아 다음 ship이 「메인 worktree에 미커밋 변경 — CEO가 치운다」로 막혔다: L2 1일차(eoren.sqlite — conductor가 CEO의 파일을 옮기는 판단 개입까지), 필드 벤치 웹 486fd74 · 621a426과 필드 시험 2(data/memos.json). 남은 파일을 찾아 지우는 사후 복구는 CEO의 의도된 파일을 지울 위험이 있고, 카드 작성 규칙은 제품마다 달라 범용이 아니다.
 - 추가: `work.mjs try <slug>`(메인에서만 · 출하된 unit만)가 main 현재 커밋을 `.worktrees/try-<slug>`에 버릴 checkout으로 열고(main의 의존성 링크 — linkDeps), CEO는 카드를 그 폴더에서 친다 — 만든 파일은 사본에 남고 main은 깨끗하다(`.worktrees/`는 무시 목록). 다시 열면 새 사본. `tried`가 사본을 지운다(링크만 — main의 의존성은 그대로). STATUS 「써볼 것」 카드와 ship의 main dirt FAIL이 이 명령을 말하고, 두 규칙 파일 템플릿의 try 줄도 그렇다. 한계: 저장소 밖 부작용(홈·네트워크)은 범위 밖. 덤으로 기대한 위임(conductor가 파일을 만드는 카드를 치기)은 가드가 사본 안 쓰기를 fail-closed로 막아 아직 아니다.

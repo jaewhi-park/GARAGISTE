@@ -17,7 +17,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
-import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
+import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -362,6 +362,18 @@ test('build 팩: 사고 55(홀드아웃 Go) — 산문의 「쓸 수 없는 곳�
   for (const p of listed) assert.ok(decide(write(`${wt}/${sample(p)}`), gctx('build')), `산문이 막는다면 훅도 막는다: ${p}`);
   assert.equal(decide(write(`${wt}/tests/unit/smoke_test.go`), gctx('build')), null, '훅은 tests/unit을 막지 않는다');
   assert.match(md, /`tests\/unit\/`[^\n]*네 것/, '산문도 그렇게 말한다 — 「테스트를 고쳐 초록을 만드는 길은 없다」를 스모크까지 막는 줄로 읽은 build가 spec에 반려했고 spec은 기각, 둘 다 못 고쳐 멈췄다');
+});
+test('lib: try 사본 — 지우기 전에 의존성 링크만 끊는다(정션을 따라가 main의 의존성을 지우지 않게), 실물 디렉터리는 건드리지 않는다', () => {
+  const main = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-unlink-')); const dest = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-unlink-copy-'));
+  fs.mkdirSync(path.join(main, 'node_modules', 'dep'), { recursive: true }); fs.writeFileSync(path.join(main, 'node_modules', 'dep', 'index.js'), 'x');
+  linkDeps(main, dest);
+  assert.ok(fs.lstatSync(path.join(dest, 'node_modules')).isSymbolicLink());
+  fs.mkdirSync(path.join(dest, 'web', 'node_modules'), { recursive: true }); // 사본 안에서 새로 깐 실물은 링크가 아니다
+  fs.mkdirSync(path.join(main, 'web', 'node_modules'), { recursive: true });
+  unlinkDeps(main, dest);
+  assert.ok(!fs.existsSync(path.join(dest, 'node_modules')), '링크는 끊겼다');
+  assert.ok(fs.existsSync(path.join(main, 'node_modules', 'dep', 'index.js')), 'main의 의존성은 그대로');
+  assert.ok(fs.existsSync(path.join(dest, 'web', 'node_modules')), '링크가 아닌 실물은 남는다(사본과 함께 git이 지운다)');
 });
 test('redproof: 사고 47(필드 벤치 넷) — 일부만 base green(먼저 출하된 unit이 한 주장을 채웠다)이면 drop을 주지 않고 충족된 파일만 빼는 길을 준다', () => {
   const m = baseGreenAdvice('jsonl-store', ['tests/acceptance/jsonl-store_handedit.py'], ['tests/acceptance/jsonl-store_cp949.py']);
