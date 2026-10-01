@@ -42,3 +42,56 @@
 
 ## n일차 표·판정
 (1일차부터 이 아래에 — 양식은 `L2-TRIAL.md` 1일차 표와 같다. 1판과 다른 열: unit당 full 시간(사고 44), 저녁 try 사본 수.)
+
+### 리눅스 1일차 (2026-10-01 — 대리 CEO, 압축 낮)
+폴더 /tmp/l2-linux/todo(컨테이너) · 설치 44f4d62(프레임워크 = 9c677ec) · 규칙집 기준선 00d7f16(설치 직후) → f96424c(저녁) · conductor 세션 1b5b47cb(1일차 하나)
+- 아침 창: intake → unit 13(M1 8 · M2 5) · Q1~Q6 대리 답(Q4는 「보이는 번호 = 명령의 번호」 조건을 붙여 예) · 범위 M1 · 「가」. 아침 창 끝 15:28:06Z → 저녁 창 시작 15:37:08Z.
+- 낮: 접점 0 · 멈춤 미검수 3(list ship 15:36:21Z) · 낮 경과(→ 세 번째 ship) 8.2분 · 프레임워크 FAIL 0(안내대로 한 번에 풀린 FAIL 2 — spawned의 팩 이름(사고 52 안내) · boot ship의 main stray package-lock.json → 되돌림·보존·재spawn이 lockfile 커밋(사고 38)).
+- 규칙집 드리프트 1: bdb24c4 boot의 commands 기록(`.garagiste/team.json`) — 첫날 boot의 정상 일이지 완화가 아니다. 이후 날의 기준선은 f96424c.
+
+| 구간 | unit | 시도 | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | boot | 1 | 1.2 | 2/2 | 32K | — | scaffold | ok(대리 CEO) | 0 | 0 |
+| 무인 | add | 1 | 3.2 | 4/4 | 76K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 — 메모: 없는 날짜·형식 틀린 날짜가 그대로 기록(원문 「잘못된 입력」 줄 = bad-input unit에서 닫히는지 본다) | 0 |
+| 무인 | list | 1 | 3.8 | 4/4 | 91K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 | 0 |
+| 계 | 3 | | 8.2 | 10/10 | 198K | | | 3 ok | 0 | 0 |
+
+- 저녁: try 사본 3(카드마다 conductor가 열고 tried가 지움 — 저녁 뒤 `.worktrees` 비었고 main 깨끗) · 카드 3/3 ok · 팀이 정한 것 7.
+- 참고(사실): 권한 훅이 `$변수` 확장이 든 Bash 몇 번을 막았다(「Contains simple_expansion」 — 하네스 권한, 사고 43의 이웃) · `brief.mjs build` 인자 없이 한 번.
+- **판정: 리눅스 1일차 통과 — 게이트(리눅스) 1/3**, 누적 green 후 CEO 발견 결함 0.
+
+### 리눅스 2일차 (2026-10-01 — 대리 CEO, 새 conductor 세션 feaad184)
+- 아침 창: 새 세션이 원장·STATUS만으로 상태를 다시 읽었다(안 본 것 0/3 · 결정 대기 0 · M1 3/8) → 「가」. 아침 창 끝 15:37:58Z → 저녁 창 시작 16:03:07Z, 낮 경과(→ 세 번째 ship) 24.0분.
+- 낮: 접점 0 · 멈춤 미검수 3(store-corrupt ship 16:01:56Z) · 프레임워크 FAIL 0 · 규칙집 드리프트 0(HEAD:.garagiste f96424c 그대로).
+- **질문에 걸린 unit만 두고 다음으로**: list-filter가 낮에 팀이 올린 Q7(「--tag 되풀이는 하나라도/전부」)로 ship이 막히자 conductor는 그 unit만 두고 edit-rm을 seed했다(낮 규칙의 예외 그대로). 저녁에 Q7 「예(하나라도)」 → RESPEC list-filter(3일차로).
+
+| 구간 | unit | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL |
+|---|---|---|---|---|---|---|---|---|---|
+| 무인 | done-undo | 5.1 | 4/4 | 109K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 — 메모: 없는 번호의 거부 이유가 「번호가 필요하다」로 틀림(bad-input에서) | 0 |
+| 무인 | list-filter | 미출하 — Q7 | 4/4 | 101K | — | — | — | — | 0 |
+| 무인 | edit-rm | 5.2 | 4/4 | 110K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 — 메모: edit의 빈 제목을 exit 0으로 저장(bad-input에서) | 0 |
+| 무인 | store-corrupt | 7.9 | 4/4 | 122K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 — 메모: BOM이 붙은 정상 파일도 깨졌다고 거부(원문은 손편집 읽기를 요구하지 않음 — cross-os에서) | 0 |
+| 계 | 4(출하 3) | 18.2 | 16/16 | 442K | 선발견 3 | 3 PASS | 3 ok | 0 | 0 |
+
+- 저녁: try 사본 3(저녁 뒤 남은 것은 list-filter의 unit worktree뿐) · 카드 3/3 ok · Q7 decide · 팀이 정한 것 8 · main 변경은 스크립트가 쓴 DECISIONS·STATUS뿐.
+- **판정: 리눅스 2일차 통과 — 게이트(리눅스) 2/3**, 누적 green 후 CEO 발견 결함 0(메모 4 — 셋은 bad-input이 닫아야 한다).
+
+### 리눅스 3일차 (2026-10-01 — 대리 CEO, 새 conductor 세션 ba67ec93)
+- 아침 창: 새 세션이 상태를 다시 읽었다(M1 6/8 · list-filter 진행 중 · 결정 대기 0) → 범위 그대로 「가」. 아침 창 끝 16:04:27Z → 저녁 창 시작 16:20:45Z.
+- 낮: 접점 0 · 멈춤 SCOPE DONE(bad-input ship 16:19:52Z) · 프레임워크 FAIL 0 · 규칙집 드리프트 0(f96424c 그대로).
+
+| 구간 | unit | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL |
+|---|---|---|---|---|---|---|---|---|---|
+| 무인 | list-filter | 27.7(Q7 대기 17.9 포함 — seed는 2일차 낮) | 9/9 | 221K | 2→0/2 | base_red head_green | ok(대리 CEO) | 0 | 0 |
+| 무인 | bad-input | 7.3 | 4/4 | 137K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 — 1·2일차 메모 셋(없는·형식 틀린 날짜 · edit 빈 제목 · 없는 번호의 이유)이 여기서 닫혔다 | 0 |
+| 계 | 2 | 35.0 | 13/13 | 358K | 선발견 3 | 2 PASS | 2 ok | 0 | 0 |
+
+- 저녁: try 사본 2 · 카드 2/2 ok(SCOPE DONE의 규칙대로 정지라 3장 미만도 통과) · main 변경은 STATUS뿐.
+- **판정: 리눅스 3일차 통과.**
+
+### 리눅스 게이트 판정 — **통과** (대리 CEO)
+- 무인 하루 3회 · 누적 「green 후 CEO 발견 결함」 0 · 낮 접점 0/0/0 · 프레임워크 FAIL 0/0/0 · 규칙집 드리프트(boot의 첫날 commands 기록 외) 0 · 멈춤 미검수 3 / 미검수 3 / SCOPE DONE.
+- 계: ship 8(M1 전부) · tried 8 ok · 팩 35 · 토큰 911K · 질문 Q1~Q7(Q7은 낮에 팀이 올림 — 그 unit만 두고 진행) · RESPEC 1 · API 환산 ≈ $10.4(세 세션 합).
+- 예측 채점(리눅스): 1) ✓ 미검수 3 정지 — 세 번째 ship까지 8.2분·24.0분(3일차는 SCOPE DONE) 2) ✓ 낮 접점 0 3) ✓ FAIL 0/일 4) ✓ try 산출물로 막힌 ship 0 5) ✓ green 후 결함 0 6) — (윈도우) 7) 윈도우 표 대기.
+- 한계(등록문 그대로): 대리 CEO는 팀과 같은 모델 계열 · 낮은 압축(실제 부재 없음) · 저녁의 카드·경계 입력은 FIELD-BENCH 대리 규칙. 대리가 「결함 아님」으로 판단한 회색 하나(BOM 붙은 todo.json 거부 — cross-os M2)를 남긴다.
+- 이 원문은 리눅스에서 측정됐다 — 윈도우 표가 나올 때까지 이 원문으로 정비하지 않는다(윈도우 쪽이 같은 원문의 처음 측정이어야 한다).
