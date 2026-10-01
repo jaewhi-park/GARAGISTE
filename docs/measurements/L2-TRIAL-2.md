@@ -59,3 +59,19 @@
 - 저녁: try 사본 3(카드마다 conductor가 열고 tried가 지움 — 저녁 뒤 `.worktrees` 비었고 main 깨끗) · 카드 3/3 ok · 팀이 정한 것 7.
 - 참고(사실): 권한 훅이 `$변수` 확장이 든 Bash 몇 번을 막았다(「Contains simple_expansion」 — 하네스 권한, 사고 43의 이웃) · `brief.mjs build` 인자 없이 한 번.
 - **판정: 리눅스 1일차 통과 — 게이트(리눅스) 1/3**, 누적 green 후 CEO 발견 결함 0.
+
+### 리눅스 2일차 (2026-10-01 — 대리 CEO, 새 conductor 세션 feaad184)
+- 아침 창: 새 세션이 원장·STATUS만으로 상태를 다시 읽었다(안 본 것 0/3 · 결정 대기 0 · M1 3/8) → 「가」. 아침 창 끝 15:37:58Z → 저녁 창 시작 16:03:07Z, 낮 경과(→ 세 번째 ship) 24.0분.
+- 낮: 접점 0 · 멈춤 미검수 3(store-corrupt ship 16:01:56Z) · 프레임워크 FAIL 0 · 규칙집 드리프트 0(HEAD:.garagiste f96424c 그대로).
+- **질문에 걸린 unit만 두고 다음으로**: list-filter가 낮에 팀이 올린 Q7(「--tag 되풀이는 하나라도/전부」)로 ship이 막히자 conductor는 그 unit만 두고 edit-rm을 seed했다(낮 규칙의 예외 그대로). 저녁에 Q7 「예(하나라도)」 → RESPEC list-filter(3일차로).
+
+| 구간 | unit | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL |
+|---|---|---|---|---|---|---|---|---|---|
+| 무인 | done-undo | 5.1 | 4/4 | 109K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 — 메모: 없는 번호의 거부 이유가 「번호가 필요하다」로 틀림(bad-input에서) | 0 |
+| 무인 | list-filter | 미출하 — Q7 | 4/4 | 101K | — | — | — | — | 0 |
+| 무인 | edit-rm | 5.2 | 4/4 | 110K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 — 메모: edit의 빈 제목을 exit 0으로 저장(bad-input에서) | 0 |
+| 무인 | store-corrupt | 7.9 | 4/4 | 122K | 1→0/1 | base_red head_green | ok(대리 CEO) | 0 — 메모: BOM이 붙은 정상 파일도 깨졌다고 거부(원문은 손편집 읽기를 요구하지 않음 — cross-os에서) | 0 |
+| 계 | 4(출하 3) | 18.2 | 16/16 | 442K | 선발견 3 | 3 PASS | 3 ok | 0 | 0 |
+
+- 저녁: try 사본 3(저녁 뒤 남은 것은 list-filter의 unit worktree뿐) · 카드 3/3 ok · Q7 decide · 팀이 정한 것 8 · main 변경은 스크립트가 쓴 DECISIONS·STATUS뿐.
+- **판정: 리눅스 2일차 통과 — 게이트(리눅스) 2/3**, 누적 green 후 CEO 발견 결함 0(메모 4 — 셋은 bad-input이 닫아야 한다).
