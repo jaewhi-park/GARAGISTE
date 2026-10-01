@@ -137,7 +137,9 @@ function main() {
   const sections = [];
   const sec = (key, title, body) => body && sections.push({ key, title, text: `## ${title}\n${body.trim()}` });
   sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.garagiste', 'packs', `${pack}.md`))}\n\n작업 디렉터리(절대 경로, 모든 명령은 여기서): \`${wt}\` (브랜치 ${unit.branch}). 저장소 루트: \`${c.main}\`. 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.\n${headlessNote(wt)}`);
-  sec('commands', '명령', Object.entries(c.team.commands).filter(([, v]) => v).map(([k, v]) => `- ${k}: \`${v}\``).join('\n'));
+  // 사고 56(홀드아웃 Go): 인수·공격은 파일 하나씩 증명된다(redproof·attack·full의 판정) — Go는 한 디렉터리가 한 패키지라 sort-waste의 인수 파일이 find-dups_test.go의 도우미를 써 혼자 컴파일되지 않았다
+  const fileNote = pack === 'spec' || pack === 'attack' ? ' — 증명은 파일 하나씩(이 명령에 그 파일 하나): 네가 쓰는 테스트 파일은 혼자 돈다, 다른 테스트 파일의 도우미에 기대지 않는다(필요한 도우미는 그 파일 안에)' : '';
+  sec('commands', '명령', Object.entries(c.team.commands).filter(([, v]) => v).map(([k, v]) => `- ${k}: \`${v}\`${k === 'test_file' ? fileNote : ''}`).join('\n'));
   // 사고 26(L2 1일차): ship이 멈춰 둔 rebase — 충돌 표시를 푸는 것은 파일 편집이다(팩의 경계 안), 잇는 것은 ship이다
   const conflicted = rebaseInProgress(wt) ? unmergedFiles(wt) : [];
   if (conflicted.length) sec('conflict', `${c.team.protected_branch}과의 충돌 — ship이 rebase를 멈춘 자리`, [

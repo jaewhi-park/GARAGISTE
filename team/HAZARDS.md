@@ -65,3 +65,4 @@
 - `.garagiste/scripts/work.mjs` `docs/BACKLOG.md` · `--min-size…`로 시작하는 원문이 플래그로 먹혔고 그 BACKLOG 줄을 고칠 길이 없어 intake에서 멈췄다, `brief --help`는 원문에 쌓였다(사고 49~52) · 검사: 아는 플래그만 · add --replace · 줄 drop --forget · --help·예외는 한 줄 — unit·e2e
 - `.garagiste/scripts/verify.mjs` · `go test {files}`는 한 디렉터리의 파일만 받는다 — 한 번에 넘기자 「함께 red」 거짓 FAIL(사고 53) · 검사: {files}는 디렉터리마다, 판정은 파일 단위 — e2e
 - `tests/unit/**` `go.mod` · go test 캐시가 스모크가 부른 `go run`의 입력 변화를 몰라 낡은 ok — main quick이 빨간 채 출하됐고, build는 스모크를 못 고친다고 읽었다(사고 54·55) · 검사: GOFLAGS -count=1 · tests/unit은 build의 것 — unit·e2e
+- `tests/acceptance/**` `tests/adversary/**` · Go는 한 디렉터리가 한 패키지 — 인수 파일이 다른 테스트 파일의 도우미를 써 파일 하나로는 컴파일되지 않았다(사고 56) · 검사: spec·attack 팩의 test_file 줄 「혼자 돈다」 — e2e
