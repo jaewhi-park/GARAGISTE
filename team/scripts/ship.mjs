@@ -106,6 +106,12 @@ function resolveRebaseTeamJson(wt) {
 }
 // 사고 26(L2 1일차): 코드 충돌은 rebase를 멈춘 자리에서 팩이 표시를 풀고(git add까지 — 파일 편집, 팩의 경계 안) ship이 잇는다.
 // 옛 안내 「build를 다시 띄워 main 위에서 해결」은 실행 불가였다 — 가드가 팩·conductor 모두의 rebase·merge를 막는다.
+// 사고 34(필드 시험 2): boot이 의존성 0이라 setup="true"를 두었는데 뒤 unit이 dev 의존성을 더했다 — ship은 「setup을 돌렸다, 다음 worktree가 물려받는다」고 했지만
+// 아무것도 깔리지 않아 다음 unit의 full이 ERR_MODULE_NOT_FOUND로 막혔다. 설치 명령 없는 의존성 출하는 머지 전에 멈춘다 — 명령은 CEO 결정(R6).
+export function setupGap({ depChanged, setup }) {
+  if (!depChanged || !/^\s*(true|:|exit\s+0)?\s*$/.test(setup || '')) return null;
+  return `FAIL ship: 의존성 출하인데 설치 명령이 없다(commands.setup=${JSON.stringify(setup || '')}) — 머지하면 main과 다음 worktree에 그 의존성이 없다(머지 전에 멈췄다). CEO 결정 한 줄(메인 루트): GARAGISTE_ADMIN=1 node .garagiste/scripts/work.mjs commands setup="<설치 명령 — npm install · pip install -e . · uv sync …>" → 다시 ship`;
+}
 // 사고 29(필드 시험 1): rebase는 unit의 역사를 한 커밋씩 다시 놓는다 — .gitignore 전의 wip 체크포인트가 담은 산출물(__pycache__)이
 // worktree에 무시 파일로 남아 있으면 그 중간 커밋에서 「untracked would be overwritten」으로 멈췄다. 증거는 tree다: 역사를 그 tree 한 커밋으로 접고 올린다.
 function squashUnit(wt, base) {
@@ -178,6 +184,10 @@ function main() {
   const dirty = dirtyFiles(c.main).filter((f) => !DOC_OK(c.team).includes(f));
   if (dirty.length) fail(`FAIL ship: 메인 worktree에 미커밋 변경 — ${dirty.join(' ')}`);
   // 통합: unit을 main 위로 올리고, tree가 바뀌었으면 full을 다시 돌린다
+  // boot은 설치 명령을 자기 worktree의 team.json에 쓴다(머지 전 main엔 없다 — 사고 7의 통합 full과 같은 자리)
+  const setupNow = unit.kind === 'scaffold' ? readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.setup : c.team.commands.setup;
+  const gap = setupGap({ depChanged: changed.some((f) => DEP_MANIFEST.test(f.replace(/\\/g, '/'))), setup: setupNow });
+  if (gap) fail(gap);
   if (!resumed) squashUnit(wt, base);
   const preHead = headSha(wt);
   const rb = git(['rebase', c.team.protected_branch], wt);

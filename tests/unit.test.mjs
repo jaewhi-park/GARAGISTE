@@ -11,7 +11,7 @@ import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
-import { attackCell, evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
+import { attackCell, evaluateShip, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { outcome, verdict } from '../team/scripts/redproof.mjs';
@@ -309,6 +309,11 @@ test('lib: 사고 31(필드 시험 1) — worktree에서 불린 스크립트는 
   assert.equal(v, 'v2', '진행 중 unit의 worktree 사본(v1)이 아니라 main의 법(v2)');
   assert.equal(args, 'a,b'); assert.equal(fs.realpathSync(cwd), fs.realpathSync(wt), '인자와 cwd(worktree)는 그대로');
   assert.equal(r.status, 3, '종료 코드도 그대로');
+});
+test('ship: 사고 34(필드 시험 2) — 의존성 출하인데 설치 명령이 없거나 무동작(true)이면 머지 전에 멈추고 CEO의 한 줄을 준다', () => {
+  for (const setup of [undefined, '', 'true', ' : ', 'exit 0']) assert.match(setupGap({ depChanged: true, setup }), /의존성 출하인데 설치 명령이 없다[\s\S]*GARAGISTE_ADMIN=1 node \.garagiste\/scripts\/work\.mjs commands setup=/, String(setup));
+  assert.equal(setupGap({ depChanged: true, setup: 'npm install' }), null);
+  assert.equal(setupGap({ depChanged: false, setup: 'true' }), null, '의존성이 안 바뀌면 상관없다');
 });
 test('ship: wip HEAD의 안내는 unit 정체의 팩을 가리킨다 — boot(scaffold)에 「build를 다시 띄워」라 했다 (필드 시험 두 곳 공통)', () => {
   const base = { slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [], requireAttack: false, spikeText: '', lastSubject: 'wip: checkpoint', stops: [], proseKb: 10, proseMax: 40 };

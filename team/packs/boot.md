@@ -8,7 +8,7 @@
 3. `src/`에 진입점 하나 — 실행하면 무엇인가 출력하고 0으로 끝난다. `tests/unit/`에 스모크 테스트 하나 — 진입점이 뜬다는 것만 단언한다.
 4. 검증 명령 넷을 스크립트로 적는다(team.json은 직접 쓰지 않는다):
    `node .garagiste/scripts/work.mjs commands quick="<유닛 테스트만; tests/acceptance·tests/adversary 제외>" full="<전부>" test_file="<파일 하나 {file}>" run="<실행>" setup="<의존성 설치, 예: npm ci>"`
-   setup은 의존성 설치 명령 — 의존성이 바뀌는 출하에서 ship이 머지 직후 main에서 돌린다(없으면 그 출하가 되돌려진다 — 사고 21).
+   setup은 의존성 설치 명령 — 의존성이 바뀌는 출하에서 ship이 머지 직후 main에서 돌린다(사고 21). 지금 의존성이 0이어도 생태계의 설치 명령(npm install · pip install -e . · uv sync)을 쓴다 — 뒤 unit이 더한다(사고 34).
    규칙: quick은 acceptance·adversary를 포함하지 않는다(red로 커밋되는 것이 정상). full은 전부. test_file은 파일 경로 하나를 받아 그 파일만 돈다.
    러너 설정이 `.worktrees/`를 쓸어 담지 않게 하라 — include를 `tests/`로 좁히거나 `.worktrees/**`를 exclude. 안 하면 진행 중 unit의 red가 메인 full을 오염시킨다(2차 실기 사고).
 5. 규칙 파일의 자리를 채운다: `node .garagiste/scripts/work.mjs rules project="<이름>" one_line="<한 줄>"` — 명령 자리는 team.json에서 자동으로 온다. 규칙 파일에 문장을 더하지 않는다(20줄 상한).

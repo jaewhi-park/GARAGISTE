@@ -225,6 +225,14 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('redproof', ['session'], repo).out, /^RED session 2\/2 — 기존 코드 위의 새 주장\(re-spec\): 다음은 build/, '사고 24: re-spec(정체 spec)의 끝은 RED — 다음 할 일이 적혀 있다');
   assert.match(script('brief', ['build', 'session'], repo).out, /^PACK .*session-build-/, 'spec이 답을 받은 뒤에야 build가 열린다');
   assert.match(script('redproof', ['session'], repo).out, /^FAIL redproof session base_red=true head_green=false — head에서 red: .*session-ttl.* → build가 덜 끝났다/, '사고 24: 정체가 build면 head red는 미완 — 이것도 다음 할 일을 말한다');
+  // 사고 33(필드 시험 1): build가 「인수 테스트가 서로 어긋난다」는 spec: 줄을 남겨도 받을 길이 없었다 — redproof는 build 재spawn만 말해 빈손 build가 반복됐다
+  assert.match(script('redproof', ['session'], repo).out, /spec: 줄을 남겼으면 .*brief\.mjs spec session --return/, 'head red의 FAIL이 spec: 줄의 길도 말한다');
+  const ret = script('brief', ['spec', 'session', '--return', 'spec: 만료 주장과 갱신 주장이 서로 어긋난다'], repo);
+  assert.match(fs.readFileSync(path.join(repo, ret.out.split(' ')[1]), 'utf8'), /## 반려 — build 팩이 남긴 줄[\s\S]*서로 어긋난다/, 'spec 팩이 반려 줄을 받는다');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"spec_return","slug":"session","from":"build"/);
+  assert.match(script('brief', ['spec', 'session', '--return', 'spec: 또 어긋난다'], repo).out, /^FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다/, '반려 핑퐁은 한 번 — 두 번째는 CEO에게');
+  assert.match(script('brief', ['build', 'session', '--return', 'x'], repo).out, /^FAIL --return은 spec 팩에만/);
+  script('brief', ['build', 'session'], repo);
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"respec","slug":"session","q":3/);
   assert.match(script('work', ['seed'], repo).out, /^ACTIVE session — unit은 한 번에 하나/, '진행 중인 unit이 끝나야 다음이 열린다');
   assert.match(script('state', [], repo).out, /안 본 것 0\/3/);
@@ -415,6 +423,16 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.match(fs.readFileSync(path.join(repo, 'CLAUDE.md'), 'utf8'), /^# memo/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| boot \| .* \| PASS \| scaffold \| — \|/);
   assert.match(script('work', ['seed'], repo).out, /^UNIT memo-add spec/, 'boot 뒤 다음 unit이 열린다');
+  // 사고 34(필드 시험 2): 설치 명령이 비어(true) 뒤 unit의 의존성이 main·worktree에 깔리지 않았다 — CEO의 한 줄(ADMIN, 메인 루트)이 커밋·설치까지 하고, worktree의 verify가 main의 의존성 디렉터리를 잇는다
+  const setupCmd = `node -e "require('fs').mkdirSync('node_modules/dep',{recursive:true})"`;
+  const sc = script('work', ['commands', `setup=${setupCmd}`], repo, { GARAGISTE_ADMIN: '1' });
+  assert.match(sc.out, /^COMMANDS [\s\S]*scaffold\(team\) 커밋 · setup을 main에서 돌렸다 exit=0/, sc.out);
+  assert.equal(git(['status', '--porcelain', '--', '.garagiste/team.json'], repo).out.trim(), '', 'commands 뒤 main은 깨끗하다');
+  assert.ok(fs.existsSync(path.join(repo, 'node_modules/dep')), 'setup이 main에서 돌았다');
+  const mwt = path.join(repo, '.worktrees', 'memo-add');
+  assert.ok(!fs.existsSync(path.join(mwt, 'node_modules')), '이미 열린 worktree엔 아직 없다');
+  script('verify', ['quick'], mwt);
+  assert.ok(fs.existsSync(path.join(mwt, 'node_modules/dep')), 'worktree의 verify가 main의 의존성 디렉터리를 잇는다');
   git(['config', '--unset', 'core.hooksPath'], repo);
   assert.match(script('work', ['seed'], repo).out, /^FAIL doctor \d+[\s\S]*core\.hooksPath/, 'R8: 병든 설치(게이트 침묵 꺼짐)에서 seed는 이유 전문과 함께 멈춘다');
   git(['config', 'core.hooksPath', '.githooks'], repo);

@@ -95,7 +95,10 @@ function intake(c, args) {
 function main() {
   const [pack, slug] = process.argv.slice(2);
   if (pack === 'intake') return intake(ctx(), process.argv.slice(3));
-  if (!PACKS.includes(pack) || !slug) fail(`사용법: brief.mjs <spec|build|attack|spike|boot> <slug> | intake`);
+  if (!PACKS.includes(pack) || !slug) fail(`사용법: brief.mjs <spec|build|attack|spike|boot> <slug> [--return "<spec: 줄>"] | intake`);
+  const ri = process.argv.indexOf('--return');
+  const returned = ri > 0 ? (process.argv[ri + 1] || '').trim() : '';
+  if (ri > 0 && (pack !== 'spec' || !returned)) fail('FAIL --return은 spec 팩에만, build·attack이 남긴 spec: 줄 그대로 — brief.mjs spec <slug> --return "<그 줄>"');
   const c = ctx();
   const unit = loadUnit(c.main, c.team, slug);
   if (pack === 'boot' && unit.kind !== 'scaffold') fail(`FAIL boot 팩은 kind scaffold unit에만 — ${slug}은 ${unit.kind}`);
@@ -125,6 +128,13 @@ function main() {
   if (pack === 'spec' && respec.length) {
     const qs = new Set(respec.map((r) => `Q${r.q}`));
     sec('respec', '재-spec — 진행 중에 온 답 (어긋나는 주장만 고친다 · 이 답을 red 수용 테스트로 · 끝은 redproof RED)', closedDecisions(readText(path.join(c.main, c.team.paths.decisions))).filter((l) => qs.has((/Q\d+/.exec(l) || [''])[0])).join('\n') || [...qs].join(' · '));
+  }
+  // 사고 33(필드 시험 1): build·attack의 `spec:` 줄(인수 테스트가 서로·원문과 어긋난다)을 받을 길이 없었다 — redproof는 build 재spawn만 말해 빈손 build가 반복됐다
+  const returnedFrom = unit.state;
+  if (returned) {
+    const prior = readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created);
+    if (prior.length) fail(`FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다: 두 줄을 CEO에게 그대로 보여 준다(hard 질문 — 그 unit만 멈춘다)\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}`);
+    sec('return', `반려 — ${returnedFrom} 팩이 남긴 줄 (그 주장들이 서로·원문과 어긋나는지부터)`, returned);
   }
   if (unit.boundary?.hit) sec('boundary', 'boundary', `HIT: ${unit.boundary.reasons.join(', ')}${pack !== 'spike' ? ` — spike 측정: docs/measurements/spike-${slug}.md` : ''}`);
   const spike = readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`));
@@ -166,6 +176,7 @@ function main() {
   const consumed = pack === 'spec' && respec.length > 0; // spec 팩이 답을 실었다 — build·attack·ship이 다시 열린다
   if (consumed) unit.respec = [];
   if (unit.state !== pack || consumed) { unit.state = pack; saveUnit(c.main, c.team, unit); }
+  if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned });
   appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes });
   out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
 }

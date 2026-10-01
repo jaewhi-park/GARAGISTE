@@ -52,6 +52,6 @@ function main() {
   if (o === 'PASS') return out(`PASS redproof ${slug} base_red head_green${state === 'spec' ? ' — 기존 코드가 새 주장을 이미 만족한다(re-spec): build 불필요, attack·ship은 새 tree에서 다시' : ''}`);
   if (o === 'RED') return out(`RED ${slug} ${redAtHead.length}/${files.length} — 기존 코드 위의 새 주장(re-spec): 다음은 build → node .garagiste/scripts/brief.mjs build ${slug}`);
   if (!v.base_red) fail(`FAIL redproof ${slug} base_red=false — base에서 green: ${baseRes.filter((r) => r.exit === 0).map((r) => r.file).join(' ')} — old code에서도 통과하는 테스트는 테스트가 아니다`);
-  fail(`FAIL redproof ${slug} base_red=true head_green=false — head에서 red: ${redAtHead.join(' ')} → build가 덜 끝났다: node .garagiste/scripts/brief.mjs build ${slug} 뒤 재spawn`);
+  fail(`FAIL redproof ${slug} base_red=true head_green=false — head에서 red: ${redAtHead.join(' ')} → build가 덜 끝났다: node .garagiste/scripts/brief.mjs build ${slug} 뒤 재spawn (build가 spec: 줄을 남겼으면 그 줄로: node .garagiste/scripts/brief.mjs spec ${slug} --return "<그 줄>")`);
 }
 if (isMain(import.meta.url)) main();

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
-import { appendLedger, ceoTouch, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { appendLedger, ceoTouch, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 import { budgetStatus } from './state.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
@@ -347,7 +347,14 @@ function commands(c, args) {
   }
   writeJson(teamPath, t);
   appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' });
-  out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`);
+  // 사고 34(필드 시험 2): 메인 루트의 CEO 변경은 boot의 커밋이 없다 — models처럼 스스로 커밋하고(ship이 main dirt로 막히지 않게), 바뀐 설치 명령은 main에서 한 번 돌린다(다음 worktree가 그 의존성을 잇는다)
+  let tail = '';
+  if (c.root === c.main) {
+    const cm = git(['commit', '-q', '-m', `scaffold(team): commands ${args.map((a) => a.split('=')[0]).join(' ')}`, '--', '.garagiste/team.json'], c.main, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' });
+    if (!cm.status) tail += ' · scaffold(team) 커밋';
+    if (args.some((a) => a.startsWith('setup=')) && t.commands.setup) tail += ` · setup을 main에서 돌렸다 exit=${shell(t.commands.setup, { cwd: c.main }).status}`;
+  }
+  out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}${tail}`);
 }
 // 규칙 파일의 {{…}} 자리 — boot 팩이 채운다(CLAUDE.md 또는 AGENTS.md)
 function rules(c, args) {
