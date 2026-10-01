@@ -5,7 +5,11 @@ const DESTRUCTIVE = /\bgit\s+(reset\s+--hard|clean\s+-\S*f|checkout\s+--\s+\.|st
 const SECRET = /(^|[\\/])\.env(\.|$)|\.pem$|\.key$|credentials\.json$/i;
 // 규칙집 = 팀 정본(.garagiste) + 하네스 배선(.claude settings·hooks·agents / opencode.json·.opencode agents·plugins / .githooks)
 const RULEBOOK = /(^|[\\/])(\.garagiste[\\/](team\.json|HAZARDS\.md|scripts[\\/]|packs[\\/]|ledger[\\/]|units[\\/])|\.claude[\\/](settings\.json|hooks[\\/]|agents[\\/])|opencode\.json|\.opencode[\\/](agents|plugins)[\\/]|\.githooks[\\/])/;
-const LEDGER_SHELL = /\.garagiste[\\/](ledger|units)[\\/]/;
+// 원장·unit 상태 — 향하는 쓰기만 거부한다(L2 1일차: 같은 줄의 sed -n·2>/dev/null까지 쓰기로 읽어 conductor의 표 산출이 막혔다 — 규칙집 읽기 오탐과 같은 수리)
+const LEDGER_PATHS = '\\.garagiste[\\\\/](ledger|units)';
+const LEDGER_SHELL = new RegExp(`(^|[\\s;&|])(rm|mv|cp|tee|truncate|sed\\s+(-\\S+\\s+)*-i\\S*)\\b[^;&|]*${LEDGER_PATHS}`);
+const LEDGER_REDIR = new RegExp(`>{1,2}\\s*("[^"]*|'[^']*|[^\\s;&|<>]*)?${LEDGER_PATHS}`);
+const MEMORY = /\/\.claude\/(?:.*\/)?memory\/|\/MEMORY\.md$/i;
 // 규칙집 셸 쓰기 — 쓰기 verb(rm·mv·cp·tee·truncate·sed -i)는 그대로 거부, 읽기 verb(cat·sed -n·echo·printf)는 리다이렉트로 규칙집을 향할 때만.
 // (첫 Windows 실기의 오탐: conductor가 진단하려고 cat으로 스크립트를 읽는 것까지 거부됐다 — 읽기는 경계가 아니다)
 const RULEBOOK_PATHS = '(\\.garagiste[\\\\/](team\\.json|HAZARDS\\.md|scripts|packs)|\\.claude[\\\\/](settings\\.json|hooks|agents)|opencode\\.json|\\.opencode[\\\\/](agents|plugins)|\\.githooks)';
@@ -29,6 +33,12 @@ const norm = (p) => p.replace(/\\/g, '/');
 // 큰따옴표 안에서도 $()·백틱은 실행되므로 그 내용만 남긴다. 우회 접두(ENV_BYPASS)·worktree 경로 추론은 따옴표로도 효력이 있어 원문을 본다.
 export function stripQuoted(command) {
   return String(command)
+    // heredoc 본문도 데이터다(L2 1일차: 커밋 메시지의 <noreply@…> trailer의 >가 리다이렉트로 읽혀 다음 줄이 쓰기 대상이 됐다 — 2차 실기 이후 두 번째).
+    // 구분자 줄의 나머지(리다이렉트 등)는 셸로 남기고, 따옴표 없는 본문의 $()·백틱은 실행이라 그 내용만 남긴다.
+    .replace(/<<-?[ \t]*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1([^\n]*)\n([\s\S]*?)\n[ \t]*\2[ \t]*(?=\n|$)/g, (_, q, tag, rest, body) => {
+      const subs = q ? null : body.match(/\$\([^)]*\)|`[^`]*`/g);
+      return ` ${rest}${subs ? ` ${subs.join(' ')}` : ''} `;
+    })
     .replace(/\\["']/g, ' ')
     .replace(/'[^']*'/g, ' ')
     .replace(/"([^"]*)"/g, (_, inner) => { const subs = inner.match(/\$\([^)]*\)|`[^`]*`/g); return subs ? ` ${subs.join(' ')} ` : ' '; });
@@ -50,6 +60,23 @@ export function writeTargets(command) {
       const t = raw.replace(/^["']|["']$/g, '');
       if (t && !t.startsWith('-') && GUARDED_AREA.test(t)) out.push(t);
     }
+  }
+  return out;
+}
+// 한 명령 안의 `cd <dir> &&`는 그 뒤 상대 경로의 뿌리다 — 훅의 cwd는 명령 전의 위치라 `cd .worktrees/x && rm dist`가 저장소 루트의 dist로 읽힌다
+export function cdBase(command, cwd) {
+  const m = /^\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*(?:&&|;)/.exec(String(command));
+  return m ? path.resolve(cwd, m[1] ?? m[2] ?? m[3]) : cwd;
+}
+// L2 1일차: conductor의 mv가 CEO의 파일을 옮겼다 — 리다이렉트처럼 rm·mv·cp·tee도 쓰기다. 명령 자리의 동사만 본다(경로 속 rm은 명령이 아니다).
+// rm·mv·tee는 인자 전부가 쓰기 대상(mv의 원본은 사라진다), cp는 마지막 인자(목적지)만.
+export function fileVerbTargets(command) {
+  const out = [];
+  const re = /(?:^|[\n;&|(])\s*(?:sudo\s+)?(?:git\s+)?(rm|mv|cp|tee)\b([^;&|>\n]*)/g;
+  let m;
+  while ((m = re.exec(command))) {
+    const args = m[2].trim().split(/\s+/).filter((t) => t && !t.startsWith('-')).map((t) => t.replace(/^["']|["']$/g, ''));
+    if (args.length) out.push(...(m[1] === 'cp' ? args.slice(-1) : args));
   }
   return out;
 }
@@ -84,7 +111,7 @@ export function decide(input, ctx) {
     if (!admin && pb && pb !== 'main' && pb !== 'master'
       && new RegExp(`\\bgit\\s+push\\b[^;&|]*[\\s:]${pb.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')}(\\s|$)`).test(c)) return `보호 브랜치(${pb}) push — 머지는 ship.mjs만, 원격 push는 CEO의 일이다.`;
     if (!admin && ENV_BYPASS.test(c)) return '게이트 우회 금지 — GARAGISTE_SHIP·WIP·ADMIN 접두는 스크립트 내부와 CEO(ADMIN 세션)만 쓴다.';
-    if (LEDGER_SHELL.test(cq) && /(>|>>|\brm\b|\bsed\b|\btee\b|\btruncate\b|\bmv\b)/.test(cq)) return '원장·unit 상태는 스크립트만 쓴다.';
+    if (LEDGER_SHELL.test(cq) || LEDGER_REDIR.test(cq)) return '원장·unit 상태는 스크립트만 쓴다.';
     if (!admin && (RULEBOOK_SHELL.test(cq) || RULEBOOK_REDIR.test(cq))) return '규칙집(.garagiste 정본·하네스 배선)은 hard 결정 뒤 CEO가 GARAGISTE_ADMIN=1로만 바꾼다. (읽기는 자유 — Read 툴이나 cat은 막지 않는다)';
     const w = worktreeOf(path.resolve(cwd), ctx.worktreesDir) || worktreeFromCommand(c, ctx.worktreesDir);
     if (w) {
@@ -92,11 +119,17 @@ export function decide(input, ctx) {
       if (CEO_CMDS.test(c)) return 'tried·decide(CEO 접점)·drop(방향전환)·needs(선행 재배선)는 conductor의 일이다 — 팩은 부르지 않는다. conductor가 CEO의 말을 받아 메인에서 돌린다.';
       if (ctx.readMarker(w.dir) === 'spike' && /\bgit\s+commit\b/.test(c)) return 'spike는 커밋하지 않는다 — 측정 파일만 남긴다.';
     }
+    const base = cdBase(c, cwd);
     for (const target of writeTargets(cq)) {
-      const abs = path.resolve(cwd, target);
+      const abs = path.resolve(base, target);
       const tw = worktreeOf(abs, ctx.worktreesDir);
       if (tw) { const r = packWriteReason(ctx.readMarker(tw.dir), norm(tw.rel)); if (r) return `Bash 쓰기: ${r}`; continue; }
       if (!admin && ctx.root && !norm(path.relative(ctx.root, abs)).startsWith('..')) return `Bash 쓰기(${target})가 worktree 밖이다 — 쓰기는 worktree 안 팩과 스크립트(work.mjs brief|add|…)만.`;
+    }
+    if (!admin) for (const target of fileVerbTargets(cq)) {
+      const abs = path.resolve(base, target);
+      if (worktreeOf(abs, ctx.worktreesDir)) continue; // 팩의 worktree 안은 위의 쓰기 경계가 맡는다
+      if (ctx.root && !norm(path.relative(ctx.root, abs)).startsWith('..')) return `worktree 밖 저장소 파일(${target})은 옮기거나 지우지 않는다(mv·rm·cp·tee) — CEO가 만든 파일이면 그 경로를 CEO에게 말한다. 일반 편집 세션은 GARAGISTE_ADMIN=1.`;
     }
     return null;
   }
@@ -105,6 +138,7 @@ export function decide(input, ctx) {
     if (!p) return null;
     const abs = path.resolve(cwd, p);
     if (SECRET.test(abs)) return '비밀 파일(.env·*.pem·*.key·credentials)은 읽지도 쓰지도 않는다.';
+    if (!admin && MEMORY.test(norm(abs))) return '메모리 파일은 쓰지 않는다 — 상태의 정본은 원장(.garagiste/ledger)과 docs/STATUS.md다(둘째 사본은 검토 없이 드리프트한다).';
     if (!admin && RULEBOOK.test(norm(abs))) return '규칙집·원장·unit 상태는 스크립트가 쓴다. 바꾸려면 hard 결정 → CEO가 GARAGISTE_ADMIN=1.';
     const w = worktreeOf(abs, ctx.worktreesDir);
     if (!w) return admin ? null : 'conductor는 쓰지 않는다 — 쓰기는 worktree 안의 팩과 스크립트(work.mjs brief|add)만. 일반 편집 세션은 GARAGISTE_ADMIN=1.';

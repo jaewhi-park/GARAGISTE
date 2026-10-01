@@ -3,7 +3,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
-import { appendLedger, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { appendLedger, ceoTouch, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { budgetStatus } from './state.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot'];
@@ -77,6 +78,15 @@ export function pickReady({ order, items, units, decisionsText = '' }) {
   const first = remaining.find((s) => !active.has(s));
   if (!first) return { kind: 'active', slugs: remaining.filter((s) => active.has(s)) };
   return { kind: 'wait', slug: first, unmet: (by.get(first)?.needs || []).filter((n) => !satisfied(n)) };
+}
+// L2 1일차: unit은 한 번에 하나(Flow 4) — 병렬 seed가 같은 파일 충돌(사고 26)과 spawn 귀속 어긋남의 토양이었다. 예외는 CEO 질문(열린 Q)에 걸려 멈춘 unit(Flow 6).
+// 예산 정지 중엔 seed도 STOP — 그때 연 unit은 몇 시간 유휴하며 base가 낡았다(effect-conflict).
+export function seedGate({ units, decisionsText = '', stops = [] }) {
+  if (stops.length) return { kind: 'stop', why: stops };
+  const open = new Set([...String(decisionsText).matchAll(/^- \[ \] Q(\d+)/gm)].map((m) => Number(m[1])));
+  const parked = (u) => (u.questions || []).some((n) => open.has(Number(n))) || (u.needs || []).some((n) => /^Q\d+$/.test(n) && open.has(Number(n.slice(1))));
+  const working = units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped' && !parked(u)).map((u) => u.slug);
+  return working.length ? { kind: 'active', slugs: working } : null;
 }
 export function nextQuestionNumber(text) {
   const nums = [...text.matchAll(/^- \[[ x]\] Q(\d+)/gm)].map((m) => Number(m[1]));
@@ -199,7 +209,12 @@ function seed(c) {
   const sc = readJson(scopePath(c), null);
   if (!sc) fail('FAIL scope 없음 — work.mjs scope <slug…>|--milestone M1|--range a..b');
   const items = parseBacklog(readBacklog(c));
-  const r = pickReady({ order: sc.order, items, units: listUnits(c.main, c.team), decisionsText: readText(path.join(c.main, c.team.paths.decisions)) });
+  const units = listUnits(c.main, c.team);
+  const decisionsText = readText(path.join(c.main, c.team.paths.decisions));
+  const g = seedGate({ units, decisionsText, stops: budgetStatus({ units, ledger: readLedger(c.main, c.team), team: c.team, ceoTouchTs: ceoTouch(c.main) }).stops });
+  if (g?.kind === 'stop') return out(`STOP ${g.why.join('; ')} — 예산 정지 중엔 새 unit을 열지 않는다(열어도 낡은 base 위에서 기다린다). CEO에게: docs/STATUS.md 「써볼 것」`);
+  if (g?.kind === 'active') return out(`ACTIVE ${g.slugs.join(', ')} — unit은 한 번에 하나: 출하되거나 CEO 질문(열린 Q)에 걸려야 다음이 열린다`);
+  const r = pickReady({ order: sc.order, items, units, decisionsText });
   if (r.kind === 'done') return out('SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위를 정해라(work.mjs scope).');
   if (r.kind === 'active') return out(`ACTIVE ${r.slugs.join(', ')} — 진행 중인 unit이 끝나야 다음이 열린다`);
   if (r.kind === 'wait') return out(`WAIT ${r.slug} needs ${r.unmet.join(',')} — ${r.unmet.some((n) => /^Q\d+$/.test(n)) ? '결정이 먼저(work.mjs decide)' : '선행 unit이 먼저'}`);
