@@ -351,9 +351,15 @@ test('redproof: 사고 47(필드 벤치 넷) — 일부만 base green(먼저 출
   assert.ok(!m.includes('work.mjs drop'), '남은 red 주장(CEO가 정한 CP949)을 닫는 drop은 길이 아니다');
 });
 test('work args: 사고 37(필드 시험 2) — 값 없는 --forget이 맨 끝이어도 켜진다(drop이 BACKLOG 줄을 닫지 못해 seed가 닫은 unit을 다시 열 뻔했다)', () => {
-  assert.deepEqual(parseArgs(['persist', '이미 충족', '--forget'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'] });
-  assert.deepEqual(parseArgs(['persist', '--forget', '이미 충족'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'] }, '사유를 삼키지 않는다');
+  assert.deepEqual(parseArgs(['persist', '이미 충족', '--forget'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'], unknown: [] });
+  assert.deepEqual(parseArgs(['persist', '--forget', '이미 충족'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'], unknown: [] }, '사유를 삼키지 않는다');
   assert.deepEqual(parseArgs(['x', '--needs', 'a,Q1', '--milestone', 'M2'], 'add').flags, { needs: 'a,Q1', milestone: 'M2' });
+});
+test('work args: 사고 49(홀드아웃 — Go CLI) — 원문·질문은 무엇으로든 시작한다: 명령마다 아는 플래그만 플래그다', () => {
+  assert.deepEqual(parseArgs(['min-size', '--min-size 1M처럼 이보다 작은 파일은 건너뛸 수 있다', '--milestone', 'M1'], 'add'), { flags: { milestone: 'M1' }, pos: ['min-size', '--min-size 1M처럼 이보다 작은 파일은 건너뛸 수 있다'], unknown: [] }, '원문이 「M1」, 마일스톤이 M?가 됐다');
+  assert.deepEqual(parseArgs(['intake', '--json 출력 형태를 이렇게 정해도 되나?', '--for', 'json-out'], 'ask'), { flags: { for: 'json-out' }, pos: ['intake', '--json 출력 형태를 이렇게 정해도 되나?'], unknown: [] }, '질문이 「json-out」 한 단어가 됐다');
+  assert.deepEqual(parseArgs(['x', '원문', '--milestne', 'M1'], 'add').unknown, ['--milestne'], '오타 플래그는 원문이 되지 않는다 — FAIL로');
+  assert.deepEqual(parseArgs(['x', '--json'], 'add').unknown, ['--json'], '한 낱말 플래그 꼴은 원문이 아니다(원문은 문장)');
 });
 test('ship: wip HEAD의 안내는 unit 정체의 팩을 가리킨다 — boot(scaffold)에 「build를 다시 띄워」라 했다 (필드 시험 두 곳 공통)', () => {
   const base = { slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [], requireAttack: false, spikeText: '', lastSubject: 'wip: checkpoint', stops: [], proseKb: 10, proseMax: 40 };

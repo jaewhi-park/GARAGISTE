@@ -80,6 +80,14 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-10-01 처음 보는 원문에서 intake가 막다른 길에 섰다 (홀드아웃 Go CLI의 사고 49~52)
+- 필드 1·2가 두 회 연속 FAIL 0이던 판(0ae7c70)으로 수리에 쓰지 않은 원문(`tests/field/briefs/holdout-dupfind.md` — Go CLI)을 처음 측정했더니 boot 전, intake에서 멈췄다. CLI 도구의 원문은 흔히 옵션을 말하는데 필드 1의 원문엔 `--`로 시작하는 줄이 없었다.
+- 사고 49: `work.mjs add min-size "--min-size 1M처럼…" --milestone M1`의 원문이 플래그로 먹혀 원문 「M1」·마일스톤 `M?`가 됐다(json-out 같음 · `ask`의 질문 「--json …」도 먹혀 Q1이 「json-out」 한 단어). 수리: 명령마다 아는 플래그만 플래그(`add`·`new`·`ask`·`drop`·`spawned`), 한 낱말 플래그 꼴(`--milestne`)은 오타라 `FAIL 알 수 없는 플래그 — <명령>이 받는 것: …`, 나머지는 원문.
+- 사고 50: 그 줄을 고칠 길이 없었다 — `add`는 중복을 거부했고 `drop`은 unit을 요구하며 `loadUnit`의 예외(스택 여러 줄)로 죽었다(실행 불가 — 정지 줄). 수리: `add … --replace`는 열린 unit이 없는 열린 줄을 제자리에서 바꾸고 원장에 `backlog_replace`(전·후 줄), 중복 FAIL이 두 길(--replace · drop --forget)을 말한다 · unit 없는 줄의 `drop`은 `--forget`이면 줄을 닫고(원장 `backlog_only`) 아니면 두 길을 말한다 · 모든 스크립트의 잡히지 않은 예외는 `FAIL <이유> (던진 자리)` 한 줄(isMain).
+- 사고 51: conductor의 탐침 `work.mjs brief --help`가 「--help」를 CEO 원문(BRIEF)에 쌓았다 — 팀은 BRIEF를 못 지워 CEO가 치웠다. 수리: `--help`·`-h`는 어느 명령이든 부작용 없이 사용법 한 줄. CEO의 말은 `--`로 시작해도 원문이다(`brief "--json이면 …"`).
+- 사고 52: `spawned intake <팩 파일 경로>`가 같은 사용법을 두 번 받고 포기(486fd74 필드 1도 한 번). 수리: 경로를 받으면 「<팩>은 팩 이름이다 — 받은 값은 경로」와 고친 명령(파일 이름에서 팩 이름 · 받은 플래그 그대로)을 준다, 사용법은 팩 이름 목록을 말한다.
+- 검사: unit(parseArgs — 원문·질문이 --로 시작 · 오타 플래그) + e2e(--help 탐침은 부작용 없음 · --로 시작하는 원문·질문 · 중복 FAIL의 두 길 · --replace 제자리·원장 · 열린 unit의 줄은 거부 · unit 없는 줄 drop · 예외 한 줄 · spawned의 고친 명령).
+
 ### Changed — 2026-10-01 사고 44의 비용: 여러 파일을 받는 러너는 인수·공격 파일을 한 번에 (필드 벤치 4 웹 측정 — 사고 48)
 - 측정 모드 벤치(486fd74)의 웹 필드: 사고 44의 full은 프로젝트 러너(`node --test` glob, 병렬 — 20.5초) 뒤에 인수·공격 파일 10개를 파일 하나씩 직렬로 다시 돌려(브라우저를 매번 띄운다 · 50.8초) full이 약 3.5배가 됐다 — full은 unit마다 두 번(worktree · 통합)이고 파일 수는 unit 수만큼 자라 비용은 unit 수의 제곱으로 는다. `test_file`의 계약은 「파일 하나」라 그냥 여러 파일을 넘길 수는 없다(인자 하나만 읽는 래퍼면 거짓 green). 수리: 자리표시자 `{files}`(공백으로 이은 경로들 — 하나여도 된다)를 boot가 고를 수 있다 — `{files}` 러너면 full은 그 파일들을 한 번에 돌리고, red일 때만 파일별로 다시 돌려 어느 파일인지 말한다(함께일 때만 red면 「함께 돌리면 red」로 FAIL — 간섭도 「전부」의 red). `{file}` 러너는 그대로 파일마다. redproof·attack의 파일 단위 실행은 `{files}`에 파일 하나를 넣는다. work.mjs commands·doctor가 둘 다 받고, boot 팩이 그 선택을 말한다. 측정: 벤치 4 웹 필드 main에서 full 66.6초 → 37.2초(사고 44 전 약 20초). 검사: unit(fileCmd·hasFileSlot) + 사고 44 e2e 확장({file} 파일마다 · {files} 전부 green이면 한 번 · red면 그 파일 · 함께일 때만 red · redproof가 {files}에 파일 하나).
 

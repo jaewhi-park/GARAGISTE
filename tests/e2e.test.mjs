@@ -372,6 +372,54 @@ test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원�
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"scope_fix","slug":"ledger-add-fix","from":"ledger-add"/);
 });
 
+test('사고 49~52(홀드아웃 — Go CLI): --로 시작하는 원문 · BACKLOG 줄 정정 · --help 탐침 · spawned의 팩 경로 — intake가 막다른 길에 서지 않는다', { timeout: 60000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-holdout-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'README.md', '# p\n');
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const read = (rel) => (fs.existsSync(path.join(repo, rel)) ? fs.readFileSync(path.join(repo, rel), 'utf8') : '');
+  const oneLine = (r) => assert.ok(!/\n\s+at /.test(r.out), `스택 없이 한 줄: ${r.out}`);
+  // 사고 51: conductor의 탐침 `brief --help`가 「--help」를 CEO 원문에 쌓았다(팀은 BRIEF를 못 지운다 — CEO가 치웠다)
+  assert.match(script('work', ['brief', '--help'], repo).out, /^사용법: work\.mjs/);
+  assert.ok(!read('docs/BRIEF.md').includes('--help'), '탐침은 원문이 아니다');
+  assert.match(script('work', ['drop', '--help'], repo).out, /^사용법: work\.mjs/, '어느 명령이든 --help는 부작용 없이 사용법');
+  assert.match(script('work', ['brief', '--json이면 같은 결과를 JSON으로 낸다.'], repo).out, /^BRIEF \+1줄/, 'CEO의 말은 --로 시작해도 원문이다');
+  // 사고 49: --로 시작하는 원문이 플래그로 먹혀 원문 「M1」·마일스톤 M?가 됐다
+  assert.match(script('work', ['add', 'min-size', '--min-size 1M처럼 이보다 작은 파일은 건너뛸 수 있다(단위 K·M·G).', '--milestone', 'M1'], repo).out, /^ADD min-size M1/);
+  assert.match(read('docs/BACKLOG.md'), /- \[ \] min-size · M1 · needs: - · "--min-size 1M처럼 이보다 작은 파일은/);
+  const typo = script('work', ['add', 'typo', '원문 한 문장', '--milestne', 'M1'], repo);
+  assert.match(typo.out, /^FAIL 알 수 없는 플래그 --milestne — add가 받는 것: --milestone --needs --accept --kind --replace/, typo.out);
+  assert.match(script('work', ['ask', 'intake', '--json 출력 형태를 groups·warnings로 정해도 되나?', '--for', 'min-size'], repo).out, /^Q1 queued/);
+  assert.match(read('docs/DECISIONS.md'), /Q1 \(intake\): --json 출력 형태를 groups·warnings로/);
+  // 사고 50: 깨진 BACKLOG 줄을 고칠 길이 없었다 — add는 중복 거부, drop은 unit을 요구하며 예외(스택)로 죽었다
+  script('work', ['add', 'json-out', 'M1'], repo); // 홀드아웃에서 남은 꼴: 원문 「M1」, 마일스톤 M?
+  const dup = script('work', ['add', 'json-out', '--json이면 같은 결과를 JSON으로 낸다.', '--milestone', 'M1'], repo);
+  assert.match(dup.out, /^FAIL BACKLOG에 있음: json-out — 고치려면 같은 명령에 --replace[\s\S]*지우려면 work\.mjs drop json-out "<사유>" --forget/, dup.out);
+  assert.match(script('work', ['add', 'json-out', '--json이면 같은 결과를 JSON으로 낸다.', '--milestone', 'M1', '--needs', 'min-size', '--replace'], repo).out, /^REPLACE json-out M1 needs=min-size/);
+  assert.equal((read('docs/BACKLOG.md').match(/ json-out · /g) || []).length, 1, '줄은 제자리에서 바뀐다');
+  assert.match(read('docs/BACKLOG.md'), /- \[ \] json-out · M1 · needs: min-size · "--json이면 같은 결과를 JSON으로 낸다\."/);
+  assert.match(read('.garagiste/ledger/evidence.jsonl'), /"kind":"backlog_replace","slug":"json-out","from":"- \[ \] json-out · M\? · needs: - · \\"M1\\"/);
+  assert.match(script('work', ['add', 'nosuch', '원문', '--replace'], repo).out, /^FAIL --replace는 BACKLOG에 있는 줄만: nosuch/);
+  const d0 = script('work', ['drop', 'json-out', '잘못 쓴 줄'], repo);
+  assert.match(d0.out, /^FAIL json-out은 unit이 없는 BACKLOG 줄이다 — 닫으려면 --forget[\s\S]*고치려면 work\.mjs add json-out[\s\S]*--replace/, d0.out); oneLine(d0);
+  assert.match(script('work', ['drop', 'json-out', '범위 밖', '--forget'], repo).out, /^DROPPED json-out — 범위 밖 · BACKLOG 줄 닫음/);
+  assert.match(read('docs/BACKLOG.md'), /- \[x\] json-out · /);
+  const none = script('work', ['drop', 'ghost', 'x', '--forget'], repo);
+  assert.match(none.out, /^FAIL unit도 BACKLOG 줄도 없음: ghost/); oneLine(none);
+  const crash = script('work', ['default', 'ghost', '정한 것'], repo);
+  assert.match(crash.out, /^FAIL unit 없음: ghost/, '잡히지 않은 예외도 한 줄 FAIL'); oneLine(crash);
+  assert.match(script('work', ['decide', '1', '예'], repo).out, /^PASS decide Q1/);
+  assert.match(script('work', ['scope', 'min-size'], repo).out, /^SCOPE/);
+  assert.match(script('work', ['seed'], repo).out, /^UNIT min-size spec/);
+  assert.match(script('work', ['add', 'min-size', '다른 원문', '--replace'], repo).out, /^FAIL min-size은 unit이 열려 있다 — 진행 중 unit의 수용은 re-spec/, '열린 unit의 줄은 바꾸지 않는다');
+  // 사고 52: <팩>에 팩 파일 경로를 넣고 같은 사용법을 두 번 받고 포기했다
+  const sp = script('work', ['spawned', 'intake', '.garagiste/session/packs/intake-2026-10-01T11-30-50-078Z.md', '--tokens', '18594', '--minutes', '2'], repo);
+  assert.match(sp.out, /^FAIL <팩>은 팩 이름\(intake·spec·build·attack·spike·boot\)이다 — 받은 값은 경로[\s\S]*→ node \.garagiste\/scripts\/work\.mjs spawned intake intake --tokens 18594 --minutes 2$/m, sp.out);
+  assert.match(script('work', ['spawned', 'intake', 'intake', '--tokens', '18594', '--minutes', '2'], repo).out, /^SPAWN intake intake/);
+});
+
 test('사고 47(필드 벤치 넷): 일부 주장만 base green이면 redproof는 drop 대신 충족된 파일만 빼는 길을 주고, spec 팩이 그 목록과 CEO 말을 받는다', { timeout: 60000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-met-'));

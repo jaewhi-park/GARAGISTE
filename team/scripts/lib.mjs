@@ -248,6 +248,9 @@ export function isMain(metaUrl) {
   if (!process.argv[1] || path.resolve(process.argv[1]) !== fileURLToPath(metaUrl)) return false;
   rootFromScript(metaUrl);
   lawFromMain(metaUrl);
+  // 사고 50(홀드아웃): drop이 loadUnit의 예외로 스택 여러 줄을 내고 죽었다 — 잡히지 않은 예외도 한 줄(FAIL <이유> (던진 자리))
+  const crash = (e) => { const at = (/\n\s+at (?:.*\()?(.*?)\)?$/m.exec(e?.stack || '') || [])[1]; out(`FAIL ${e?.message || e}${at ? ` (${path.basename(at)})` : ''}`); process.exit(1); };
+  process.on('uncaughtException', crash); process.on('unhandledRejection', crash);
   return true;
 }
 // 사고 40(필드 벤치 1 정비): 헤드리스에선 `cd <worktree> && …`가 승인 대기로 막혀 build가 worktree의 verify를 경로로 불렀는데 셸은 main 루트였다 —
