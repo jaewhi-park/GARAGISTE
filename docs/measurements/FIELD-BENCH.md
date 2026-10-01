@@ -43,6 +43,7 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-01 | 정비 | 6622dbb → 3bb2f20 | 2 Node 웹 | SCOPE DONE | 4/2 | 5 (27·34·35·36·37) | 4/0 | 0 | 22 | 531K | 54.5 | $6.96 |
 | 2026-10-01 | 측정 | 46a53ca | 1 파이썬 CLI | 정지 — ledger-add ship(unit 2/6) | 1/0 | 1 (ledger-add ship · spike 안내 없음) | 0/0 | 0 | 8 | 191K | 1.2 (정지 10.7) | $2.11 |
 | 2026-10-01 | 측정 | 46a53ca | 2 Node 웹 | SCOPE DONE | 5/2 | 0 | 5/0 | 0 | 20 | 564K | 35.4 | $6.13 |
+| 2026-10-01 | 정비(측정 정지에서 이어) | 46a53ca → b9e1561 | 1 파이썬 CLI | SCOPE DONE | 6/1 | 2 (39·40) | 5/1 | 1 (ledger-add 없는 날짜 → ledger-add-fix) | 28 | 671K | 99.6 | $7.40 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -62,3 +63,6 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
   3. 필드 1 정지 줄 — spike FAIL에 다음 명령이 없고, 산출물 무시 줄 추가(`.gitignore`)가 diff-HIT다.
   4. 필드 1: boot 하네스(unittest discover)가 하이픈 파일(`ledger-add.py`)을 0건 실행·exit 1 — redproof가 그 0건 red를 base_red로 인정했다(Q4의 하네스 수리로 풀림).
   5. 팩 상한 FAIL ①의 「CEO 커밋」은 보호 브랜치 게이트를 넘는 법을 말하지 않는다(대리는 deliver.sh와 같은 GARAGISTE_SHIP=1 GARAGISTE_WIP=1).
+- **정비 모드 이어서(필드 1, 같은 폴더)**: 사고 38·39 수리(6f9182b) 반영 → 옛 판 boot가 남긴 egg-info·__pycache__는 보존 폴더로 옮김 → ledger-add가 새 spike 줄대로 spike 팩을 거쳐 출하(39 확인), 그 뒤 ship 4건 모두 main 깨끗(38 — 되돌림 경로 자체는 boot가 옛 판으로 출하돼 이 필드에선 안 밟았다, e2e가 재현). 정비 중 새 사고 40: 헤드리스에서 `cd <worktree> && …`가 막혀 build가 worktree의 verify를 경로로 불렀는데 셸이 main 루트라 main을 검증 → worktree 게이트 「quick PASS 없음」 반복 → wip HEAD로 정지. 수리(b9e1561) 뒤 바로 출하.
+- **green 후 CEO 발견 결함 1**: ledger-add가 `2026-13-01`을 exit 0으로 기록(어느 달에도 안 잡힘 — attack이 못 봤다) → tried fail → 버그 unit ledger-add-fix 출하, try ok. conductor는 spec의 Q5(재현 줄)에 CEO 말을 그대로 옮겨 답하고 그렇게 밝혔다.
+- 다음: b9e1561 이후 판으로 측정 모드 재벤치 — 38의 되돌림이 실제 boot에서 돌고 두 필드가 FAIL 0으로 닿는지.
