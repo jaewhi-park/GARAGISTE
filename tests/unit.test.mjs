@@ -11,7 +11,7 @@ import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
-import { attackCell, evaluateShip, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
+import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
@@ -408,6 +408,15 @@ test('ship: spike는 필수 행 다섯이 전부 있어야 끝난 것이다', ()
   assert.equal(spikeOnlyFiles(['docs/measurements/spike-vault-open-ui.md'], 'docs/measurements'), true, '사고 16: spike 파일만의 wip HEAD는 ship이 승격한다');
   assert.equal(spikeOnlyFiles(['docs/measurements/spike-x.md', 'src/a.ts'], 'docs/measurements'), false, '제품 코드가 섞이면 승격하지 않는다');
   assert.equal(spikeOnlyFiles([], 'docs/measurements'), false);
+});
+test('ship: 사고 41(필드 벤치 2 웹) — 증거 파일만 든 wip HEAD는 ship이 정식 메시지로 승격한다: attack이 red 0의 공격 파일을 더하고 끝나면 커밋할 주체가 없어 「HEAD가 wip」가 반복됐다', () => {
+  assert.equal(evidenceCommitMessage(['tests/adversary/serve-list-13.test.mjs'], team.paths, 'serve-list'), 'test(serve-list): attack 산출물');
+  assert.equal(evidenceCommitMessage(['tests/adversary/a-1.test.mjs', 'fixtures/hostile/big.json'], team.paths, 'a'), 'test(a): attack 산출물');
+  assert.equal(evidenceCommitMessage(['docs/measurements/spike-x.md'], team.paths, 'x'), 'docs(spike): x 측정', '사고 16의 승격 그대로');
+  assert.equal(evidenceCommitMessage(['docs/measurements/spike-x.md', 'tests/adversary/x-1.py'], team.paths, 'x'), 'test(x): attack 산출물');
+  assert.equal(evidenceCommitMessage(['tests/adversary/a-1.test.mjs', 'src/a.mjs'], team.paths, 'a'), null, '제품 코드가 섞이면 승격하지 않는다 — build의 일');
+  assert.equal(evidenceCommitMessage(['tests/adversary-x/a.mjs'], team.paths, 'a'), null, '경로 경계는 디렉터리 단위');
+  assert.equal(evidenceCommitMessage([], team.paths, 'a'), null);
 });
 test('ship: 사고 39(필드 벤치 1) — spike 미완 FAIL은 다음 할 일을 명령으로 준다: build가 산출물 무시 줄(.gitignore)을 더한 diff-HIT에서 conductor가 멈췄다', () => {
   const ledger = [{ kind: 'verify', mode: 'full', exit: 0, tree: 'T' }, { kind: 'redproof', slug: 'ledger-add', base_red: true, head_green: true, tree: 'T' }, { kind: 'attack', slug: 'ledger-add', tree: 'T', red: 0, total: 4 }];

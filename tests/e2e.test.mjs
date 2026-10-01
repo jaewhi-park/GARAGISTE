@@ -279,7 +279,18 @@ test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 
   assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] atom · /, 'BACKLOG 줄이 다시 열린다');
   if (fs.existsSync(path.join(repo, 'docs/LEDGER.md'))) assert.doesNotMatch(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| atom \|/, 'LEDGER 행이 남지 않는다');
   fs.rmSync(path.join(repo, '.garagiste/session/failflag'));
-  assert.match(script('ship', ['atom'], repo).out, /^SHIPPED atom/, '원인이 사라지면 같은 증거로 다시 ship된다');
+  // 사고 41(필드 벤치 2 웹): 마지막 attack이 red 0의 공격 파일만 더하고 끝나면 체크포인트가 wip로 덮는다 — build는 고칠 것이 없고 그 파일을 커밋할 주체가 없어 「HEAD가 wip」가 반복됐다
+  write(wt, 'tests/adversary/atom-2.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';\ntest('주석으로 시작', () => { assert.match(fs.readFileSync('src/atom.mjs', 'utf8'), /^\\/\\//); });\n");
+  git(['add', '-A'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'wip: atom checkpoint'], wt, { GARAGISTE_WIP: '1' }).status, 0);
+  assert.match(script('verify', ['attack', 'atom'], wt).out, /red 0\/2/);
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
+  assert.match(script('redproof', ['atom'], wt).out, /^PASS redproof/);
+  const s2 = script('ship', ['atom'], repo);
+  assert.match(s2.out, /^SHIPPED atom/, '원인이 사라지면 다시 ship된다 — 증거 파일만 든 wip HEAD는 ship이 승격한다: ' + s2.out);
+  const log = git(['log', '--format=%s', '-4'], repo).out;
+  assert.match(log, /test\(atom\): attack 산출물/);
+  assert.doesNotMatch(log, /^wip:/m, 'main 역사에 wip가 없다');
 });
 
 test('사고 38·39(필드 벤치): main의 setup·quick이 남긴 산출물은 반쪽 출하 대신 되돌림·보존·unit 안내, unit이 무시 줄(.gitignore)을 더하면 spike FAIL이 다음 명령을 준다', { timeout: 180000 }, (t) => {
