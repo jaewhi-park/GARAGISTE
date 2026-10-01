@@ -106,6 +106,17 @@ function resolveRebaseTeamJson(wt) {
 }
 // 사고 26(L2 1일차): 코드 충돌은 rebase를 멈춘 자리에서 팩이 표시를 풀고(git add까지 — 파일 편집, 팩의 경계 안) ship이 잇는다.
 // 옛 안내 「build를 다시 띄워 main 위에서 해결」은 실행 불가였다 — 가드가 팩·conductor 모두의 rebase·merge를 막는다.
+// 사고 29(필드 시험 1): rebase는 unit의 역사를 한 커밋씩 다시 놓는다 — .gitignore 전의 wip 체크포인트가 담은 산출물(__pycache__)이
+// worktree에 무시 파일로 남아 있으면 그 중간 커밋에서 「untracked would be overwritten」으로 멈췄다. 증거는 tree다: 역사를 그 tree 한 커밋으로 접고 올린다.
+function squashUnit(wt, base) {
+  const subjects = git(['log', '--reverse', '--format=%s', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean);
+  if (subjects.length < 2) return;
+  const orig = headSha(wt);
+  const msg = `${git(['log', '-1', '--format=%B'], wt).stdout.trim()}\n\nSquashed: ${subjects.length}\n${subjects.map((x) => `- ${x}`).join('\n')}`;
+  git(['reset', '-q', '--soft', base], wt);
+  const cm = git(['commit', '-q', '-m', msg], wt, { GARAGISTE_WIP: '1' });
+  if (cm.status) { git(['reset', '-q', '--soft', orig], wt); fail(`FAIL ship: unit 역사 접기 실패(되돌렸다) — ${(cm.stderr || cm.stdout).trim()}`); }
+}
 const conflictFail = (mainBranch, files, slug, pk) => `FAIL ship: ${mainBranch}과 충돌 — ${files.join(' ')}. rebase를 그 자리에 멈춰 두었다(충돌 표시가 worktree에 있다) → node .garagiste/scripts/brief.mjs ${pk} ${slug} → ${pk}가 표시를 풀고 git add까지(커밋·rebase 없이) → node .garagiste/scripts/ship.mjs ${slug} — ship이 rebase를 잇고 통합 tree를 다시 검증한다`;
 function main() {
   const slug = process.argv[2];
@@ -167,11 +178,13 @@ function main() {
   const dirty = dirtyFiles(c.main).filter((f) => !DOC_OK(c.team).includes(f));
   if (dirty.length) fail(`FAIL ship: 메인 worktree에 미커밋 변경 — ${dirty.join(' ')}`);
   // 통합: unit을 main 위로 올리고, tree가 바뀌었으면 full을 다시 돌린다
+  if (!resumed) squashUnit(wt, base);
   const preHead = headSha(wt);
   const rb = git(['rebase', c.team.protected_branch], wt);
   if (rb.status && !resolveRebaseTeamJson(wt)) {
     const files = unmergedFiles(wt);
-    if (!files.length) { git(['rebase', '--abort'], wt); fail(`FAIL ship: rebase 실패 — ${(rb.stderr || rb.stdout).split('\n')[0]}`); }
+    // 필드 시험 1: 첫 줄만 내 파일 이름이 잘렸다 — git의 hint 줄만 빼고 전문
+    if (!files.length) { git(['rebase', '--abort'], wt); fail(`FAIL ship: rebase 실패(되돌렸다 — worktree는 그대로) — ${(rb.stderr || rb.stdout).split('\n').filter((l) => l.trim() && !/^hint:/.test(l)).slice(0, 12).join('\n')}`); }
     appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files, tree, head: resumed?.head || preHead });
     fail(conflictFail(c.team.protected_branch, files, slug, pk));
   }
