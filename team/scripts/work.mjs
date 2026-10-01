@@ -139,11 +139,25 @@ function brief(c, args) {
 function add(c, slug, origin, flags) {
   if (!SLUG_RE.test(slug || '')) fail('FAIL slug: 소문자·숫자·하이픈 2~41자');
   if (!origin) fail('FAIL 원문이 없다: work.mjs add <slug> "<원문 한 문장>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"]');
-  if (parseBacklog(readBacklog(c)).some((i) => i.slug === slug)) fail(`FAIL BACKLOG에 있음: ${slug}`);
+  const prev = parseBacklog(readBacklog(c)).find((i) => i.slug === slug);
+  // 사고 50(홀드아웃): 잘못 쓴 BACKLOG 줄을 고칠 길이 없었다 — add는 중복을 거부했고 drop은 unit을 요구했다. 열린 unit이 없는 열린 줄은 제자리에서 바꾼다
+  if (prev && !flags.replace) fail(`FAIL BACKLOG에 있음: ${slug} — 고치려면 같은 명령에 --replace(열린 unit이 없는 열린 줄만), 지우려면 work.mjs drop ${slug} "<사유>" --forget`);
+  if (flags.replace && !prev) fail(`FAIL --replace는 BACKLOG에 있는 줄만: ${slug}`);
+  if (prev?.done) fail(`FAIL ${slug}은 닫힌 줄 — 새 일은 새 slug다`);
+  const live = readJson(unitFile(c.main, c.team, slug), null);
+  if (prev && live && live.state !== 'dropped') fail(`FAIL ${slug}은 unit이 열려 있다 — 진행 중 unit의 수용은 re-spec: work.mjs brief "<CEO 말>" → brief.mjs spec ${slug}`);
   const needs = (flags.needs || '-') === '-' ? [] : flags.needs.split(',').map((s) => s.trim()).filter(Boolean);
   const unknownQ = unknownQuestions(needs, readText(path.join(c.main, c.team.paths.decisions)));
   if (unknownQ.length) fail(`FAIL needs ${unknownQ.join(',')}: ${NO_GUESS}`);
-  appendBacklog(c, backlogLine({ slug, milestone: flags.milestone || 'M?', needs, origin, accept: flags.accept || '-', kind: flags.kind }));
+  const line = backlogLine({ slug, milestone: flags.milestone || 'M?', needs, origin, accept: flags.accept || '-', kind: flags.kind });
+  if (prev) {
+    const p = backlogPath(c); const text = readText(p);
+    const old = text.split('\n').find((l) => l.startsWith(`- [ ] ${slug} · `));
+    fs.writeFileSync(p, text.replace(old, () => line));
+    appendLedger(c.main, c.team, { kind: 'backlog_replace', slug, from: old, to: line });
+    return out(`REPLACE ${slug} ${flags.milestone || 'M?'} needs=${needs.join(',') || '-'}`);
+  }
+  appendBacklog(c, line);
   out(`ADD ${slug} ${flags.milestone || 'M?'} needs=${needs.join(',') || '-'}${flags.kind && flags.kind !== 'feature' ? ` kind=${flags.kind}` : ''}`);
 }
 function createUnit(c, slug, origin, opts = {}) {
@@ -295,7 +309,15 @@ function decide(c, n, answer) {
 // 방향전환의 원자 연산 — 작업을 버리되 잃지 않는다: wip 커밋 → 브랜치를 dropped/로 개명 → worktree 제거. BACKLOG 줄은 열려 있어 seed가 새로 연다(--forget이면 닫는다).
 function drop(c, slug, reason = '', flags = {}) {
   if (c.root !== c.main) fail('FAIL drop은 메인에서만 — 방향전환은 conductor의 일이다');
-  const u = loadUnit(c.main, c.team, slug);
+  const u = readJson(unitFile(c.main, c.team, slug), null);
+  if (!u) { // 사고 50: unit 없는 BACKLOG 줄 — drop이 loadUnit의 예외(스택)로 죽었다
+    const item = parseBacklog(readBacklog(c)).find((i) => i.slug === slug && !i.done);
+    if (!item) fail(`FAIL unit도 BACKLOG 줄도 없음: ${slug}`);
+    if (flags.forget === undefined) fail(`FAIL ${slug}은 unit이 없는 BACKLOG 줄이다 — 닫으려면 --forget: work.mjs drop ${slug} "<사유>" --forget · 고치려면 work.mjs add ${slug} "<원문>" [--milestone …] --replace`);
+    const p = backlogPath(c); fs.writeFileSync(p, readText(p).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `));
+    appendLedger(c.main, c.team, { kind: 'drop', slug, reason, backlog_only: true, forget: true });
+    return out(`DROPPED ${slug}${reason ? ` — ${reason}` : ''} · BACKLOG 줄 닫음(unit은 없었다)`);
+  }
   if (u.state === 'shipped') fail(`FAIL ${slug}은 이미 출하 — 되돌리기는 새 unit이다`);
   if (u.state === 'dropped') fail(`FAIL ${slug}은 이미 dropped`);
   const wt = worktreeDir(c.main, c.team, slug);
@@ -406,20 +428,33 @@ function models(c, args) {
   out(`MODELS ${Object.entries(next).map(([k, v]) => `${k}=${v}`).join(' ')} → ${touched.length} 에이전트 파일 갱신${committed ? ' · scaffold(team) 커밋' : ''}`);
 }
 function spawned(c, slug, pack, flags) {
-  if (!slug || !PACKS.includes(pack || '')) fail('사용법: work.mjs spawned <slug|intake> <팩> [--tokens N] [--minutes M] [--model m] [--note "…"]');
+  // 사고 52(홀드아웃 · 486fd74 필드 1): conductor가 <팩>에 팩 파일 경로를 넣고 같은 사용법을 두 번 받고 포기했다 — 받은 값을 말하고 고친 명령을 준다
+  if (slug && /[/\\]|\.md$/.test(pack || '')) {
+    const name = (new RegExp(`(?:^|-)(${PACKS.join('|')})-\\d{4}-`).exec(path.basename(pack)) || [])[1] || '<팩 이름>';
+    const rest = Object.entries(flags).map(([k, v]) => `--${k} ${/\s/.test(v) ? JSON.stringify(v) : v}`).join(' ');
+    fail(`FAIL <팩>은 팩 이름(${PACKS.join('·')})이다 — 받은 값은 경로: ${pack} → node .garagiste/scripts/work.mjs spawned ${slug} ${name}${rest ? ` ${rest}` : ''}`);
+  }
+  if (!slug || !PACKS.includes(pack || '')) fail(`사용법: work.mjs spawned <slug|intake> <팩 이름: ${PACKS.join('|')}> [--tokens N] [--minutes M] [--model m] [--note "…"]`);
   const e = appendLedger(c.main, c.team, { kind: 'spawn', slug, pack, model: flags.model || c.team.models[pack], tokens: flags.tokens ? Number(flags.tokens) : null, minutes: flags.minutes ? Number(flags.minutes) : null, note: flags.note || '' });
   out(`SPAWN ${slug} ${pack} ${e.model}${e.tokens ? ` ${e.tokens} tok` : ''}${e.minutes ? ` ${e.minutes} min` : ''}`);
 }
 // 필드 시험(두 프로젝트 공통): intake 직후 list가 「unit 없음」이었다 — Flow 2는 intake 뒤 list를 보라 하는데 seed 전 BACKLOG 줄이 안 보였다.
 // seed된 unit 다음에, 열린 unit이 없는 BACKLOG 열린 줄을 backlog로 덧붙인다(dropped의 열린 줄은 다시 열릴 backlog다).
 // 사고 37(필드 시험 2): 값 없는 플래그가 맨 끝이면 「다음 인자」가 없어 undefined가 됐다 — `drop persist "<사유>" --forget`의 forget이 꺼져 BACKLOG 줄이 열린 채 남았다
-const BOOL_FLAGS = new Set(['forget']);
+const BOOL_FLAGS = new Set(['forget', 'replace']);
+// 사고 49(홀드아웃 — Go CLI): 원문·질문은 무엇으로든 시작한다 — `--min-size 1M처럼…`이 플래그로 먹혀 원문이 「M1」, 마일스톤이 M?가 됐다.
+// 명령마다 아는 플래그만 플래그, 한 낱말 플래그 꼴(--milestne)은 오타라 FAIL로(원문은 문장이다), 나머지는 원문.
+export const FLAGS = { add: ['milestone', 'needs', 'accept', 'kind', 'replace'], new: ['milestone', 'needs', 'accept', 'kind', 'from'], ask: ['for'], drop: ['forget'], spawned: ['tokens', 'minutes', 'model', 'note'] };
 export function parseArgs(raw, cmd) {
-  const flags = {}; const pos = [];
+  const flags = {}; const pos = []; const unknown = [];
+  const known = FLAGS[cmd] || [];
   for (let i = 0; i < raw.length; i++) {
-    if (raw[i].startsWith('--') && !['brief', 'scope', 'models', 'commands', 'rules'].includes(cmd)) { const k = raw[i].slice(2); flags[k] = BOOL_FLAGS.has(k) ? true : raw[++i]; } else pos.push(raw[i]);
+    const k = raw[i].startsWith('--') ? raw[i].slice(2) : null;
+    if (k !== null && known.includes(k)) flags[k] = BOOL_FLAGS.has(k) ? true : raw[++i];
+    else if (FLAGS[cmd] && /^--[a-z][a-z-]*$/.test(raw[i])) unknown.push(raw[i]);
+    else pos.push(raw[i]);
   }
-  return { flags, pos };
+  return { flags, pos, unknown };
 }
 export function listLines({ units, items }) {
   const live = new Set(units.filter((u) => u.state !== 'dropped').map((u) => u.slug));
@@ -433,7 +468,10 @@ function list(c) {
 function main() {
   const [cmd, ...raw] = process.argv.slice(2);
   const c = ctx();
-  const { flags, pos } = parseArgs(raw, cmd);
+  // 사고 51: conductor의 탐침 `brief --help`가 「--help」를 CEO 원문에 쌓았다 — --help는 어느 명령이든 부작용 없이 사용법
+  if (raw.includes('--help') || raw.includes('-h')) return out(USAGE);
+  const { flags, pos, unknown } = parseArgs(raw, cmd);
+  if (unknown.length) fail(`FAIL 알 수 없는 플래그 ${unknown.join(' ')} — ${cmd}가 받는 것: ${FLAGS[cmd].map((f) => `--${f}`).join(' ')} (원문·질문이면 따옴표로 묶은 문장 그대로)`);
   if (cmd === 'brief') return brief(c, raw);
   if (cmd === 'add') return add(c, pos[0], pos[1], flags);
   if (cmd === 'scope') return scope(c, raw);
@@ -450,6 +488,7 @@ function main() {
   if (cmd === 'commands') return commands(c, raw);
   if (cmd === 'rules') return rules(c, raw);
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
-  fail('사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug> <팩> [--tokens N --minutes M]');
+  fail(USAGE);
 }
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · tried <slug> ok|fail · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();

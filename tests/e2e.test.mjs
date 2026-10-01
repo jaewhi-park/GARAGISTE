@@ -242,6 +242,7 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   const rv = script('brief', ['attack', 'session', '--revise', '예 — hello-1의 끝 공백 단언은 본문 기준으로 고쳐라'], repo);
   assert.match(rv.out, /^PACK .*session-attack-/, rv.out);
   assert.match(fs.readFileSync(path.join(repo, rv.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트[\s\S]*hello-1의 끝 공백 단언[\s\S]*서로 어긋난다/, 'attack 팩이 CEO 말과 충돌의 근거(반려 줄)를 받는다');
+  assert.match(fs.readFileSync(path.join(repo, rv.out.split(' ')[1]), 'utf8'), /- test_file: `[^`]*\{file\}` — 증명은 파일 하나씩[^\n]*혼자 돈다[^\n]*다른 테스트 파일의 도우미에 기대지 않는다/, '사고 56: attack 팩도');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"adversary_revise","slug":"session","reason":"예 — hello-1/);
   assert.match(script('brief', ['build', 'session', '--return', 'x'], repo).out, /^FAIL --return은 spec 팩에만/);
   script('brief', ['build', 'session'], repo);
@@ -335,17 +336,23 @@ test('사고 44(필드 벤치 셋): full은 「전부」다 — 프로젝트 러
   // 사고 48(필드 벤치 넷 측정): 파일 하나씩 직렬로 돌리자 웹 full이 20초 → 71초(브라우저 테스트 10개) — 여러 파일을 받는 러너({files})면 한 번에, red일 때만 파일별로
   const lastLog = () => { const v = fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8').trim().split('\n').map(JSON.parse).filter((e) => e.kind === 'verify').pop(); return fs.readFileSync(path.join(repo, v.log), 'utf8'); };
   assert.equal((lastLog().match(/→ exit/g) || []).length, 2, '{file} 러너는 파일마다 한 번(계약 그대로)');
+  write(wt, 'tests/adversary/add-entry-2.test.mjs', "import test from 'node:test'; test('공격 2', () => {});\n");
   team.commands.test_file = 'node --test {files}';
   for (const root of [repo, wt]) fs.writeFileSync(path.join(root, '.garagiste', 'team.json'), JSON.stringify(team, null, 2)); // verify는 worktree의 것을, redproof(메인에서 부름)는 메인의 것을 읽는다
   assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
-  assert.deepEqual(lastLog().match(/^\$ .*→ exit \d+$/gm), ['$ node --test tests/acceptance/add-entry.test.mjs tests/adversary/add-entry-1.test.mjs → exit 0'], '{files} 러너는 전부 green이면 한 번');
+  // 사고 53(홀드아웃 Go): go test는 한 디렉터리의 파일만 받는다 — {files}는 디렉터리마다 한 번
+  assert.deepEqual(lastLog().match(/^\$ .*→ exit \d+$/gm), ['$ node --test tests/acceptance/add-entry.test.mjs → exit 0', '$ node --test tests/adversary/add-entry-1.test.mjs tests/adversary/add-entry-2.test.mjs → exit 0'], '{files} 러너는 전부 green이면 디렉터리마다 한 번');
   write(wt, 'tests/adversary/add-entry-1.test.mjs', "import test from 'node:test'; test('공격', () => { throw new Error('red'); });\n");
-  assert.match(script('verify', ['full'], wt).out, /^FAIL verify:full [\s\S]*red 1\/2: tests\/adversary\/add-entry-1\.test\.mjs$/m, 'red면 파일별로 다시 돌려 그 파일을 말한다');
+  assert.match(script('verify', ['full'], wt).out, /^FAIL verify:full [\s\S]*red 1\/3: tests\/adversary\/add-entry-1\.test\.mjs$/m, 'red면 그 디렉터리의 파일을 하나씩 다시 돌려 그 파일을 말한다');
   assert.match(script('redproof', ['add-entry'], repo).out, /^FAIL redproof add-entry: base에서 green/, 'redproof의 파일 단위 실행도 {files}에 파일 하나를 넣는다');
   write(wt, 'tests/adversary/add-entry-1.test.mjs', "import test from 'node:test'; test('공격', () => {});\n");
-  team.commands.test_file = 'node -e "process.exit(process.argv.length > 2 ? 1 : 0)" {files}'; // 파일끼리 간섭하는 꼴 — 함께면 red, 하나씩은 green
+  team.commands.test_file = `node -e "process.exit(new Set(process.argv.slice(1).map((f) => f.split('/').slice(0, -1).join('/'))).size > 1 ? 1 : 0)" {files}`; // go test의 꼴: 여러 디렉터리면 러너가 거부
   fs.writeFileSync(path.join(wt, '.garagiste', 'team.json'), JSON.stringify(team, null, 2));
-  assert.match(script('verify', ['full'], wt).out, /^FAIL verify:full [\s\S]*인수·공격 파일 2개를 함께 돌리면 red\(하나씩은 green\)/, '함께 돌릴 때의 red도 「전부」의 red다');
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/, '홀드아웃: 두 디렉터리를 한 번에 넘기자 러너가 거부해 「함께 red」 거짓 FAIL이 났다');
+  team.commands.test_file = 'node -e "process.exit(process.argv.length > 2 ? 1 : 0)" {files}'; // 함께면 exit≠0, 하나씩은 green — 러너의 제약인지 간섭인지 exit로는 모른다
+  fs.writeFileSync(path.join(wt, '.garagiste', 'team.json'), JSON.stringify(team, null, 2));
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/, '판정은 파일 단위(사고 44의 계약) — 한 번에는 빠른 길일 뿐');
+  assert.match(lastLog(), /^\$ node -e .* tests\/adversary\/add-entry-1\.test\.mjs tests\/adversary\/add-entry-2\.test\.mjs → exit 1$/m, '빠른 길의 실패는 로그에 남는다');
 });
 
 test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원문으로 받고, -fix는 지금 범위의 맨 앞에 든다', { timeout: 60000 }, (t) => {
@@ -370,6 +377,74 @@ test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원�
   // 사고 46: scope는 slug 목록이라 -fix가 범위 밖에 남아 SCOPE DONE 뒤 CEO가 다시 범위를 줘야 했다(앞 회차엔 conductor가 work.mjs new로 우회 — 버그 unit 중복)
   assert.match(script('work', ['seed'], repo).out, /^UNIT ledger-add-fix spec/, '고칠 것이 새 기능보다 먼저 열린다');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"scope_fix","slug":"ledger-add-fix","from":"ledger-add"/);
+});
+
+test('사고 54(홀드아웃 Go): verify quick은 go test의 낡은 캐시 ok를 증거로 받지 않는다 — 테스트가 부른 프로세스가 읽는 파일은 캐시가 모른다', { timeout: 180000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  if (spawnSync('go', ['version'], { encoding: 'utf8' }).status !== 0) return t.skip('go 없음 — Go 생태계 재현');
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-gocache-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'go.mod', 'module x\n\ngo 1.21\n');
+  // 필드 3의 꼴: 스모크가 `go run ../../src`를 부른다 — 진입점(src)이 바뀌어도 테스트 바이너리는 같아 캐시가 ok를 돌려줬다
+  write(repo, 'tests/unit/run_test.go', 'package unit\nimport ("os/exec"; "testing")\nfunc TestEntrypoint(t *testing.T) { if err := exec.Command("sh", "-c", "exit $(cat ../../state)").Run(); err != nil { t.Fatal(err) } }\n');
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'go test ./tests/unit/...', full: 'go test ./tests/...', test_file: 'go test {files}', run: 'true' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  write(repo, 'state', '0');
+  assert.match(script('verify', ['quick'], repo).out, /^PASS verify:quick/);
+  write(repo, 'state', '1'); // 진입점의 동작이 바뀌었다(find-dups: 인자 없으면 exit 2)
+  assert.match(script('verify', ['quick'], repo).out, /^FAIL verify:quick/, 'go test가 「ok (cached)」를 내고 PASS — find-dups가 main quick이 빨간 채 출하됐다');
+});
+
+test('사고 49~52(홀드아웃 — Go CLI): --로 시작하는 원문 · BACKLOG 줄 정정 · --help 탐침 · spawned의 팩 경로 — intake가 막다른 길에 서지 않는다', { timeout: 60000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-holdout-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'README.md', '# p\n');
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const read = (rel) => (fs.existsSync(path.join(repo, rel)) ? fs.readFileSync(path.join(repo, rel), 'utf8') : '');
+  const oneLine = (r) => assert.ok(!/\n\s+at /.test(r.out), `스택 없이 한 줄: ${r.out}`);
+  // 사고 51: conductor의 탐침 `brief --help`가 「--help」를 CEO 원문에 쌓았다(팀은 BRIEF를 못 지운다 — CEO가 치웠다)
+  assert.match(script('work', ['brief', '--help'], repo).out, /^사용법: work\.mjs/);
+  assert.ok(!read('docs/BRIEF.md').includes('--help'), '탐침은 원문이 아니다');
+  assert.match(script('work', ['drop', '--help'], repo).out, /^사용법: work\.mjs/, '어느 명령이든 --help는 부작용 없이 사용법');
+  assert.match(script('work', ['brief', '--json이면 같은 결과를 JSON으로 낸다.'], repo).out, /^BRIEF \+1줄/, 'CEO의 말은 --로 시작해도 원문이다');
+  // 사고 49: --로 시작하는 원문이 플래그로 먹혀 원문 「M1」·마일스톤 M?가 됐다
+  assert.match(script('work', ['add', 'min-size', '--min-size 1M처럼 이보다 작은 파일은 건너뛸 수 있다(단위 K·M·G).', '--milestone', 'M1'], repo).out, /^ADD min-size M1/);
+  assert.match(read('docs/BACKLOG.md'), /- \[ \] min-size · M1 · needs: - · "--min-size 1M처럼 이보다 작은 파일은/);
+  const typo = script('work', ['add', 'typo', '원문 한 문장', '--milestne', 'M1'], repo);
+  assert.match(typo.out, /^FAIL 알 수 없는 플래그 --milestne — add가 받는 것: --milestone --needs --accept --kind --replace/, typo.out);
+  assert.match(script('work', ['ask', 'intake', '--json 출력 형태를 groups·warnings로 정해도 되나?', '--for', 'min-size'], repo).out, /^Q1 queued/);
+  assert.match(read('docs/DECISIONS.md'), /Q1 \(intake\): --json 출력 형태를 groups·warnings로/);
+  // 사고 50: 깨진 BACKLOG 줄을 고칠 길이 없었다 — add는 중복 거부, drop은 unit을 요구하며 예외(스택)로 죽었다
+  script('work', ['add', 'json-out', 'M1'], repo); // 홀드아웃에서 남은 꼴: 원문 「M1」, 마일스톤 M?
+  const dup = script('work', ['add', 'json-out', '--json이면 같은 결과를 JSON으로 낸다.', '--milestone', 'M1'], repo);
+  assert.match(dup.out, /^FAIL BACKLOG에 있음: json-out — 고치려면 같은 명령에 --replace[\s\S]*지우려면 work\.mjs drop json-out "<사유>" --forget/, dup.out);
+  assert.match(script('work', ['add', 'json-out', '--json이면 같은 결과를 JSON으로 낸다.', '--milestone', 'M1', '--needs', 'min-size', '--replace'], repo).out, /^REPLACE json-out M1 needs=min-size/);
+  assert.equal((read('docs/BACKLOG.md').match(/ json-out · /g) || []).length, 1, '줄은 제자리에서 바뀐다');
+  assert.match(read('docs/BACKLOG.md'), /- \[ \] json-out · M1 · needs: min-size · "--json이면 같은 결과를 JSON으로 낸다\."/);
+  assert.match(read('.garagiste/ledger/evidence.jsonl'), /"kind":"backlog_replace","slug":"json-out","from":"- \[ \] json-out · M\? · needs: - · \\"M1\\"/);
+  assert.match(script('work', ['add', 'nosuch', '원문', '--replace'], repo).out, /^FAIL --replace는 BACKLOG에 있는 줄만: nosuch/);
+  const d0 = script('work', ['drop', 'json-out', '잘못 쓴 줄'], repo);
+  assert.match(d0.out, /^FAIL json-out은 unit이 없는 BACKLOG 줄이다 — 닫으려면 --forget[\s\S]*고치려면 work\.mjs add json-out[\s\S]*--replace/, d0.out); oneLine(d0);
+  assert.match(script('work', ['drop', 'json-out', '범위 밖', '--forget'], repo).out, /^DROPPED json-out — 범위 밖 · BACKLOG 줄 닫음/);
+  assert.match(read('docs/BACKLOG.md'), /- \[x\] json-out · /);
+  const none = script('work', ['drop', 'ghost', 'x', '--forget'], repo);
+  assert.match(none.out, /^FAIL unit도 BACKLOG 줄도 없음: ghost/); oneLine(none);
+  const crash = script('work', ['default', 'ghost', '정한 것'], repo);
+  assert.match(crash.out, /^FAIL unit 없음: ghost/, '잡히지 않은 예외도 한 줄 FAIL'); oneLine(crash);
+  assert.match(script('work', ['decide', '1', '예'], repo).out, /^PASS decide Q1/);
+  assert.match(script('work', ['scope', 'min-size'], repo).out, /^SCOPE/);
+  assert.match(script('work', ['seed'], repo).out, /^UNIT min-size spec/);
+  assert.match(script('work', ['add', 'min-size', '다른 원문', '--replace'], repo).out, /^FAIL min-size은 unit이 열려 있다 — 진행 중 unit의 수용은 re-spec/, '열린 unit의 줄은 바꾸지 않는다');
+  // 사고 52: <팩>에 팩 파일 경로를 넣고 같은 사용법을 두 번 받고 포기했다
+  const sp = script('work', ['spawned', 'intake', '.garagiste/session/packs/intake-2026-10-01T11-30-50-078Z.md', '--tokens', '18594', '--minutes', '2'], repo);
+  assert.match(sp.out, /^FAIL <팩>은 팩 이름\(intake·spec·build·attack·spike·boot\)이다 — 받은 값은 경로[\s\S]*→ node \.garagiste\/scripts\/work\.mjs spawned intake intake --tokens 18594 --minutes 2$/m, sp.out);
+  assert.match(script('work', ['spawned', 'intake', 'intake', '--tokens', '18594', '--minutes', '2'], repo).out, /^SPAWN intake intake/);
 });
 
 test('사고 47(필드 벤치 넷): 일부 주장만 base green이면 redproof는 drop 대신 충족된 파일만 빼는 길을 주고, spec 팩이 그 목록과 CEO 말을 받는다', { timeout: 60000 }, (t) => {
@@ -400,6 +475,7 @@ test('사고 47(필드 벤치 넷): 일부 주장만 base green이면 redproof�
   assert.match(pk.out, /^PACK /, pk.out);
   const text = fs.readFileSync(path.join(repo, pk.out.split(' ')[1]), 'utf8');
   assert.match(text, /## 이미 충족 — CEO가 빼라고 한 주장[\s\S]*CEO 결정\(그대로\): 예 — 손편집·BOM은 이미 main에 있다[\s\S]*- tests\/acceptance\/jsonl-store_handedit\.test\.mjs[\s\S]*남은 주장[\s\S]*redproof\.mjs jsonl-store/);
+  assert.match(text, /- test_file: `[^`]*\{file\}` — 증명은 파일 하나씩[^\n]*혼자 돈다[^\n]*다른 테스트 파일의 도우미에 기대지 않는다/, '사고 56(홀드아웃 Go): sort-waste의 인수 파일이 find-dups_test.go의 도우미를 써 혼자 컴파일되지 않았다 — 증명은 파일 하나씩');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"claims_met","slug":"jsonl-store","files":\["tests\/acceptance\/jsonl-store_handedit\.test\.mjs"\]/);
   // 팩이 할 일을 테스트가 대신한다: 충족된 파일만 빼면 남은 주장으로 RED
   fs.rmSync(path.join(wt, 'tests/acceptance/jsonl-store_handedit.test.mjs'));

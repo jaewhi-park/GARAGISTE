@@ -17,7 +17,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
-import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
+import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -344,6 +344,25 @@ test('lib: 사고 48 — test_file은 {file}(파일 하나) 또는 {files}(여�
   assert.equal(fileCmd('node --test {files}', ['a.js', 'b.js']), 'node --test a.js b.js');
   assert.equal(fileCmd('node --test {files}', ['a.js']), 'node --test a.js', '파일 하나(redproof·attack)도 {files}로');
 });
+test('lib: 사고 54(홀드아웃 Go) — 증거는 지금 tree의 실행: go test의 결과 캐시를 끈다(GOFLAGS -count=1), 이미 정한 -count는 둔다', () => {
+  const get = () => shell(`node -e "process.stdout.write(process.env.GOFLAGS || '')"`).stdout;
+  const prev = process.env.GOFLAGS;
+  try {
+    delete process.env.GOFLAGS; assert.equal(get(), '-count=1');
+    process.env.GOFLAGS = '-mod=mod'; assert.equal(get(), '-mod=mod -count=1');
+    process.env.GOFLAGS = '-count=3'; assert.equal(get(), '-count=3');
+  } finally { if (prev === undefined) delete process.env.GOFLAGS; else process.env.GOFLAGS = prev; }
+});
+test('build 팩: 사고 55(홀드아웃 Go) — 산문의 「쓸 수 없는 곳」은 훅의 거부와 같고, tests/unit은 build의 것이다', () => {
+  const md = fs.readFileSync(new URL('../team/packs/build.md', import.meta.url), 'utf8');
+  const listed = [...(/^쓸 수 없는 곳\(훅이 거부\): (.*)$/m.exec(md) || ['', ''])[1].split('`. ')[0].concat('`').matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+  assert.ok(listed.length >= 5);
+  const wt = `${root}/.worktrees/hello`;
+  const sample = (p) => (p === '.garagiste/**' ? '.garagiste/team.json' : p.replace('**', 'x').replace('*', 'x')); // .garagiste는 규칙집(team.json·scripts·packs·HAZARDS·ledger)을 막는다
+  for (const p of listed) assert.ok(decide(write(`${wt}/${sample(p)}`), gctx('build')), `산문이 막는다면 훅도 막는다: ${p}`);
+  assert.equal(decide(write(`${wt}/tests/unit/smoke_test.go`), gctx('build')), null, '훅은 tests/unit을 막지 않는다');
+  assert.match(md, /`tests\/unit\/`[^\n]*네 것/, '산문도 그렇게 말한다 — 「테스트를 고쳐 초록을 만드는 길은 없다」를 스모크까지 막는 줄로 읽은 build가 spec에 반려했고 spec은 기각, 둘 다 못 고쳐 멈췄다');
+});
 test('redproof: 사고 47(필드 벤치 넷) — 일부만 base green(먼저 출하된 unit이 한 주장을 채웠다)이면 drop을 주지 않고 충족된 파일만 빼는 길을 준다', () => {
   const m = baseGreenAdvice('jsonl-store', ['tests/acceptance/jsonl-store_handedit.py'], ['tests/acceptance/jsonl-store_cp949.py']);
   assert.match(m, /^FAIL redproof jsonl-store: 부분 충족 — base에서 green tests\/acceptance\/jsonl-store_handedit\.py · base에서 red tests\/acceptance\/jsonl-store_cp949\.py/);
@@ -351,9 +370,15 @@ test('redproof: 사고 47(필드 벤치 넷) — 일부만 base green(먼저 출
   assert.ok(!m.includes('work.mjs drop'), '남은 red 주장(CEO가 정한 CP949)을 닫는 drop은 길이 아니다');
 });
 test('work args: 사고 37(필드 시험 2) — 값 없는 --forget이 맨 끝이어도 켜진다(drop이 BACKLOG 줄을 닫지 못해 seed가 닫은 unit을 다시 열 뻔했다)', () => {
-  assert.deepEqual(parseArgs(['persist', '이미 충족', '--forget'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'] });
-  assert.deepEqual(parseArgs(['persist', '--forget', '이미 충족'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'] }, '사유를 삼키지 않는다');
+  assert.deepEqual(parseArgs(['persist', '이미 충족', '--forget'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'], unknown: [] });
+  assert.deepEqual(parseArgs(['persist', '--forget', '이미 충족'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'], unknown: [] }, '사유를 삼키지 않는다');
   assert.deepEqual(parseArgs(['x', '--needs', 'a,Q1', '--milestone', 'M2'], 'add').flags, { needs: 'a,Q1', milestone: 'M2' });
+});
+test('work args: 사고 49(홀드아웃 — Go CLI) — 원문·질문은 무엇으로든 시작한다: 명령마다 아는 플래그만 플래그다', () => {
+  assert.deepEqual(parseArgs(['min-size', '--min-size 1M처럼 이보다 작은 파일은 건너뛸 수 있다', '--milestone', 'M1'], 'add'), { flags: { milestone: 'M1' }, pos: ['min-size', '--min-size 1M처럼 이보다 작은 파일은 건너뛸 수 있다'], unknown: [] }, '원문이 「M1」, 마일스톤이 M?가 됐다');
+  assert.deepEqual(parseArgs(['intake', '--json 출력 형태를 이렇게 정해도 되나?', '--for', 'json-out'], 'ask'), { flags: { for: 'json-out' }, pos: ['intake', '--json 출력 형태를 이렇게 정해도 되나?'], unknown: [] }, '질문이 「json-out」 한 단어가 됐다');
+  assert.deepEqual(parseArgs(['x', '원문', '--milestne', 'M1'], 'add').unknown, ['--milestne'], '오타 플래그는 원문이 되지 않는다 — FAIL로');
+  assert.deepEqual(parseArgs(['x', '--json'], 'add').unknown, ['--json'], '한 낱말 플래그 꼴은 원문이 아니다(원문은 문장)');
 });
 test('ship: wip HEAD의 안내는 unit 정체의 팩을 가리킨다 — boot(scaffold)에 「build를 다시 띄워」라 했다 (필드 시험 두 곳 공통)', () => {
   const base = { slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [], requireAttack: false, spikeText: '', lastSubject: 'wip: checkpoint', stops: [], proseKb: 10, proseMax: 40 };
@@ -478,6 +503,14 @@ test('brief: 결정은 스코프 — 전역(intake)+이 unit+needs만, 전체는
   assert.deepEqual(pick(scopedDecisions(t, { pack: 'build', slug: 'fixture-eoren', needs: [] })), ['Q1', 'Q4'], '남의 unit 결정은 스코프 밖');
   assert.equal(scopedDecisions(t, { pack: 'boot', slug: 'boot', needs: [] }).length, 4, 'boot는 전체 — 세계 정의');
   assert.equal(scopedDecisions('- [x] Q9 슬러그 없는 줄 → 답', { pack: 'spec', slug: 'x', needs: [] }).length, 1, '못 읽는 줄은 버리지 않는다(fail-open 포함)');
+});
+test('HAZARDS: 줄마다 팩에 닿는 경로가 있다 — 규칙집(.garagiste/**)·main 전용 문서만 가리키는 줄은 팩에 영영 안 떠 산문 예산만 먹었다(35줄 · 15KB)', () => {
+  const text = fs.readFileSync(new URL('../team/HAZARDS.md', import.meta.url), 'utf8');
+  const unreachable = /^(\.garagiste\/(?!team\.json$)|docs\/(BACKLOG|STATUS|LEDGER|DECISIONS|BRIEF)\.md$)/; // team.json은 boot가 worktree에서 바꾼다(work.mjs commands)
+  for (const l of text.split('\n').filter((x) => x.startsWith('- '))) {
+    const globs = [...l.split(' · ')[0].matchAll(/`([^`]+)`/g)].map((m) => m[1]);
+    assert.ok(globs.some((g) => !unreachable.test(g)), `팩에 닿지 않는 줄 — 기록은 CHANGELOG로: ${l.slice(0, 70)}`);
+  }
 });
 test('brief: HAZARDS는 경로가 맞는 줄만 팩에 들어간다', () => {
   const hz = '- `**/electron/**` · 하얀 화면 · 검사: smoke\n- `docs/**` · 문서 커밋 · 검사: gate\n- 경로 없는 줄 · 무시\n- `**` · 전역 · 검사: x';

@@ -23,8 +23,11 @@ export function localEnv(cwd = process.cwd()) {
   try { return parseLocalEnv(fs.readFileSync(path.join(mainRoot(cwd), '.garagiste', 'env.local'), 'utf8')); } catch { return {}; }
 }
 // team.json의 명령은 프로젝트가 직접 쓴 셸 문자열이라 그대로 돌린다(제품 코드의 subprocess 규칙과는 다른 층). env.local이 있으면 그 값이 환경에 더해진다.
+// 사고 54(홀드아웃 Go): 증거는 지금 tree의 실행이다 — go test의 결과 캐시는 테스트가 부른 프로세스(go run ../../src)가 읽는 파일을 몰라 낡은 ok를 냈고,
+// 진입점의 동작이 바뀐 unit이 main quick이 빨간 채 출하됐다. 캐시를 끈다(-count=1 — go test 밖의 go 명령은 무시한다), 이미 정한 -count는 둔다.
+const goflags = (g = '') => (/(^|\s)-count=/.test(g) ? g : [g, '-count=1'].filter(Boolean).join(' '));
 export function shell(cmdString, opts = {}) {
-  const env = { ...process.env, ...localEnv(opts.cwd), ...(opts.env || {}) };
+  const env = { ...process.env, GOFLAGS: goflags(process.env.GOFLAGS), ...localEnv(opts.cwd), ...(opts.env || {}) };
   const r = spawnSync(cmdString, { shell: true, encoding: 'utf8', ...opts, env });
   return { status: r.status ?? 1, stdout: r.stdout || '', stderr: r.stderr || '' };
 }
@@ -248,6 +251,9 @@ export function isMain(metaUrl) {
   if (!process.argv[1] || path.resolve(process.argv[1]) !== fileURLToPath(metaUrl)) return false;
   rootFromScript(metaUrl);
   lawFromMain(metaUrl);
+  // 사고 50(홀드아웃): drop이 loadUnit의 예외로 스택 여러 줄을 내고 죽었다 — 잡히지 않은 예외도 한 줄(FAIL <이유> (던진 자리))
+  const crash = (e) => { const at = (/\n\s+at (?:.*\()?(.*?)\)?$/m.exec(e?.stack || '') || [])[1]; out(`FAIL ${e?.message || e}${at ? ` (${path.basename(at)})` : ''}`); process.exit(1); };
+  process.on('uncaughtException', crash); process.on('unhandledRejection', crash);
   return true;
 }
 // 사고 40(필드 벤치 1 정비): 헤드리스에선 `cd <worktree> && …`가 승인 대기로 막혀 build가 worktree의 verify를 경로로 불렀는데 셸은 main 루트였다 —
