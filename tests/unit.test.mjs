@@ -14,7 +14,7 @@ import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
-import { outcome, verdict } from '../team/scripts/redproof.mjs';
+import { baseGreenAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
@@ -314,6 +314,11 @@ test('ship: 사고 34(필드 시험 2) — 의존성 출하인데 설치 명령�
   for (const setup of [undefined, '', 'true', ' : ', 'exit 0']) assert.match(setupGap({ depChanged: true, setup }), /의존성 출하인데 설치 명령이 없다[\s\S]*GARAGISTE_ADMIN=1 node \.garagiste\/scripts\/work\.mjs commands setup=/, String(setup));
   assert.equal(setupGap({ depChanged: true, setup: 'npm install' }), null);
   assert.equal(setupGap({ depChanged: false, setup: 'true' }), null, '의존성이 안 바뀌면 상관없다');
+});
+test('redproof: 사고 36(필드 시험 2) — base에서 green(앞 unit이 이미 만든 기능)이면 CEO의 두 길을 명령으로 준다', () => {
+  const m = baseGreenAdvice('persist', ['tests/acceptance/persist.test.js']);
+  assert.match(m, /^FAIL redproof persist: base에서 green — tests\/acceptance\/persist\.test\.js — 기존 코드가 이 주장을 이미 만족한다/);
+  assert.match(m, /CEO 결정[\s\S]*work\.mjs drop persist "이미 충족 — <근거>" --forget[\s\S]*brief\.mjs spec persist 재spawn/);
 });
 test('ship: wip HEAD의 안내는 unit 정체의 팩을 가리킨다 — boot(scaffold)에 「build를 다시 띄워」라 했다 (필드 시험 두 곳 공통)', () => {
   const base = { slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [], requireAttack: false, spikeText: '', lastSubject: 'wip: checkpoint', stops: [], proseKb: 10, proseMax: 40 };
