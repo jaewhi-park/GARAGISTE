@@ -122,6 +122,8 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   // build 재spawn: red → green, 이어받기 절이 팩에 있다
   const rebuild = fs.readFileSync(path.join(repo, script('brief', ['build', 'hello'], repo).out.split(' ')[1]), 'utf8');
   assert.match(rebuild, /## 이어받기/);
+  // 사고 43(필드 벤치 2 웹 정비): 헤드리스에선 `cd <wt> && …`와 명령 앞 환경 변수 접두(`X=1 npm …`)가 승인 대기로 막혀 build가 의존성을 못 깔았다 — 팩이 막히지 않는 꼴을 준다
+  assert.match(rebuild, /승인 대기로 막히는 꼴[\s\S]*X=1 cmd[\s\S]*git -C [^ ]*hello[\s\S]*npm --prefix [^ ]*hello/, '팩이 headless의 함정과 대안(git -C · npm --prefix · 이미 설정된 환경)을 말한다');
   // 사고 32(필드 시험 1): build 팩엔 인수 테스트만 있었다 — 프로젝트의 full이 공격 파일을 안 집으면(파이썬 discover는 test*.py만) build는 green만 보고 빈손으로 끝났다
   assert.match(rebuild, /## 공격 테스트 — 지금 red[\s\S]*tests\/adversary\/hello-1\.test\.mjs[\s\S]*끝 공백 없음/, 'build 팩이 attack의 red 파일과 내용을 할 일로 받는다');
   write(wt, 'src/cli.mjs', "const n = process.argv[2]; process.stdout.write(n ? `hello ${n}\\n` : 'hello\\n');\n");
@@ -230,7 +232,17 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   const ret = script('brief', ['spec', 'session', '--return', 'spec: 만료 주장과 갱신 주장이 서로 어긋난다'], repo);
   assert.match(fs.readFileSync(path.join(repo, ret.out.split(' ')[1]), 'utf8'), /## 반려 — build 팩이 남긴 줄[\s\S]*서로 어긋난다/, 'spec 팩이 반려 줄을 받는다');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"spec_return","slug":"session","from":"build"/);
-  assert.match(script('brief', ['spec', 'session', '--return', 'spec: 또 어긋난다'], repo).out, /^FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다/, '반려 핑퐁은 한 번 — 두 번째는 CEO에게');
+  const second = script('brief', ['spec', 'session', '--return', 'spec: 또 어긋난다'], repo).out;
+  assert.match(second, /^FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다/, '반려 핑퐁은 한 번 — 두 번째는 CEO에게');
+  // 사고 42(필드 벤치 2 웹 정비): 충돌이 출하된 unit의 공격 테스트(과잉 단언)에 있고 CEO가 「고쳐라」 했는데 실행할 길이 없었다 — 출하된 unit엔 worktree가 없고, 공격 테스트를 쓰는 attack에 그 결정을 줄 길이 없었다
+  assert.match(second, /brief\.mjs spec session[\s\S]*brief\.mjs attack session --revise/, 'CEO의 두 답(수용을 바꿔라 · 기존 공격 테스트를 고쳐라)이 각각 명령으로 있다: ' + second);
+  assert.match(script('brief', ['spec', 'hello'], repo).out, /^FAIL hello은 이미 출하됐다[\s\S]*--revise/, '출하된 unit엔 팩이 없다 — 진행 중 unit의 팩이 고친다고 말한다');
+  assert.match(script('brief', ['attack', 'net', '--revise', 'x'], repo).out, /^FAIL --revise는 spec 반려가 CEO에게 간 unit에만/, '기존 공격 테스트를 고치는 것은 CEO 결정의 길뿐(테스트 약화)');
+  assert.match(script('brief', ['build', 'session', '--revise', 'x'], repo).out, /^FAIL --revise는 attack 팩에만/);
+  const rv = script('brief', ['attack', 'session', '--revise', '예 — hello-1의 끝 공백 단언은 본문 기준으로 고쳐라'], repo);
+  assert.match(rv.out, /^PACK .*session-attack-/, rv.out);
+  assert.match(fs.readFileSync(path.join(repo, rv.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트[\s\S]*hello-1의 끝 공백 단언[\s\S]*서로 어긋난다/, 'attack 팩이 CEO 말과 충돌의 근거(반려 줄)를 받는다');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"adversary_revise","slug":"session","reason":"예 — hello-1/);
   assert.match(script('brief', ['build', 'session', '--return', 'x'], repo).out, /^FAIL --return은 spec 팩에만/);
   script('brief', ['build', 'session'], repo);
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"respec","slug":"session","q":3/);
@@ -279,7 +291,18 @@ test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 
   assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] atom · /, 'BACKLOG 줄이 다시 열린다');
   if (fs.existsSync(path.join(repo, 'docs/LEDGER.md'))) assert.doesNotMatch(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| atom \|/, 'LEDGER 행이 남지 않는다');
   fs.rmSync(path.join(repo, '.garagiste/session/failflag'));
-  assert.match(script('ship', ['atom'], repo).out, /^SHIPPED atom/, '원인이 사라지면 같은 증거로 다시 ship된다');
+  // 사고 41(필드 벤치 2 웹): 마지막 attack이 red 0의 공격 파일만 더하고 끝나면 체크포인트가 wip로 덮는다 — build는 고칠 것이 없고 그 파일을 커밋할 주체가 없어 「HEAD가 wip」가 반복됐다
+  write(wt, 'tests/adversary/atom-2.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import fs from 'node:fs';\ntest('주석으로 시작', () => { assert.match(fs.readFileSync('src/atom.mjs', 'utf8'), /^\\/\\//); });\n");
+  git(['add', '-A'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'wip: atom checkpoint'], wt, { GARAGISTE_WIP: '1' }).status, 0);
+  assert.match(script('verify', ['attack', 'atom'], wt).out, /red 0\/2/);
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
+  assert.match(script('redproof', ['atom'], wt).out, /^PASS redproof/);
+  const s2 = script('ship', ['atom'], repo);
+  assert.match(s2.out, /^SHIPPED atom/, '원인이 사라지면 다시 ship된다 — 증거 파일만 든 wip HEAD는 ship이 승격한다: ' + s2.out);
+  const log = git(['log', '--format=%s', '-4'], repo).out;
+  assert.match(log, /test\(atom\): attack 산출물/);
+  assert.doesNotMatch(log, /^wip:/m, 'main 역사에 wip가 없다');
 });
 
 test('사고 38·39(필드 벤치): main의 setup·quick이 남긴 산출물은 반쪽 출하 대신 되돌림·보존·unit 안내, unit이 무시 줄(.gitignore)을 더하면 spike FAIL이 다음 명령을 준다', { timeout: 180000 }, (t) => {

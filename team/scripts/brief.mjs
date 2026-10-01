@@ -26,6 +26,17 @@ export function fit(sections, maxBytes) {
 }
 // 사고 25(4차 실기): FAIL은 fit이 부대물을 전부 포인터로 줄인 뒤에만 난다 — 넘는 것은 언제나 법이다.
 // 옛 안내(「acceptance면 unit split, 부대물이면 상한을 올려라」)는 split 명령이 없어 실행할 수 없었고, 둘째 갈래는 이 자리에서 참일 수 없었다.
+// 사고 27·40·43(필드): 헤드리스(무인)엔 승인 대화가 없다 — `cd <dir> && …`와 명령 앞 환경 변수 접두(`X=1 npm …`)는 허용 목록과 맞지 않아 승인 대기로 막혔다(43: build가 의존성을 못 깔았다)
+export function headlessNote(wt) {
+  return `헤드리스(무인)에선 승인 대기로 막히는 꼴이 있다 — \`cd <dir> && …\`와 명령 앞 환경 변수 접두(\`X=1 cmd\`). 막히지 않는 꼴: git은 \`git -C ${wt} …\`, npm은 \`npm --prefix ${wt} …\`, 스크립트는 경로로(\`node ${wt}/.garagiste/scripts/<스크립트>\` — 그 worktree가 뿌리), 환경 변수는 이미 설정된 것을 쓴다(기계별 값은 .garagiste/env.local).`;
+}
+// 사고 42: 두 번째 반려는 CEO에게 간다 — 그 답이 갈 길을 명령으로(수용을 바꾸라 · 기존 공격 테스트를 고치라)
+export function revisePaths(slug) {
+  return [
+    `- CEO가 수용(인수) 쪽을 바꾸라면: node .garagiste/scripts/work.mjs brief "<CEO 말 그대로>" → node .garagiste/scripts/brief.mjs spec ${slug} (반려 없이 재spawn)`,
+    `- CEO가 기존 공격 테스트(tests/adversary — 출하된 unit의 것 포함)를 고치라면: node .garagiste/scripts/work.mjs brief "<CEO 말 그대로>" → node .garagiste/scripts/brief.mjs attack ${slug} --revise "<CEO 말 그대로>" → 팩 spawn → verify.mjs attack ${slug} → (red면 build) → ship`,
+  ].join('\n');
+}
 export function overflowAdvice({ bytes, capKb, slug, mult = 1 }) {
   const need = Math.ceil(bytes / 1024 / mult);
   return [
@@ -99,8 +110,15 @@ function main() {
   const ri = process.argv.indexOf('--return');
   const returned = ri > 0 ? (process.argv[ri + 1] || '').trim() : '';
   if (ri > 0 && (pack !== 'spec' || !returned)) fail('FAIL --return은 spec 팩에만, build·attack이 남긴 spec: 줄 그대로 — brief.mjs spec <slug> --return "<그 줄>"');
+  const vi = process.argv.indexOf('--revise');
+  const revise = vi > 0 ? (process.argv[vi + 1] || '').trim() : '';
+  if (vi > 0 && (pack !== 'attack' || !revise)) fail('FAIL --revise는 attack 팩에만, CEO가 고치라 한 말 그대로 — brief.mjs attack <slug> --revise "<CEO 말>"');
   const c = ctx();
   const unit = loadUnit(c.main, c.team, slug);
+  // 사고 42(필드 벤치 2 웹 정비): 충돌이 출하된 unit의 테스트에 있을 때 conductor가 그 unit의 spec을 다시 열려다 「worktree 없음」에서 멈췄다 — 고치는 것은 진행 중 unit의 팩이다
+  if (unit.state === 'shipped') fail(`FAIL ${slug}은 이미 출하됐다 — 출하된 unit엔 팩(worktree)이 없다. 그 unit의 테스트가 진행 중 unit과 어긋나면 진행 중 unit의 팩이 고친다: 기존 공격 테스트는 CEO 결정으로 node .garagiste/scripts/brief.mjs attack <진행 중 slug> --revise "<CEO 말 그대로>", 동작을 바꾸는 일이면 node .garagiste/scripts/work.mjs new <slug>-fix "<CEO 말>"`);
+  const returns = revise ? readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created) : [];
+  if (revise && !returns.length) fail('FAIL --revise는 spec 반려가 CEO에게 간 unit에만 — 기존 공격 테스트를 고치는 것은 CEO 결정이다(테스트 약화의 길): 반려가 두 번째면 그 FAIL의 두 줄을 CEO에게');
   if (pack === 'boot' && unit.kind !== 'scaffold') fail(`FAIL boot 팩은 kind scaffold unit에만 — ${slug}은 ${unit.kind}`);
   if (pack !== 'boot' && unit.kind === 'scaffold') fail(`FAIL scaffold unit(${slug})은 boot 팩 하나로 끝난다 — spec·build·attack 없음`);
   // 사고 17(2차 실기): 진행 중에 닫힌 질문의 답은 spec이 먼저 받는다 — 닫힘은 반영이 아니다(Q11이 build 뒤 닫혀 미구현 출하)
@@ -112,7 +130,7 @@ function main() {
   const changed = base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
   const sections = [];
   const sec = (key, title, body) => body && sections.push({ key, title, text: `## ${title}\n${body.trim()}` });
-  sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.garagiste', 'packs', `${pack}.md`))}\n\n작업 디렉터리(절대 경로, 모든 명령은 여기서): \`${wt}\` (브랜치 ${unit.branch}). 저장소 루트: \`${c.main}\`. 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.`);
+  sec('rules', `팩: ${pack} · ${slug}`, `${readText(path.join(c.main, '.garagiste', 'packs', `${pack}.md`))}\n\n작업 디렉터리(절대 경로, 모든 명령은 여기서): \`${wt}\` (브랜치 ${unit.branch}). 저장소 루트: \`${c.main}\`. 모델: ${c.team.models[pack]}. 이 파일 밖의 지시는 없다.\n${headlessNote(wt)}`);
   sec('commands', '명령', Object.entries(c.team.commands).filter(([, v]) => v).map(([k, v]) => `- ${k}: \`${v}\``).join('\n'));
   // 사고 26(L2 1일차): ship이 멈춰 둔 rebase — 충돌 표시를 푸는 것은 파일 편집이다(팩의 경계 안), 잇는 것은 ship이다
   const conflicted = rebaseInProgress(wt) ? unmergedFiles(wt) : [];
@@ -141,8 +159,17 @@ function main() {
   const returnedFrom = unit.state;
   if (returned) {
     const prior = readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created);
-    if (prior.length) fail(`FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다: 두 줄을 CEO에게 그대로 보여 준다(hard 질문 — 그 unit만 멈춘다)\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}`);
+    if (prior.length) fail(`FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다: 두 줄을 CEO에게 그대로 보여 준다(hard 질문 — 그 unit만 멈춘다)\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}\n${revisePaths(slug)}`);
     sec('return', `반려 — ${returnedFrom} 팩이 남긴 줄 (그 주장들이 서로·원문과 어긋나는지부터)`, returned);
+  }
+  // 사고 42: 기존 공격 테스트(출하된 unit의 것 포함)를 고치는 것은 테스트 약화의 길 — spec 반려가 CEO에게 간 unit에서, CEO 말 그대로만 연다
+  if (revise) {
+    sec('revise', '고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트', [
+      `CEO 결정(그대로): ${revise}`,
+      '충돌의 근거(반려 줄):', ...returns.map((r) => `- ${r.reason}`), '',
+      '- 이 결정이 가리키는 기존 tests/adversary 파일(출하된 unit의 것 포함)만, 결정의 범위만큼 고친다 — 지우지 않는다, 결함을 잡는 나머지 단언은 그대로 둔다.',
+      `- 고친 파일을 이 worktree에서 돌려 green인지 본 뒤 평소의 공격(${slug}-<n>)을 잇는다. 끝은 verify.mjs attack ${slug}.`,
+    ].join('\n'));
   }
   if (unit.boundary?.hit) sec('boundary', 'boundary', `HIT: ${unit.boundary.reasons.join(', ')}${pack !== 'spike' ? ` — spike 측정: docs/measurements/spike-${slug}.md` : ''}`);
   const spike = readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`));
@@ -185,6 +212,7 @@ function main() {
   if (consumed) unit.respec = [];
   if (unit.state !== pack || consumed) { unit.state = pack; saveUnit(c.main, c.team, unit); }
   if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned });
+  if (revise) appendLedger(c.main, c.team, { kind: 'adversary_revise', slug, reason: revise });
   appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes });
   out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
 }

@@ -30,6 +30,15 @@ export function spikeComplete(text) {
 }
 // spike 파일만 든 wip HEAD인가 — 늦은 spike 뒤 build는 할 일이 없어 wip로 끝난다(사고 16). ship이 정식 메시지로 승격한다(tree 불변 → 증거 유효).
 export function spikeOnlyFiles(files, measurements) { return files.length > 0 && files.every((f) => f.replace(/\\/g, '/').startsWith(`${measurements}/spike-`)); }
+// 사고 41(필드 벤치 2 웹): 마지막 attack이 red 0의 공격 파일만 더하고 끝나면 체크포인트가 wip로 덮는다 — build는 고칠 것이 없고 그 파일을 커밋할 주체가 없어
+// 「HEAD가 wip — build를 다시 띄워」가 반복됐다. 증거 파일(spike 측정·공격 테스트·적대 fixture)만 든 wip HEAD는 사고 16처럼 승격한다(메시지만, tree 불변 → 증거 유효).
+export function evidenceCommitMessage(files, paths, slug) {
+  const fs_ = files.map((f) => f.replace(/\\/g, '/'));
+  if (spikeOnlyFiles(fs_, paths.measurements)) return `docs(spike): ${slug} 측정`;
+  const under = (f, dir) => !!dir && f.startsWith(`${dir}/`);
+  const ok = fs_.length > 0 && fs_.every((f) => under(f, paths.adversary) || under(f, paths.hostile) || f.startsWith(`${paths.measurements}/spike-`));
+  return ok ? `test(${slug}): attack 산출물` : null;
+}
 export function evaluateShip(x) {
   const c = [];
   const scaffold = x.unit?.kind === 'scaffold';
@@ -170,10 +179,11 @@ function main() {
   const base = exists ? git(['merge-base', 'HEAD', c.team.protected_branch], wt).stdout : '';
   const changed = exists && base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
   const diffHit = checkBoundary(c.team, { files: changed });
-  // 사고 16: 늦은 spike 뒤 측정 파일만 남으면 build는 할 일이 없어 wip로 끝난다 — spike 파일만의 wip HEAD는 정식 메시지로 승격(amend는 메시지만, tree 불변 → full·redproof·attack 증거 그대로 유효)
+  // 사고 16·41: 늦은 spike·마지막 attack 뒤 증거 파일만 남으면 build는 할 일이 없어 wip로 끝난다 — 그 wip HEAD는 정식 메시지로 승격(amend는 메시지만, tree 불변 → full·redproof·attack 증거 그대로 유효)
   if (exists && /^wip:/.test(git(['log', '-1', '--format=%s'], wt).stdout)) {
     const headFiles = git(['show', '--name-only', '--format='], wt).stdout.split('\n').filter(Boolean);
-    if (spikeOnlyFiles(headFiles, c.team.paths.measurements)) git(['commit', '--amend', '-q', '-m', `docs(spike): ${slug} 측정`], wt, { GARAGISTE_WIP: '1' });
+    const promoted = evidenceCommitMessage(headFiles, c.team.paths, slug);
+    if (promoted) git(['commit', '--amend', '-q', '-m', promoted], wt, { GARAGISTE_WIP: '1' });
   }
   const conds = evaluateShip({
     unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed,
