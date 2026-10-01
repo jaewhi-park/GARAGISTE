@@ -310,6 +310,24 @@ test('lib: 사고 31(필드 시험 1) — worktree에서 불린 스크립트는 
   assert.equal(args, 'a,b'); assert.equal(fs.realpathSync(cwd), fs.realpathSync(wt), '인자와 cwd(worktree)는 그대로');
   assert.equal(r.status, 3, '종료 코드도 그대로');
 });
+test('lib: 사고 40(필드 벤치 1 정비) — worktree의 스크립트를 밖(main 루트)에서 경로로 부르면 그 worktree가 뿌리다: build의 verify quick이 main을 검증해 게이트가 끝없이 거부했다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-where-'));
+  const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+  const g = (...a) => spawnSync('git', a, { cwd: root, encoding: 'utf8', env });
+  g('init', '-q');
+  const dir = path.join(root, '.garagiste', 'scripts');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.copyFileSync(new URL('../team/scripts/lib.mjs', import.meta.url), path.join(dir, 'lib.mjs'));
+  fs.writeFileSync(path.join(dir, 'probe.mjs'), "import { isMain, repoRoot } from './lib.mjs';\nif (isMain(import.meta.url)) console.log(repoRoot());\n");
+  g('add', '-A'); g('commit', '-q', '-m', 'x');
+  g('worktree', 'add', '-q', '.worktrees/u', '-b', 'unit/u');
+  const wt = path.join(root, '.worktrees', 'u');
+  const at = (script, cwd) => fs.realpathSync(spawnSync(process.execPath, [script], { cwd, encoding: 'utf8', env }).stdout.trim());
+  assert.equal(at(path.join(wt, '.garagiste', 'scripts', 'probe.mjs'), root), fs.realpathSync(wt), 'headless에서 cd가 막혀 build가 worktree 스크립트를 경로로 불렀다 — main이 아니라 그 worktree를 본다');
+  assert.equal(at(path.join(root, '.garagiste', 'scripts', 'probe.mjs'), wt), fs.realpathSync(wt), 'cwd가 스크립트의 저장소 안이면 cwd가 뿌리다(main의 스크립트를 worktree에서)');
+  assert.equal(at(path.join(root, '.garagiste', 'scripts', 'probe.mjs'), root), fs.realpathSync(root));
+  assert.equal(at(path.join(wt, '.garagiste', 'scripts', 'probe.mjs'), os.tmpdir()), fs.realpathSync(wt), '저장소 밖에서 불러도 그 스크립트의 저장소');
+});
 test('ship: 사고 34(필드 시험 2) — 의존성 출하인데 설치 명령이 없거나 무동작(true)이면 머지 전에 멈추고 CEO의 한 줄을 준다', () => {
   for (const setup of [undefined, '', 'true', ' : ', 'exit 0']) assert.match(setupGap({ depChanged: true, setup }), /의존성 출하인데 설치 명령이 없다[\s\S]*GARAGISTE_ADMIN=1 node \.garagiste\/scripts\/work\.mjs commands setup=/, String(setup));
   assert.equal(setupGap({ depChanged: true, setup: 'npm install' }), null);

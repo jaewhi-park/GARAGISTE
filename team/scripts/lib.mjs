@@ -243,8 +243,19 @@ export function out(line) { process.stdout.write(line + '\n'); }
 export function fail(line, code = 1) { out(line); process.exit(code); }
 export function isMain(metaUrl) {
   if (!process.argv[1] || path.resolve(process.argv[1]) !== fileURLToPath(metaUrl)) return false;
+  rootFromScript(metaUrl);
   lawFromMain(metaUrl);
   return true;
+}
+// 사고 40(필드 벤치 1 정비): 헤드리스에선 `cd <worktree> && …`가 승인 대기로 막혀 build가 worktree의 verify를 경로로 불렀는데 셸은 main 루트였다 —
+// 뿌리를 cwd로 정해 main을 검증하고 PASS를 남겼고(조용한 오검증), worktree의 게이트는 「quick PASS 없음」으로 끝없이 거부했다.
+// 스크립트의 경로가 의도다: cwd가 그 스크립트의 저장소 밖이면 그 저장소로 옮긴다(안이면 cwd가 더 구체적이다 — main의 스크립트를 worktree에서).
+function rootFromScript(metaUrl) {
+  const root = scriptRoot(metaUrl);
+  try {
+    const rel = path.relative(fs.realpathSync(root), fs.realpathSync(process.cwd()));
+    if (rel.startsWith('..') || path.isAbsolute(rel)) process.chdir(root);
+  } catch { /* 경로를 못 읽으면 그대로 — 이후 repoRoot가 말한다 */ }
 }
 // 사고 31(필드 시험 1): worktree의 .garagiste/scripts는 그 브랜치가 갈라질 때의 사본이다 — main에 든 정비가 진행 중 unit에 닿지 않아
 // build가 옛 redproof로 고쳐진 FAIL을 다시 봤다. 법은 하나: worktree에서 불린 스크립트는 main의 같은 스크립트로 넘긴다(인자·cwd·종료 코드 그대로).
