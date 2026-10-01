@@ -106,15 +106,21 @@ function intake(c, args) {
 function main() {
   const [pack, slug] = process.argv.slice(2);
   if (pack === 'intake') return intake(ctx(), process.argv.slice(3));
-  if (!PACKS.includes(pack) || !slug) fail(`사용법: brief.mjs <spec|build|attack|spike|boot> <slug> [--return "<spec: 줄>"] | intake`);
+  if (!PACKS.includes(pack) || !slug) fail(`사용법: brief.mjs <spec|build|attack|spike|boot> <slug> [--return "<spec: 줄>" | --met "<CEO 말>"] | intake`);
   const ri = process.argv.indexOf('--return');
   const returned = ri > 0 ? (process.argv[ri + 1] || '').trim() : '';
   if (ri > 0 && (pack !== 'spec' || !returned)) fail('FAIL --return은 spec 팩에만, build·attack이 남긴 spec: 줄 그대로 — brief.mjs spec <slug> --return "<그 줄>"');
   const vi = process.argv.indexOf('--revise');
   const revise = vi > 0 ? (process.argv[vi + 1] || '').trim() : '';
   if (vi > 0 && (pack !== 'attack' || !revise)) fail('FAIL --revise는 attack 팩에만, CEO가 고치라 한 말 그대로 — brief.mjs attack <slug> --revise "<CEO 말>"');
+  const mi = process.argv.indexOf('--met');
+  const met = mi > 0 ? (process.argv[mi + 1] || '').trim() : '';
+  if (mi > 0 && (pack !== 'spec' || !met)) fail('FAIL --met는 spec 팩에만, CEO가 이미 충족이라 한 말 그대로 — brief.mjs spec <slug> --met "<CEO 말>"');
   const c = ctx();
   const unit = loadUnit(c.main, c.team, slug);
+  // 사고 47(필드 벤치 넷): 주장을 빼는 것은 테스트 약화의 길 — redproof가 낸 부분 충족(base green 목록)이 있을 때, CEO 말 그대로만
+  const metRp = met ? [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'redproof' && e.slug === slug && e.ts >= unit.created) : null;
+  if (met && !metRp?.base_green?.length) fail(`FAIL --met는 redproof가 부분 충족을 낸 unit에만 — 마지막 redproof의 base green 목록이 근거다: node .garagiste/scripts/redproof.mjs ${slug} 먼저(전부 충족이면 그 FAIL의 drop 길)`);
   // 사고 42(필드 벤치 2 웹 정비): 충돌이 출하된 unit의 테스트에 있을 때 conductor가 그 unit의 spec을 다시 열려다 「worktree 없음」에서 멈췄다 — 고치는 것은 진행 중 unit의 팩이다
   if (unit.state === 'shipped') fail(`FAIL ${slug}은 이미 출하됐다 — 출하된 unit엔 팩(worktree)이 없다. 그 unit의 테스트가 진행 중 unit과 어긋나면 진행 중 unit의 팩이 고친다: 기존 공격 테스트는 CEO 결정으로 node .garagiste/scripts/brief.mjs attack <진행 중 slug> --revise "<CEO 말 그대로>", 동작을 바꾸는 일이면 node .garagiste/scripts/work.mjs new <slug>-fix "<CEO 말>"`);
   const returns = revise ? readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created) : [];
@@ -171,6 +177,12 @@ function main() {
       `- 고친 파일을 이 worktree에서 돌려 green인지 본 뒤 평소의 공격(${slug}-<n>)을 잇는다. 끝은 verify.mjs attack ${slug}.`,
     ].join('\n'));
   }
+  if (met) sec('met', '이미 충족 — CEO가 빼라고 한 주장 (기존 코드가 base에서 이미 만족)', [
+    `CEO 결정(그대로): ${met}`,
+    ...metRp.base_green.map((f) => `- ${f}`), '',
+    '- 이 파일만 git rm으로 뺀다 — 기존 코드가 이미 만족하는 주장은 이 unit이 증명할 것이 아니다. 남은 주장(나머지 인수 테스트)은 그대로, 새 주장을 더하지 않는다.',
+    `- 끝은 node .garagiste/scripts/redproof.mjs ${slug} (남은 주장으로).`,
+  ].join('\n'));
   if (unit.boundary?.hit) sec('boundary', 'boundary', `HIT: ${unit.boundary.reasons.join(', ')}${pack !== 'spike' ? ` — spike 측정: docs/measurements/spike-${slug}.md` : ''}`);
   const spike = readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`));
   if (spike && pack !== 'spike') sec('spike', '측정된 사실 (spike)', fence('spike 측정 파일', spike));
@@ -213,6 +225,7 @@ function main() {
   if (unit.state !== pack || consumed) { unit.state = pack; saveUnit(c.main, c.team, unit); }
   if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned });
   if (revise) appendLedger(c.main, c.team, { kind: 'adversary_revise', slug, reason: revise });
+  if (met) appendLedger(c.main, c.team, { kind: 'claims_met', slug, files: metRp.base_green, reason: met });
   appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes });
   out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
 }

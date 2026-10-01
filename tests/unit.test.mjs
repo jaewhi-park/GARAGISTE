@@ -338,6 +338,12 @@ test('redproof: 사고 36(필드 시험 2) — base에서 green(앞 unit이 이�
   assert.match(m, /^FAIL redproof persist: base에서 green — tests\/acceptance\/persist\.test\.js — 기존 코드가 이 주장을 이미 만족한다/);
   assert.match(m, /CEO 결정[\s\S]*work\.mjs drop persist "이미 충족 — <근거>" --forget[\s\S]*brief\.mjs spec persist 재spawn/);
 });
+test('redproof: 사고 47(필드 벤치 넷) — 일부만 base green(먼저 출하된 unit이 한 주장을 채웠다)이면 drop을 주지 않고 충족된 파일만 빼는 길을 준다', () => {
+  const m = baseGreenAdvice('jsonl-store', ['tests/acceptance/jsonl-store_handedit.py'], ['tests/acceptance/jsonl-store_cp949.py']);
+  assert.match(m, /^FAIL redproof jsonl-store: 부분 충족 — base에서 green tests\/acceptance\/jsonl-store_handedit\.py · base에서 red tests\/acceptance\/jsonl-store_cp949\.py/);
+  assert.match(m, /drop은 red 주장까지 닫는다[\s\S]*CEO 결정[\s\S]*brief\.mjs spec jsonl-store --met "<CEO 말 그대로>"[\s\S]*redproof[\s\S]*brief\.mjs spec jsonl-store 재spawn/);
+  assert.ok(!m.includes('work.mjs drop'), '남은 red 주장(CEO가 정한 CP949)을 닫는 drop은 길이 아니다');
+});
 test('work args: 사고 37(필드 시험 2) — 값 없는 --forget이 맨 끝이어도 켜진다(drop이 BACKLOG 줄을 닫지 못해 seed가 닫은 unit을 다시 열 뻔했다)', () => {
   assert.deepEqual(parseArgs(['persist', '이미 충족', '--forget'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'] });
   assert.deepEqual(parseArgs(['persist', '--forget', '이미 충족'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'] }, '사유를 삼키지 않는다');

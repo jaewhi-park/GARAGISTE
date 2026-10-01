@@ -358,7 +358,41 @@ test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원�
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"scope_fix","slug":"ledger-add-fix","from":"ledger-add"/);
 });
 
-test('사고 38·39(필드 벤치):main의 setup·quick이 남긴 산출물은 반쪽 출하 대신 되돌림·보존·unit 안내, unit이 무시 줄(.gitignore)을 더하면 spike FAIL이 다음 명령을 준다', { timeout: 180000 }, (t) => {
+test('사고 47(필드 벤치 넷): 일부 주장만 base green이면 redproof는 drop 대신 충족된 파일만 빼는 길을 주고, spec 팩이 그 목록과 CEO 말을 받는다', { timeout: 60000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-met-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  write(repo, 'src/bom.mjs', 'export const bom = 1;\n'); // 먼저 출하된 broken-lines가 BOM 처리를 main에 넣었다
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'true', full: 'true', test_file: 'node --test {file}', run: 'true' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  git(['add', '-A'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
+  script('work', ['new', 'jsonl-store', '손으로 고친 파일·CP949도 읽는다'], repo);
+  const wt = path.join(repo, '.worktrees', 'jsonl-store');
+  const claim = (mod) => `import test from 'node:test'; import fs from 'node:fs'; test('${mod}', () => { if (!fs.existsSync('src/${mod}.mjs')) throw new Error('red'); });\n`;
+  write(wt, 'tests/acceptance/jsonl-store_handedit.test.mjs', claim('bom'));
+  write(wt, 'tests/acceptance/jsonl-store_cp949.test.mjs', claim('cp949'));
+  assert.match(script('brief', ['spec', 'jsonl-store', '--met', '예'], repo).out, /^FAIL --met는 redproof가 부분 충족을 낸 unit에만/, '부분 충족 증거 없이 주장을 빼지 않는다');
+  const rp = script('redproof', ['jsonl-store'], repo);
+  assert.match(rp.out, /^FAIL redproof jsonl-store: 부분 충족 — base에서 green tests\/acceptance\/jsonl-store_handedit\.test\.mjs · base에서 red tests\/acceptance\/jsonl-store_cp949\.test\.mjs[\s\S]*--met "<CEO 말 그대로>"/, rp.out);
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"redproof","slug":"jsonl-store"[^\n]*"base_green":\["tests\/acceptance\/jsonl-store_handedit\.test\.mjs"\]/);
+  assert.match(script('brief', ['build', 'jsonl-store', '--met', '예'], repo).out, /^FAIL --met는 spec 팩에만/);
+  const pk = script('brief', ['spec', 'jsonl-store', '--met', '예 — 손편집·BOM은 이미 main에 있다, CP949는 남긴다'], repo);
+  assert.match(pk.out, /^PACK /, pk.out);
+  const text = fs.readFileSync(path.join(repo, pk.out.split(' ')[1]), 'utf8');
+  assert.match(text, /## 이미 충족 — CEO가 빼라고 한 주장[\s\S]*CEO 결정\(그대로\): 예 — 손편집·BOM은 이미 main에 있다[\s\S]*- tests\/acceptance\/jsonl-store_handedit\.test\.mjs[\s\S]*남은 주장[\s\S]*redproof\.mjs jsonl-store/);
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"claims_met","slug":"jsonl-store","files":\["tests\/acceptance\/jsonl-store_handedit\.test\.mjs"\]/);
+  // 팩이 할 일을 테스트가 대신한다: 충족된 파일만 빼면 남은 주장으로 RED
+  fs.rmSync(path.join(wt, 'tests/acceptance/jsonl-store_handedit.test.mjs'));
+  assert.match(script('redproof', ['jsonl-store'], repo).out, /^RED jsonl-store 1\/1/);
+});
+
+test('사고 38·39(필드 벤치): main의 setup·quick이 남긴 산출물은 반쪽 출하 대신 되돌림·보존·unit 안내, unit이 무시 줄(.gitignore)을 더하면 spike FAIL이 다음 명령을 준다', { timeout: 180000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-stray-'));
   git(['init', '-q', '-b', 'main'], repo);
