@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
-import { appendLedger, ceoTouch, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { appendLedger, ceoTouch, ctx, fail, git, isMain, linkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
 import { budgetStatus } from './state.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
@@ -347,7 +347,14 @@ function commands(c, args) {
   }
   writeJson(teamPath, t);
   appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' });
-  out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}`);
+  // 사고 34(필드 시험 2): 메인 루트의 CEO 변경은 boot의 커밋이 없다 — models처럼 스스로 커밋하고(ship이 main dirt로 막히지 않게), 바뀐 설치 명령은 main에서 한 번 돌린다(다음 worktree가 그 의존성을 잇는다)
+  let tail = '';
+  if (c.root === c.main) {
+    const cm = git(['commit', '-q', '-m', `scaffold(team): commands ${args.map((a) => a.split('=')[0]).join(' ')}`, '--', '.garagiste/team.json'], c.main, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' });
+    if (!cm.status) tail += ' · scaffold(team) 커밋';
+    if (args.some((a) => a.startsWith('setup=')) && t.commands.setup) tail += ` · setup을 main에서 돌렸다 exit=${shell(t.commands.setup, { cwd: c.main }).status}`;
+  }
+  out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}${tail}`);
 }
 // 규칙 파일의 {{…}} 자리 — boot 팩이 채운다(CLAUDE.md 또는 AGENTS.md)
 function rules(c, args) {
@@ -393,16 +400,30 @@ function spawned(c, slug, pack, flags) {
   const e = appendLedger(c.main, c.team, { kind: 'spawn', slug, pack, model: flags.model || c.team.models[pack], tokens: flags.tokens ? Number(flags.tokens) : null, minutes: flags.minutes ? Number(flags.minutes) : null, note: flags.note || '' });
   out(`SPAWN ${slug} ${pack} ${e.model}${e.tokens ? ` ${e.tokens} tok` : ''}${e.minutes ? ` ${e.minutes} min` : ''}`);
 }
+// 필드 시험(두 프로젝트 공통): intake 직후 list가 「unit 없음」이었다 — Flow 2는 intake 뒤 list를 보라 하는데 seed 전 BACKLOG 줄이 안 보였다.
+// seed된 unit 다음에, 열린 unit이 없는 BACKLOG 열린 줄을 backlog로 덧붙인다(dropped의 열린 줄은 다시 열릴 backlog다).
+// 사고 37(필드 시험 2): 값 없는 플래그가 맨 끝이면 「다음 인자」가 없어 undefined가 됐다 — `drop persist "<사유>" --forget`의 forget이 꺼져 BACKLOG 줄이 열린 채 남았다
+const BOOL_FLAGS = new Set(['forget']);
+export function parseArgs(raw, cmd) {
+  const flags = {}; const pos = [];
+  for (let i = 0; i < raw.length; i++) {
+    if (raw[i].startsWith('--') && !['brief', 'scope', 'models', 'commands', 'rules'].includes(cmd)) { const k = raw[i].slice(2); flags[k] = BOOL_FLAGS.has(k) ? true : raw[++i]; } else pos.push(raw[i]);
+  }
+  return { flags, pos };
+}
+export function listLines({ units, items }) {
+  const live = new Set(units.filter((u) => u.state !== 'dropped').map((u) => u.slug));
+  const lines = units.map((u) => `${u.slug.padEnd(24)} ${u.state.padEnd(8)} ${(u.milestone || 'M?').padEnd(4)} tried=${u.tried ? u.tried.result : '-'}${u.boundary?.hit ? ' HIT' : ''}`);
+  for (const i of items) if (!i.done && !live.has(i.slug)) lines.push(`${i.slug.padEnd(24)} ${'backlog'.padEnd(8)} ${(i.milestone || 'M?').padEnd(4)} needs=${i.needs.join(',') || '-'}`);
+  return lines.length ? lines : ['unit 없음 · BACKLOG 없음 — work.mjs brief 뒤 intake'];
+}
 function list(c) {
-  const units = listUnits(c.main, c.team);
-  if (!units.length) return out('unit 없음');
-  for (const u of units) out(`${u.slug.padEnd(24)} ${u.state.padEnd(8)} ${(u.milestone || 'M?').padEnd(4)} tried=${u.tried ? u.tried.result : '-'} ${u.boundary.hit ? 'HIT' : ''}`);
+  for (const l of listLines({ units: listUnits(c.main, c.team), items: parseBacklog(readBacklog(c)) })) out(l);
 }
 function main() {
   const [cmd, ...raw] = process.argv.slice(2);
   const c = ctx();
-  const flags = {}; const pos = [];
-  for (let i = 0; i < raw.length; i++) { if (raw[i].startsWith('--') && !['brief', 'scope', 'models', 'commands', 'rules'].includes(cmd)) flags[raw[i].slice(2)] = raw[++i]; else pos.push(raw[i]); }
+  const { flags, pos } = parseArgs(raw, cmd);
   if (cmd === 'brief') return brief(c, raw);
   if (cmd === 'add') return add(c, pos[0], pos[1], flags);
   if (cmd === 'scope') return scope(c, raw);

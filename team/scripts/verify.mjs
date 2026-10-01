@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import {
   acceptanceFiles, adversaryFiles, appendLedger, ctx, currentBranch, fail, git, headSha, indexTree, isMain, matchAny,
-  mergeBase, out, readLedger, shell, short, slugRoot, stamp, workTree,
+  linkDeps, mergeBase, out, readLedger, shell, short, slugRoot, stamp, workTree,
 } from './lib.mjs';
 
 export const LOGIC_EXCLUDE = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', '**/*.config.*', '**/tsconfig*.json', 'docs/**', '.garagiste/**', '.claude/**', '.opencode/**', 'opencode.json', 'fixtures/**', 'probes/**',
@@ -41,6 +41,7 @@ function runMode(mode, c) {
   if (!cmd) fail(`FAIL verify:${mode} commands.${mode} 비어 있음 — .garagiste/team.json`);
   const logDir = path.join(c.main, c.team.paths.logs); fs.mkdirSync(logDir, { recursive: true });
   const log = path.join(logDir, `verify-${mode}-${stamp()}.log`);
+  if (c.root !== c.main) linkDeps(c.main, c.root); // 사고 34: seed 뒤 main에 깔린 의존성(설치 명령 변경)도 열린 worktree가 잇는다 — 없는 것만 링크
   const r = shell(cmd, { cwd: c.root });
   fs.writeFileSync(log, `$ ${cmd}\n${r.stdout}\n${r.stderr}`);
   const tree = workTree(c.root);

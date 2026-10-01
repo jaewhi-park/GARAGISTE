@@ -11,13 +11,13 @@ import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
-import { attackCell, evaluateShip, mergeTeamJson, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
+import { attackCell, evaluateShip, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
-import { outcome, verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate } from '../team/scripts/work.mjs';
+import { baseGreenAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
+import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
-import { dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
+import { acceptanceFiles, adversaryFiles, dirtyFiles, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, readJson, loadTeam, scriptRoot, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -117,6 +117,23 @@ test('guard: L2 1일차 — 원장 읽기·heredoc trailer는 쓰기가 아니�
   assert.match(decide(bash('cd .worktrees/hello && rm ../../src/a.ts'), gctx('build')) || '', /옮기거나 지우지 않는다/, 'worktree 탈출은 여전히 막힌다');
   // 메모리 — 거부는 그대로, 이유를 말해 재시도를 멈춘다
   assert.match(decide(write('/home/u/.claude/projects/p/memory/MEMORY.md'), gctx(null)) || '', /메모리 파일은 쓰지 않는다/);
+});
+test('guard: 필드 시험 — git 전역 옵션(-C·-c) 뒤의 파괴 명령도 막고, -c core.hooksPath로 게이트를 끄는 우회를 막는다', () => {
+  const wt = `${root}/.worktrees/hello`;
+  assert.ok(decide(bash('git -C .worktrees/x reset --hard'), gctx(null)), '-C 뒤의 reset --hard — 붙은 형태만 보던 구멍');
+  assert.ok(decide(bash('git -C .worktrees/x commit --no-verify -m a'), gctx(null)));
+  assert.ok(decide(bash('git -C x -c user.name=a stash'), gctx(null)));
+  assert.ok(decide(bash('git -C x push origin main'), gctx(null)));
+  assert.match(decide(bash('git -c core.hooksPath=/dev/null commit -m a', wt), gctx('build')) || '', /게이트 우회/, '훅 경로를 바꾸면 커밋 게이트가 꺼진다');
+  assert.match(decide(bash('git -C x -c core.hookspath=x commit -m a'), gctx(null)) || '', /게이트 우회/, '대소문자 무관');
+  assert.match(decide(bash('git -C .worktrees/hello push'), gctx('build')) || '', /push하지 않는다/, 'worktree 안 push도 -C로 빠지지 않는다');
+  assert.equal(decide(bash(`git -C ${wt} add -A`), gctx('build')), null, '-C 자체는 정상 — 팩이 worktree에서 일하는 길');
+  assert.equal(decide(bash(`git -C ${wt} commit -m "feat: x"`), gctx('build')), null);
+  assert.equal(decide(bash('git -C x log --oneline'), gctx(null)), null);
+});
+test('settings: 팩이 worktree에서 일하는 명령(cd·git -C)이 허용 목록에 있다 — 없으면 헤드리스·신규 설치에서 boot가 커밋하지 못해 루프가 멈춘다 (필드 시험)', () => {
+  const st = JSON.parse(fs.readFileSync(new URL('../team/claude/settings.json', import.meta.url), 'utf8'));
+  for (const r of ['Bash(cd:*)', 'Bash(git -C:*)']) assert.ok(st.permissions.allow.includes(r), r);
 });
 test('guard: 보호 브랜치가 main이 아니어도 push가 막힌다', () => {
   const pb = { ...gctx(null), protectedBranch: 'claude/quirky-wozniak-keqgbi' };
@@ -255,6 +272,64 @@ test('claims: 태그 파싱, 기계 센서 커버리지, 다음 거짓 주장은
   const cs = [{ file: 'b', status: 'false', milestone: 'M3', sensor: 'machine' }, { file: 'a', status: 'false', milestone: 'M1', sensor: 'human' }, { file: 'c', status: 'true', milestone: 'M1', sensor: 'machine' }];
   assert.equal(pickNext(cs).file, 'a');
   assert.equal(coverage(cs).pct, 67);
+});
+test('lib: 사고 30(필드 시험 1) — 수용·공격 파일은 저장소의 눈으로 센다: 무시 파일(__pycache__/*.pyc)은 테스트가 아니고, 아직 커밋 안 한 새 테스트는 테스트다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-files-'));
+  const g = (...a) => spawnSync('git', a, { cwd: root, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+  g('init', '-q');
+  const w = (rel, text = 'x') => { fs.mkdirSync(path.dirname(path.join(root, rel)), { recursive: true }); fs.writeFileSync(path.join(root, rel), text); };
+  w('.gitignore', '__pycache__/\n');
+  w('tests/acceptance/add_test.py'); w('tests/adversary/add-1.py');
+  g('add', '-A'); g('commit', '-q', '-m', 'x');
+  w('tests/acceptance/__pycache__/add_test.cpython-311.pyc'); w('tests/adversary/__pycache__/add-1.cpython-311.pyc');
+  w('tests/acceptance/add_more_test.py'); // spec이 막 쓴, 아직 커밋 안 한 주장
+  assert.deepEqual(acceptanceFiles(root, team, 'add'), ['tests/acceptance/add_more_test.py', 'tests/acceptance/add_test.py']);
+  assert.deepEqual(adversaryFiles(root, team, 'add'), ['tests/adversary/add-1.py']);
+  fs.rmSync(path.join(root, 'tests/acceptance/add_test.py'));
+  assert.deepEqual(acceptanceFiles(root, team, 'add'), ['tests/acceptance/add_more_test.py'], '지운 파일은 인덱스에 남아도 없다');
+});
+test('lib: 사고 31(필드 시험 1) — worktree에서 불린 스크립트는 main의 법으로 돈다: 갈라진 뒤 main에 든 정비가 진행 중 unit에 닿는다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-law-'));
+  const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+  const g = (...a) => spawnSync('git', a, { cwd: root, encoding: 'utf8', env });
+  g('init', '-q');
+  const dir = path.join(root, '.garagiste', 'scripts');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.copyFileSync(new URL('../team/scripts/lib.mjs', import.meta.url), path.join(dir, 'lib.mjs'));
+  const probe = (v, code) => `import { isMain } from './lib.mjs';\nif (isMain(import.meta.url)) { console.log('law ${v} ' + process.argv.slice(2).join(',') + ' ' + process.cwd()); process.exitCode = ${code}; }\n`;
+  fs.writeFileSync(path.join(dir, 'probe.mjs'), probe('v1', 0));
+  g('add', '-A'); g('commit', '-q', '-m', 'x');
+  g('worktree', 'add', '-q', '.worktrees/u', '-b', 'unit/u');
+  const wt = path.join(root, '.worktrees', 'u');
+  const run = () => spawnSync(process.execPath, [path.join(wt, '.garagiste', 'scripts', 'probe.mjs'), 'a', 'b'], { cwd: wt, encoding: 'utf8', env });
+  assert.equal(run().stdout.trim().split(' ')[1], 'v1', '같은 법이면 그대로');
+  fs.writeFileSync(path.join(dir, 'probe.mjs'), probe('v2', 3)); // 정비 반영(main)
+  const r = run();
+  const [, v, args, cwd] = r.stdout.trim().split(' ');
+  assert.equal(v, 'v2', '진행 중 unit의 worktree 사본(v1)이 아니라 main의 법(v2)');
+  assert.equal(args, 'a,b'); assert.equal(fs.realpathSync(cwd), fs.realpathSync(wt), '인자와 cwd(worktree)는 그대로');
+  assert.equal(r.status, 3, '종료 코드도 그대로');
+});
+test('ship: 사고 34(필드 시험 2) — 의존성 출하인데 설치 명령이 없거나 무동작(true)이면 머지 전에 멈추고 CEO의 한 줄을 준다', () => {
+  for (const setup of [undefined, '', 'true', ' : ', 'exit 0']) assert.match(setupGap({ depChanged: true, setup }), /의존성 출하인데 설치 명령이 없다[\s\S]*GARAGISTE_ADMIN=1 node \.garagiste\/scripts\/work\.mjs commands setup=/, String(setup));
+  assert.equal(setupGap({ depChanged: true, setup: 'npm install' }), null);
+  assert.equal(setupGap({ depChanged: false, setup: 'true' }), null, '의존성이 안 바뀌면 상관없다');
+});
+test('redproof: 사고 36(필드 시험 2) — base에서 green(앞 unit이 이미 만든 기능)이면 CEO의 두 길을 명령으로 준다', () => {
+  const m = baseGreenAdvice('persist', ['tests/acceptance/persist.test.js']);
+  assert.match(m, /^FAIL redproof persist: base에서 green — tests\/acceptance\/persist\.test\.js — 기존 코드가 이 주장을 이미 만족한다/);
+  assert.match(m, /CEO 결정[\s\S]*work\.mjs drop persist "이미 충족 — <근거>" --forget[\s\S]*brief\.mjs spec persist 재spawn/);
+});
+test('work args: 사고 37(필드 시험 2) — 값 없는 --forget이 맨 끝이어도 켜진다(drop이 BACKLOG 줄을 닫지 못해 seed가 닫은 unit을 다시 열 뻔했다)', () => {
+  assert.deepEqual(parseArgs(['persist', '이미 충족', '--forget'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'] });
+  assert.deepEqual(parseArgs(['persist', '--forget', '이미 충족'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'] }, '사유를 삼키지 않는다');
+  assert.deepEqual(parseArgs(['x', '--needs', 'a,Q1', '--milestone', 'M2'], 'add').flags, { needs: 'a,Q1', milestone: 'M2' });
+});
+test('ship: wip HEAD의 안내는 unit 정체의 팩을 가리킨다 — boot(scaffold)에 「build를 다시 띄워」라 했다 (필드 시험 두 곳 공통)', () => {
+  const base = { slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [], requireAttack: false, spikeText: '', lastSubject: 'wip: checkpoint', stops: [], proseKb: 10, proseMax: 40 };
+  const why = (unit) => evaluateShip({ ...base, unit }).find((k) => k.id === 'head').why;
+  assert.match(why({ kind: 'scaffold', state: 'build', boundary: { hit: false } }), /boot를 다시 띄워/);
+  assert.match(why({ state: 'build', boundary: { hit: false } }), /build를 다시 띄워/);
 });
 test('ship: 8조건 — 하나라도 빠지면 fail-closed', () => {
   const unit = { state: 'spec', boundary: { hit: false } };
@@ -474,6 +549,18 @@ test('work seed: unit은 한 번에 하나 — CEO 질문에 걸린 unit만 예�
   assert.equal(seedGate({ units: [{ slug: 'e', state: 'spec', questions: [], needs: ['Q5'] }], decisionsText: dec }), null, 'needs의 열린 Q도 질문에 걸린 것');
   assert.deepEqual(seedGate({ units: [], stops: ['미검수 3 ≥ 3'] }), { kind: 'stop', why: ['미검수 3 ≥ 3'] }, '예산 정지 중에 연 unit은 6시간 유휴·낡은 base였다');
 });
+test('work list: seed 전 BACKLOG 줄도 보인다 — Flow 2는 intake 뒤 list를 보라 하는데 「unit 없음」이었다 (필드 시험 두 곳 공통)', () => {
+  const items = parseBacklog(['- [ ] boot · M1 · needs: Q3 · "a" · 인수: -', '- [ ] add · M1 · needs: boot,Q1 · "b" · 인수: -', '- [x] old · M1 · needs: - · "c" · 인수: -'].join('\n'));
+  const l = listLines({ units: [], items });
+  assert.equal(l.length, 2, '닫힌 줄은 빠진다');
+  assert.match(l[0], /^boot\s+backlog\s+M1\s+needs=Q3/);
+  assert.match(l[1], /^add\s+backlog\s+M1\s+needs=boot,Q1/);
+  const l2 = listLines({ units: [{ slug: 'boot', state: 'build', milestone: 'M1', tried: null, boundary: { hit: false } }], items });
+  assert.match(l2[0], /^boot\s+build\s+M1\s+tried=-/);
+  assert.equal(l2.filter((x) => /^boot\s+backlog/.test(x)).length, 0, '열린 unit은 backlog 줄로 겹치지 않는다');
+  assert.ok(listLines({ units: [{ slug: 'add', state: 'dropped', milestone: 'M1', tried: null, boundary: { hit: false } }], items }).some((x) => /^add\s+backlog/.test(x)), 'dropped unit의 열린 줄은 다시 열릴 backlog다');
+  assert.deepEqual(listLines({ units: [], items: [] }), ['unit 없음 · BACKLOG 없음 — work.mjs brief 뒤 intake']);
+});
 test('work seed: dropped unit은 자리를 막지 않고 같은 slug가 새로 열린다', () => {
   const items = parseBacklog('- [ ] a · M1 · needs: - · "a" · 인수: -');
   assert.equal(pickReady({ order: ['a'], items, units: [{ slug: 'a', state: 'dropped' }] }).slug, 'a', 'kill-and-respawn: 버린 unit이 ACTIVE로 잡히면 안 된다');
@@ -511,6 +598,21 @@ test('lib: env.local은 KEY=VALUE 줄만 읽고 주석은 무시한다', () => {
   assert.deepEqual(parseLocalEnv('# 이 기계만\nGARAGISTE_RUNNER=setpriv --reuid=1000 env HOME=/tmp/x\nBAD LINE\nA=1'), { GARAGISTE_RUNNER: 'setpriv --reuid=1000 env HOME=/tmp/x', A: '1' });
 });
 
+test('lib: 사고 35(필드 시험 2) — 의존성 링크는 .gitignore의 `node_modules/`(디렉터리 패턴)에 안 걸린다: 링크는 프레임워크의 것이니 스스로 로컬 제외에 둔다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-link-'));
+  const env = { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' };
+  const g = (cwd, ...a) => spawnSync('git', a, { cwd, encoding: 'utf8', env });
+  g(root, 'init', '-q');
+  fs.writeFileSync(path.join(root, '.gitignore'), 'node_modules/\n/.worktrees/\n');
+  g(root, 'add', '-A'); g(root, 'commit', '-q', '-m', 'x');
+  fs.mkdirSync(path.join(root, 'node_modules', 'dep'), { recursive: true });
+  g(root, 'worktree', 'add', '-q', '.worktrees/u', '-b', 'unit/u');
+  const wt = path.join(root, '.worktrees', 'u');
+  assert.deepEqual(linkDeps(root, wt), ['node_modules']);
+  assert.equal(g(wt, 'status', '--porcelain').stdout.trim(), '', '링크가 미추적으로 보이면 체크포인트(git add -A)가 이 기계의 경로를 커밋한다');
+  assert.equal(g(root, 'status', '--porcelain').stdout.trim(), '', 'main도 그대로');
+  assert.deepEqual(linkDeps(root, wt), []);
+});
 test('brief intake: BRIEF의 마지막 n절만 — intake는 증분이다', () => {
   const t = '# BRIEF\n머리\n## 1\na\n## 2\nb\n## 3\nc\n';
   assert.equal(tailSections(t, 2), '## 2\nb\n## 3\nc\n');

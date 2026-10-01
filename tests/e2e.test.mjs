@@ -120,7 +120,10 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('ship', ['hello'], repo).out, /- attack: adversary red 1/);
 
   // build 재spawn: red → green, 이어받기 절이 팩에 있다
-  assert.match(fs.readFileSync(path.join(repo, script('brief', ['build', 'hello'], repo).out.split(' ')[1]), 'utf8'), /## 이어받기/);
+  const rebuild = fs.readFileSync(path.join(repo, script('brief', ['build', 'hello'], repo).out.split(' ')[1]), 'utf8');
+  assert.match(rebuild, /## 이어받기/);
+  // 사고 32(필드 시험 1): build 팩엔 인수 테스트만 있었다 — 프로젝트의 full이 공격 파일을 안 집으면(파이썬 discover는 test*.py만) build는 green만 보고 빈손으로 끝났다
+  assert.match(rebuild, /## 공격 테스트 — 지금 red[\s\S]*tests\/adversary\/hello-1\.test\.mjs[\s\S]*끝 공백 없음/, 'build 팩이 attack의 red 파일과 내용을 할 일로 받는다');
   write(wt, 'src/cli.mjs', "const n = process.argv[2]; process.stdout.write(n ? `hello ${n}\\n` : 'hello\\n');\n");
   git(['add', '-A'], wt); assert.match(script('verify', ['quick'], wt).out, /^PASS/);
   assert.equal(git(['commit', '-q', '-m', 'fix(hello): 이름 없을 때\n\nUnit: hello\nStep: 2'], wt).status, 0);
@@ -222,6 +225,14 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('redproof', ['session'], repo).out, /^RED session 2\/2 — 기존 코드 위의 새 주장\(re-spec\): 다음은 build/, '사고 24: re-spec(정체 spec)의 끝은 RED — 다음 할 일이 적혀 있다');
   assert.match(script('brief', ['build', 'session'], repo).out, /^PACK .*session-build-/, 'spec이 답을 받은 뒤에야 build가 열린다');
   assert.match(script('redproof', ['session'], repo).out, /^FAIL redproof session base_red=true head_green=false — head에서 red: .*session-ttl.* → build가 덜 끝났다/, '사고 24: 정체가 build면 head red는 미완 — 이것도 다음 할 일을 말한다');
+  // 사고 33(필드 시험 1): build가 「인수 테스트가 서로 어긋난다」는 spec: 줄을 남겨도 받을 길이 없었다 — redproof는 build 재spawn만 말해 빈손 build가 반복됐다
+  assert.match(script('redproof', ['session'], repo).out, /spec: 줄을 남겼으면 .*brief\.mjs spec session --return/, 'head red의 FAIL이 spec: 줄의 길도 말한다');
+  const ret = script('brief', ['spec', 'session', '--return', 'spec: 만료 주장과 갱신 주장이 서로 어긋난다'], repo);
+  assert.match(fs.readFileSync(path.join(repo, ret.out.split(' ')[1]), 'utf8'), /## 반려 — build 팩이 남긴 줄[\s\S]*서로 어긋난다/, 'spec 팩이 반려 줄을 받는다');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"spec_return","slug":"session","from":"build"/);
+  assert.match(script('brief', ['spec', 'session', '--return', 'spec: 또 어긋난다'], repo).out, /^FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다/, '반려 핑퐁은 한 번 — 두 번째는 CEO에게');
+  assert.match(script('brief', ['build', 'session', '--return', 'x'], repo).out, /^FAIL --return은 spec 팩에만/);
+  script('brief', ['build', 'session'], repo);
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"respec","slug":"session","q":3/);
   assert.match(script('work', ['seed'], repo).out, /^ACTIVE session — unit은 한 번에 하나/, '진행 중인 unit이 끝나야 다음이 열린다');
   assert.match(script('state', [], repo).out, /안 본 것 0\/3/);
@@ -382,9 +393,17 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.match(script('work', ['commands', 'quick=node --test "tests/unit/**/*.test.mjs"', 'full=node --test "tests/**/*.test.mjs"', 'test_file=node --test {file}', 'run=node src/cli.mjs', `setup=node -e "require('fs').writeFileSync('.garagiste/session/setup-ran','x')"`], wt).out, /^COMMANDS quick=/); // 마커는 gitignore된 session/ 안 — 실전의 setup 산출물(node_modules)처럼 main을 더럽히지 않는다
   assert.match(script('work', ['rules', 'project=memo', 'one_line=터미널 메모 도구'], wt).out, /^RULES CLAUDE\.md 자리 전부 채움/);
   assert.match(fs.readFileSync(path.join(wt, 'CLAUDE.md'), 'utf8'), /^# memo\n터미널 메모 도구\n[\s\S]*- quick: node --test/);
+  // 사고 29(필드 시험 1): .gitignore 전의 wip 체크포인트가 테스트 산출물(__pycache__ 꼴)을 담고, 뒤 커밋이 그것을 무시 목록으로 뺀다 —
+  // 파일은 worktree에 무시 파일로 남는다. 한 커밋씩 다시 놓는 rebase는 그 wip에서 「untracked would be overwritten」으로 멈췄다
+  write(wt, 'cache/smoke.bin', 'artifact');
+  git(['add', '-A'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'wip: boot checkpoint'], wt, { GARAGISTE_WIP: '1' }).status, 0);
+  fs.appendFileSync(path.join(wt, '.gitignore'), 'cache/\n');
+  git(['rm', '-r', '-q', '--cached', 'cache'], wt);
   git(['add', '-A'], wt);
   assert.match(script('verify', ['quick'], wt).out, /^PASS verify:quick/);
   assert.equal(git(['commit', '-q', '-m', 'scaffold(boot): node 22 · node:test\n\nUnit: boot\nStep: 1'], wt).status, 0);
+  assert.ok(fs.existsSync(path.join(wt, 'cache/smoke.bin')), '산출물은 worktree에 무시 파일로 남는다');
   assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
   // 사고 6 회귀: models는 규칙집(team.json·agents)을 바꾸면 스스로 커밋한다 — main에 커밋 경로 없는 dirt를 남겨 ship을 막지 않는다
   assert.match(script('work', ['models', 'high'], repo).out, /scaffold\(team\) 커밋/);
@@ -392,8 +411,14 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): models high/);
   assert.ok(!script('work', ['models', 'high'], repo).out.includes('커밋'), '변경 없으면 커밋도 없다');
   // 사고 7 회귀: main의 models 커밋 × boot의 commands 커밋 = team.json rebase 충돌 — ship이 키 병합으로 통과하고 통합 full까지 스스로 돌린다
+  // 필드 시험 2: CEO의 try가 메인 루트에 남긴 산출물 — 출하를 막는 것은 맞지만 다음 할 일(누가 치우나)을 말해야 한다
+  write(repo, 'data/try.json', '[]');
+  assert.match(script('ship', ['boot'], repo).out, /^FAIL ship: 메인 worktree에 미커밋 변경 — data\/try\.json — 팀의 것이 아니다[\s\S]*CEO가 치운다/);
+  fs.rmSync(path.join(repo, 'data'), { recursive: true });
   const ship = script('ship', ['boot'], repo);
   assert.match(ship.out, /^SHIPPED boot [0-9a-f]{7}/, ship.out);
+  assert.equal(git(['ls-files', 'cache'], repo).out.trim(), '', '사고 29: 증거는 tree다 — unit의 역사는 그 tree 한 커밋으로 접혀 올라가고, 중간 wip의 산출물은 main에 오지 않는다');
+  assert.ok(!/^wip:/m.test(git(['log', '--format=%s', '-5'], repo).out), 'main 역사에 wip 체크포인트가 없다');
   assert.match(ship.out, /NOTE: 의존성 파일이 바뀐 출하/, '사고 10: 매니페스트가 바뀐 출하는 메인 설치를 안내한다');
   assert.ok(fs.existsSync(path.join(repo, '.garagiste', 'session', 'setup-ran')), '사고 21: 의존성 출하는 main quick 전에 commands.setup이 main에서 돈다');
   const team = JSON.parse(fs.readFileSync(path.join(repo, '.garagiste', 'team.json'), 'utf8'));
@@ -402,6 +427,16 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.match(fs.readFileSync(path.join(repo, 'CLAUDE.md'), 'utf8'), /^# memo/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| boot \| .* \| PASS \| scaffold \| — \|/);
   assert.match(script('work', ['seed'], repo).out, /^UNIT memo-add spec/, 'boot 뒤 다음 unit이 열린다');
+  // 사고 34(필드 시험 2): 설치 명령이 비어(true) 뒤 unit의 의존성이 main·worktree에 깔리지 않았다 — CEO의 한 줄(ADMIN, 메인 루트)이 커밋·설치까지 하고, worktree의 verify가 main의 의존성 디렉터리를 잇는다
+  const setupCmd = `node -e "require('fs').mkdirSync('node_modules/dep',{recursive:true})"`;
+  const sc = script('work', ['commands', `setup=${setupCmd}`], repo, { GARAGISTE_ADMIN: '1' });
+  assert.match(sc.out, /^COMMANDS [\s\S]*scaffold\(team\) 커밋 · setup을 main에서 돌렸다 exit=0/, sc.out);
+  assert.equal(git(['status', '--porcelain', '--', '.garagiste/team.json'], repo).out.trim(), '', 'commands 뒤 main은 깨끗하다');
+  assert.ok(fs.existsSync(path.join(repo, 'node_modules/dep')), 'setup이 main에서 돌았다');
+  const mwt = path.join(repo, '.worktrees', 'memo-add');
+  assert.ok(!fs.existsSync(path.join(mwt, 'node_modules')), '이미 열린 worktree엔 아직 없다');
+  script('verify', ['quick'], mwt);
+  assert.ok(fs.existsSync(path.join(mwt, 'node_modules/dep')), 'worktree의 verify가 main의 의존성 디렉터리를 잇는다');
   git(['config', '--unset', 'core.hooksPath'], repo);
   assert.match(script('work', ['seed'], repo).out, /^FAIL doctor \d+[\s\S]*core\.hooksPath/, 'R8: 병든 설치(게이트 침묵 꺼짐)에서 seed는 이유 전문과 함께 멈춘다');
   git(['config', 'core.hooksPath', '.githooks'], repo);
