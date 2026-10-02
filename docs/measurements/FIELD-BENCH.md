@@ -40,6 +40,7 @@ tests/field/turn.sh $B/field1 2 "<둘째 말>" <sid>      # 이후 매 턴 --res
 tests/field/watch.sh $B/field1:2 $B/field2:2          # Monitor로 걸면 ship·턴 끝마다 알림
 node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 node tests/field/day.mjs $B/field1 --since <그날 세션을 연 ISO 시각> [--until <다음 날 --since>]   # L2 하루 표 + DAY 한 줄(L2-day-conductor 「저녁」 2~5 그대로 + 답 대기 뺀 seed→ship)
+node tests/field/stream.mjs run $B/field1 day4 --plan <plan.json>   # Q6(L2-TRIAL-3 4일): 스트림 입력 세션 하나 — 창의 말은 say(.in), 등록문의 네 말은 plan이 원장 시점에 · end로 닫고 report가 컴파일·무관 unit
 ```
 - 두 필드는 서로 독립이라 동시에 돌려도 된다(턴은 백그라운드로).
 - 하네스 함정(프레임워크 결함 아님): 부모 세션의 `CLAUDE_*` 환경 누수 → `turn.sh`가 걷어 낸다 · 신뢰 안 된 작업 공간은 허용 목록 무시 → `setup.sh`가 신뢰를 켠다 · 필드 사본에서 `git worktree repair`를 치지 않는다(원본 링크를 빼앗는다 — 2026-10-01 정비 채널 실수).
