@@ -98,6 +98,16 @@ export function rebaseInProgress(cwd) {
   return ['rebase-merge', 'rebase-apply'].some((d) => { const p = git(['rev-parse', '--git-path', d], cwd).stdout; return !!p && fs.existsSync(path.resolve(cwd, p)); });
 }
 export function unmergedFiles(cwd) { return git(['diff', '--name-only', '--diff-filter=U'], cwd).stdout.split('\n').filter(Boolean); }
+// 사고 58(홀드아웃 library 6일차): ship이 멈춰 둔 rebase에서 표시를 다 푼 build가 잇지 않고 spec: 반려를 남겼다 — 그 자리의 HEAD는 main(onto)이라
+// 다른 팩·redproof가 base = head로 읽어 거짓 「base에서 green — 이미 충족」(drop을 따르면 출하 직전의 일을 버린다). rebase 도중의 길은 둘뿐이다.
+export function rebaseAdvice(who, slug, unmerged, mainBranch) {
+  return unmerged.length
+    ? `FAIL ${who}: ${slug}은 rebase 도중 — ${mainBranch}과의 충돌 표시가 남았다(${unmerged.join(' ')}): node .garagiste/scripts/brief.mjs build ${slug}(표시를 풀고 git add까지) → node .garagiste/scripts/ship.mjs ${slug}(ship이 rebase를 잇는다)`
+    : `FAIL ${who}: ${slug}은 rebase 도중 — 충돌 표시는 다 풀렸다. rebase를 잇는 것은 ship이다: node .garagiste/scripts/ship.mjs ${slug}(잇고 통합 tree를 다시 검증한다 — 그 뒤 남은 일은 그 출력이 말한다)`;
+}
+// 사고 59(홀드아웃 library 3일차): CEO 결정만 요구하는 FAIL(두 번째 spec 반려 · 팩 상한 · 이미 충족)이 열린 Q가 되지 않아 seed가 그 unit을 일하는 중으로 보고
+// 다른 unit까지 막았다 — 그 unit만 세우는 명령을 안내에. --hold는 답이 와도 re-spec하지 않는다: 답의 길은 그 FAIL이 정한다(5일차 팩 상한의 답이 spec부터 다시 돌렸다).
+export const holdAsk = (slug, gist) => `그 unit만 세우고 다음 seed로(다른 unit은 계속): node .garagiste/scripts/work.mjs ask ${slug} "${gist}" --hold — CEO의 답은 work.mjs decide <n> "<답>" 뒤 위의 길로`;
 // 사고 12(2차 실기): sh()는 stdout을 trim한다 — porcelain 첫 줄이 ' M …'(비스테이징 수정)이면 선행 공백이 지워져 slice(3)이 경로 첫 글자를 먹는다(ocs/BACKLOG.md). 여기선 원문을 쓴다.
 export function dirtyFiles(cwd) {
   const r = spawnSync('git', ['status', '--porcelain', '-uall'], { cwd, encoding: 'utf8' });

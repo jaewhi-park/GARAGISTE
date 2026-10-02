@@ -238,6 +238,8 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(second, /^FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다/, '반려 핑퐁은 한 번 — 두 번째는 CEO에게');
   // 사고 42(필드 벤치 2 웹 정비): 충돌이 출하된 unit의 공격 테스트(과잉 단언)에 있고 CEO가 「고쳐라」 했는데 실행할 길이 없었다 — 출하된 unit엔 worktree가 없고, 공격 테스트를 쓰는 attack에 그 결정을 줄 길이 없었다
   assert.match(second, /brief\.mjs spec session[\s\S]*brief\.mjs attack session --revise/, 'CEO의 두 답(수용을 바꿔라 · 기존 공격 테스트를 고쳐라)이 각각 명령으로 있다: ' + second);
+  // 사고 59(홀드아웃 library 3일차): 「hard 질문 — 그 unit만 멈춘다」라 했지만 열린 Q가 생기지 않아 seed가 ACTIVE로 다른 unit까지 막았다
+  assert.match(second, /그 unit만 세우고 다음 seed로[\s\S]*work\.mjs ask session "[^"]+" --hold/, '그 unit만 세우는 명령이 있다');
   assert.match(script('brief', ['spec', 'hello'], repo).out, /^FAIL hello은 이미 출하됐다[\s\S]*--revise/, '출하된 unit엔 팩이 없다 — 진행 중 unit의 팩이 고친다고 말한다');
   assert.match(script('brief', ['attack', 'net', '--revise', 'x'], repo).out, /^FAIL --revise는 spec 반려가 CEO에게 간 unit에만/, '기존 공격 테스트를 고치는 것은 CEO 결정의 길뿐(테스트 약화)');
   assert.match(script('brief', ['build', 'session', '--revise', 'x'], repo).out, /^FAIL --revise는 attack 팩에만/);
@@ -252,6 +254,14 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('work', ['seed'], repo).out, /^ACTIVE session — unit은 한 번에 하나/, '진행 중인 unit이 끝나야 다음이 열린다');
   assert.match(script('state', [], repo).out, /안 본 것 0\/3/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 범위\n- 요청 1 · 선행 2 · 출하 0\/3\n- 순서: session → memo → export/);
+  // 사고 59(홀드아웃 library 3·4·5일차): CEO 결정만 요구하는 FAIL은 그 unit만 세운다 — --hold는 Q를 걸되 답이 와도 re-spec하지 않는다(5일차엔 팩 상한의 답이 spec부터 다시 돌렸다)
+  assert.match(script('work', ['ask', 'session', '팩 상한 초과 — ① pack_kb_max 올리기 · ② unit 나누기', '--hold'], repo).out, /^Q4 queued — session은 답이 올 때까지 세워 둔다/);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).holds, [4]);
+  assert.doesNotMatch(script('work', ['seed'], repo).out, /^ACTIVE session/, '세운 unit은 자리를 막지 않는다 — 다른 unit은 seed가 연다');
+  const d4 = script('work', ['decide', '4', '① 상한을 올려 CEO 커밋했다'], repo).out;
+  assert.match(d4, /^PASS decide Q4/);
+  assert.doesNotMatch(d4, /RESPEC/, '예산 답은 re-spec이 아니다');
+  assert.match(script('work', ['seed'], repo).out, /^ACTIVE session/, '답이 오면 다시 일하는 unit');
 });
 
 test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 기록이 되돌려진다', { timeout: 120000 }, (t) => {
@@ -675,10 +685,17 @@ test('사고 26(L2 1일차): 두 unit이 같은 파일을 고치면 ship은 reba
   assert.match(s1.out, /^FAIL ship: main과 충돌 — src\/shared\.mjs\. rebase를 그 자리에 멈춰 두었다/, s1.out);
   assert.match(fs.readFileSync(path.join(bwt, 'src/shared.mjs'), 'utf8'), /^<<<<<<< /m, '충돌 표시가 worktree에 있다 — 푸는 일은 파일 편집(build의 경계 안)이다');
   assert.match(script('ship', ['beta'], repo).out, /^FAIL ship: main과의 충돌이 아직 남았다 — src\/shared\.mjs/, '안 풀고 다시 부르면 남은 파일을 말한다');
+  // 사고 58(홀드아웃 library 6일차): rebase 도중엔 HEAD가 main(onto)이라 base = head — redproof는 비교하지 않고 할 일(표시 풀기 → ship이 잇기)을 말한다
+  assert.match(script('redproof', ['beta'], repo).out, /^FAIL redproof beta: beta은 rebase 도중 — main과의 충돌 표시가 남았다\(src\/shared\.mjs\)[\s\S]*brief\.mjs build beta[\s\S]*ship\.mjs beta/);
   assert.match(fs.readFileSync(path.join(repo, script('brief', ['build', 'beta'], repo).out.split(' ')[1]), 'utf8'), /## main과의 충돌[\s\S]*src\/shared\.mjs[\s\S]*git add/, 'build 팩이 충돌 파일과 할 일을 받는다');
   // build가 하는 일: 양쪽을 살려 풀고 git add까지 — 커밋·rebase 없이
   write(bwt, 'src/shared.mjs', "export const mark = 'alpha';\nexport const mark2 = 'beta';\n");
   git(['add', 'src/shared.mjs'], bwt);
+  // 사고 58: 표시를 다 푼 build가 rebase를 잇지 않은 채 spec: 반려를 남겼고(잇는 것은 ship), 그 자리에서 spec 팩·redproof가 돌아 거짓 「base에서 green — 이미 충족」
+  assert.match(script('redproof', ['beta'], repo).out, /^FAIL redproof beta: beta은 rebase 도중 — 충돌 표시는 다 풀렸다[\s\S]*ship\.mjs beta/, 'base·head를 비교하지 않는다 — drop(이미 충족)의 길을 열지 않는다');
+  assert.match(script('brief', ['spec', 'beta', '--return', 'spec: 충돌 tests/adversary/beta-1.test.mjs — main 위에서 어긋난다'], repo).out, /^FAIL spec 팩: beta은 rebase 도중 — 충돌 표시는 다 풀렸다[\s\S]*ship\.mjs beta/, '반려도 ship이 잇은 뒤에 — 잇고 나서 남은 일은 ship의 출력이 말한다');
+  assert.match(script('brief', ['build', 'beta'], repo).out, /^FAIL build 팩: beta은 rebase 도중 — 충돌 표시는 다 풀렸다/, '풀 표시가 없으면 build도 할 일이 없다');
+  assert.doesNotMatch(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"(spec_return|redproof)","slug":"beta"[^\n]*"base_red":false/, '막힌 자리는 반려·거짓 base green으로 원장에 남지 않는다');
   const s2 = script('ship', ['beta'], repo);
   assert.match(s2.out, /^SHIPPED beta/, s2.out);
   const shared = fs.readFileSync(path.join(repo, 'src/shared.mjs'), 'utf8');

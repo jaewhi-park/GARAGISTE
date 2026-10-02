@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, fail, git, headSha, isMain, linkDeps, mergeBase, out, readJson, slugRoot, unitFile, withScratch, workTree } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, fail, git, headSha, holdAsk, isMain, linkDeps, mergeBase, out, readJson, rebaseAdvice, rebaseInProgress, slugRoot, unitFile, unmergedFiles, withScratch, workTree } from './lib.mjs';
 import { blindFiles, runFiles } from './verify.mjs';
 
 export function verdict(baseResults, headResults) {
@@ -17,14 +17,14 @@ export function verdict(baseResults, headResults) {
 // FAIL엔 다음 할 일이 없었다. 둘 다 CEO 결정이다: 이미 충족으로 닫거나(drop --forget — 이 unit을 기다리는 unit의 선행이 풀린다), 원문을 더 말해 다시 spec.
 // 사고 47(필드 벤치 넷): 먼저 출하된 unit이 주장의 일부만 채우면(BOM 처리) drop은 남은 red 주장(CEO가 정한 CP949)까지 닫는다 — 충족된 파일만 빼는 길
 export function baseGreenAdvice(slug, files, red = []) {
-  if (red.length) return `FAIL redproof ${slug}: 부분 충족 — base에서 green ${files.join(' ')} · base에서 red ${red.join(' ')} — drop은 red 주장까지 닫는다. CEO 결정(예/아니오로 묻는다): 이미 충족된 주장만 뺀다 → node .garagiste/scripts/brief.mjs spec ${slug} --met "<CEO 말 그대로>" → 팩 spawn(그 파일만 뺀다) → redproof 다시 · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec ${slug} 재spawn`;
-  return `FAIL redproof ${slug}: base에서 green — ${files.join(' ')} — 기존 코드가 이 주장을 이미 만족한다(old code에서도 통과하는 테스트는 테스트가 아니다). CEO 결정(예/아니오로 묻는다): 이미 충족으로 닫는다 → node .garagiste/scripts/work.mjs drop ${slug} "이미 충족 — <근거>" --forget (주장 파일은 dropped 브랜치에 남는다) · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec ${slug} 재spawn`;
+  if (red.length) return `FAIL redproof ${slug}: 부분 충족 — base에서 green ${files.join(' ')} · base에서 red ${red.join(' ')} — drop은 red 주장까지 닫는다. CEO 결정(예/아니오로 묻는다): 이미 충족된 주장만 뺀다 → node .garagiste/scripts/brief.mjs spec ${slug} --met "<CEO 말 그대로>" → 팩 spawn(그 파일만 뺀다) → redproof 다시 · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec ${slug} 재spawn · ${holdAsk(slug, 'redproof 부분 충족 — 이미 충족된 주장만 뺄까')}`;
+  return `FAIL redproof ${slug}: base에서 green — ${files.join(' ')} — 기존 코드가 이 주장을 이미 만족한다(old code에서도 통과하는 테스트는 테스트가 아니다). CEO 결정(예/아니오로 묻는다): 이미 충족으로 닫는다 → node .garagiste/scripts/work.mjs drop ${slug} "이미 충족 — <근거>" --forget (주장 파일은 dropped 브랜치에 남는다) · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec ${slug} 재spawn · ${holdAsk(slug, 'redproof base에서 green — 이미 충족으로 닫을까')}`;
 }
 // 사고 57(벤치 070f185 파이썬): base green이 눈먼 test_file(0건 실행)이면 이미 충족이 아니다 — drop은 만들지도 않은 기능을 닫는다. test_file·tests/harness는 boot의 것(R6)이라
 // 이 unit에서는 못 고친다: 하네스를 고치는 scaffold unit을 먼저 출하하고(그 ship이 같은 탐침으로 본다) 이 unit은 그 뒤에 새로 연다.
 export function blindAdvice(slug, files, unit = {}) {
   const fix = `${slug}-harness`; const m = unit.milestone || 'M?';
-  return `FAIL redproof ${slug}: test_file이 이 파일을 실제로 돌리지 않는다 — ${files.join(' ')}: 같은 자리·같은 이름의 깨진 사본도 exit 0(0건 실행 — 예: 파일 이름을 모듈 이름으로 찾는 discover는 하이픈 이름을 건너뛴다). 이미 충족이 아니다 — 검증 명령의 결함이고 test_file·tests/harness는 boot의 것이다. CEO 결정(예/아니오로 묻는다): 하네스를 고치는 scaffold unit을 먼저 → node .garagiste/scripts/work.mjs drop ${slug} "test_file이 이 unit의 파일을 돌리지 않는다 — 하네스 먼저" (--forget 없이: 줄은 남아 새로 열린다) → node .garagiste/scripts/work.mjs add ${fix} "test_file이 ${files.join(' ')}을 돌리지 않는다 — 받은 경로의 파일을 그대로 돌리게" --kind scaffold --milestone ${m} → node .garagiste/scripts/work.mjs needs ${slug} ${[...(unit.needs || []), fix].join(',')} → node .garagiste/scripts/work.mjs scope --milestone ${m} → work.mjs seed (그 ship이 같은 탐침으로 본다)`;
+  return `FAIL redproof ${slug}: test_file이 이 파일을 실제로 돌리지 않는다 — ${files.join(' ')}: 같은 자리·같은 이름의 깨진 사본도 exit 0(0건 실행 — 예: 파일 이름을 모듈 이름으로 찾는 discover는 하이픈 이름을 건너뛴다). 이미 충족이 아니다 — 검증 명령의 결함이고 test_file·tests/harness는 boot의 것이다. CEO 결정(예/아니오로 묻는다): 하네스를 고치는 scaffold unit을 먼저 → node .garagiste/scripts/work.mjs drop ${slug} "test_file이 이 unit의 파일을 돌리지 않는다 — 하네스 먼저" (--forget 없이: 줄은 남아 새로 열린다) → node .garagiste/scripts/work.mjs add ${fix} "test_file이 ${files.join(' ')}을 돌리지 않는다 — 받은 경로의 파일을 그대로 돌리게" --kind scaffold --milestone ${m} → node .garagiste/scripts/work.mjs needs ${slug} ${[...(unit.needs || []), fix].join(',')} → node .garagiste/scripts/work.mjs scope --milestone ${m} → work.mjs seed (그 ship이 같은 탐침으로 본다) · ${holdAsk(slug, 'test_file이 이 unit의 파일을 돌리지 않는다 — 하네스 scaffold unit을 먼저 할까')}`;
 }
 const split = (res) => [res.filter((r) => r.exit === 0).map((r) => r.file), res.filter((r) => r.exit !== 0).map((r) => r.file)];
 const greenRed = (res) => { const [g] = split(res); return g.length && g.length < res.length ? { base_green: g } : {}; }; // 부분 충족의 증거 — brief.mjs spec --met가 읽는다
@@ -38,6 +38,7 @@ function main() {
   if (!slug) fail('사용법: redproof.mjs <slug>');
   const c0 = ctx();
   const c = { ...c0, root: slugRoot(c0, slug) }; // 사고 9: 어디서 불러도 unit worktree가 뿌리
+  if (rebaseInProgress(c.root)) fail(rebaseAdvice(`redproof ${slug}`, slug, unmergedFiles(c.root), c.team.protected_branch)); // 사고 58: HEAD가 onto(main)라 base = head
   const files = acceptanceFiles(c.root, c.team, slug);
   if (!files.length) fail(`FAIL redproof ${slug}: ${c.team.paths.acceptance}/${slug}* 없음`);
   const base = mergeBase(c.root, c.team.protected_branch);

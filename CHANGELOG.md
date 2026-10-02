@@ -80,6 +80,17 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Fixed — 2026-10-02 rebase 도중의 사본에서 redproof가 거짓 「base에서 green」을 냈다 (홀드아웃 library 6일차의 사고 58)
+- 홀드아웃 첫 측정(L2 측정 9be0e15)이 6일차에 멈췄다: loan-return ship이 main과 충돌(원장 `ship_conflict`) → 안내대로 재spawn된 build가 충돌 표시를 풀고 `git add`까지 한 뒤(잇는 것은 ship — 사고 26) 공격 테스트가 main의 5권 제한과 어긋난다는 `spec:` 반려를 남겼다 → 그 자리(rebase 도중)에서 spec 팩과 redproof가 돌았다. rebase 도중의 HEAD는 onto(main)라 merge-base = HEAD — redproof는 「제품 코드가 아직 없다」 갈래로 스테이징된 고친 코드에서 인수를 돌려 green → `FAIL redproof loan-return: base에서 green … 이미 충족으로 닫는다 → drop`. 안내 둘(drop · re-spec)은 원인에 닿지 않고 drop은 출하 직전의 일(790ac06)을 버린다 — conductor가 그렇게 진단하고 멈췄다(사고 57과 같은 꼴).
+- 수리: rebase 도중의 길은 둘뿐이다 — 표시가 남았으면 build(표시를 풀고 git add), 다 풀렸으면 ship(잇고 통합 tree를 다시 검증). redproof는 rebase 도중이면 비교하지 않고 그 둘 중 하나를 말한다(`lib.rebaseAdvice`). 팩 조립(brief.mjs)은 풀 표시가 남았으면 짓고(conflict 절 — 사고 26·42의 길 그대로), 다 풀렸으면 「ship이 먼저」 FAIL — 반려도 ship이 잇은 뒤 그 출력이 다시 낸다.
+- 재현: e2e 사고 26 시나리오에 — 표시가 남은 자리의 redproof · 다 푼 자리의 redproof · `spec --return` · build가 각각 rebase FAIL이고 원장에 거짓 base green·반려가 남지 않는다(옛 판: 거짓 base green · PACK).
+
+### Fixed — 2026-10-02 CEO 결정만 요구하는 FAIL이 열린 Q가 되지 않아 다른 unit까지 막았다 (홀드아웃 library 3·4·5일차의 사고 59)
+- 3일차: 두 번째 spec 반려 FAIL은 「hard 질문 — 그 unit만 멈춘다」라 했지만 열린 Q가 생기지 않아 seed가 그 unit을 일하는 중(ACTIVE)으로 보고 다음 unit을 열지 않았다 — 하루가 한 출하. 4일차 conductor는 같은 꼴 둘을 스스로 `work.mjs ask`로 올려 다른 unit으로 넘어갔지만(3출하) 팩 상한 질문(Q6)의 답이 re-spec을 걸어 5일차에 loan-return이 spec부터 다시 돌았다. 2·5일차는 팩 상한 FAIL(「conductor가 할 일은 없다」)로 그날이 멈췄다.
+- 수리: CEO 결정만 요구하는 FAIL 다섯(두 번째 spec 반려 · 팩 상한 · 이미 충족 · 부분 충족 · 눈먼 test_file)의 안내 끝에 그 unit만 세우는 명령 `work.mjs ask <slug> "<요지>" --hold`(`lib.holdAsk`). `--hold`는 그 unit을 세우되(seed가 다른 unit을 연다) 답이 와도 re-spec하지 않는다 — 답의 길은 그 FAIL의 안내가 정한다. L2 지시서의 아침 규칙에 「그 줄을 주는 FAIL은 hard 질문(그 unit만)」.
+- 재현: 단위(안내 다섯 · seedGate의 hold · respecTargets가 hold를 세지 않음) + e2e 탄생 시험(두 번째 반려의 안내 · `ask --hold` → seed가 그 unit을 비켜 감 · decide에 RESPEC 없음 · 답 뒤 다시 ACTIVE).
+- 사고 58·59 수리로 holdout-library는 소진 — 회귀 필드(필드 4)가 된다.
+
 ### Changed — 2026-10-02 attack은 spec 뒤 한 바퀴 (L2 2판 윈도우의 진동 — 백로그 1순위, CEO 결정)
 - 윈도우 1일차: conductor가 고칠 때마다 attack 팩을 새로 띄워 add 28·add-due-tag 20바퀴 — 바퀴마다 고침이 만든 반대 결함을 짚어 같은 몫에 토큰 16배(3,222K 대 198K). 같은 conductor가 2·3일차 6 unit은 1바퀴로 돌았다(벤치 attack unit 14개도 1바퀴, 모두 green 후 CEO 발견 결함 0) — Flow 4의 「verify attack이 red>0이면 build 다시」가 고친 뒤 attack 팩을 새로 띄울지를 말하지 않았다. 빈칸을 코드로: `brief.mjs attack`은 마지막 spec 팩 뒤에 attack 팩과 그 뒤의 verify attack이 있으면 FAIL(고친 뒤엔 `verify.mjs attack` → red 0이면 ship · 남으면 build). 끊긴 attack(verify 전)은 다시 띄울 수 있고, re-spec(spec 팩) 뒤엔 새 바퀴, CEO의 `--revise`는 예외. 2바퀴째에 CEO 질문은 두지 않는다(정비 채널 권고 — CEO가 판단할 근거가 없는 질문이고, 둘째 그물은 CEO의 try와 tried fail → -fix다; 「green 후 CEO 발견 결함」이 0이 아니게 되면 system-attack 후보). Flow 4(두 규칙 파일 템플릿) · attack 팩 머리 한 문장. 검사: unit(attackRoundUsed — attack 전 · 끊긴 attack · 쓴 바퀴 · re-spec · 다른 unit · drop 전 생애) + e2e(탄생 시험: attack → build 재spawn 뒤 두 번째 attack 팩은 FAIL과 다음 명령).
 
