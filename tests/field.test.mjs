@@ -37,7 +37,7 @@ const units = [
 const ledgerMd = ['| 날짜 | unit | head | tree | full | redproof | attack 선발견→red/총 | sensor |', '|---|---|---|---|---|---|---|---|',
   '| 2026-10-02 | boot | a1 | t1 | PASS | scaffold | — | machine |', '| 2026-10-02 | add | a2 | t2 | PASS | base_red head_green | 2→0/3 | machine |',
   '| 2026-10-02 | edit | a3 | t3 | PASS | base_red head_green | 1→0/2 | machine |'].join('\n');
-const brief = '# BRIEF\n\n## 2026-10-02 09:50\n원문\n\n## 2026-10-02 10:30\n낮에 한 말\n';
+const brief = '# BRIEF\n\n## 2026-10-02 09:50\n원문\n\n## 2026-10-02 10:01\n아침 창 끝과 같은 분\n\n## 2026-10-02 10:30\n낮에 한 말\n';
 const budgets = { unseen_max: 3, unattended_ship_max: 5 };
 const day1 = () => dayTable({ L, units, ledgerMd, brief, until: T('09:00', D2), budgets });
 const day2 = () => dayTable({ L, units, ledgerMd, brief, since: T('09:00', D2), budgets });
@@ -58,6 +58,8 @@ test('day 1일차 표 머리: 무인 분 · 낮 경과(세 번째 ship) · 낮 �
   const out = render(t, { name: 'f' });
   assert.match(out, /- 무인 59\.0분 · 낮 경과\(→ 낮의 세 번째 ship\) 39\.0분/);
   assert.match(out, /- 낮 접점 1\(목표 0\):\n {2}- BRIEF `## 2026-10-02 10:30`/);
+  // 절 시각은 분 단위 — 아침 창 끝(10:01:00)과 같은 분인 절은 낮인지 가를 수 없어 세지 않고 따로 보인다(홀드아웃 3일차 08:25 절)
+  assert.match(out, /경계 분[^\n]*BRIEF `## 2026-10-02 10:01`/);
   assert.match(out, /낮의 마지막 원장 줄 2026-10-02T10:40:00\.000Z \(ship edit\) · 그때 미검수 3\/3 · 무인 출하 1\/5/); // BRIEF 10:30이 접점이라 무인 출하는 edit 하나
   assert.match(out, /- 카드: 3 · ok 2 · fail 1/);
   assert.match(out, /- 팀이 정한 것 1:\n {2}- edit: 빈 목록이면 안내 문구/);
