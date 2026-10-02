@@ -82,6 +82,25 @@ export function runFiles(c, files) {
   if (!tpl) fail('FAIL commands.test_file 비어 있음 — .garagiste/team.json ({file} 자리표시자)');
   return files.map((file) => ({ file, exit: shell(fileCmd(tpl, [file]), { cwd: c.root }).status }));
 }
+// 사고 57(벤치 070f185 파이썬): exit 0만으로는 test_file이 그 파일을 돌렸는지 모른다 — boot의 하네스는 파일 인자를 unittest discover(pattern=<파일 이름>)로 찾아
+// 하이픈 이름(add-entry_cli.py — 모듈 이름이 될 수 없다)을 0건 실행·exit 0으로 넘겼고, redproof가 그것을 「base에서 green — 이미 충족」으로 읽어 drop을 안내했다.
+// 탐침: 같은 자리·같은 이름에 깨진 파일(어느 언어로도 문법 오류)을 두고 같은 명령을 돌린다 — 그래도 exit 0이면 이 명령은 그 파일을 돌리지 않는다.
+// dir은 버릴 checkout이다(redproof의 base worktree · withScratch) — 작업 트리는 잠시도 바꾸지 않는다.
+export const PROBE_TEXT = ')( garagiste probe: deliberately broken file\n';
+export function blindFiles(tpl, files, dir) {
+  return files.filter((f) => {
+    const p = path.join(dir, f);
+    const had = fs.existsSync(p) ? fs.readFileSync(p) : null;
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.writeFileSync(p, PROBE_TEXT);
+    try { return shell(fileCmd(tpl, [f]), { cwd: dir }).status === 0; } finally { if (had) fs.writeFileSync(p, had); else fs.rmSync(p, { force: true }); }
+  });
+}
+// scaffold의 탐침 이름: boot의 tests/unit 파일(boot 팩 3의 스모크) 이름에 slug 꼴(하이픈) 머리 — 생태계의 접미사(test_*.py · _test.go · .test.mjs)를 빌린다
+export function probeNames(paths, unitFiles) {
+  const pick = unitFiles.find((f) => /test|spec|smoke/i.test(path.posix.basename(f))) || unitFiles[0];
+  return pick ? [paths.acceptance, paths.adversary].map((d) => `${d}/garagiste-probe-${path.posix.basename(pick)}`) : [];
+}
 function red(slug, c) {
   const files = acceptanceFiles(c.root, c.team, slug);
   if (!files.length) fail(`FAIL red ${slug}: ${c.team.paths.acceptance}/${slug}* 없음`);

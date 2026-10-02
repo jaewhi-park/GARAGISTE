@@ -156,6 +156,14 @@ function main() {
     `- 무시할 산출물(캐시·빌드 메타데이터·의존성 디렉터리)이면 .gitignore에 — 저장소에 둘 것(lockfile 등)이면 worktree에서 같은 명령(commands.setup·quick)으로 만들어 커밋한다.`,
     `- 옮겨 둔 원본: ${rb.moved}/ (main은 ship 전 그대로다). 끝은 worktree에서 같은 명령을 돌려도 git status가 깨끗한 것.`,
   ].join('\n'));
+  // 사고 57(벤치 070f185 파이썬): scaffold ship의 탐침이 test_file의 눈먼 자리를 찾았다면 그 목록이 boot의 할 일이다 — 가장 최근 것만
+  const blindRun = pack === 'boot' ? [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'runner_blind' && e.slug === slug && e.ts >= unit.created) : null;
+  if (blindRun?.files?.length) sec('runner', 'ship의 탐침 — test_file이 이 깨진 파일을 돌리지 않았다(exit 0)', [
+    ...blindRun.files.map((f) => `- ${f}`),
+    '',
+    '- test_file(·tests/harness)은 받은 경로의 파일을 이름과 무관하게 그대로 돌린다 — slug에는 하이픈이 든다. 파일 이름을 모듈 이름으로 찾는 discover는 하이픈 이름을 0건 실행·exit 0으로 넘긴다.',
+    '- 끝은 같은 자리에 깨진 파일을 두고 test_file을 돌리면 exit≠0인 것 — ship이 다시 본다.',
+  ].join('\n'));
   sec('origin', '원문', fence(`CEO 말 그대로 (${unit.created.slice(0, 10)})`, unit.origin));
   const closed = scopedDecisions(readText(path.join(c.main, c.team.paths.decisions)), { pack, slug, needs: unit.needs });
   if (closed.length) sec('decided', '결정된 것 (CEO의 답 — 전제다, 조용한 기본값으로 덮지 않는다)', closed.join('\n'));

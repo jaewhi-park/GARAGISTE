@@ -254,6 +254,14 @@ export function linkDeps(root, dest) {
   }
   return linked;
 }
+// 버릴 checkout — 작업 트리를 건드리지 않고 ref의 tree 위에서 무엇을 돌린다(사고 57의 탐침). 의존성은 root와 메인의 것을 잇고, 지우기 전에 링크부터 끊는다(정션 — try 사본과 같다).
+export function withScratch(root, ref, fn) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-scratch-'));
+  const add = git(['worktree', 'add', '--detach', '-q', dir, ref], root);
+  if (add.status) { fs.rmSync(dir, { recursive: true, force: true }); fail(`FAIL 버릴 checkout을 열지 못했다(${ref}) — ${add.stderr}`); }
+  const roots = [...new Set([root, mainRoot(root)])];
+  try { for (const r of roots) linkDeps(r, dir); return fn(dir); } finally { for (const r of roots) unlinkDeps(r, dir); git(['worktree', 'remove', '--force', dir], root); }
+}
 export function out(line) { process.stdout.write(line + '\n'); }
 export function fail(line, code = 1) { out(line); process.exit(code); }
 export function isMain(metaUrl) {

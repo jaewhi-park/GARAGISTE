@@ -9,12 +9,12 @@ import { fileURLToPath } from 'node:url';
 import { decide, makeCtx, stripQuoted, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
-import { gateDecision, logicLines } from '../team/scripts/verify.mjs';
+import { blindFiles, gateDecision, logicLines, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
-import { baseGreenAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
+import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
@@ -381,6 +381,40 @@ test('redproof: 사고 47(필드 벤치 넷) — 일부만 base green(먼저 출
   assert.match(m, /drop은 red 주장까지 닫는다[\s\S]*CEO 결정[\s\S]*brief\.mjs spec jsonl-store --met "<CEO 말 그대로>"[\s\S]*redproof[\s\S]*brief\.mjs spec jsonl-store 재spawn/);
   assert.ok(!m.includes('work.mjs drop'), '남은 red 주장(CEO가 정한 CP949)을 닫는 drop은 길이 아니다');
 });
+test('verify: 사고 57(벤치 070f185 파이썬) — exit 0만으로는 test_file이 그 파일을 돌렸는지 모른다: 같은 자리·같은 이름의 깨진 사본도 exit 0이면 그 명령은 그 파일을 돌리지 않는다', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-blind-'));
+  fs.mkdirSync(path.join(d, 'tests/acceptance'), { recursive: true });
+  fs.writeFileSync(path.join(d, 'tests/acceptance/add-entry_cli.js'), 'module.exports = 1;\n');
+  // 벤치의 run.py 꼴: 파일 인자를 모듈 이름으로 찾는다 — 모듈 이름이 될 수 없는 하이픈 이름은 0건 실행·exit 0
+  const discover = `node -e "const p = require('path'); const f = process.argv[1]; if (!p.basename(f).includes('-')) require(p.resolve(f))" {file}`;
+  const files = ['tests/acceptance/add-entry_cli.js', 'tests/acceptance/smoke_cli.js'];
+  assert.deepEqual(blindFiles(discover, files, d), ['tests/acceptance/add-entry_cli.js']);
+  assert.deepEqual(blindFiles('node {file}', files, d), [], '받은 파일을 그대로 돌리는 러너엔 깨진 사본이 red다');
+  assert.deepEqual(blindFiles('node {files}', files, d), [], '{files} 러너엔 파일 하나를 넣는다');
+  assert.equal(fs.readFileSync(path.join(d, 'tests/acceptance/add-entry_cli.js'), 'utf8'), 'module.exports = 1;\n', '탐침은 원본을 되돌린다');
+  assert.ok(!fs.existsSync(path.join(d, 'tests/acceptance/smoke_cli.js')), '없던 자리는 지운다');
+  assert.match(PROBE_TEXT, /^\)\(/, '어느 언어로도 문법 오류 — 닫는 괄호로 시작한다');
+});
+test('redproof: 사고 57 — base green이 눈먼 test_file(0건 실행)이면 「이미 충족」이 아니다: drop 대신 boot의 하네스를 고치는 scaffold unit이 먼저', () => {
+  const m = blindAdvice('add-entry', ['tests/acceptance/add-entry_cli.py'], { milestone: 'M1', needs: ['boot', 'Q1'] });
+  assert.match(m, /^FAIL redproof add-entry: test_file이 이 파일을 실제로 돌리지 않는다 — tests\/acceptance\/add-entry_cli\.py/);
+  assert.match(m, /이미 충족이 아니다/);
+  assert.doesNotMatch(m, /이미 충족 — <근거>/, '벤치의 안내(drop --forget)는 만들지도 않은 기능을 닫는다');
+  assert.match(m, /work\.mjs drop add-entry "[^"]+" \(--forget 없이/);
+  assert.match(m, /work\.mjs add add-entry-harness "[^"]+" --kind scaffold --milestone M1/);
+  assert.match(m, /work\.mjs needs add-entry boot,Q1,add-entry-harness/, '선행은 지우지 않고 더한다');
+  assert.match(m, /work\.mjs scope --milestone M1/);
+});
+test('ship: 사고 57 — scaffold의 redproof는 러너 자신의 red 증명이다: boot의 tests/unit 파일 이름에 slug 꼴(하이픈) 머리를 붙인 깨진 탐침을 인수·공격 자리에서 test_file로', () => {
+  assert.deepEqual(probeNames(team.paths, ['tests/unit/__init__.py', 'tests/unit/test_smoke.py']), ['tests/acceptance/garagiste-probe-test_smoke.py', 'tests/adversary/garagiste-probe-test_smoke.py'], '도우미(__init__)보다 테스트 이름 — 생태계의 접미사를 빌린다');
+  assert.deepEqual(probeNames(team.paths, ['tests/unit/smoke_test.go']), ['tests/acceptance/garagiste-probe-smoke_test.go', 'tests/adversary/garagiste-probe-smoke_test.go']);
+  assert.deepEqual(probeNames(team.paths, []), [], 'tests/unit이 비었으면 탐침이 없다');
+  const base = { unit: { kind: 'scaffold', state: 'boot', boundary: { hit: false } }, slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [{ kind: 'verify', mode: 'full', exit: 0, tree: 'T' }], requireAttack: true, spikeText: '', lastSubject: 'scaffold(boot): x', stops: [], proseKb: 10, proseMax: 40 };
+  assert.equal(evaluateShip(base).filter((k) => !k.ok).length, 0);
+  const bad = evaluateShip({ ...base, runnerBlind: ['tests/acceptance/garagiste-probe-test_smoke.py'] }).filter((k) => !k.ok);
+  assert.deepEqual(bad.map((k) => k.id), ['redproof'], '8조건 그대로 — scaffold에서 비어 있던 redproof 자리');
+  assert.match(bad[0].why, /test_file이 인수·공격 자리의 하이픈 이름 파일을 돌리지 않는다[\s\S]*tests\/acceptance\/garagiste-probe-test_smoke\.py[\s\S]*brief\.mjs boot boot 재spawn/);
+});
 test('work args: 사고 37(필드 시험 2) — 값 없는 --forget이 맨 끝이어도 켜진다(drop이 BACKLOG 줄을 닫지 못해 seed가 닫은 unit을 다시 열 뻔했다)', () => {
   assert.deepEqual(parseArgs(['persist', '이미 충족', '--forget'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'], unknown: [] });
   assert.deepEqual(parseArgs(['persist', '--forget', '이미 충족'], 'drop'), { flags: { forget: true }, pos: ['persist', '이미 충족'], unknown: [] }, '사유를 삼키지 않는다');
@@ -502,6 +536,7 @@ test('brief: 팩 상한 FAIL은 법만으로 넘을 때 난다 — 안내는 CEO
   assert.doesNotMatch(a, /부대물이면/, '옛 둘째 갈래는 FAIL 시점에 참일 수 없었다');
   assert.match(overflowAdvice({ bytes: 70 * 1024, capKb: 64, slug: 'boot', mult: 4 }), /pack_kb_max를 18 이상으로/, 'boot는 4× — 필요한 상한은 배수로 나눠 센다');
   assert.ok(team.budgets.pack_kb_max >= 21, '기본 상한은 실측 이상 — 4차 time-model build 팩 전문 21KB(법만 17KB), 사고 8 선례대로 실측으로 올린다');
+  assert.ok(team.budgets.pack_kb_max >= 31, '벤치 실측: build 팩 28KB(070f185 웹·Go 둘 다 CEO 결정 ①) · 31KB(cfbcf3a 웹 사슬 24→25→29→31) — 같은 결정이 벤치마다 CEO에게 갔다');
 });
 test('brief: 닫힌 결정만 골라낸다 — CEO의 답은 모든 팩의 전제다 (첫 실기 사고: boot가 Q1을 못 받았다)', () => {
   const t = '## 정해 주세요\n- [ ] Q2 (vault): 어디에 두나?\n- [x] Q1 (boot): 부록 스택으로 확정? → 예 (2026-09-29)\n산문 줄은 무시\n';

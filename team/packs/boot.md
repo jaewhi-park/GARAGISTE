@@ -9,7 +9,7 @@
 4. 검증 명령 넷을 스크립트로 적는다(team.json은 직접 쓰지 않는다):
    `node .garagiste/scripts/work.mjs commands quick="<유닛 테스트만; tests/acceptance·tests/adversary 제외>" full="<전부>" test_file="<파일 하나 {file} — 여러 파일을 한 번에 받는 러너면 {files}>" run="<실행>" setup="<의존성 설치, 예: npm ci>"`
    setup은 의존성 설치 명령 — 의존성이 바뀌는 출하에서 ship이 머지 직후 main에서 돌린다(사고 21). 지금 의존성이 0이어도 생태계의 설치 명령(npm install · pip install -e . · uv sync)을 쓴다 — 뒤 unit이 더한다(사고 34).
-   규칙: quick은 acceptance·adversary를 포함하지 않는다(red로 커밋되는 것이 정상). full은 전부. test_file은 받은 파일만 돈다({files}면 공백으로 이은 경로들 — full이 인수·공격 파일을 한 번에 돈다).
+   규칙: quick은 acceptance·adversary를 포함하지 않는다(red로 커밋되는 것이 정상). full은 전부. test_file은 받은 경로의 파일만, 이름과 무관하게 그대로 돈다 — 하이픈 이름도(slug에 하이픈이 든다 · ship이 인수·공격 자리의 깨진 탐침으로 본다). {files}면 공백으로 이은 경로들 — full이 인수·공격 파일을 한 번에 돈다.
    러너 설정이 `.worktrees/`를 쓸어 담지 않게 하라 — include를 `tests/`로 좁히거나 `.worktrees/**`를 exclude. 안 하면 진행 중 unit의 red가 메인 full을 오염시킨다(2차 실기 사고).
 5. 규칙 파일의 자리를 채운다: `node .garagiste/scripts/work.mjs rules project="<이름>" one_line="<한 줄>"` — 명령 자리는 team.json에서 자동으로 온다. 규칙 파일에 문장을 더하지 않는다(20줄 상한).
 6. `node .garagiste/scripts/verify.mjs quick` → PASS. 커밋: `scaffold(boot): <스택 한 줄>` + trailer `Unit: <slug>` · `Step: 1`. 게이트가 원장을 대조한다.
