@@ -166,7 +166,8 @@ function main() {
   const until = opt('--until') === undefined ? END : iso(opt('--until'));
   const t = dayTable({ L, units, ledgerMd: readText(path.join(dir, P.ledger_doc)), brief: readText(path.join(dir, P.brief)), since, until, budgets: team.budgets || {} });
   const git = (args) => { const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' }); return r.status === 0 ? r.stdout.trim() : null; };
-  const log = git(['log', '--oneline', `--since=${t.b.morningEnd}`, ...(t.b.end !== END ? [`--until=${t.b.end}`] : []), '--', '.garagiste']);
+  // 정의는 --since만이다 — 저녁 창의 CEO 커밋(팩 상한 ① 등)도 그날의 드리프트다. --until은 지난 날을 다시 낼 때 다음 날 경계로만
+  const log = git(['log', '--oneline', `--since=${t.b.morningEnd}`, ...(until !== END ? [`--until=${until}`] : []), '--', '.garagiste']);
   console.log(render(t, { name: path.basename(path.resolve(dir)), drift: { log: log === null ? '(git 실패)' : log.split('\n').filter(Boolean).join(' · '), tree: git(['rev-parse', 'HEAD:.garagiste']) } }));
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) main();
