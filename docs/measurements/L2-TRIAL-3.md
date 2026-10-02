@@ -76,6 +76,7 @@ Q6·Q7은 플랫폼과 무관한 흐름(인터럽트를 객체로 · 상한에�
 
 ## 표 이후 후보 — 이 등록에 넣지 않는다 (CEO 「가」 대기)
 - 64KB 벽 자동 나누기(보류 — 방아쇠: 벽) · tried ok 메모가 뒤 unit의 수용으로(둘째 근거 대기) · try 위임 · system-attack · session-start 주입 · L3(Q13 — 기존 코드가 있는 저장소의 홀드아웃).
+- (시험 중 관찰 — 리눅스 2·3일차) spec의 저장 꼴 질문이 하루를 쓴다: spec 팩 4번(데이터 모델·파일 형식 = hard 결정 → ask)대로 기능 unit마다 그 조각의 스키마를 CEO에게 물어 ship이 저녁까지 서고, 답이 팀의 가정과 같은 「예」여도 RESPEC이 다음 날 spec부터 다시 돌린다. 후보: intake가 데이터 모델을 한 질문으로 먼저 묻는다 · 이미 정한 파일(Q2)을 넓히는 조각은 팀이 정한 것(default) · 「예」(가정 그대로)의 decide는 RESPEC 대신 그 주장 줄의 확인만.
 
 ## n일차 표·판정
 (1일차부터 이 아래에 — 표는 day.mjs 출력 + 판단 칸(구성 ①/② · 프레임워크 FAIL · 멈춤 이유 · 참고). 환경마다 따로 센다.)
@@ -119,3 +120,54 @@ Q6·Q7은 플랫폼과 무관한 흐름(인터럽트를 객체로 · 상한에�
 - 표 대조: conductor의 표와 day.mjs가 같다(무인 32.9분 · 낮 ship 1 · spawn 8/8 · 289K). attack 팩 unit마다 1 · 가장 큰 팩 30.0KB(team-register 둘째 build) · 이유-차선 0.
 - 참고(사실): ship FAIL(열린 Q)과 Q6을 연 일은 원장에 줄이 없다(DECISIONS에만 — 백로그 「팩 FAIL·가드 거부는 원장 줄이 없다」와 같은 빈칸) · 세션 비용 $3.87.
 - **판정: 리눅스 2일차 통과**(규칙대로의 정지 — hard 질문, 카드 1장) **— 게이트(리눅스) 2/3**, 누적 green 후 CEO 발견 결함 0.
+
+### 리눅스 3일차 (2026-10-02 — 대리 CEO, 새 conductor 세션 22036da9)
+- 아침 창: 새 세션이 상태를 다시 읽었다(안 본 것 0/3 · 결정 대기 0 · 진행 중 team-register) → 「가」. 아침에 접점 줄이 없어 아침 창 끝 = 전날 저녁의 마지막 접점(decide Q6 16:31:12Z — day.mjs 정의) · 첫 말 16:32:48Z → 저녁 창 시작 17:49:25Z.
+- 낮: 접점 0 · 멈춤 **hard 질문**(Q7·Q8·Q9, 17:47:40Z) · 프레임워크 FAIL 0 · 규칙집 드리프트 0. team-register는 RESPEC대로 spec 재spawn → build → attack 새 바퀴(re-spec 뒤 — 4/7 red) → **build 팩 35KB가 이유-차선으로 지나갔다**(`--large "공격 테스트 7개(13.7KB)와 re-spec으로 늘어난 인수 테스트(16.1KB)가 실렸다"` — 상한 FAIL을 안내대로 한 번에) → 출하. 이어 seed한 셋(player-register · schedule-roundrobin · invalid-input)은 모두 green · attack red 0까지 갔지만 각 spec이 올린 질문(Q7 선수 저장 꼴 · Q8 일정 저장 꼴 · Q9 오류 화면을 기능 unit마다 나눠 맡기)에 ship이 막혔고, 범위의 나머지가 모두 그 셋을 needs라 WAIT. conductor는 「질문에 걸린 unit만 두고 다음으로」를 셋에 그대로 했다.
+
+| 구간 | unit | 구성 | 시도 | seed→ship(분) | spawn 의도/완료 | 토큰 | attack | redproof | tried | green 후 결함 | FAIL |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | team-register | ①+② | 1 | 38.5(Q6 대기 3.7 — 뺀 34.8 · seed는 2일차) | 8/8 | 298K | 7→0/7 | base_red head_green | ok(대리 CEO) | 0 | 0 |
+| 무인 | player-register | ①+② | 1 | 미출하 — Q7(저녁 RESPEC) | 4/4 | 185K | (red 0/4) | — | — | — | 0 |
+| 무인 | schedule-roundrobin | ①+② | 1 | 미출하 — Q8(저녁 RESPEC) | 4/4 | 163K | (red 0/3) | — | — | — | 0 |
+| 무인 | invalid-input | ①+② | 1 | 미출하 — Q9(저녁 RESPEC) | 4/4 | 184K | (red 0/3) | — | — | — | 0 |
+| 계 | 4(출하 1) | | | 38.5 | 20/20 | 831K | 선발견 7 | 1 | 1 ok | 0 | 0 |
+
+- 저녁: try 사본 1 · 카드 1/1 ok · Q7·Q8·Q9 대리 「예」(원문과 어긋나지 않는다 — conductor가 「build는 Q7의 꼴과 다르게 최상위 players로 저장했다」를 덧붙였지만 대리 규칙 1은 원문만 본다) → decide마다 RESPEC(셋 다 4일차 spec부터) · 카드 메모(「첫 화면에서 팀 화면으로 가는 길이 없다」)를 conductor가 unit으로 넣을지 물어 대리 「예」(규칙 1) → `home-nav`(M1 BACKLOG · 범위 밖 — 4일차 아침에 범위를 묻겠다고) · 팀이 정한 것 9(팀 이름 50자 · 등번호는 ASCII 정수 표기만 · 연락처 형식은 검사 안 함 · 일정은 /schedule · 이유 한 줄 200자 등) · main 변경은 스크립트가 쓴 BACKLOG·DECISIONS·STATUS뿐.
+- 대리 try(사본에서 · 실 Chromium): 카드대로(앞뒤 공백 뗀 FC 서울 · fc 서울 거부 · 다시 띄운 뒤 그대로) + 경계 — 빈칸뿐 거부 · 전각 공백·탭 뗌 · 안쪽 두 칸은 다른 이름(팀이 정한 것) · FC SEOUL/fc seoul · 자모를 풀어 쓴(NFD) FC 서울도 거부 · `<b>…<script>` 이름은 글자 그대로(스크립트 안 돎) · 120자 이름 · 2일차 회색 `{"teams": 5}`는 이제 「teams가 배열이 아니다」로 멈춤(닫힘) · 운영진 파일에 리그 팀 다섯 등록(FC 한강 · 번개 FC · 동네 유나이티드 · 토요 축구회 · 새벽 FC — 1·2일차 판이 쓴 `{}`를 이어서). 메모 하나: 첫 화면에 팀 화면으로 가는 길이 없다(원문이 화면 이동을 말하지 않아 결함으로 세지 않음 → home-nav).
+- 표 대조: conductor의 표와 day.mjs가 같다(무인 78.2분 · 20/20 · 831K). attack 팩은 첫 생애마다 1 + re-spec 뒤 새 바퀴 1(team-register) · 가장 큰 팩 35.2KB(이유-차선) · 64KB 벽 0.
+- 참고(사실): 열린 Q가 있는 동안 build·attack 팩은 지어지고 ship만 막힌다(사고 17의 꼴 — 답이 오면 RESPEC으로 spec부터) · player-register build가 `fix_tmp.py`를 저장소 루트에서 한 번 돌리고 지웠다고 보고(main 변경 없음) · 세션 비용 $8.17.
+- **판정: 리눅스 3일차 통과**(규칙대로의 정지 — hard 질문, 카드 1장) **— 게이트(리눅스) Q5 3/3**, 누적 green 후 CEO 발견 결함 0.
+
+### 리눅스 Q5 사흘 — 범용성 줄 (holdout-futsal 첫 측정, 2026-10-02)
+- **프레임워크 FAIL 정지 0 · 낮 접점 0/0/0 · 규칙집 드리프트(boot의 첫날 commands 외) 0 · green 후 CEO 발견 결함 0(tried 5/5 ok)** · 정상 정지 3/3(미검수 3 · hard 질문 · hard 질문) · M1 14(+home-nav) 중 출하 5(boot · server-cli · local-only · data-corrupt · team-register), 셋은 green인 채 RESPEC 대기 · 토큰 1.42M · $15.66(3.62 + 3.87 + 8.17).
+- **처리량의 병목은 spec 팩의 「데이터 모델·파일 형식은 hard 결정 → ask」(spec 팩 4번)였다**: intake가 스키마를 묻지 않은 채(Q2 「league.json 한 파일」만) 기능 unit의 spec마다 그 조각의 저장 꼴을 물었다(Q6 팀 · Q7 선수 · Q8 일정 — 셋 다 대리 「예」, 팀의 가정 그대로). 질문 하나가 그 unit의 ship을 저녁까지 세우고 needs로 이어진 뒤 unit을 모두 WAIT로 만들며, 답이 가정과 같아도 decide가 RESPEC(사고 17의 길)을 걸어 다음 날 spec부터 다시 돈다 — 2·3일차가 한 출하씩. 프레임워크 FAIL이 아니라 규칙대로의 흐름이고 동결 중이라 손대지 않는다(표 이후 후보 — 아래 「표 이후 후보」에 한 줄).
+- 예측 채점(리눅스 Q5): 1) △ 낮 접점 0 ✓ · 「날마다 3 unit 출하 뒤 미검수 3」은 1일차만(2·3일차 hard 질문 — 한 출하씩) 2) ✓ 프레임워크 FAIL 0/일 · 처음 3일 정지 0 3) ✓ 이유-차선 통과 1(team-register — 짚은 순위 동점·결과 고치기 unit보다 먼저, re-spec이 키운 인수가 원인) · 64KB 벽 0 4) 진행 중(누적 0) 8) 진행 중($15.66).
+
+### 윈도우 — CEO에게 넘김 (2026-10-02, 리눅스 Q5 사흘 뒤)
+- 리눅스 1~3일에 프레임워크 수리가 없어 동결은 그대로 d069127이다(준비 5의 「수리된 main에서」는 해당 없음).
+- **순서 조정(정비 채널)**: 등록문의 순서는 리눅스 1~3일 → 윈도우 1~3일 → 리눅스 4~7일이지만, 리눅스 필드 폴더는 이 컨테이너와 함께 사라진다 — 윈도우 사흘(CEO의 실제 날들)을 기다리면 4~7일이 이어 쓸 상태가 없다. 그래서 윈도우 지시를 지금 넘기고 리눅스 4~7일을 곧바로 잇는다. 순서의 이유(리눅스 1~3일의 수리가 윈도우 설치 전에 들어간다)는 그대로 지켜진다 — 4~7일에 수리가 나면 동결 규칙대로 윈도우 침대엔 반영 블록으로.
+
+#### 윈도우 1~3일차 — CEO에게 준 줄 (동결 d0691270b88cc958032178aac54b4a5bf769ccbd)
+0. **점검(PC에서 한 번)** — 동결 sha의 GARAGISTE에서 테스트 전부 초록(101):
+   ```powershell
+   git clone https://github.com/jaewhi-park/GARAGISTE C:\L2\garagiste-3
+   cd C:\L2\garagiste-3
+   git checkout d0691270b88cc958032178aac54b4a5bf769ccbd
+   node --test "tests/*.test.mjs"
+   ```
+   빨간 줄이 있으면 그 줄을 정비 채널로(시험 전 수리면 동결을 새로 적는다).
+1. **설치(새 빈 폴더 — 2판 침대 `C:\L2\todo-win`은 쓰지 않는다)**:
+   ```powershell
+   New-Item -ItemType Directory -Force C:\L2\futsal-win\docs | Out-Null
+   Copy-Item C:\L2\garagiste-3\tests\field\briefs\holdout-futsal.md C:\L2\futsal-win\docs\BRIEF-draft.md
+   C:\L2\garagiste-3\install.ps1 claude -Project C:\L2\futsal-win -Budget medium
+   git -C C:\L2\futsal-win rev-parse HEAD:.garagiste
+   ```
+   마지막 줄 값이 규칙집 기준선(정비 채널에 붙인다). 시험 중 재설치·models 변경 금지.
+2. **날마다** — 폴더에서 새 `claude` 세션. 첫 말 직전에 `(Get-Date).ToUniversalTime().ToString('s') + 'Z'` 값을 적어 둔다.
+   - 1일차 첫 말: 「오늘은 L2 무인 하루다. `git fetch https://github.com/jaewhi-park/GARAGISTE d0691270b88cc958032178aac54b4a5bf769ccbd` 뒤 `git show FETCH_HEAD:docs/measurements/L2-day-conductor.md`를 읽어라. 「아침」 절이 오늘의 규칙이다. 내가 돌아와 「저녁」이라고 하면 「저녁」 절대로 한다. docs/BRIEF-draft.md로 brief를 축적하고 intake를 돌려라. 질문은 한 줄씩 예/아니오로 — 대신 답하지 않는다.」 → 질문에 예/아니오 → 「범위는 M1 전부 — 가」 → 자리를 뜬다.
+   - 2·3일차 첫 말: 위 줄에서 마지막 두 문장(brief·질문)을 빼고 → 「상태 보여줘」 → 열린 질문에 답 → 「가」 → 떠난다.
+   - 저녁: 「저녁」 → 카드마다 conductor가 연 사본 `.worktrees\try-<slug>`에서 친다 → 「<slug> ok」 또는 「<slug> fail + 한 줄」 → 열린 질문에 예/아니오 → conductor가 표를 낸다.
+   - 저녁 끝에 한 줄 — 출력 전체를 정비 채널에 붙인다: `node C:\L2\garagiste-3\tests\field\day.mjs C:\L2\futsal-win --since <아침에 적은 값>`
+3. **정션 점검(2판과 같다)** — 프로젝트에 의존성 디렉터리(node_modules)가 생기면 그 뒤 첫 ship 직후 main의 그 디렉터리가 그대로인지 한 번 본다(원문이 외부 패키지 금지라 안 생길 수 있다).
