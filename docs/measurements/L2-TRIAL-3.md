@@ -202,3 +202,24 @@ Q6·Q7은 플랫폼과 무관한 흐름(인터럽트를 객체로 · 상한에�
     "object": { "kind": ["drop"] }, "call": "work\\.mjs drop " }
 ]
 ```
+
+### 리눅스 4일차 — Q6 인터럽트 실사격 (2026-10-02 — 대리 CEO, 스트림 세션 c06b0437)
+- 아침 창(스트림 입력): n일차 고정 말 17:56:52Z → 상태(안 본 것 0/3 · RESPEC 셋 · 「home-nav를 범위에 넣을까요?」) → 대리 「home-nav 범위 예. 가. …」(규칙 1) → conductor가 scope(17:57:20Z — 아침 창 끝).
+- 낮: 출하 3(player-register · team-register-fix · schedule-roundrobin) → **미검수 3** 정지(19:03:12Z) · 프레임워크 FAIL 0 — 안내대로 한 번에 풀린 FAIL 3(팩 상한 2: player-register build · schedule-roundrobin build 35.8KB가 이유-차선 `--large` · ship 충돌 1: build가 풀고 다시) + 안내를 따르지 않은 FAIL 1(방향전환의 drop — 아래) · 규칙집 드리프트 0 · 낮 접점 = 원장 0 + BRIEF 절 2(수정·방향전환의 `work.mjs brief` — 등록문: 이 날의 정상 접점) · 낮 경과(→ 세 번째 ship) 65.9분.
+
+| 말(원문 그대로) | 넣은 때 — 원장 시점 | conductor가 한 것 | 객체 원장 줄 | 컴파일(도구 호출 · 분) | |
+|---|---|---|---|---|---|
+| 버그 「팀 화면에 ' fc 한강 '을 넣으면 → FC 한강과 따로 한 팀이 더 등록된다, 원문은 「…」」 | 18:15:12Z — 첫 ship(player-register) 0.2초 뒤 | `work.mjs new team-register-fix "<말 그대로>"` → spec이 평문 공백 꼴은 이미 거부됨을 보고 전각 모드·NBSP 꼴을 재현으로 삼아 red → build → attack 1→0/2 → 출하 18:29:43Z | unit team-register-fix 18:15:16Z | 2 · 0.1 | ✓ |
+| 추가 「팀 화면에 그 팀의 최근 5경기 결과(날짜·상대·점수)를 보여 줘.」 | 18:29:44Z — 둘째 ship(team-register-fix) 0.7초 뒤 | `work.mjs add team-recent-results … --milestone M1 --needs result-entry,team-register` — 「범위를 다시 잡는 건 CEO 몫」이라 scope는 그대로 | 없음(add는 원장에 쓰지 않는다 — BACKLOG 줄 · 범위 밖이라 seed 줄도 없다) | add까지 4 · 0.1 | △ |
+| 수정 「라운드는 일요일로」 | 18:32:34Z — 그 뒤 처음 build 팩(schedule-roundrobin) 0.3초 뒤 | build 서브에이전트가 끝난 뒤에야 읽고(말은 도구 호출 사이에만 든다) BACKLOG를 본 뒤 `work.mjs brief "라운드는 일요일로"`(18:42:38Z)만 — 닿는 unit은 아직 시작 전인 schedule-dates(BACKLOG 원문은 「토요일」 그대로), 진행 중인 schedule-roundrobin(짝짓기)은 그대로 출하 | 없음(RESPEC·spec 재spawn 없음) | brief까지 30 · 10.1 | ✗ |
+| 방향전환 「CSV 내려받기는 이번엔 빼자.」 | 18:58:11Z — **대리가 손으로**(수정이 spec 재spawn으로 착지하지 않아 plan 시점이 오지 않았다 — 착지 18:42:38Z 뒤 15.5분) | schedule-roundrobin 출하 뒤 `work.mjs drop csv-export "…"` → `FAIL csv-export은 unit이 없는 BACKLOG 줄이다 — 닫으려면 --forget …` → --forget 대신 BRIEF에만(「M2라 오늘 범위 밖 — 줄은 지우지 않았다」) | 없음(drop 줄 없음) | drop 시도까지 1 · 5.1(서브에이전트가 끝날 때까지) | ✗ |
+
+- 무관 unit 정지 0: 말마다 진행 중이던 schedule-roundrobin은 말 뒤에도 원장에서 움직였다(버그·추가 뒤 18:29:55 spec · 수정 뒤 18:36:18 attack · 방향전환 뒤 19:02:54 redproof — `stream.mjs report`). invalid-input(RESPEC 대기)은 4일 낮 내내 그대로였다 — Flow 4의 「한 번에 하나」대로 -fix와 schedule-roundrobin이 먼저였고 그날은 미검수 3(여섯 중 하나)으로 멈췄다.
+- 그 말들로 생긴 unit: team-register-fix 출하 · tried ok · team-recent-results BACKLOG(M1 · 범위 밖).
+- 저녁: try 사본 3 · 카드 3/3 ok · 열린 질문 0 · 팀이 정한 것 3(같은 이름 판정은 NFKC 뒤 대소문자 무시 · 안쪽 공백의 유무·개수는 다른 이름 등). 대리 try(사본에서 · 실 Chromium): player-register — 카드대로 + 1·99 받음 · 0·100·7.0·전각 숫자·-1·abc·빈 등번호·빈 이름·빈 연락처는 서로 다른 이유 한 줄 · 07→7 · 꺾쇠는 글자 그대로 · 다시 띄운 뒤 그대로 / team-register-fix — 전각 모드·보통 모드 둘 다 거부 · ＦＣ·안쪽 NBSP·전각 공백·EM SPACE도 같은 이름 · FC 한강2·FC 한 강은 받음 / schedule-roundrobin — 5팀 5라운드(모든 짝 한 번 · 모두 한 번 쉼) · 2·4·7팀 · 1팀은 이유 한 줄 · 잘못된 시작일은 이유 한 줄이고 있던 일정은 그대로 / **운영진 파일**: 3일차 판의 팀 다섯을 새 판이 열어 선수 일곱과 시즌 일정(2026-10-03 시작)을 이어 넣었다(Q7·Q8 꼴).
+- 표 대조(부재 선언 전까지 `--until 19:08:17Z`): conductor의 표와 day.mjs가 같다(무인 69.6분 · 낮 경과 65.9분 · 22/22 · 909K · 이유-차선 2).
+- 참고(사실): spec의 저장 꼴 질문이 남긴 RESPEC 셋이 이날의 첫 일(2·3일차 관찰 그대로) · player-register build가 낡은 공격 단언(Q7 전 꼴)으로 spec에 반려 → spec은 그 파일이 쓰기 경계 밖이라 기각 → 다음 attack이 그 단언을 고쳤다 · schedule-roundrobin build가 옛 키(`roundRobin`)를 망가진 파일로 다루는 검사를 남겼다(고칠 수 없는 공격 테스트 때문이라고 보고) · 세션 비용(부재 선언까지) $6.34.
+- **Q6 판정: 미통과** — 네 말 중 둘(버그 → -fix unit · 추가 → BACKLOG unit)만 제 객체로. 무관 unit 정지 0은 ✓. 갈린 곳 셋:
+  1. **수정의 착지 — 시작 전 unit**: 대리의 수정 값이 등록문 범주(일정 → 라운드 요일)를 그대로 옮겨 진행 중인 짝짓기 unit에 닿지 않았고, 닿는 unit(schedule-dates)은 아직 시작 전이었다. Flow 7의 수정은 열린 unit만 말한다(「brief.mjs spec <기존 slug> 재spawn」) — 시작 전 unit의 원문은 `add --replace`(사고 50)로 고칠 수 있지만 Flow 7엔 없다. 결과: schedule-dates의 BACKLOG 원문 「토요일」과 BRIEF 「일요일」이 어긋난 채 남았다 — 그 unit이 출하되면 무엇을 따르는지 복귀 창 try가 본다(일요일이 아니면 green 후 결함).
+  2. **방향전환 — 범위 밖 줄**: 대상이 M2(범위 밖 BACKLOG 줄)라 drop이 「--forget」을 안내했고, conductor는 「이번엔」을 「이번 범위」로 읽어 줄을 남겼다(규칙 위반은 아니다 — FAIL 안내를 따르지 않은 판단). 등록문은 「범위 밖이면 BACKLOG에서」였다 — M2를 범위로 줄 때 CSV가 다시 들어온다.
+  3. **말이 드는 자리**: 스트림의 말은 도구 호출 사이에만 들어간다 — 서브에이전트(build 8.9분) 안에 넣은 말은 그 호출이 끝나야 읽혔다(수정 10.1분 · 방향전환 5.1분). ship 직후의 짧은 호출 사이에 넣은 버그·추가는 0.1분.
