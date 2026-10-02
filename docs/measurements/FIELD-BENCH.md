@@ -176,3 +176,7 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 - **attack 바퀴(리눅스 기준선)**: 필드 2·3의 attack unit 11개 모두 attack 팩 1번(1바퀴) · build 1~2번 — 윈도우 L2 1일차 add 28 · add-due-tag 20바퀴와 비교.
 - 원장 밖 CEO 접점: 웹 — 팩 상한 결정 ① 1(memo-delete 2차 build 팩 28KB — 안내 숫자대로 24→29 CEO 커밋) · 보안 지적 「고쳐라」 1(memo-delete의 attack이 짚은 CSRF가 red로 남지 않았다고 conductor가 올림 → 대리가 try 사본에서 실제 재현 → memo-delete-fix 출하·ok) · 이미 충족 「예」 1(memo-persist — 재시작 뒤 남음을 대리가 확인) · 치움 1(위). Go — 팩 상한 결정 ① 1(unreadable-symlink build 팩 28KB — 24→28). 파이썬 — 0.
 - 관찰: browser-reload의 핵심 주장(저장 → 새로고침 → 그대로)은 base에서 이미 green이었다 — build의 spec 반려(「playwright를 빼면 import 실패로 red가 되는 것이 전부」) 뒤 spec이 「playwright 개발 의존성 선언(Q2)」 단언으로 base red를 세워 출하(덤: 여러 줄 메모 pre-wrap). 이전 두 판은 「이미 충족」 drop — 백로그 2순위(이미 충족된 주장 박기)의 근거 하나 더 · 버그 unit memo-delete-fix의 마일스톤이 `M?`(백로그 관찰 그대로 — 이번엔 범위에서 빠지지 않았다) · 대리가 본 회색 둘(결함으로 세지 않음): 다른 출처의 `POST /`(저장)도 받는다(팀이 짚지 않아 말하지 않음 — 규칙 3) · Go의 폴더 뒤 플래그는 사용법으로 거부.
+
+### 2026-10-02 측정 0ab3a05(사고 57 수리 · 팩 상한 32) — 파이썬 필드만, 예측(시작 전 커밋)
+- 왜: 070f185의 필드 1 정지(test_file 0건 green)의 수리를 같은 원문·같은 절차로 확인한다. 회귀이지 범용성 점수가 아니다.
+- 예측: 1) 프레임워크 FAIL 0으로 SCOPE DONE 2) boot가 discover 꼴 하네스를 고르면 boot ship이 탐침(redproof 자리)으로 막고 boot 재spawn이 고친다 — 다른 하네스면 탐침은 조용하다 3) 팩 상한 FAIL 0(32KB) 4) green 후 CEO 발견 결함 0~1(날짜 경계·CSV 수식은 attack 편차) 5) 비용 $5~8.
