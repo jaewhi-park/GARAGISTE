@@ -79,3 +79,9 @@ Q6·Q7은 플랫폼과 무관한 흐름(인터럽트를 객체로 · 상한에�
 
 ## n일차 표·판정
 (1일차부터 이 아래에 — 표는 day.mjs 출력 + 판단 칸(구성 ①/② · 프레임워크 FAIL · 멈춤 이유 · 참고). 환경마다 따로 센다.)
+
+### 차림 (2026-10-02 — 리눅스 1일차 첫 말 전에 커밋)
+- **동결 d0691270b88cc958032178aac54b4a5bf769ccbd**(PR #95의 머지 커밋 — team/·install.sh·install.ps1은 ede9930과 같다: `git diff ede9930 d069127 -- team install.sh install.ps1` 빈 출력) · 정비 채널의 시작 점검 `node --test "tests/*.test.mjs"` 101/101 초록.
+- 리눅스: 정비 채널 컨테이너 · claude 2.1.287 · Node v22.22.0 · Python 3.11.15 · Chromium 141(`/opt/pw-browsers`) · 동결 sha의 worktree에서 `tests/field/setup.sh tests/field/briefs/holdout-futsal.md <폴더>`(원문 blob 8a351cd — 이 원문의 첫 측정) · 폴더 `<scratchpad>/l2-3/futsal`(컨테이너 — 사라진다) · 설치 f833834 · SELFTEST 19/19 · budget medium · 규칙집 기준선 `HEAD:.garagiste` = da7f234(설치 직후).
+- 고정 말은 FIELD-BENCH 「L2 모드」 그대로(`<sha>` = 위 동결 전체 sha) · 대리 규칙 1~5 · 대리는 날마다 첫 말 직전의 `date -u +%FT%TZ`를 적는다(표의 `--since`) · 표는 `tests/field/day.mjs`.
+- **대리 재량(첫 측정 전 고정 — holdout-library와 같은 꼴)**: 원문의 빈칸(세 팀 이상 동점의 「같은 승점 팀들끼리」 · 시즌 중에 더한 팀과 이미 만든 일정 · 연락처 형식 같은 것)에 미리 답을 정해 두지 않는다 — 창에서 규칙 1~5로만 · 웹 try는 실 Chromium으로 화면을 누른다(저장소 밖 `playwright-core@1.56.1`) · 데이터 파일 하나를 try마다 이어 쓴다(운영진 PC 그대로 — 새 판이 앞 판이 쓴 정상 파일을 열지 못하거나 그 내용을 잃으면 결함으로 센다: 원문의 「망가진 파일」이 아니다) · 대리가 띄운 서버는 대리가 끈다 · 엑셀이 컨테이너에 없어 CSV는 바이트로(BOM·구분자·따옴표) · 「이 PC 밖에서는 열리지 않음」은 컨테이너의 비루프백 주소로 접속해 본다 · 브라우저가 저절로 열리는지는 화면 없는 기계라 못 본다 · 윈도우는 원문 요구로만(CEO의 윈도우 3일이 본다).
