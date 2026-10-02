@@ -66,6 +66,7 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-02 | 측정 | 070f185(동결 9c677ec) | 1 파이썬 CLI | 정지 — add-entry redproof(unit 2/5) | 1/0 | 1 (add-entry redproof · 거짓 base green — boot의 test_file이 하이픈 파일을 0건 실행·exit 0) | 0/0 | 0 | 2 | 66K | 1.3 (정지 3.2) | $0.86 |
 | 2026-10-02 | 측정 | 070f185(동결 9c677ec) | 2 Node 웹 | SCOPE DONE | 8/1 | 0 | 8/0 | 0 | 33 | 883K | 46.2 | $9.47 |
 | 2026-10-02 | 측정 | 070f185(동결 9c677ec) | 3 Go CLI(회귀) | SCOPE DONE | 5/0 | 0 | 5/0 | 0 | 17 | 516K | 23.4 | $5.32 |
+| 2026-10-02 | 측정 | 0ab3a05(사고 57 수리 · 팩 상한 32) | 1 파이썬 CLI | SCOPE DONE(M1 4 — export·offline은 intake가 M2로) | 4/0 | 0 | 4/0 | 0 | 14 | 332K | 12.0 | $3.30 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -180,3 +181,10 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 ### 2026-10-02 측정 0ab3a05(사고 57 수리 · 팩 상한 32) — 파이썬 필드만, 예측(시작 전 커밋)
 - 왜: 070f185의 필드 1 정지(test_file 0건 green)의 수리를 같은 원문·같은 절차로 확인한다. 회귀이지 범용성 점수가 아니다.
 - 예측: 1) 프레임워크 FAIL 0으로 SCOPE DONE 2) boot가 discover 꼴 하네스를 고르면 boot ship이 탐침(redproof 자리)으로 막고 boot 재spawn이 고친다 — 다른 하네스면 탐침은 조용하다 3) 팩 상한 FAIL 0(32KB) 4) green 후 CEO 발견 결함 0~1(날짜 경계·CSV 수식은 attack 편차) 5) 비용 $5~8 → CEO 정정(시작 뒤 intake 중 · 결과 전): 비용 예상은 높게 — 한 필드 몫 ≈ $10.
+
+### 2026-10-02 측정 0ab3a05 — 기록 (파이썬 필드만)
+- 차림: 설치 a1e19c4(= 0ab3a05 + 예측 커밋 — team/ 같다) · SELFTEST 19/19 · 세션 156cb23d · try는 사본에서 4(conductor가 연 것 4). 규율 이탈 0. conductor가 intake 질문을 한 턴에 하나씩 물어 말이 셋 더 들었다(Q1~Q3 — 대리는 매번 둘째 말 그대로).
+- **예측 채점**: 1) ✓ 프레임워크 FAIL 0 · SCOPE DONE 2) ✓(둘째 갈래) boot가 고른 하네스(`python3 tests/harness/run_tests.py {file}` — importlib로 경로를 직접 적재해 하이픈 이름도 돈다)에 탐침은 조용했다(원장 `runner_blind`·`blind` 0). 첫 갈래(discover 꼴을 boot ship이 막는다)는 이 필드에서 밟지 않았다 — e2e와 070f185 필드 1의 실제 하네스(`run.py`)에 탐침을 대 확인(탐침 둘 다 눈멂 · add-entry_cli.py 눈멂 · `python3 {file}`은 아님 · pytest 9.1.1은 깨진 탐침에 exit 2) 3) ✓ 팩 상한 FAIL 0 — 최대 build 팩 24,599B(jsonl-tolerant, 옛 상한 24KB를 23B 넘는다: 옛 판이면 fit이 부대물을 포인터로 줄였을 자리) 4) ✓ green 후 CEO 발견 결함 0 — 없는 날짜(2026-02-30·2026-13-01)·2026-1-5·`12,000`을 attack이 출하 전에 막았다(cfbcf3a·486fd74에선 CEO try가 후발견) 5) ✓ $3.30(예측 $5~8 → CEO 정정 ≈ $10).
+- 070f185에서 멈춘 자리(add-entry redproof)를 지나 출하 — boot는 이번엔 파일을 경로로 적재하는 하네스를 골랐다(boot 팩의 test_file 줄 「이름과 무관하게 그대로 — 하이픈도」가 이 판에 들어갔다 — 영향인지 편차인지는 한 번으로 모른다).
+- attack 바퀴: unit 3개 모두 1바퀴(리눅스 기준선 14 unit째 1바퀴). 사고 38 경로(boot의 main stray → 되돌림·재spawn) 1회 — 반쪽 출하·CEO 치움 0.
+- 원장 밖 CEO 접점 0 · 대리 try의 경계 입력: 없는 날짜·틀린 형식·쉼표 금액 거부, 빈 달 0원, 수입은 부호대로, 메모장 꼴(BOM·CRLF·빈 줄) 읽기, 필드 빠진 줄은 줄 번호와 함께 건너뜀 — 전부 원문대로.
