@@ -55,6 +55,17 @@ export function overflowAdvice({ bytes, capKb, slug, mult = 1 }) {
     `- ${holdAsk(slug, `팩 상한 초과 — ① pack_kb_max ${need} 이상 · ② unit 나누기`)}`,
   ].join('\n');
 }
+// 팩 상한 이유-차선(CEO 채용 2026-10-02 · 측정 H3): 상한 FAIL의 CEO 결정은 측정마다 ①(올린다)뿐이었다 — 기본 상한 8→16→24→32, 벤치 웹 24→31, 홀드아웃 library 32→49
+// (L2 2·5일차가 이 FAIL로 멈췄다). 커밋 게이트의 LARGE_STEP과 같은 모양: 상한~2배는 conductor의 이유 한 줄(원장)로 지나가고, 2배를 넘으면 벽 — CEO 결정.
+export function packLane(bytes, capKb, large) {
+  if (bytes <= capKb * 1024) return 'fit';
+  if (bytes > 2 * capKb * 1024) return 'wall';
+  return large ? 'lane' : 'reason';
+}
+export const againCmd = (args) => args.map((a) => (/[\s"]/.test(a) ? JSON.stringify(a) : a)).join(' '); // 같은 명령 그대로(반려 줄 같은 인자는 따옴표째)
+export function laneAdvice({ capKb, again }) {
+  return `- 상한의 2배(${2 * capKb}KB) 안이다 — CEO 결정이 아니다. 위 절별에서 무엇이 커졌는지 이유 한 줄과 함께 같은 명령을 다시: node .garagiste/scripts/brief.mjs ${again} --large "<이유 — 예: 공격 테스트 7개가 실렸다>" (원장에 남는다)`;
+}
 export function matchHazards(hazardsText, files) {
   const lines = hazardsText.split('\n').filter((l) => l.startsWith('- '));
   const hit = [];
@@ -116,7 +127,11 @@ function intake(c, args) {
 function main() {
   const [pack, slug] = process.argv.slice(2);
   if (pack === 'intake') return intake(ctx(), process.argv.slice(3));
-  if (!PACKS.includes(pack) || !slug) fail(`사용법: brief.mjs <spec|build|attack|spike|boot> <slug> [--return "<spec: 줄>" | --met "<CEO 말>"] | intake`);
+  if (!PACKS.includes(pack) || !slug) fail(`사용법: brief.mjs <spec|build|attack|spike|boot> <slug> [--return "<spec: 줄>" | --met "<CEO 말>"] [--large "<이유>"] | intake`);
+  const li = process.argv.indexOf('--large');
+  const large = li > 0 ? (process.argv[li + 1] || '').trim() : '';
+  if (li > 0 && (!large || large.startsWith('--'))) fail(`FAIL --large에는 이유 한 줄 — 팩 FAIL의 절별에서 무엇이 커졌는지: brief.mjs ${pack} ${slug} --large "<이유>"`);
+  const again = againCmd(process.argv.slice(2));
   const ri = process.argv.indexOf('--return');
   const returned = ri > 0 ? (process.argv[ri + 1] || '').trim() : '';
   if (ri > 0 && (pack !== 'spec' || !returned)) fail('FAIL --return은 spec 팩에만, build·attack이 남긴 spec: 줄 그대로 — brief.mjs spec <slug> --return "<그 줄>"');
@@ -239,7 +254,9 @@ function main() {
   if (pack === 'attack' && base) sec('diff', 'diff (base..HEAD)', `\`\`\`diff\n${git(['diff', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`], wt).stdout}\n\`\`\``);
   const capKb = c.team.budgets.pack_kb_max * (pack === 'boot' ? 4 : 1); // boot는 intake처럼 BRIEF 전문을 진다
   const r = fit(sections, capKb * 1024);
-  if (!r.ok) fail(`FAIL 팩 ${Math.round(r.bytes / 1024)}KB > ${capKb}KB\n- 절별: ${packBreakdown(sections)}\n${overflowAdvice({ bytes: r.bytes, capKb, slug, mult: pack === 'boot' ? 4 : 1 })}`);
+  const lane = packLane(r.bytes, capKb, large);
+  if (lane === 'reason') fail(`FAIL 팩 ${Math.round(r.bytes / 1024)}KB > ${capKb}KB\n- 절별: ${packBreakdown(sections)}\n${laneAdvice({ capKb, again })}`);
+  if (lane === 'wall') fail(`FAIL 팩 ${Math.round(r.bytes / 1024)}KB > ${capKb}KB의 2배(${2 * capKb}KB) — 이유로는 넘지 못한다\n- 절별: ${packBreakdown(sections)}\n${overflowAdvice({ bytes: r.bytes, capKb, slug, mult: pack === 'boot' ? 4 : 1 })}`);
   const dir = path.join(c.main, c.team.paths.packs); fs.mkdirSync(dir, { recursive: true });
   const file = path.join(dir, `${slug}-${pack}-${stamp()}.md`);
   fs.writeFileSync(file, r.text + '\n');
@@ -250,7 +267,8 @@ function main() {
   if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned });
   if (revise) appendLedger(c.main, c.team, { kind: 'adversary_revise', slug, reason: revise });
   if (met) appendLedger(c.main, c.team, { kind: 'claims_met', slug, files: metRp.base_green, reason: met });
-  appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes });
-  out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}`);
+  appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes, ...(lane === 'lane' ? { large, cap_kb: capKb } : {}) });
+  const note = lane === 'lane' ? ` · 이유-차선(상한 ${capKb}KB): ${large}` : large ? ' · --large 불필요(상한 안 — 원장에 남기지 않았다)' : '';
+  out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}${note}`);
 }
 if (isMain(import.meta.url)) main();

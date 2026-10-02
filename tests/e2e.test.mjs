@@ -445,6 +445,38 @@ test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원�
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"scope_fix","slug":"ledger-add-fix","from":"ledger-add"/);
 });
 
+test('팩 상한 이유-차선(측정 H3 · CEO 채용): 상한~2배는 --large "<이유>"로 원장에 남기고 지나가고, 2배를 넘으면 CEO 결정 — 그 unit만 세운다', { timeout: 60000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-lane-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'README.md', '# p\n');
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  script('work', ['add', 'loan-return', '반납하면 연체일만큼 대출을 막는다', '--milestone', 'M1'], repo);
+  script('work', ['scope', '--milestone', 'M1'], repo);
+  assert.match(script('work', ['seed'], repo).out, /^UNIT loan-return spec/);
+  // 넘는 것은 법(인수 테스트)이다 — 홀드아웃 library의 loan-return은 공격이 결함마다 자라 build 팩이 34·48KB였고, 그때마다 CEO 결정 ①이었다(L2 2·5일차 정지)
+  const acc = (kb) => write(path.join(repo, '.worktrees', 'loan-return'), 'tests/acceptance/loan-return.test.mjs', '// claim: an overdue return blocks new loans for as many days -- boundary\n'.repeat(Math.ceil((kb * 1024) / 72)));
+  const packs = () => fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((e) => e.kind === 'pack' && e.slug === 'loan-return');
+  acc(36);
+  const band = script('brief', ['build', 'loan-return'], repo).out;
+  assert.match(band, /^FAIL 팩 \d+KB > 32KB\n- 절별: [^\n]*acceptance/);
+  assert.match(band, /2배\(64KB\) 안이다 — CEO 결정이 아니다[\s\S]*node \.garagiste\/scripts\/brief\.mjs build loan-return --large "/, '같은 명령에 이유 한 줄');
+  assert.doesNotMatch(band, /CEO 결정 ①|--hold/, '차선은 CEO 질문이 아니다');
+  assert.match(script('brief', ['build', 'loan-return', '--large'], repo).out, /^FAIL --large에는 이유 한 줄/);
+  assert.equal(packs().length, 0, 'FAIL은 팩도 원장 줄도 남기지 않는다');
+  assert.match(script('brief', ['build', 'loan-return', '--large', '인수 36KB — 연체 경계가 줄마다 실렸다'], repo).out, /^PACK \S+ [\d.]+KB [^\n]* · 이유-차선\(상한 32KB\): 인수 36KB — 연체 경계가 줄마다 실렸다$/m);
+  const lane = packs().at(-1);
+  assert.equal(lane.large, '인수 36KB — 연체 경계가 줄마다 실렸다'); assert.equal(lane.cap_kb, 32);
+  assert.ok(lane.bytes > 32 * 1024 && lane.bytes <= 64 * 1024, `원장의 크기는 차선 안 — ${lane.bytes}`);
+  acc(70);
+  const wall = script('brief', ['build', 'loan-return', '--large', '인수가 더 자랐다'], repo).out;
+  assert.match(wall, /^FAIL 팩 \d+KB > 32KB의 2배\(64KB\) — 이유로는 넘지 못한다/);
+  assert.match(wall, /CEO 결정 ①[\s\S]*CEO 결정 ②[\s\S]*work\.mjs ask loan-return "[^"]*" --hold/, '벽은 CEO 결정 — 그 unit만 세운다(사고 59)');
+  acc(1);
+  assert.match(script('brief', ['build', 'loan-return', '--large', '습관'], repo).out, /^PACK [^\n]*--large 불필요/);
+  assert.equal(packs().at(-1).large, undefined, '상한 안이면 원장에 이유를 남기지 않는다');
+});
 test('try 사본(L2 1일차 eoren.sqlite · 필드 벤치 웹 data/memos.json ×3): CEO의 try는 버릴 checkout에서 — 산출물이 main에 닿지 않고 tried가 사본을 지운다', { timeout: 60000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-try-'));
