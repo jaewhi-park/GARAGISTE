@@ -355,6 +355,60 @@ test('사고 44(필드 벤치 셋): full은 「전부」다 — 프로젝트 러
   assert.match(lastLog(), /^\$ node -e .* tests\/adversary\/add-entry-1\.test\.mjs tests\/adversary\/add-entry-2\.test\.mjs → exit 1$/m, '빠른 길의 실패는 로그에 남는다');
 });
 
+test('사고 57(벤치 070f185 파이썬): test_file이 하이픈 이름 파일을 0건 실행·exit 0으로 넘긴다 — redproof는 「이미 충족」 대신 눈먼 명령을 말하고, 그 안내대로 연 scaffold unit은 깨진 탐침이 red여야 출하된다', { timeout: 180000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-blind-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
+  // 벤치의 run.py 꼴: 받은 파일을 모듈 이름으로 찾는 하네스 — 모듈 이름이 될 수 없는 하이픈 이름은 0건 실행·exit 0
+  write(repo, 'tests/harness/run.cjs', "const { spawnSync } = require('child_process'); const path = require('path');\nconst files = process.argv.slice(2).filter((f) => !path.basename(f).includes('-'));\nprocess.exit(files.length ? spawnSync(process.execPath, ['--test', ...files], { stdio: 'inherit' }).status : 0);\n");
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/unit/**/*.test.mjs"', test_file: 'node tests/harness/run.cjs {file}', run: 'true' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  git(['add', '-A'], repo); script('verify', ['quick'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  script('work', ['add', 'add-entry', '지출을 기록한다', '--milestone', 'M1'], repo);
+  script('work', ['scope', '--milestone', 'M1'], repo);
+  assert.match(script('work', ['seed'], repo).out, /^UNIT add-entry spec/);
+  const wt = path.join(repo, '.worktrees', 'add-entry');
+  const red = "import test from 'node:test'; import fs from 'node:fs'; test('기록', () => { if (!fs.existsSync('src/add.mjs')) throw new Error('red'); });\n";
+  write(wt, 'tests/acceptance/add-entry.test.mjs', red);
+  const r1 = script('redproof', ['add-entry'], repo);
+  assert.match(r1.out, /^FAIL redproof add-entry: test_file이 이 파일을 실제로 돌리지 않는다 — tests\/acceptance\/add-entry\.test\.mjs/, '벤치의 줄은 「base에서 green — 이미 충족」(drop --forget)이었다: ' + r1.out);
+  const lastRp = () => fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8').trim().split('\n').map(JSON.parse).filter((e) => e.kind === 'redproof').pop();
+  assert.deepEqual(lastRp().blind, ['tests/acceptance/add-entry.test.mjs'], '원장에 눈먼 파일이 남는다');
+  assert.equal(fs.readFileSync(path.join(wt, 'tests/acceptance/add-entry.test.mjs'), 'utf8'), red, '탐침은 unit의 작업 트리를 건드리지 않는다 — 버릴 checkout에서');
+  write(wt, 'src/other.mjs', 'export const other = 1;\n'); // 제품 코드가 생긴 뒤 — base worktree에서 돈다
+  git(['add', '-A'], wt); assert.equal(git(['commit', '-q', '-m', 'wip: other'], wt, { GARAGISTE_WIP: '1' }).status, 0);
+  assert.match(script('redproof', ['add-entry'], repo).out, /^FAIL redproof add-entry: test_file이 이 파일을 실제로 돌리지 않는다/, 'base worktree에서도 같은 진단');
+  // 안내대로: 하네스를 고치는 scaffold unit이 먼저, 원래 unit은 그 뒤에 새로 열린다
+  assert.match(script('work', ['drop', 'add-entry', '하네스 먼저'], repo).out, /^DROPPED add-entry[\s\S]*BACKLOG 줄은 열려 있어/);
+  assert.match(script('work', ['add', 'add-entry-harness', 'test_file이 하이픈 이름 파일을 돌리지 않는다 — 받은 경로의 파일을 그대로', '--kind', 'scaffold', '--milestone', 'M1'], repo).out, /^ADD add-entry-harness M1/);
+  assert.match(script('work', ['needs', 'add-entry', 'add-entry-harness'], repo).out, /^NEEDS add-entry - → add-entry-harness/);
+  assert.match(script('work', ['scope', '--milestone', 'M1'], repo).out, /순서: add-entry-harness → add-entry/);
+  assert.match(script('work', ['seed'], repo).out, /^UNIT add-entry-harness boot/);
+  const hw = path.join(repo, '.worktrees', 'add-entry-harness');
+  assert.match(script('verify', ['full'], hw).out, /^PASS verify:full/);
+  const s1 = script('ship', ['add-entry-harness'], repo);
+  assert.match(s1.out, /^FAIL ship add-entry-harness 1\/8\n- redproof: test_file이 인수·공격 자리의 하이픈 이름 파일을 돌리지 않는다[\s\S]*tests\/acceptance\/garagiste-probe-smoke\.test\.mjs/, '하네스를 안 고친 scaffold는 출하되지 않는다: ' + s1.out);
+  const bp = script('brief', ['boot', 'add-entry-harness'], repo);
+  assert.match(fs.readFileSync(path.join(repo, bp.out.split(' ')[1]), 'utf8'), /## ship의 탐침[^\n]*\n- tests\/acceptance\/garagiste-probe-smoke\.test\.mjs/, 'boot 팩이 그 목록을 받는다');
+  write(hw, 'tests/harness/run.cjs', "const { spawnSync } = require('child_process');\nprocess.exit(spawnSync(process.execPath, ['--test', ...process.argv.slice(2)], { stdio: 'inherit' }).status ?? 1);\n");
+  assert.match(script('verify', ['quick'], hw).out, /^PASS verify:quick/);
+  git(['add', '-A'], hw); assert.equal(git(['commit', '-q', '-m', 'scaffold(harness): 받은 파일을 그대로 돌린다\n\nUnit: add-entry-harness\nStep: 1'], hw).status, 0);
+  assert.match(script('verify', ['full'], hw).out, /^PASS verify:full/);
+  const s2 = script('ship', ['add-entry-harness'], repo);
+  assert.match(s2.out, /^SHIPPED add-entry-harness/, s2.out);
+  assert.equal(git(['worktree', 'list', '--porcelain'], repo).out.match(/garagiste-scratch/g), null, '버릴 checkout은 남지 않는다');
+  assert.match(script('work', ['seed'], repo).out, /^UNIT add-entry spec/, '원래 unit이 새로 열린다');
+  write(wt, 'tests/acceptance/add-entry.test.mjs', red);
+  assert.match(script('redproof', ['add-entry'], repo).out, /^RED add-entry 1\/1/, '고친 하네스에선 red가 진짜다');
+});
 test('사고 45·46(필드 벤치 넷): tried fail은 CEO의 말을 -fix의 원문으로 받고, -fix는 지금 범위의 맨 앞에 든다', { timeout: 60000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-tried-'));

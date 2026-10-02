@@ -1,12 +1,12 @@
 // ship — 8조건 fail-closed. 통과하면 ff 머지 + LEDGER + STATUS. 이 스크립트만 보호 브랜치에 닿는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, quarantineStray, readJson, readLedger, readText, rebaseInProgress, saveUnit, sh, shell, short, stamp, strayPaths, unmergedFiles, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, quarantineStray, readJson, readLedger, readText, rebaseInProgress, saveUnit, sh, shell, short, stamp, strayPaths, unmergedFiles, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles, repoFiles, withScratch } from './lib.mjs';
 import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
 import { budgetStatus, openQuestions, render } from './state.mjs';
-import { fullRun } from './verify.mjs';
+import { blindFiles, fullRun, probeNames } from './verify.mjs';
 
 export const SPIKE_ROWS = ['wire', 'host', 'license', 'default', 'os'];
 // 사고 14·16(2차 실기): 괄호 부연 허용 + 내용은 「같은 줄」 또는 「더 깊은 들여쓰기의 다음 줄(하위 불릿)」 —
@@ -48,9 +48,11 @@ export function evaluateShip(x) {
   // platform은 원장에 기록만 한다 — 어디서 돌았든 이 tree의 full PASS가 증거다. 대상-OS 보증은 @sensor 태그·target-OS 미관측 카운트의 일(HAZARDS 14; 옛 machine_os 필터는 그 일을 못 하면서 win32의 정당한 증거를 거부했다 — 첫 Windows 실기 사고).
   const full = x.ledger.find((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === x.tree);
   c.push({ id: 'full', ok: !!full, why: full ? '' : `이 tree(${short(x.tree)})의 verify full PASS 없음 — worktree에서 node .garagiste/scripts/verify.mjs full (마지막 커밋 뒤)` });
-  const rpAny = scaffold ? true : [...x.ledger].reverse().find((e) => e.kind === 'redproof' && e.slug === x.slug && e.base_red && e.head_green === true);
-  const rp = scaffold || (rpAny && rpAny.tree === x.tree ? rpAny : null);
-  c.push({ id: 'redproof', ok: !!rp, why: rp ? '' : rpAny ? `redproof가 이전 tree의 것 — 마지막 커밋 뒤 다시: node .garagiste/scripts/redproof.mjs ${x.slug}` : `base red · head green 증명 없음 — node .garagiste/scripts/redproof.mjs ${x.slug}` });
+  // 사고 57(벤치 070f185 파이썬): scaffold의 redproof 자리는 러너 자신의 red 증명이다 — 인수·공격 자리의 slug 꼴(하이픈) 이름에 깨진 탐침을 두고 test_file이 exit≠0이어야 한다
+  const blindRunner = scaffold ? (x.runnerBlind || []) : [];
+  const rpAny = scaffold ? !blindRunner.length : [...x.ledger].reverse().find((e) => e.kind === 'redproof' && e.slug === x.slug && e.base_red && e.head_green === true);
+  const rp = scaffold ? rpAny : (rpAny && rpAny.tree === x.tree ? rpAny : null);
+  c.push({ id: 'redproof', ok: !!rp, why: rp ? '' : scaffold ? `test_file이 인수·공격 자리의 하이픈 이름 파일을 돌리지 않는다 — 깨진 탐침도 exit 0: ${blindRunner.join(' ')} (0건 실행 — 예: 파일 이름을 모듈 이름으로 찾는 discover). slug에는 하이픈이 든다: test_file은 받은 경로의 파일을 그대로 돌려야 한다 → node .garagiste/scripts/brief.mjs boot ${x.slug} 재spawn(팩이 이 목록을 받는다) → ship 다시` : rpAny ? `redproof가 이전 tree의 것 — 마지막 커밋 뒤 다시: node .garagiste/scripts/redproof.mjs ${x.slug}` : `base red · head green 증명 없음 — node .garagiste/scripts/redproof.mjs ${x.slug}` });
   const atAny = [...x.ledger].reverse().find((e) => e.kind === 'attack' && e.slug === x.slug);
   const at = atAny && atAny.tree === x.tree ? atAny : null;
   const atOk = scaffold || !x.requireAttack || (!!at && at.red === 0 && at.total >= 1);
@@ -138,6 +140,12 @@ function squashUnit(wt, base) {
   const cm = git(['commit', '-q', '-m', msg], wt, { GARAGISTE_WIP: '1' });
   if (cm.status) { git(['reset', '-q', '--soft', orig], wt); fail(`FAIL ship: unit 역사 접기 실패(되돌렸다) — ${(cm.stderr || cm.stdout).trim()}`); }
 }
+// 사고 57: scaffold의 명령은 아직 그 worktree에만 있다 — 탐침은 그 HEAD의 버릴 checkout에서
+function runnerProbe(c, wt) {
+  const tpl = readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.test_file;
+  const names = probeNames(c.team.paths, repoFiles(wt, 'tests/unit').map((f) => `tests/unit/${f}`));
+  return tpl && names.length ? withScratch(wt, 'HEAD', (d) => blindFiles(tpl, names, d)) : [];
+}
 const conflictFail = (mainBranch, files, slug, pk) => `FAIL ship: ${mainBranch}과 충돌 — ${files.join(' ')}. rebase를 그 자리에 멈춰 두었다(충돌 표시가 worktree에 있다) → node .garagiste/scripts/brief.mjs ${pk} ${slug} → ${pk}가 표시를 풀고 git add까지(커밋·rebase 없이) → node .garagiste/scripts/ship.mjs ${slug} — ship이 rebase를 잇고 통합 tree를 다시 검증한다`;
 function main() {
   const slug = process.argv[2];
@@ -186,8 +194,10 @@ function main() {
     const promoted = evidenceCommitMessage(headFiles, c.team.paths, slug);
     if (promoted) git(['commit', '--amend', '-q', '-m', promoted], wt, { GARAGISTE_WIP: '1' });
   }
+  const runnerBlind = unit.kind === 'scaffold' && exists ? runnerProbe(c, wt) : [];
+  if (runnerBlind.length) appendLedger(c.main, c.team, { kind: 'runner_blind', slug, files: runnerBlind }); // boot 팩이 이 목록을 받는다
   const conds = evaluateShip({
-    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed,
+    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, runnerBlind,
     boundaryHit: !!unit.boundary?.hit || diffHit.hit, boundaryWhy: unit.boundary?.hit ? '원문' : diffHit.reasons.join(', '),
     requireAttack: c.team.require_attack !== false, spikeText: readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`)), measurements: c.team.paths.measurements,
     lastSubject: exists ? git(['log', '-1', '--format=%s'], wt).stdout : '', stops: b.stops, proseKb: proseKb(c.main), proseMax: c.team.budgets.prose_kb_max,
