@@ -41,7 +41,7 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 - 하네스 함정(프레임워크 결함 아님): 부모 세션의 `CLAUDE_*` 환경 누수 → `turn.sh`가 걷어 낸다 · 신뢰 안 된 작업 공간은 허용 목록 무시 → `setup.sh`가 신뢰를 켠다 · 필드 사본에서 `git worktree repair`를 치지 않는다(원본 링크를 빼앗는다 — 2026-10-01 정비 채널 실수).
 
 ## 점수 — 필드마다 한 줄
-`BENCH` 줄(table.mjs) + 대리가 세는 셋: **프레임워크 FAIL 정지 수**(측정 모드에선 0 아니면 1 — 멈춘 단계와 줄) · **green 후 CEO 발견 결함**(tried fail) · **conductor 규율 이탈**(우회·스크립트 편집·CEO 파일 손댐·질문 누락). 비용은 마지막 턴 json의 `total_cost_usd`(세션 누적).
+`BENCH` 줄(table.mjs) + 대리가 세는 셋: **프레임워크 FAIL 정지 수**(측정 모드에선 0 아니면 1 — 멈춘 단계와 줄) · **green 후 CEO 발견 결함**(tried fail) · **conductor 규율 이탈**(우회·스크립트 편집·CEO 파일 손댐·질문 누락). 비용은 마지막 턴 json의 `total_cost_usd`(세션 누적). **비용 예상은 높게 잡는다 — 한 회(세 필드) ≈ $30, 한 필드만이면 ≈ $10**(CEO 2026-10-02: 실측 621a426 $12.41 · 070f185 $15.65 — 웹 한 필드가 정비·재시도로 두 배가 되는 회차가 있다).
 
 ## 결과 원장
 | 날짜 | 모드 | 프레임워크 | 필드 | 끝 | ship/drop | 프레임워크 FAIL 정지 | tried ok/fail | green 후 결함 | 팩 | 토큰 | 분* | 비용 |
@@ -179,4 +179,4 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 
 ### 2026-10-02 측정 0ab3a05(사고 57 수리 · 팩 상한 32) — 파이썬 필드만, 예측(시작 전 커밋)
 - 왜: 070f185의 필드 1 정지(test_file 0건 green)의 수리를 같은 원문·같은 절차로 확인한다. 회귀이지 범용성 점수가 아니다.
-- 예측: 1) 프레임워크 FAIL 0으로 SCOPE DONE 2) boot가 discover 꼴 하네스를 고르면 boot ship이 탐침(redproof 자리)으로 막고 boot 재spawn이 고친다 — 다른 하네스면 탐침은 조용하다 3) 팩 상한 FAIL 0(32KB) 4) green 후 CEO 발견 결함 0~1(날짜 경계·CSV 수식은 attack 편차) 5) 비용 $5~8.
+- 예측: 1) 프레임워크 FAIL 0으로 SCOPE DONE 2) boot가 discover 꼴 하네스를 고르면 boot ship이 탐침(redproof 자리)으로 막고 boot 재spawn이 고친다 — 다른 하네스면 탐침은 조용하다 3) 팩 상한 FAIL 0(32KB) 4) green 후 CEO 발견 결함 0~1(날짜 경계·CSV 수식은 attack 편차) 5) 비용 $5~8 → CEO 정정(시작 뒤 intake 중 · 결과 전): 비용 예상은 높게 — 한 필드 몫 ≈ $10.
