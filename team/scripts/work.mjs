@@ -84,7 +84,7 @@ export function pickReady({ order, items, units, decisionsText = '' }) {
 export function seedGate({ units, decisionsText = '', stops = [] }) {
   if (stops.length) return { kind: 'stop', why: stops };
   const open = new Set([...String(decisionsText).matchAll(/^- \[ \] Q(\d+)/gm)].map((m) => Number(m[1])));
-  const parked = (u) => (u.questions || []).some((n) => open.has(Number(n))) || (u.needs || []).some((n) => /^Q\d+$/.test(n) && open.has(Number(n.slice(1))));
+  const parked = (u) => [...(u.questions || []), ...(u.holds || [])].some((n) => open.has(Number(n))) || (u.needs || []).some((n) => /^Q\d+$/.test(n) && open.has(Number(n.slice(1)))); // holds: 사고 59
   const working = units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped' && !parked(u)).map((u) => u.slug);
   return working.length ? { kind: 'active', slugs: working } : null;
 }
@@ -243,6 +243,8 @@ function decisionsFile(c) {
 function ask(c, slug, question, flags = {}) {
   if (!question) fail('FAIL 질문이 없다');
   const u = slug === 'intake' ? null : loadUnit(c.main, c.team, slug);
+  // 사고 59(홀드아웃 library): CEO 결정만 요구하는 FAIL은 그 unit만 세운다 — --hold는 답이 와도 re-spec하지 않는다(답의 길은 그 FAIL의 안내)
+  if (flags.hold && !u) fail('FAIL --hold는 진행 중 unit의 질문에만 — work.mjs ask <slug> "<질문>" --hold');
   const forSlugs = flags.for ? flags.for.split(',').map((s) => s.trim()).filter(Boolean) : [];
   let bl = readBacklog(c);
   const items = parseBacklog(bl);
@@ -253,13 +255,13 @@ function ask(c, slug, question, flags = {}) {
   const n = nextQuestionNumber(text);
   const line = `- [ ] Q${n} (${slug}): ${q(question)}`;
   fs.writeFileSync(p, text.includes('## 정해 주세요') ? text.replace('## 정해 주세요\n', `## 정해 주세요\n${line}\n`) : text + `\n## 정해 주세요\n${line}\n`);
-  if (u) { u.questions.push(n); saveUnit(c.main, c.team, u); }
+  if (u) { if (flags.hold) u.holds = [...(u.holds || []), n]; else u.questions.push(n); saveUnit(c.main, c.team, u); }
   for (const s of forSlugs) {
     const needs = [...new Set([...items.find((i) => i.slug === s).needs, `Q${n}`])];
     bl = setNeeds(bl, s, needs); syncUnitNeeds(c, s, needs);
   }
   if (forSlugs.length) fs.writeFileSync(backlogPath(c), bl);
-  out(`Q${n} queued — ${forSlugs.length ? `needs에 연결: ${forSlugs.join(',')} (답이 올 때까지 WAIT)` : slug === 'intake' ? `needs: Q${n}으로 기대는 unit은 답이 올 때까지 WAIT` : `${slug}은 답이 올 때까지 이 질문 밖에서만 진행`}`);
+  out(`Q${n} queued — ${forSlugs.length ? `needs에 연결: ${forSlugs.join(',')} (답이 올 때까지 WAIT)` : slug === 'intake' ? `needs: Q${n}으로 기대는 unit은 답이 올 때까지 WAIT` : flags.hold ? `${slug}은 답이 올 때까지 세워 둔다(다른 unit은 seed가 연다) — 답이 와도 re-spec 없음, 답의 길은 그 FAIL의 안내` : `${slug}은 답이 올 때까지 이 질문 밖에서만 진행`}`);
 }
 // seed된 unit의 needs 사본도 맞춘다 — 팩의 결정 스코프(scopedDecisions)가 unit.needs를 읽는다
 function syncUnitNeeds(c, slug, needs) {
@@ -467,10 +469,10 @@ function spawned(c, slug, pack, flags) {
 // 필드 시험(두 프로젝트 공통): intake 직후 list가 「unit 없음」이었다 — Flow 2는 intake 뒤 list를 보라 하는데 seed 전 BACKLOG 줄이 안 보였다.
 // seed된 unit 다음에, 열린 unit이 없는 BACKLOG 열린 줄을 backlog로 덧붙인다(dropped의 열린 줄은 다시 열릴 backlog다).
 // 사고 37(필드 시험 2): 값 없는 플래그가 맨 끝이면 「다음 인자」가 없어 undefined가 됐다 — `drop persist "<사유>" --forget`의 forget이 꺼져 BACKLOG 줄이 열린 채 남았다
-const BOOL_FLAGS = new Set(['forget', 'replace']);
+const BOOL_FLAGS = new Set(['forget', 'replace', 'hold']);
 // 사고 49(홀드아웃 — Go CLI): 원문·질문은 무엇으로든 시작한다 — `--min-size 1M처럼…`이 플래그로 먹혀 원문이 「M1」, 마일스톤이 M?가 됐다.
 // 명령마다 아는 플래그만 플래그, 한 낱말 플래그 꼴(--milestne)은 오타라 FAIL로(원문은 문장이다), 나머지는 원문.
-export const FLAGS = { add: ['milestone', 'needs', 'accept', 'kind', 'replace'], new: ['milestone', 'needs', 'accept', 'kind', 'from'], ask: ['for'], drop: ['forget'], spawned: ['tokens', 'minutes', 'model', 'note'] };
+export const FLAGS = { add: ['milestone', 'needs', 'accept', 'kind', 'replace'], new: ['milestone', 'needs', 'accept', 'kind', 'from'], ask: ['for', 'hold'], drop: ['forget'], spawned: ['tokens', 'minutes', 'model', 'note'] };
 export function parseArgs(raw, cmd) {
   const flags = {}; const pos = []; const unknown = [];
   const known = FLAGS[cmd] || [];

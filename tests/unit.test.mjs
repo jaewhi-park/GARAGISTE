@@ -337,6 +337,8 @@ test('redproof: 사고 36(필드 시험 2) — base에서 green(앞 unit이 이�
   const m = baseGreenAdvice('persist', ['tests/acceptance/persist.test.js']);
   assert.match(m, /^FAIL redproof persist: base에서 green — tests\/acceptance\/persist\.test\.js — 기존 코드가 이 주장을 이미 만족한다/);
   assert.match(m, /CEO 결정[\s\S]*work\.mjs drop persist "이미 충족 — <근거>" --forget[\s\S]*brief\.mjs spec persist 재spawn/);
+  // 사고 59(홀드아웃 library 3일차): CEO 결정만 요구하는 FAIL이 열린 Q가 되지 않아 seed가 그 unit을 일하는 중으로 보고 다른 unit을 막았다
+  assert.match(m, /그 unit만 세우고 다음 seed로[\s\S]*work\.mjs ask persist "[^"]+" --hold/, 'CEO 결정의 FAIL은 그 unit만 세우는 명령을 준다');
 });
 test('lib: 사고 48 — test_file은 {file}(파일 하나) 또는 {files}(여러 파일을 한 번에)', () => {
   assert.ok(hasFileSlot('node --test {file}') && hasFileSlot('node --test {files}') && !hasFileSlot('node --test') && !hasFileSlot(undefined));
@@ -380,6 +382,7 @@ test('redproof: 사고 47(필드 벤치 넷) — 일부만 base green(먼저 출
   assert.match(m, /^FAIL redproof jsonl-store: 부분 충족 — base에서 green tests\/acceptance\/jsonl-store_handedit\.py · base에서 red tests\/acceptance\/jsonl-store_cp949\.py/);
   assert.match(m, /drop은 red 주장까지 닫는다[\s\S]*CEO 결정[\s\S]*brief\.mjs spec jsonl-store --met "<CEO 말 그대로>"[\s\S]*redproof[\s\S]*brief\.mjs spec jsonl-store 재spawn/);
   assert.ok(!m.includes('work.mjs drop'), '남은 red 주장(CEO가 정한 CP949)을 닫는 drop은 길이 아니다');
+  assert.match(m, /work\.mjs ask jsonl-store "[^"]+" --hold/, '사고 59: 부분 충족도 CEO 결정 — 그 unit만 세운다');
 });
 test('verify: 사고 57(벤치 070f185 파이썬) — exit 0만으로는 test_file이 그 파일을 돌렸는지 모른다: 같은 자리·같은 이름의 깨진 사본도 exit 0이면 그 명령은 그 파일을 돌리지 않는다', () => {
   const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-blind-'));
@@ -402,6 +405,7 @@ test('redproof: 사고 57 — base green이 눈먼 test_file(0건 실행)이면 
   assert.doesNotMatch(m, /이미 충족 — <근거>/, '벤치의 안내(drop --forget)는 만들지도 않은 기능을 닫는다');
   assert.match(m, /work\.mjs drop add-entry "[^"]+" \(--forget 없이/);
   assert.match(m, /work\.mjs add add-entry-harness "[^"]+" --kind scaffold --milestone M1/);
+  assert.match(m, /work\.mjs ask add-entry "[^"]+" --hold/, '사고 59: 하네스 먼저도 CEO 결정 — 그 unit만 세운다');
   assert.match(m, /work\.mjs needs add-entry boot,Q1,add-entry-harness/, '선행은 지우지 않고 더한다');
   assert.match(m, /work\.mjs scope --milestone M1/);
 });
@@ -528,8 +532,11 @@ test('brief: 팩은 상한을 넘으면 diff→hazards→brief→이어받기→
   assert.match(r2.text, /## t\n\(팩 상한으로 생략/);
   assert.equal(packBreakdown([{ key: 'a', text: 'x'.repeat(1024) }, { key: 'b', text: 'y' }]), 'a 1KB · b 0KB', 'FAIL은 절별 크기를 스스로 말한다');
 });
-test('brief: 팩 상한 FAIL은 법만으로 넘을 때 난다 — 안내는 CEO 결정 둘(상한 실측 이상·unit 나누기), conductor 몫은 없다 (4차 실기 사고 25)', () => {
+test('brief: 팩 상한 FAIL은 법만으로 넘을 때 난다 — 안내는 CEO 결정 둘(상한 실측 이상·unit 나누기)과 그 unit만 세우는 질문 (4차 실기 사고 25 · 홀드아웃 사고 59)', () => {
   const a = overflowAdvice({ bytes: 17.1 * 1024, capKb: 16, slug: 'time-model' });
+  // 사고 59(홀드아웃 library 2·4·5일차): 「conductor가 할 일은 없다」 — 2·5일차는 그날이 멈췄고, 4일차는 conductor가 스스로 Q로 올렸다(그 답이 re-spec을 걸었다)
+  assert.match(a, /그 unit만 세우고 다음 seed로[\s\S]*work\.mjs ask time-model "[^"]*pack_kb_max 18 이상[^"]*" --hold/, 'conductor 몫: 그 unit만 세운다(--hold — 예산 답은 re-spec이 아니다)');
+  assert.doesNotMatch(a, /conductor가 할 일은 없다/);
   assert.match(a, /넘는 것은 법\(인수·규칙·결정·원문\)/, 'fit이 부대물을 다 줄인 뒤에만 FAIL이 난다');
   assert.match(a, /pack_kb_max를 18 이상으로/, '필요한 상한을 숫자로 — 실측');
   assert.match(a, /work\.mjs drop time-model/, 'unit 나누기는 명령이 있는 방향전환(CEO)으로');
@@ -642,6 +649,8 @@ test('work decide: 진행 중 unit의 질문이 닫히면 spec 재개가 걸린�
   ];
   assert.deepEqual(respecTargets({ units, ledger, n: 11 }), ['idx', 'late'], 'spec이 답 없이 이미 돈 진행 중 unit만(늦은 spike 포함) — 첫 spec 전(fresh·hit)은 그 팩이 답을 담는다, 출하·dropped·scaffold는 대상이 아니다');
   assert.deepEqual(respecTargets({ units, ledger, n: 13 }), []);
+  // 사고 59(홀드아웃 library 5일차): 팩 상한의 답(Q6)이 re-spec을 걸어 loan-return이 spec부터 다시 돌았다 — --hold 질문의 답의 길은 그 FAIL의 안내가 정한다
+  assert.deepEqual(respecTargets({ units: [{ slug: 'held', kind: 'feature', state: 'build', created: at, questions: [], holds: [11], needs: [] }], ledger: [{ ts: '2026-09-30T02:00:00Z', kind: 'pack', slug: 'held', pack: 'spec' }], n: 11 }), [], '--hold 질문의 답은 re-spec이 아니다');
 });
 test('doctor: R8 — fresh 항목(alive·빈 commands)만 통과, 구조 결함은 seed·ship을 막는다', () => {
   const probs = ['session-start alive 마커 없음 → 첫 세션이면 정상', 'team.json commands.quick 비어 있음 → boot이 채운다', 'core.hooksPath=(없음) → git config core.hooksPath .githooks'];
@@ -684,6 +693,8 @@ test('work seed: unit은 한 번에 하나 — CEO 질문에 걸린 unit만 예�
   assert.deepEqual(seedGate({ units: [{ slug: 'b', state: 'build', questions: [6] }], decisionsText: dec }), { kind: 'active', slugs: ['b'] }, '일하는 unit이 있으면 다음은 열리지 않는다 — 병렬 seed가 사고 26의 토양이었다');
   assert.equal(seedGate({ units: [{ slug: 'c', state: 'shipped' }, { slug: 'd', state: 'dropped' }], decisionsText: dec }), null);
   assert.equal(seedGate({ units: [{ slug: 'e', state: 'spec', questions: [], needs: ['Q5'] }], decisionsText: dec }), null, 'needs의 열린 Q도 질문에 걸린 것');
+  assert.equal(seedGate({ units: [{ slug: 'h', state: 'build', questions: [], holds: [5] }], decisionsText: dec }), null, '사고 59: --hold로 세운 unit도 자리를 막지 않는다');
+  assert.deepEqual(seedGate({ units: [{ slug: 'h', state: 'build', questions: [], holds: [6] }], decisionsText: dec }), { kind: 'active', slugs: ['h'] }, '답이 온(닫힌) hold는 다시 일하는 unit');
   assert.deepEqual(seedGate({ units: [], stops: ['미검수 3 ≥ 3'] }), { kind: 'stop', why: ['미검수 3 ≥ 3'] }, '예산 정지 중에 연 unit은 6시간 유휴·낡은 base였다');
 });
 test('work list: seed 전 BACKLOG 줄도 보인다 — Flow 2는 intake 뒤 list를 보라 하는데 「unit 없음」이었다 (필드 시험 두 곳 공통)', () => {

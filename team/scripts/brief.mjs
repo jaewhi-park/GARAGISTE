@@ -1,7 +1,7 @@
 // brief — 팩 조립. 에이전트가 받는 유일한 입력. ≤ pack_kb_max, 외부 텍스트는 데이터 펜스, 이어받기 절 포함.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, fail, git, isMain, listFiles, loadUnit, mergeBase, out, readLedger, readText, rebaseInProgress, saveUnit, stamp, unmergedFiles, worktreeDir } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, fail, git, holdAsk, isMain, listFiles, loadUnit, mergeBase, out, readLedger, readText, rebaseAdvice, rebaseInProgress, saveUnit, stamp, unmergedFiles, worktreeDir } from './lib.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { backlogLine, parseBacklog } from './work.mjs';
 
@@ -49,9 +49,10 @@ export function attackRoundUsed(ledger, slug, since = '') {
 export function overflowAdvice({ bytes, capKb, slug, mult = 1 }) {
   const need = Math.ceil(bytes / 1024 / mult);
   return [
-    `- 부대물(diff·hazards·brief·이어받기·try·surface)은 이미 포인터로 줄였다 — 넘는 것은 법(인수·규칙·결정·원문)이다. conductor가 할 일은 없다: 이 줄을 CEO에게.`,
+    `- 부대물(diff·hazards·brief·이어받기·try·surface)은 이미 포인터로 줄였다 — 넘는 것은 법(인수·규칙·결정·원문)이다. 결정은 CEO의 것이다: 이 줄을 CEO에게.`,
     `- CEO 결정 ①: .garagiste/team.json budgets.pack_kb_max를 ${need} 이상으로(지금 ${capKb / mult}, CEO 커밋) — 인수가 이미 build 위에 있으면 이쪽이 싸다`,
     `- CEO 결정 ②: unit을 나눈다 — 방향전환: work.mjs drop ${slug} "<사유>" 뒤 work.mjs add로 쪼갠 줄, scope 다시`,
+    `- ${holdAsk(slug, `팩 상한 초과 — ① pack_kb_max ${need} 이상 · ② unit 나누기`)}`,
   ].join('\n');
 }
 export function matchHazards(hazardsText, files) {
@@ -143,6 +144,8 @@ function main() {
   if (usedAt) fail(`FAIL attack 팩: ${slug}은 이번 spec 뒤 이미 공격받았다(${usedAt.slice(0, 16)}) — attack은 spec 뒤 한 바퀴다(고칠 때마다 다시 띄우면 고침이 만든 반대 결함을 짚어 끝이 없다: 윈도우 L2 28·20바퀴). 고친 뒤엔 기존 공격 테스트만: node .garagiste/scripts/verify.mjs attack ${slug} → red 0이면 node .garagiste/scripts/ship.mjs ${slug} · red가 남으면 node .garagiste/scripts/brief.mjs build ${slug}`);
   const wt = worktreeDir(c.main, c.team, slug);
   if (!fs.existsSync(wt)) fail(`FAIL worktree 없음: ${unit.worktree}`);
+  // 사고 58(홀드아웃 library 6일차): 표시를 다 푼 rebase 도중엔 HEAD가 onto(main) — 팩이 지을 자리가 아니다, 잇는 것(ship)이 먼저. 표시가 남았으면 아래 conflict 절(사고 26)
+  if (rebaseInProgress(wt) && !unmergedFiles(wt).length) fail(rebaseAdvice(`${pack} 팩`, slug, [], c.team.protected_branch));
   const base = mergeBase(wt, c.team.protected_branch);
   const changed = base ? git(['diff', '--name-only', `${base}..HEAD`], wt).stdout.split('\n').filter(Boolean) : [];
   const sections = [];
@@ -186,7 +189,7 @@ function main() {
   const returnedFrom = unit.state;
   if (returned) {
     const prior = readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created);
-    if (prior.length) fail(`FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다: 두 줄을 CEO에게 그대로 보여 준다(hard 질문 — 그 unit만 멈춘다)\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}\n${revisePaths(slug)}`);
+    if (prior.length) fail(`FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다: 두 줄을 CEO에게 그대로 보여 준다(hard 질문 — 그 unit만 멈춘다)\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}\n${revisePaths(slug)}\n- ${holdAsk(slug, 'spec 반려 두 번째 — 두 줄은 이 FAIL 그대로')}`);
     sec('return', `반려 — ${returnedFrom} 팩이 남긴 줄 (그 주장들이 서로·원문과 어긋나는지부터)`, returned);
   }
   // 사고 42: 기존 공격 테스트(출하된 unit의 것 포함)를 고치는 것은 테스트 약화의 길 — spec 반려가 CEO에게 간 unit에서, CEO 말 그대로만 연다
