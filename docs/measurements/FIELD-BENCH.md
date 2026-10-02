@@ -78,6 +78,7 @@ node tests/field/stream.mjs run $B/field1 day4 --plan <plan.json>   # Q6(L2-TRIA
 | 2026-10-02 | L2 측정(홀드아웃) | 9be0e15 | H holdout-library | 4 | 무인 36.8분 · 낮 접점 0 · 낮 ship 3 · 연장 0 · 미출하 2 · 토큰 831K · 카드 ok 3/fail 0 | 통과 — 미검수 3 정지(질문에 걸린 둘 — Q5·Q6 — 두고 다음으로) · 저녁에 Q5 예 · Q6 ① 35 | $7.60 |
 | 2026-10-02 | L2 측정(홀드아웃) | 9be0e15 | H holdout-library | 5 | 무인 14.0분 · 낮 접점 0 · 낮 ship 1 · 연장 0 · 미출하 1 · 토큰 565K · 카드 ok 1/fail 0 | 정지 — 팩 상한(loan-return build 48KB > 35) CEO 결정 대기 · 저녁에 ① 49 | $2.43 |
 | 2026-10-02 | L2 측정(홀드아웃) | 9be0e15 | H holdout-library | 6 | 무인 —(저녁 창 없음) · 낮 접점 0 · 낮 ship 0 · 미출하 1 · 토큰 314K | **프레임워크 FAIL 정지 — 회 끝**(loan-return redproof 「base에서 green」 — ship 충돌 뒤 rebase 도중의 사본) | $1.23 |
+| 2026-10-02 | L2 3판 리눅스(홀드아웃 첫 측정 — `L2-TRIAL-3.md`) | d069127(team/ = ede9930) | H holdout-futsal | 1 | 무인 22.2분 · 낮 접점 0 · 낮 ship 3 · 연장 0 · 미출하 0 · 토큰 296K · 카드 ok 3/fail 0 | 통과 — 미검수 3 정지 · FAIL 0 | $3.62 |
 
 ## 결과 원장
 | 날짜 | 모드 | 프레임워크 | 필드 | 끝 | ship/drop | 프레임워크 FAIL 정지 | tried ok/fail | green 후 결함 | 팩 | 토큰 | 분* | 비용 |

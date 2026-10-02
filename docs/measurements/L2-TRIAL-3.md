@@ -85,3 +85,21 @@ Q6·Q7은 플랫폼과 무관한 흐름(인터럽트를 객체로 · 상한에�
 - 리눅스: 정비 채널 컨테이너 · claude 2.1.287 · Node v22.22.0 · Python 3.11.15 · Chromium 141(`/opt/pw-browsers`) · 동결 sha의 worktree에서 `tests/field/setup.sh tests/field/briefs/holdout-futsal.md <폴더>`(원문 blob 8a351cd — 이 원문의 첫 측정) · 폴더 `<scratchpad>/l2-3/futsal`(컨테이너 — 사라진다) · 설치 f833834 · SELFTEST 19/19 · budget medium · 규칙집 기준선 `HEAD:.garagiste` = da7f234(설치 직후).
 - 고정 말은 FIELD-BENCH 「L2 모드」 그대로(`<sha>` = 위 동결 전체 sha) · 대리 규칙 1~5 · 대리는 날마다 첫 말 직전의 `date -u +%FT%TZ`를 적는다(표의 `--since`) · 표는 `tests/field/day.mjs`.
 - **대리 재량(첫 측정 전 고정 — holdout-library와 같은 꼴)**: 원문의 빈칸(세 팀 이상 동점의 「같은 승점 팀들끼리」 · 시즌 중에 더한 팀과 이미 만든 일정 · 연락처 형식 같은 것)에 미리 답을 정해 두지 않는다 — 창에서 규칙 1~5로만 · 웹 try는 실 Chromium으로 화면을 누른다(저장소 밖 `playwright-core@1.56.1`) · 데이터 파일 하나를 try마다 이어 쓴다(운영진 PC 그대로 — 새 판이 앞 판이 쓴 정상 파일을 열지 못하거나 그 내용을 잃으면 결함으로 센다: 원문의 「망가진 파일」이 아니다) · 대리가 띄운 서버는 대리가 끈다 · 엑셀이 컨테이너에 없어 CSV는 바이트로(BOM·구분자·따옴표) · 「이 PC 밖에서는 열리지 않음」은 컨테이너의 비루프백 주소로 접속해 본다 · 브라우저가 저절로 열리는지는 화면 없는 기계라 못 본다 · 윈도우는 원문 요구로만(CEO의 윈도우 3일이 본다).
+
+### 리눅스 1일차 (2026-10-02 — 대리 CEO, 압축 낮 · 세션 c12c8c1d)
+- 아침 창: intake → unit 21(**M1 14** · M2 7 — 원문의 「먼저 필요한 것」 줄대로 득점 순위·몰수·날짜 옮기기·CSV·시즌 마감·두 창 동시 수정과 cross-platform이 M2) · Q1~Q5 대리 「예」(`node server.mjs [--port N] [--data 경로]` · 모든 시즌을 league.json 하나에 · 자책골은 이득 본 팀 득점자 목록에 「자책」 · CSV는 UTF-8 BOM·쉼표 · 동시 수정은 결과마다 버전 번호) · 범위 M1 · 「가」. 첫 말 15:31:29Z · 아침 창 끝 15:34:02Z(scope) → 저녁 창 시작 15:56:12Z(tried boot).
+- 낮: 접점 0 · 멈춤 미검수 3(local-only ship 15:53:48Z — conductor의 마지막 줄 「미검수 3 · seed STOP」) · 낮 경과(→ 세 번째 ship) 19.8분 · 프레임워크 FAIL 0(안내대로 한 번에 풀린 FAIL 2 — boot ship의 main stray package-lock.json → 되돌림·보존·재spawn이 lockfile 커밋: 사고 38 경로, 2판·b0da849와 같다 · intake의 `spawned`에 팩 경로).
+- 규칙집 드리프트 1: 84c21ce boot의 commands 기록(`.garagiste/team.json`) — 첫날 boot의 정상 일. 이후 기준선 8e8a3e5.
+
+| 구간 | unit | 구성 | 시도 | seed→ship(분) | spawn 의도/완료 | 토큰 | attack | redproof | tried | green 후 결함 | FAIL |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | boot | — | 1 | 1.0 | 2/2 | 34K | — | scaffold | ok(대리 CEO) | 0 | 0 |
+| 무인 | server-cli | ② | 1 | 9.5 | 4/4 | 122K | 5→0/6 | base_red head_green | ok(대리 CEO) | 0 | 0 |
+| 무인 | local-only | ② | 1 | 9.3 | 5/5 | 140K | 1→0/2 | base_red head_green | ok(대리 CEO) | 0 | 0 |
+| 계 | 3 | | | 19.7 | 11/11 | 296K | 선발견 6 | 3 | 3 ok | 0 | 0 |
+
+- 저녁: try 사본 3(conductor가 카드마다 열었다) · 카드 3/3 ok · 열린 질문 0 · main 깨끗 · 팀이 정한 것 4(브라우저 자동 열기 없이 주소를 출력 · 데이터 파일은 뜰 때 만든다 · Host 헤더 검사 — DNS 재바인딩까지 · Node 22·외부 패키지 0).
+- 대리 try(사본에서 · 실 Chromium 141): 카드대로 + 경계 — 같은 포트 둘째 · 포트 0/70000/abc · 폴더를 가리킨 `--data` · 모르는 옵션은 이유 한 줄로 끝 · 없는 폴더 아래 한글·공백 경로는 만든다 · 비루프백 192.0.2.2:8000 연결 거부 · 바깥 이름의 Host 403(`node:http`로 — fetch는 Host를 못 바꾼다) · 운영진 파일 `ceo/league.json` 첫 판(`{}`).
+- 표 대조: conductor의 표와 day.mjs의 경계·무인 분(22.2)·낮 경과·접점·spawn·토큰·팀이 정한 것이 같다. attack 팩은 unit마다 1(spec 뒤 한 바퀴) · 가장 큰 팩 27.7KB(server-cli 둘째 build — 상한 32 아래) · 이유-차선 0.
+- 참고(사실): local-only spec 반려 1(build가 짚었다 — 인수 테스트가 빈 Host를 http 클라이언트로 보내 클라이언트가 기본 Host로 바꿨다 → raw 소켓으로 고쳐 redproof 통과) · build 둘이 wip 커밋을 `git reset --soft`로 풀었다고 보고 · 세션 비용 $3.62.
+- **판정: 리눅스 1일차 통과 — 게이트(리눅스) 1/3**, 누적 green 후 CEO 발견 결함 0.
