@@ -132,3 +132,10 @@ test('day CLI: 폴더에서 표를 낸다 · 시각을 못 읽으면 FAIL 한 �
     assert.match(bad.stdout, /^FAIL day 시각을 읽지 못했다: 어제/);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+test('day 팩 이유-차선(측정 H3): 원장의 large 팩을 표 아래에 센다 — 크기·상한·이유', () => {
+  assert.match(render(day1(), { name: 'f' }), /\n- 팩 이유-차선 0\n/);
+  const L3 = L.map((x) => (x.kind === 'pack' && x.slug === 'edit' && x.pack === 'build' ? { ...x, bytes: 34.5 * 1024, large: '공격 테스트 5개가 실렸다', cap_kb: 32 } : x));
+  const out = render(dayTable({ L: L3, units, ledgerMd, brief, until: T('09:00', D2), budgets }), { name: 'f' });
+  assert.match(out, /\n- 팩 이유-차선 1:\n {2}- edit build 34\.5KB\(상한 32KB\) — 「공격 테스트 5개가 실렸다」\n/);
+});

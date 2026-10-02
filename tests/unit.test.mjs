@@ -12,7 +12,7 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, gateDecision, logicLines, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
-import { attackRoundUsed, closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
+import { againCmd, attackRoundUsed, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
@@ -544,6 +544,21 @@ test('brief: 팩 상한 FAIL은 법만으로 넘을 때 난다 — 안내는 CEO
   assert.match(overflowAdvice({ bytes: 70 * 1024, capKb: 64, slug: 'boot', mult: 4 }), /pack_kb_max를 18 이상으로/, 'boot는 4× — 필요한 상한은 배수로 나눠 센다');
   assert.ok(team.budgets.pack_kb_max >= 21, '기본 상한은 실측 이상 — 4차 time-model build 팩 전문 21KB(법만 17KB), 사고 8 선례대로 실측으로 올린다');
   assert.ok(team.budgets.pack_kb_max >= 31, '벤치 실측: build 팩 28KB(070f185 웹·Go 둘 다 CEO 결정 ①) · 31KB(cfbcf3a 웹 사슬 24→25→29→31) — 같은 결정이 벤치마다 CEO에게 갔다');
+});
+test('brief: 팩 상한 이유-차선 — 상한~2배는 conductor의 이유 한 줄(원장)로 지나가고, 2배를 넘어야 CEO 결정 (측정 H3 · CEO 채용 2026-10-02)', () => {
+  const KB = 1024;
+  assert.equal(packLane(32 * KB, 32, ''), 'fit');
+  assert.equal(packLane(32 * KB + 1, 32, ''), 'reason', '상한을 넘으면 이유를 묻는다 — CEO가 아니다');
+  assert.equal(packLane(64 * KB, 32, '공격 테스트 7개'), 'lane', '2배까지는 이유 한 줄로');
+  assert.equal(packLane(64 * KB + 1, 32, '공격 테스트 7개'), 'wall', '2배를 넘으면 이유로는 못 넘는다');
+  // 측정마다 CEO 결정 ①로 간 크기 — 홀드아웃 library(상한 32)의 34·35·48·49KB: 차선이면 CEO 결정 0
+  for (const kb of [34, 35, 48, 49]) assert.equal(packLane(kb * KB, 32, '이유'), 'lane', `${kb}KB`);
+  assert.equal(packLane(130 * KB, 128, ''), 'reason', 'boot는 상한이 pack_kb_max×4 — 같은 띠');
+  const a = laneAdvice({ capKb: 32, again: againCmd(['build', 'loan-return']) });
+  assert.match(a, /2배\(64KB\) 안이다 — CEO 결정이 아니다/);
+  assert.match(a, /node \.garagiste\/scripts\/brief\.mjs build loan-return --large "<이유/, '같은 명령에 --large를 더해 다시');
+  assert.doesNotMatch(a, /CEO 결정 ①|--hold/, '차선은 CEO 질문이 아니다 — 그 unit도 세우지 않는다');
+  assert.equal(againCmd(['spec', 'x', '--return', 'spec: 두 주장이 "어긋난다"']), 'spec x --return "spec: 두 주장이 \\"어긋난다\\""', '반려 줄 같은 인자는 따옴표째 그대로');
 });
 test('brief: attack은 spec 뒤 한 바퀴 — 고칠 때마다 attack 팩을 새로 띄워 28·20바퀴(L2 2판 윈도우 1일차), 같은 conductor가 2·3일차엔 1바퀴', () => {
   const L = (kind, ts, extra = {}) => ({ kind, ts: `2026-10-02T00:${ts}:00.000Z`, slug: 'add', ...extra });

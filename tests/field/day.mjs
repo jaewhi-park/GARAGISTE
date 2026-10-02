@@ -113,6 +113,7 @@ export function dayTable({ L, units = [], ledgerMd = '', brief = '', since = '',
     briefsEdge: briefs.filter((x) => !inside(x) && touches(x)),
     cards: b.eveningStart ? L.filter((e) => e.kind === 'tried' && e.ts >= b.eveningStart && e.ts < until) : [],
     defaults: units.flatMap((u) => (u.defaults || []).filter((d) => d.at > b.morningEnd && d.at < until).map((d) => ({ slug: u.slug, text: d.text }))),
+    lanes: L.filter((e) => e.kind === 'pack' && e.large && e.ts > b.morningEnd && e.ts < until), // 팩 상한 이유-차선(측정 H3) — CEO 결정 대신 conductor의 이유로 지나간 팩
   };
 }
 
@@ -142,6 +143,7 @@ export function render(t, { name = '', drift = null } = {}) {
   o.push('', `- 카드: ${t.cards.length} · ok ${t.cards.filter((e) => e.result === 'ok').length} · fail ${t.cards.filter((e) => e.result === 'fail').length}`);
   o.push('- CEO-분: 아침 창 (CEO 기입) · 저녁 창 (CEO 기입)');
   o.push(`- 팀이 정한 것 ${t.defaults.length}${t.defaults.length ? ':' : ''}`, ...t.defaults.map((d) => `  - ${d.slug}: ${d.text}`));
+  o.push(`- 팩 이유-차선 ${t.lanes.length}${t.lanes.length ? ':' : ''}`, ...t.lanes.map((e) => `  - ${e.slug} ${e.pack} ${f1(e.bytes / 1024)}KB(상한 ${e.cap_kb}KB) — 「${e.large}」`));
   o.push('- 표 밖(판단 — conductor가 넘긴 줄·인수 파일·관찰로 채운다): 구성 ①/② · 프레임워크 FAIL 칸과 전문 · 멈춤 이유 · 참고');
   if (rows.some((r) => r.odd)) o.push('- ※ 같은 팩이 겹쳐 떠서 spawn_stop의 slug가 어긋날 수 있다(정의대로 바로 앞 같은 팩의 slug로 셌다)');
   o.push('', `DAY ${name} · 무인 ${unattended} · 낮 접점 ${touches} · 낮 ship ${t.dayShips.length} · 연장 ${rows.filter((r) => r.span !== '무인').length} · 미출하 ${rows.length - shipped.length} · 토큰 ${k(sum(rows, (r) => r.tokens))} · 카드 ok ${t.cards.filter((e) => e.result === 'ok').length}/fail ${t.cards.filter((e) => e.result === 'fail').length}`);

@@ -80,6 +80,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Added — 2026-10-02 팩 상한 이유-차선 (측정 H3 — CEO 채용)
+- 팩 상한 FAIL의 CEO 결정은 측정마다 ①(상한을 올린다)뿐이었다 — 기본 상한 8→16(사고 8)→24(사고 25)→32(벤치), 벤치 웹 24→25→29→31, 홀드아웃 library 32→34→35→49. ②(unit 나누기)를 고른 기록은 없다. 넘는 것은 대개 build 팩의 공격 절이다 — attack이 결함을 찾을수록 자란다(library loan-return 27KB). L2에서 이 FAIL은 그날을 멈췄다(library 2·5일차 — 사고 59 뒤로는 그 unit만).
+- 장치: 커밋 게이트의 LARGE_STEP과 같은 모양. 상한~2배는 conductor가 이유 한 줄과 함께 같은 명령을 다시 — `brief.mjs <팩> <slug> --large "<이유>"` → 팩이 지어지고 원장 pack 줄에 `large`·`cap_kb`, PACK 줄에 이유. 2배를 넘으면 벽 — 지금의 CEO 결정 둘과 `--hold`(사고 59) 그대로. 이유는 스크립트가 판단하지 않는다(기록만). 상한 안에서 준 `--large`는 원장에 남기지 않는다. 하루 표(`tests/field/day.mjs`)가 차선으로 지나간 팩을 센다(크기·상한·이유).
+- 검사: 단위(경계 32/32+1/64/64+1KB · library의 34·35·48·49KB는 모두 차선 · 안내에 CEO 결정·--hold 없음 · 같은 명령을 따옴표째) + e2e(인수 36KB → 이유 FAIL → `--large`로 PACK·원장 large · 70KB는 이유가 있어도 벽 · 이유 없는 `--large`는 FAIL · 상한 안의 `--large`는 기록 없음) + 하루 표. 옛 판에서 셋 다 red.
+
 ### Fixed — 2026-10-02 rebase 도중의 사본에서 redproof가 거짓 「base에서 green」을 냈다 (홀드아웃 library 6일차의 사고 58)
 - 홀드아웃 첫 측정(L2 측정 9be0e15)이 6일차에 멈췄다: loan-return ship이 main과 충돌(원장 `ship_conflict`) → 안내대로 재spawn된 build가 충돌 표시를 풀고 `git add`까지 한 뒤(잇는 것은 ship — 사고 26) 공격 테스트가 main의 5권 제한과 어긋난다는 `spec:` 반려를 남겼다 → 그 자리(rebase 도중)에서 spec 팩과 redproof가 돌았다. rebase 도중의 HEAD는 onto(main)라 merge-base = HEAD — redproof는 「제품 코드가 아직 없다」 갈래로 스테이징된 고친 코드에서 인수를 돌려 green → `FAIL redproof loan-return: base에서 green … 이미 충족으로 닫는다 → drop`. 안내 둘(drop · re-spec)은 원인에 닿지 않고 drop은 출하 직전의 일(790ac06)을 버린다 — conductor가 그렇게 진단하고 멈췄다(사고 57과 같은 꼴).
 - 수리: rebase 도중의 길은 둘뿐이다 — 표시가 남았으면 build(표시를 풀고 git add), 다 풀렸으면 ship(잇고 통합 tree를 다시 검증). redproof는 rebase 도중이면 비교하지 않고 그 둘 중 하나를 말한다(`lib.rebaseAdvice`). 팩 조립(brief.mjs)은 풀 표시가 남았으면 짓고(conflict 절 — 사고 26·42의 길 그대로), 다 풀렸으면 「ship이 먼저」 FAIL — 반려도 ship이 잇은 뒤 그 출력이 다시 낸다.
