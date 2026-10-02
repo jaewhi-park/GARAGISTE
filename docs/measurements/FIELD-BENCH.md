@@ -63,6 +63,9 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 | 2026-10-01 | 측정 | 621a426 | 1 파이썬 CLI | SCOPE DONE | 5/0 | 0 | 5/0 | 0 | 20 | 450K | 19.6 | $4.62 |
 | 2026-10-01 | 측정 | 621a426 | 2 Node 웹 | SCOPE DONE | 4/2 | 0 | 4/0 | 0 | 18 | 432K | 31.3 | $4.83 |
 | 2026-10-01 | 측정 | 621a426 | 3 Go CLI(회귀) | SCOPE DONE(M1 4 — 5 unit은 intake가 M2로) | 4/0 | 0 | 4/0 | 0 | 12 | 268K | 13.4 | $2.96 |
+| 2026-10-02 | 측정 | 070f185(동결 9c677ec) | 1 파이썬 CLI | 정지 — add-entry redproof(unit 2/5) | 1/0 | 1 (add-entry redproof · 거짓 base green — boot의 test_file이 하이픈 파일을 0건 실행·exit 0) | 0/0 | 0 | 2 | 66K | 1.3 (정지 3.2) | $0.86 |
+| 2026-10-02 | 측정 | 070f185(동결 9c677ec) | 2 Node 웹 | SCOPE DONE | 8/1 | 0 | 8/0 | 0 | 33 | 883K | 46.2 | $9.47 |
+| 2026-10-02 | 측정 | 070f185(동결 9c677ec) | 3 Go CLI(회귀) | SCOPE DONE | 5/0 | 0 | 5/0 | 0 | 17 | 516K | 23.4 | $5.32 |
 
 \* scope → 마지막 ship/drop, 정비를 기다린 시간 포함. 다음 행은 측정 모드로 — 예측: b7f09d4 이후 판은 두 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE(남은 위험: 이미 충족된 주장은 drop만 가능 · try 잔여물 — 둘 다 장치 후보).
 
@@ -160,3 +163,16 @@ node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
 - 621a426과 다른 것: try 사본(97716dc) · 사본은 지우기 전에 의존성 링크를 끊는다(ed65a9c) — 둘뿐.
 - 예측: 1) 세 필드 모두 프레임워크 FAIL 0으로 SCOPE DONE 2) 웹의 try 잔여물 치움 0(486fd74·621a426은 1 — `data/memos.json`) 3) try 뒤 `.worktrees`에 try 사본 0 · main 깨끗 4) green 후 CEO 발견 결함 0~1(파이썬 날짜 경계·CSV 수식은 attack 편차) 5) 비용 $12~15.
 - 덤(측정만): unit마다 attack 바퀴 수 — 윈도우 L2 1일차의 진동(add 28 · add-due-tag 20바퀴)과 비교할 리눅스 기준선.
+
+### 2026-10-02 측정 070f185 — 기록
+- 차림: 설치 79519cf(= 070f185 + 위 예측 커밋 — team/ 같다) · SELFTEST 19/19 ×3 · 세 필드 병렬 · try는 전부 사본에서 13개(conductor가 연 것 10 · conductor가 안 열어 대리가 `work.mjs try`로 연 것 3) · 웹은 실 Chromium 141. 규율 이탈 0(세 필드 — 정지마다 우회·편집 없이 FAIL 전문).
+- **필드 1 정지 줄**(23:44:48Z — boot 출하 뒤 첫 기능 unit의 spec 직후):
+  ```
+  FAIL redproof add-entry: base에서 green — tests/acceptance/add-entry_cli.py — 기존 코드가 이 주장을 이미 만족한다(old code에서도 통과하는 테스트는 테스트가 아니다). CEO 결정(예/아니오로 묻는다): 이미 충족으로 닫는다 → node .garagiste/scripts/work.mjs drop add-entry "이미 충족 — <근거>" --forget (주장 파일은 dropped 브랜치에 남는다) · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec add-entry 재spawn
+  ```
+  boot가 고른 test_file `python3 tests/harness/run.py {files}`는 파일 인자를 `unittest discover(pattern=<파일 이름>)`로 읽어 하이픈 모듈 이름(`add-entry_cli.py`)을 건너뛴다 — `Ran 0 tests · OK · exit 0`, 직접 실행하면 4건 FAIL(진짜 red). redproof는 그 exit 0을 base green으로 읽었고, 안내 둘(이미 충족 drop · re-spec)은 원인에 닿지 않는다 — conductor가 그렇게 진단하고 멈췄다(대리가 재현으로 확인).
+- **결함 후보(측정 모드라 수리하지 않았다)**: 프레임워크는 test_file이 받은 파일을 실제로 돌리는지 모른다 — 0건 실행이 exit 0이면 green(이번), exit 1이면 red(46a53ca 후보 4 — 거짓 base_red)로 읽는다. 같은 하네스에선 사고 44의 full(인수·공격 파일을 test_file로)도 0건 green이 된다. 앞 회차들은 boot가 파일을 직접 실행하는 하네스를 골라 드러나지 않았다 — boot의 편차가 연 구멍. 동결(L2 2판) 중 수리할지는 CEO 결정 — 윈도우 원문은 Node라 닿지 않는다.
+- **예측 채점**: 1) ✗ 필드 1 정지 · 필드 2·3 ✓ 2) ✓(저장소 안) 웹의 try 산출물(`data/memos.json`)은 사본에 남고 main은 출하마다 깨끗 — 직전 두 판의 치움 1이 0. 다만 **저장소 밖 잔여물 1**: 대리가 CSRF 확인용으로 띄운 `npm start`가 포트 3000을 쥔 채 남아(끄는 명령이 이 컨테이너에 없는 `ss`에 기댔다 — 대리의 실수) memo-delete-fix의 verify full이 server-port 인수 파일에서 `포트 3000이 이미 쓰이고 있다 — 테스트 전제가 깨졌다`로 FAIL → conductor가 try 서버를 원인으로 짚고 멈춤 → 대리가 끄고 「치웠다」(접점 1). try 사본의 한계(저장소 밖 부작용) 그대로다 3) ✓ 끝에 try 사본 0 · main 깨끗(STATUS 갱신뿐) 4) ✓ green 후 CEO 발견 결함 0(tried 13/0) 5) ✗ $15.65 — 웹 $9.47이 621a426의 약 2배(출하 8 + drop 1 · CSRF 버그 unit · 팩 상한 · 포트 막힘 · browser-reload 반려).
+- **attack 바퀴(리눅스 기준선)**: 필드 2·3의 attack unit 11개 모두 attack 팩 1번(1바퀴) · build 1~2번 — 윈도우 L2 1일차 add 28 · add-due-tag 20바퀴와 비교.
+- 원장 밖 CEO 접점: 웹 — 팩 상한 결정 ① 1(memo-delete 2차 build 팩 28KB — 안내 숫자대로 24→29 CEO 커밋) · 보안 지적 「고쳐라」 1(memo-delete의 attack이 짚은 CSRF가 red로 남지 않았다고 conductor가 올림 → 대리가 try 사본에서 실제 재현 → memo-delete-fix 출하·ok) · 이미 충족 「예」 1(memo-persist — 재시작 뒤 남음을 대리가 확인) · 치움 1(위). Go — 팩 상한 결정 ① 1(unreadable-symlink build 팩 28KB — 24→28). 파이썬 — 0.
+- 관찰: browser-reload의 핵심 주장(저장 → 새로고침 → 그대로)은 base에서 이미 green이었다 — build의 spec 반려(「playwright를 빼면 import 실패로 red가 되는 것이 전부」) 뒤 spec이 「playwright 개발 의존성 선언(Q2)」 단언으로 base red를 세워 출하(덤: 여러 줄 메모 pre-wrap). 이전 두 판은 「이미 충족」 drop — 백로그 2순위(이미 충족된 주장 박기)의 근거 하나 더 · 버그 unit memo-delete-fix의 마일스톤이 `M?`(백로그 관찰 그대로 — 이번엔 범위에서 빠지지 않았다) · 대리가 본 회색 둘(결함으로 세지 않음): 다른 출처의 `POST /`(저장)도 받는다(팀이 짚지 않아 말하지 않음 — 규칙 3) · Go의 폴더 뒤 플래그는 사용법으로 거부.
