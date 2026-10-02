@@ -88,3 +88,7 @@
 
 ## 2판(재등록 — L2-TRIAL-2.md)의 차이
 - 저녁 1번: 카드마다 `work.mjs try <slug>` 사본을 먼저 열어 준다(try 산출물이 main을 더럽혀 ship을 막던 일 — 1일차 eoren.sqlite). tried fail엔 CEO 말이 필수(사고 45)이고, 그 fail로 생긴 `<slug>-fix`는 범위 맨 앞에 든다(사고 46) — 다음 아침 첫 unit이다.
+
+## 표를 스크립트로 (2026-10-02)
+- 「저녁」 2~5의 정의는 `tests/field/day.mjs`가 원장에서 그대로 계산한다(정의를 바꾸면 그 스크립트와 `tests/field.test.mjs`도 함께). 판단이 드는 칸(구성 ①/② · 프레임워크 FAIL · 멈춤 이유 · 참고)은 표 밖이다.
+- 정의에 없는 것 하나를 더 낸다: **답 대기 뺀 seed→ship** — 그 unit의 질문마다 decide 줄을 사이에 둔 그 unit의 원장 공백(decide 직전 그 slug의 마지막 줄 → decide 뒤 다시 움직인 첫 줄)을 뺀다. 묻는 시각은 원장에 없어서(ask는 DECISIONS.md에만 쓴다) 이렇게 잰다. L1 수치는 이 열에서 읽는다.

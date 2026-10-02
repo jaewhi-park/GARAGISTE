@@ -37,6 +37,7 @@ tests/field/turn.sh $B/field1 1 "<첫 말>"             # 출력의 session id�
 tests/field/turn.sh $B/field1 2 "<둘째 말>" <sid>      # 이후 매 턴 --resume
 tests/field/watch.sh $B/field1:2 $B/field2:2          # Monitor로 걸면 ship·턴 끝마다 알림
 node tests/field/table.mjs $B/field1                   # 표 + BENCH 한 줄
+node tests/field/day.mjs $B/field1 --since <그날 세션을 연 ISO 시각> [--until <다음 날 --since>]   # L2 하루 표 + DAY 한 줄(L2-day-conductor 「저녁」 2~5 그대로 + 답 대기 뺀 seed→ship)
 ```
 - 두 필드는 서로 독립이라 동시에 돌려도 된다(턴은 백그라운드로).
 - 하네스 함정(프레임워크 결함 아님): 부모 세션의 `CLAUDE_*` 환경 누수 → `turn.sh`가 걷어 낸다 · 신뢰 안 된 작업 공간은 허용 목록 무시 → `setup.sh`가 신뢰를 켠다 · 필드 사본에서 `git worktree repair`를 치지 않는다(원본 링크를 빼앗는다 — 2026-10-01 정비 채널 실수).
