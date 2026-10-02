@@ -91,8 +91,11 @@ export function dayTable({ L, units = [], ledgerMd = '', brief = '', since = '',
   const unitLine = (e) => ['unit', 'pack', 'ship'].includes(e.kind) || (e.kind === 'drop' && !e.backlog_only); // unit 없는 BACKLOG 줄 정정(drop --forget)은 unit이 아니다
   const slugs = [...new Set(L.filter((e) => unitLine(e) && e.slug && e.slug !== 'intake' && e.ts > b.morningEnd && e.ts < until).map((e) => e.slug))];
   const rows = slugs.map((slug) => unitRow({ L, b, until, u: units.find((x) => x.slug === slug) || {}, slug, stops, ledgerMd })).sort((x, y) => x.seed.localeCompare(y.seed));
-  // 3. 표 머리 — BRIEF의 절 시각은 work.mjs brief가 쓴 UTC 분(초는 0으로 본다)
-  const briefs = [...brief.matchAll(/^## (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}).*$/gm)].map((m) => ({ line: m[0], ts: `${m[1]}T${m[2]}:00.000Z` }));
+  // 3. 표 머리 — BRIEF의 절 시각은 work.mjs brief가 쓴 UTC 분: 그 분 전체가 낮 안이어야 낮 접점이고,
+  // 창 경계와 같은 분이면 낮인지 가를 수 없어 세지 않고 따로 보인다(홀드아웃 3일차 — 저녁 창 08:25:53 뒤 같은 분의 CEO 답)
+  const briefs = [...brief.matchAll(/^## (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}).*$/gm)].map((m) => ({ line: m[0], ts: `${m[1]}T${m[2]}:00.000Z`, end: `${m[1]}T${m[2]}:59.999Z` }));
+  const inside = (x) => x.ts > b.morningEnd && (!b.eveningStart || x.end < b.eveningStart);
+  const touches = (x) => x.end > b.morningEnd && (!b.eveningStart || x.ts < b.eveningStart);
   const last = L.filter((e) => inDay(e.ts)).at(-1) || null;
   // 멈춘 때의 계수 — state.mjs budgetStatus와 같은 셈을 그 시각으로(접점 = decide·scope·tried 줄 + BRIEF 절)
   const at = last?.ts ?? b.morningEnd;
@@ -106,7 +109,8 @@ export function dayTable({ L, units = [], ledgerMd = '', brief = '', since = '',
     b, rows, budgets, last, unseen, unattended: shipsTo.filter((e) => e.ts > touch).length,
     dayShips: L.filter((e) => e.kind === 'ship' && inDay(e.ts)),
     contacts: L.filter((e) => CONTACT.includes(e.kind) && inDay(e.ts)),
-    briefs: briefs.filter((x) => inDay(x.ts)),
+    briefs: briefs.filter(inside),
+    briefsEdge: briefs.filter((x) => !inside(x) && touches(x)),
     cards: b.eveningStart ? L.filter((e) => e.kind === 'tried' && e.ts >= b.eveningStart && e.ts < until) : [],
     defaults: units.flatMap((u) => (u.defaults || []).filter((d) => d.at > b.morningEnd && d.at < until).map((d) => ({ slug: u.slug, text: d.text }))),
   };
@@ -122,6 +126,7 @@ export function render(t, { name = '', drift = null } = {}) {
   o.push(`- 경계: 아침 창 끝 ${b.morningEnd} (${who(b.morning) || '접점 줄 없음'}) · 저녁 창 시작 ${b.eveningStart ?? '없음'}${b.evening ? ` (${who(b.evening)})` : ''} · 첫 ship ${b.firstShip ? `${b.firstShip.ts} (${b.firstShip.slug})` : '없음'}`);
   o.push(`- 무인 ${unattended} · 낮 경과(→ 낮의 세 번째 ship) ${third ? `${f1(mins(b.morningEnd, third.ts))}분` : `— (낮 ship ${t.dayShips.length})`}`);
   o.push(`- 낮 접점 ${touches}(목표 0)${touches ? ':' : ''}`, ...t.contacts.map((e) => `  - \`${JSON.stringify(e)}\``), ...t.briefs.map((x) => `  - BRIEF \`${x.line}\``));
+  for (const x of t.briefsEdge || []) o.push(`  - (경계 분 — 절 시각이 분 단위라 낮인지 가를 수 없어 세지 않았다) BRIEF \`${x.line}\``);
   o.push(`- 멈춤: 낮의 마지막 원장 줄 ${t.last ? `${t.last.ts} (${who(t.last)})` : '없음'} · 그때 미검수 ${t.unseen}/${t.budgets.unseen_max ?? '?'} · 무인 출하 ${t.unattended}/${t.budgets.unattended_ship_max ?? '?'} — 이유(여섯 중 하나)는 conductor의 마지막 줄로(표 밖)`);
   if (drift) o.push(`- 규칙집 드리프트: ${drift.log || '없음'} · HEAD:.garagiste ${drift.tree || '—'}`);
   o.push('', '| 구간 | unit | 구성 | 시도 | seed→ship 원시(분) | 답 대기 뺀(분) | spawn 의도/완료 | 토큰 | attack | redproof | tried | green 후 CEO 발견 결함 | 프레임워크 FAIL | RESPEC | needs 수정 |', `|${'---|'.repeat(15)}`);
