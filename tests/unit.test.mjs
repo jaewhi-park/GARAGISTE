@@ -12,7 +12,7 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, gateDecision, logicLines, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
-import { closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
+import { attackRoundUsed, closedDecisions, fit, fence, matchHazards, overflowAdvice, packBreakdown, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
@@ -537,6 +537,16 @@ test('brief: 팩 상한 FAIL은 법만으로 넘을 때 난다 — 안내는 CEO
   assert.match(overflowAdvice({ bytes: 70 * 1024, capKb: 64, slug: 'boot', mult: 4 }), /pack_kb_max를 18 이상으로/, 'boot는 4× — 필요한 상한은 배수로 나눠 센다');
   assert.ok(team.budgets.pack_kb_max >= 21, '기본 상한은 실측 이상 — 4차 time-model build 팩 전문 21KB(법만 17KB), 사고 8 선례대로 실측으로 올린다');
   assert.ok(team.budgets.pack_kb_max >= 31, '벤치 실측: build 팩 28KB(070f185 웹·Go 둘 다 CEO 결정 ①) · 31KB(cfbcf3a 웹 사슬 24→25→29→31) — 같은 결정이 벤치마다 CEO에게 갔다');
+});
+test('brief: attack은 spec 뒤 한 바퀴 — 고칠 때마다 attack 팩을 새로 띄워 28·20바퀴(L2 2판 윈도우 1일차), 같은 conductor가 2·3일차엔 1바퀴', () => {
+  const L = (kind, ts, extra = {}) => ({ kind, ts: `2026-10-02T00:${ts}:00.000Z`, slug: 'add', ...extra });
+  const spec = L('pack', '01', { pack: 'spec' }); const atk = L('pack', '03', { pack: 'attack' }); const ran = L('attack', '04', { red: 1, total: 1 });
+  assert.equal(attackRoundUsed([spec], 'add'), null, 'attack 전');
+  assert.equal(attackRoundUsed([spec, atk], 'add'), null, '끊긴 attack(verify 전) — 다시 띄울 수 있다(이어받기)');
+  assert.equal(attackRoundUsed([spec, atk, ran], 'add'), atk.ts, 'attack 팩 뒤 verify attack까지 — 그 바퀴는 썼다');
+  assert.equal(attackRoundUsed([spec, atk, ran, L('pack', '05', { pack: 'spec' })], 'add'), null, 're-spec(spec 팩) 뒤엔 새 바퀴');
+  assert.equal(attackRoundUsed([spec, atk, ran].map((e) => ({ ...e, slug: 'other' })), 'add'), null, '다른 unit의 바퀴는 세지 않는다');
+  assert.equal(attackRoundUsed([spec, atk, ran], 'add', '2026-10-02T00:05:00.000Z'), null, 'drop 전 생애(since 앞)는 세지 않는다 — 같은 slug가 새로 열렸다');
 });
 test('brief: 닫힌 결정만 골라낸다 — CEO의 답은 모든 팩의 전제다 (첫 실기 사고: boot가 Q1을 못 받았다)', () => {
   const t = '## 정해 주세요\n- [ ] Q2 (vault): 어디에 두나?\n- [x] Q1 (boot): 부록 스택으로 확정? → 예 (2026-09-29)\n산문 줄은 무시\n';
