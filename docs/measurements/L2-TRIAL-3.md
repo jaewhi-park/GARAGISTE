@@ -103,3 +103,19 @@ Q6·Q7은 플랫폼과 무관한 흐름(인터럽트를 객체로 · 상한에�
 - 표 대조: conductor의 표와 day.mjs의 경계·무인 분(22.2)·낮 경과·접점·spawn·토큰·팀이 정한 것이 같다. attack 팩은 unit마다 1(spec 뒤 한 바퀴) · 가장 큰 팩 27.7KB(server-cli 둘째 build — 상한 32 아래) · 이유-차선 0.
 - 참고(사실): local-only spec 반려 1(build가 짚었다 — 인수 테스트가 빈 Host를 http 클라이언트로 보내 클라이언트가 기본 Host로 바꿨다 → raw 소켓으로 고쳐 redproof 통과) · build 둘이 wip 커밋을 `git reset --soft`로 풀었다고 보고 · 세션 비용 $3.62.
 - **판정: 리눅스 1일차 통과 — 게이트(리눅스) 1/3**, 누적 green 후 CEO 발견 결함 0.
+
+### 리눅스 2일차 (2026-10-02 — 대리 CEO, 새 conductor 세션 234e3646)
+- 아침 창: 새 세션이 상태를 다시 읽었다(안 본 것 0/3 · 결정 대기 0) → Flow 3대로 `scope --milestone M1`을 다시 돌려 보였다(15:58:11Z — 첫 ship 전) → 「가」. 첫 말 15:57:59Z · 아침 창 끝 15:58:11Z → 저녁 창 시작 16:31:03Z.
+- 낮: 접점 0 · 멈춤 **hard 질문**(Q6, 16:29:34Z) · 프레임워크 FAIL 0 · 규칙집 드리프트 0(8e8a3e5 그대로). team-register는 인수·공격(3→0/3)을 다 통과했지만 그 spec이 올린 Q6(「팀은 league.json 최상위 "teams" 배열에 {id, name} 꼴로」)이 열려 ship 8조건이 막았고(`FAIL ship team-register 1/8 — 이 unit의 열린 질문 Q6`), 범위의 나머지 10 unit이 모두 team-register를 needs라 seed가 WAIT — 하루가 한 출하로 끝났다. 「질문에 걸린 unit만 두고 다음으로」가 열 수 있는 unit이 없었다(규칙대로의 정지).
+
+| 구간 | unit | 구성 | 시도 | seed→ship(분) | spawn 의도/완료 | 토큰 | attack | redproof | tried | green 후 결함 | FAIL |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | data-corrupt | ② | 1 | 16.5 | 4/4 | 142K | 2→0/3 | base_red head_green | ok(대리 CEO) | 0 | 0 |
+| 무인 | team-register | ①+② | 1 | 미출하 — Q6(저녁 decide 뒤 RESPEC) | 4/4 | 147K | (3→0/3 — LEDGER 행 전) | — | — | — | 0 |
+| 계 | 2(출하 1) | | | 16.5 | 8/8 | 289K | 선발견 2(+3) | 1 | 1 ok | 0 | 0 |
+
+- 저녁: try 사본 1 · 카드 1/1 ok · Q6 대리 「예」(원문과 어긋나지 않는다 — 대리 규칙 1) → decide가 `RESPEC team-register`(spec이 답 없이 이미 돈 unit — 사고 17의 길: 답이 팀의 가정과 같아도 spec 재spawn부터) — 저녁이라 conductor는 띄우지 않았다(3일차 첫 일) · main 변경은 스크립트가 쓴 DECISIONS·STATUS뿐 · 팀이 정한 것 7(망가짐의 범위는 문법 오류·잘림·0바이트·최상위가 객체 아님 — 필드 단위 구조 검사는 하지 않는다 · 이름 비교는 toLowerCase · 전각 공백·탭도 뗀다 · 안쪽 공백은 그대로 등).
+- 대리 try(사본에서): 카드대로(`{"teams": [` → 경로와 「1째 줄에서 파일이 중간에 끝났다」 한 줄 · exit 2 · 파일 그대로) + 경계 — 빈 파일 · 최상위 배열 · UTF-8 아닌 바이트는 같은 꼴로 거부·파일 그대로 · BOM 붙은 정상 파일(메모장 꼴)과 1일차 판이 쓴 운영진 파일은 연다. 회색 하나(결함으로 세지 않음): `{"teams": 5}`가 뜬다 — 이 판엔 팀이 아직 없다(팀 정한 것 「필드 단위 구조 검사는 하지 않는다」) · team-register 출하 뒤 다시 본다.
+- 표 대조: conductor의 표와 day.mjs가 같다(무인 32.9분 · 낮 ship 1 · spawn 8/8 · 289K). attack 팩 unit마다 1 · 가장 큰 팩 30.0KB(team-register 둘째 build) · 이유-차선 0.
+- 참고(사실): ship FAIL(열린 Q)과 Q6을 연 일은 원장에 줄이 없다(DECISIONS에만 — 백로그 「팩 FAIL·가드 거부는 원장 줄이 없다」와 같은 빈칸) · 세션 비용 $3.87.
+- **판정: 리눅스 2일차 통과**(규칙대로의 정지 — hard 질문, 카드 1장) **— 게이트(리눅스) 2/3**, 누적 green 후 CEO 발견 결함 0.
