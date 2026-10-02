@@ -37,6 +37,15 @@ export function revisePaths(slug) {
     `- CEO가 기존 공격 테스트(tests/adversary — 출하된 unit의 것 포함)를 고치라면: node .garagiste/scripts/work.mjs brief "<CEO 말 그대로>" → node .garagiste/scripts/brief.mjs attack ${slug} --revise "<CEO 말 그대로>" → 팩 spawn → verify.mjs attack ${slug} → (red면 build) → ship`,
   ].join('\n');
 }
+// L2 2판 윈도우 1일차(백로그 1순위): conductor가 고칠 때마다 attack 팩을 새로 띄워 add 28·add-due-tag 20바퀴 — 바퀴마다 고침이 만든 반대 결함을 짚었다(토큰 16배의 거의 전부).
+// 같은 conductor가 2·3일차엔 1바퀴로 돌았다 — Flow 4의 「red>0이면 build 다시」가 고친 뒤 attack 팩을 새로 띄울지를 말하지 않았다. 빈칸을 코드로:
+// attack 팩은 spec 뒤 한 바퀴. 바퀴를 쓴 것은 attack 팩 뒤에 verify attack까지 돈 것(끊긴 attack은 다시 띄울 수 있다), re-spec(spec 팩) 뒤엔 새 바퀴.
+export function attackRoundUsed(ledger, slug, since = '') {
+  const mine = ledger.filter((e) => e.slug === slug && (e.ts || '') >= since);
+  const lastSpec = [...mine].reverse().find((e) => e.kind === 'pack' && e.pack === 'spec')?.ts || '';
+  const atk = mine.find((e) => e.kind === 'pack' && e.pack === 'attack' && (e.ts || '') >= lastSpec);
+  return atk && mine.some((e) => e.kind === 'attack' && (e.ts || '') >= atk.ts) ? atk.ts : null;
+}
 export function overflowAdvice({ bytes, capKb, slug, mult = 1 }) {
   const need = Math.ceil(bytes / 1024 / mult);
   return [
@@ -130,6 +139,8 @@ function main() {
   // 사고 17(2차 실기): 진행 중에 닫힌 질문의 답은 spec이 먼저 받는다 — 닫힘은 반영이 아니다(Q11이 build 뒤 닫혀 미구현 출하)
   const respec = unit.respec || [];
   if (respec.length && (pack === 'build' || pack === 'attack')) fail(`FAIL ${pack} 팩: ${respec.map((r) => `Q${r.q}`).join('·')}의 답이 진행 중에 왔다 — spec이 먼저(답을 red 수용 테스트로): node .garagiste/scripts/brief.mjs spec ${slug}`);
+  const usedAt = pack === 'attack' && !revise ? attackRoundUsed(readLedger(c.main, c.team), slug, unit.created) : null; // CEO의 --revise는 바퀴가 아니라 결정이다
+  if (usedAt) fail(`FAIL attack 팩: ${slug}은 이번 spec 뒤 이미 공격받았다(${usedAt.slice(0, 16)}) — attack은 spec 뒤 한 바퀴다(고칠 때마다 다시 띄우면 고침이 만든 반대 결함을 짚어 끝이 없다: 윈도우 L2 28·20바퀴). 고친 뒤엔 기존 공격 테스트만: node .garagiste/scripts/verify.mjs attack ${slug} → red 0이면 node .garagiste/scripts/ship.mjs ${slug} · red가 남으면 node .garagiste/scripts/brief.mjs build ${slug}`);
   const wt = worktreeDir(c.main, c.team, slug);
   if (!fs.existsSync(wt)) fail(`FAIL worktree 없음: ${unit.worktree}`);
   const base = mergeBase(wt, c.team.protected_branch);
