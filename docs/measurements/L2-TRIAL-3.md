@@ -171,3 +171,34 @@ Q6·Q7은 플랫폼과 무관한 흐름(인터럽트를 객체로 · 상한에�
    - 저녁: 「저녁」 → 카드마다 conductor가 연 사본 `.worktrees\try-<slug>`에서 친다 → 「<slug> ok」 또는 「<slug> fail + 한 줄」 → 열린 질문에 예/아니오 → conductor가 표를 낸다.
    - 저녁 끝에 한 줄 — 출력 전체를 정비 채널에 붙인다: `node C:\L2\garagiste-3\tests\field\day.mjs C:\L2\futsal-win --since <아침에 적은 값>`
 3. **정션 점검(2판과 같다)** — 프로젝트에 의존성 디렉터리(node_modules)가 생기면 그 뒤 첫 ship 직후 main의 그 디렉터리가 그대로인지 한 번 본다(원문이 외부 패키지 금지라 안 생길 수 있다).
+
+### 리눅스 4일차(Q6) 준비 — plan (2026-10-02, 4일 아침 창 전에 커밋)
+- 도구: `tests/field/stream.mjs`(03011b9 · `*new` 키 — 낮에 생긴 unit의 수정 말) — 스트림 입력 세션 하나가 아침 창 → 낮 → 저녁 창. 창의 말은 `say`, 네 말은 plan이 원장 시점에 스스로 넣는다(대리의 손이 시점에 닿지 않게). 탐침(이 세션, 장난감 저장소): 원장 ship 줄 2초 뒤 넣은 말이 다음 도구 호출 사이에 들어가 같은 턴에서 처리됐다.
+- **버그 말의 재료(4일 아침 창 전, 저장소 밖 사본 — main 46bf1e2를 clone)**: 출하된 다섯 unit에 원문 경계 — 서로 다른 팀 20개 동시 등록(20/20 저장) · 같은 이름 10개 동시(1개만) · 등록 직후 Ctrl+C(남는다) · 앞뒤 NBSP(뗀다) · 끝의 투명 글자(같은 이름으로 거부) · Ä/ä(거부) · 이모지 · 하위 폴더에서 띄운 기본 데이터 파일(그 폴더의 league.json — 원문 「현재 폴더」) — 원문과 다른 동작을 못 찾았다(안쪽 EM SPACE 이름이 따로 등록되는 것은 팀이 정한 「안쪽 공백은 그대로」). 그래서 등록문대로 **원문의 경계 입력 하나를 재현처럼** 말한다 — 이미 맞게 동작하니 redproof의 「이미 충족」 길이 그 결과다(저녁에 대리 규칙 3: 원문에 비춰 맞으면 「예 — 닫아라」).
+- 수정 말: 등록문의 범주 그대로(순위표 · 득점 순위 · 몰수 · 일정 · 선수 · 팀) — 원문 줄에 수가 없는 unit은 그 unit에 닿는 값 하나(result-entry 「점수는 한 팀 30골까지만」 · home-nav 「첫 화면에서 일정 화면으로 가는 길도 두자」), 낮에 생긴 「추가」 unit은 그 원문 줄의 수(5 → 3). 방향전환은 csv-export(M2 — 범위 밖이라 BACKLOG에서)가 아직 시작 전이면 그것.
+- 아침 창: n일차 고정 말 → (열린 질문 · home-nav 범위 질문엔 대리 규칙 1) → 「가. 매 spawn 뒤 work.mjs spawned를 남겨라.」 · 저녁 창은 Q5와 같고, 그 끝에 Q7 부재 선언.
+
+```json
+[
+  { "id": "bug", "when": { "kind": "ship", "nth": 1 },
+    "text": "팀 화면에 ' fc 한강 '을 넣으면 → FC 한강과 따로 한 팀이 더 등록된다, 원문은 「팀 이름의 앞뒤 공백은 떼고, 이미 있는 이름(대소문자만 다른 것 포함)은 받지 않는다」",
+    "object": { "kind": ["unit", "scope_fix"], "slug": "-fix$" }, "call": "work\\.mjs (new|add) \\S+-fix" },
+  { "id": "add", "when": { "kind": "ship", "nth": 2 },
+    "text": "팀 화면에 그 팀의 최근 5경기 결과(날짜·상대·점수)를 보여 줘.",
+    "object": { "kind": ["unit"], "fresh": true }, "call": "work\\.mjs (add|new) " },
+  { "id": "modify", "when": { "kind": "pack", "pack": "build", "after": "add", "exclude": "-fix$" },
+    "texts": {
+      "player-register": "등번호는 0~99", "roster-view": "등번호는 0~99",
+      "schedule-roundrobin": "라운드는 일요일로", "schedule-dates": "라운드는 일요일로", "match-move": "라운드는 일요일로",
+      "standings": "이기면 2점으로 바꾸자", "standings-tiebreak": "이기면 2점으로 바꾸자", "result-edit": "이기면 2점으로 바꾸자",
+      "scorers": "5명까지만", "forfeit": "2:0으로",
+      "team-register": "팀 이름은 20자까지", "invalid-input": "팀 이름은 20자까지",
+      "result-entry": "점수는 한 팀 30골까지만", "server-cli": "기본 포트는 8080으로",
+      "home-nav": "첫 화면에서 일정 화면으로 가는 길도 두자", "*new": "최근 3경기만 보여 줘"
+    },
+    "object": { "kind": ["pack"], "pack": "spec", "slugOf": "modify" }, "call": "work\\.mjs brief|brief\\.mjs spec" },
+  { "id": "pivot", "when": { "kind": "pack", "pack": "spec", "after": "modify", "slugOf": "modify" },
+    "choices": [ { "slug": "csv-export", "text": "CSV 내려받기는 이번엔 빼자." }, { "slug": "match-move", "text": "날짜 옮기기는 이번엔 빼자." }, { "slug": "season-close", "text": "시즌 마감은 이번엔 빼자." } ],
+    "object": { "kind": ["drop"] }, "call": "work\\.mjs drop " }
+]
+```

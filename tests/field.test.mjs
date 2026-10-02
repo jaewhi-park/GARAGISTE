@@ -176,6 +176,10 @@ test('stream plan: 첫 ship → 버그 · 둘째 ship → 추가 · 그 뒤 처�
   assert.equal(msgs[3].text, 'CSV 내려받기는 이번엔 빼자');
   // plan에 그 slug의 말이 없으면 null(HOLD — 대리가 손으로) · 이미 시작한 unit은 방향전환의 다음 이름으로
   assert.equal(pick(Q6[2], { slug: 'recent5' }), null);
+  // 낮에 생긴 unit(띄울 때 BACKLOG에 없던 slug)은 texts['*new'] — BACKLOG에 있던 slug는 그 밖이라 HOLD
+  const Qn = { ...Q6[2], texts: { ...Q6[2].texts, '*new': '최근 3경기만 보여 줘' } };
+  assert.equal(pick(Qn, { slug: 'recent5' }, [], ['standings', 'roster-view']), '최근 3경기만 보여 줘');
+  assert.equal(pick(Qn, { slug: 'roster-view' }, [], ['standings', 'roster-view']), null);
   assert.equal(pick(Q6[3], null, [{ slug: 'csv-export', state: 'spec' }]), '날짜 옮기기는 이번엔 빼자');
   assert.equal(pick(Q6[3], null, [{ slug: 'csv-export', state: 'dropped' }]), 'CSV 내려받기는 이번엔 빼자');
 });

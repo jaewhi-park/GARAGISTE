@@ -25,25 +25,25 @@ export function trigger(item, L, sent, since = '') {
   return hits[(w.nth || 1) - 1] || null;
 }
 
-// 말 고르기 — text(고정) · texts{slug: 말}(그 줄의 slug로, 없으면 text — 둘 다 없으면 null: HOLD로 대리가 손으로)
-// · choices[{slug, text}](아직 시작하지 않은 unit의 첫 것 — unit 파일이 없거나 dropped)
-export function pick(item, line, units = []) {
+// 말 고르기 — text(고정) · texts{slug: 말}(그 줄의 slug로 · 세션을 띄울 때 BACKLOG에 없던 slug — 낮에 생긴 unit — 는 texts['*new'] ·
+// 없으면 text — 다 없으면 null: HOLD로 대리가 손으로) · choices[{slug, text}](아직 시작하지 않은 unit의 첫 것 — unit 파일이 없거나 dropped)
+export function pick(item, line, units = [], known = null) {
   if (item.choices) {
     const started = new Set(units.filter((u) => u.state !== 'dropped').map((u) => u.slug));
     return item.choices.find((c) => !started.has(c.slug))?.text ?? null;
   }
-  if (item.texts) return item.texts[line?.slug] ?? item.text ?? null;
+  if (item.texts) return item.texts[line?.slug] ?? (known && line?.slug && !known.includes(line.slug) ? item.texts['*new'] : undefined) ?? item.text ?? null;
   return item.text ?? null;
 }
 
 // 지금 넣을 말들 — 원장 순서대로(앞 말을 넣은 시각이 뒤 말의 after가 되므로 한 번에 하나씩 정한다)
-export function due(plan, L, sent, units = [], since = '') {
+export function due(plan, L, sent, units = [], since = '', known = null) {
   const out = [];
   for (const item of plan) {
     if (sent[item.id]) continue;
     const line = trigger(item, L, sent, since);
     if (!line) continue;
-    out.push({ item, line, text: pick(item, line, units) });
+    out.push({ item, line, text: pick(item, line, units, known) });
   }
   return out;
 }
@@ -112,6 +112,7 @@ function run(dir, tag, planPath) {
   const child = spawn('claude', ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--max-turns', '400'],
     { cwd: dir, env: childEnv(process.env), stdio: ['pipe', 'pipe', 'pipe'] });
   const sent = Object.fromEntries(readLines(F.msgs).filter((m) => m.id !== 'say').map((m) => [m.id, m]));
+  const known = backlogSlugs(dir); // 띄울 때의 BACKLOG — 그 밖의 slug는 낮에 생긴 unit(texts['*new'])
   // .in은 읽은 자리를 옆 파일에 남긴다 — 띄우기 전에 넣어 둔 첫 말도 가고, 다시 띄워도 지난 말을 두 번 넣지 않는다
   let open = true; let n = 0; let buf = ''; let inOff = Number(fs.existsSync(`${F.in}.off`) ? fs.readFileSync(`${F.in}.off`, 'utf8') : 0); let ledN = ledgerOf(dir).length;
   const send = (id, text, extra = {}) => {
@@ -150,7 +151,7 @@ function run(dir, tag, planPath) {
     const L = ledgerOf(dir);
     for (const e of L.slice(ledN)) if (e.kind === 'ship') console.log(`SHIP ${e.slug} ${e.ts}`);
     ledN = L.length;
-    for (const d of due(plan, L, sent, unitsOf(dir), since)) {
+    for (const d of due(plan, L, sent, unitsOf(dir), since, known)) {
       if (d.text === null) { if (!sent[d.item.id]?.held) { sent[d.item.id] = { held: true, line: d.line }; console.log(`HOLD ${d.item.id} ${d.line.slug ?? ''} — plan에 그 slug의 말이 없다: say --id ${d.item.id} "<말>"`); } continue; }
       send(d.item.id, d.text, { line: d.line, object: d.item.object, call: d.item.call, backlog: backlogSlugs(dir) });
     }
