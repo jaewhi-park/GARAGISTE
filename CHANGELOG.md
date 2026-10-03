@@ -20,6 +20,22 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
 
+### Fixed — 2026-10-03 사고 62·63 — L2 5판 리눅스 2라운드의 가드 verb 오탐과 redproof의 system 분기 (시험 중 수리 — 동결 갱신)
+- **사고 62(가드 오탐 — slug 속 rm)**: edit-rm unit의 build 팩이 공격 테스트 둘을 돌리고 소스를 읽는 명령(`node --test tests/adversary/edit-rm-1… tests/adversary/edit-rm-2… 2>&1 | grep …; cat src/todo.mjs`)을 가드가 「build 팩은 tests/adversary/edit-rm-2.test.mjs에 쓸 수 없다」로 거부했다 — `writeTargets`의 in-place verb 정규식 `\brm\b`이 `edit-rm-1.test.mjs`의 rm에 걸려 다음 인자를 쓰기 대상으로 봤다(`fileVerbTargets`는 명령 자리만 보는데 이쪽은 아니었다 — 동결판에도 있던 결함, 1라운드엔 rm이 든 slug가 없었다). 팩은 다른 명령으로 끝냈다. 수리: verb 앞에 단어 글자·`.`·`-`가 없을 때만(`(?<![\w.-])`) — `/bin/rm`·`git rm`·`&&rm`은 그대로 verb. 검사: unit(2라운드 명령의 재현 · slug 속 mv · 명령 자리의 rm/git rm/절대 경로/&&rm · cp 목적지 · build 팩의 진짜 rm은 그대로 거부).
+- **사고 63(redproof.mjs의 system 분기 빈칸)**: 시스템 공격 unit(`work.mjs system`)의 build 팩이 7단계대로 `redproof.mjs system-1`을 부르자 「tests/acceptance/system-1* 없음」 FAIL — ship 조건의 redproof(발견 ≥1)는 알지만 redproof.mjs는 몰랐다. 팩이 막힌 것으로 보고하고 conductor가 next의 ship 대신 `brief.mjs spec --return`을 돌려 FAIL 하나 더(규율 이탈 1턴) 뒤 next대로 ship. 수리: redproof.mjs가 kind system이면 발견(한 번이라도 red였던 공격 파일)으로 PASS/FAIL을 내고 FAIL엔 drop 명령을 — ship과 같은 셈(`lib.mjs systemFound`). 검사: e2e(system-attack — 발견 1의 PASS · 발견 0의 FAIL).
+- 측정 도구(동결 아님): `tests/field/day.mjs` 아침 창 끝에 `--since` 하한 — 접점 줄 없는 아침(「상태 보여줘」·「가」만)이 앞 라운드 저녁의 tried를 잡아 무인 84.6분(실제 31.3분)을 냈다(지시서 「저녁」 2에도 한 줄 — 다음 동결부터 conductor의 표도 같다). HAZARDS 줄 없음(규칙집·도구 경로 — 기록은 여기). **5판 동결 갱신**: 테스트 베드 반영(L2-TRIAL-5 「차림」 수리 반영 2), 머지가 새 동결.
+
+### Fixed — 2026-10-03 사고 60·61 — L2 5판 리눅스 1라운드의 가드 오탐과 decide 번호 (시험 중 수리 — 동결 갱신)
+- **사고 60(가드 오탐 → 원문 변형)**: intake 팩이 BRIEF 원문을 그대로 `work.mjs add`에 넣은 Bash를 가드가 거부했다 — `stripQuoted`가 정규식 셋으로 따옴표를 벗겨, 큰따옴표 안의 이스케이프된 백틱(`` \` ``)을 실행 치환으로 읽고 안의 `<번호>`의 `>`를 리다이렉트로, `` \` ``를 쓰기 대상으로 봤다. 에이전트는 원문의 큰따옴표를 ”로 바꿔 우회했다(BACKLOG에 변형된 원문 — 「요약·해석 금지」의 이웃). 수리: 따옴표를 한 글자씩 걷는 셸 인식 스캐너 — 작은따옴표 안은 데이터, 큰따옴표 안도 데이터지만 이스케이프 안 된 `$()`·백틱만 실행으로 남긴다, 따옴표 밖의 `\x`는 데이터, 닫히지 않은 따옴표는 셸로(fail-closed). heredoc 전처리는 그대로. 검사: unit(1라운드 add 명령의 재현 · 작은따옴표 · 이스케이프된 백틱 · `$()` 안쪽 따옴표 · 닫히지 않은 따옴표) — 기존 오탐 테스트(첫 Windows 실기 · L2 1일차)는 그대로 초록.
+- **사고 61(decide 번호)**: CEO의 말은 「Q1 예」인데 `work.mjs decide Q1 "예"`는 「QQ1 열린 질문 없음」 FAIL ×4(1라운드 아침 창) — Q를 떼고 받는다, 숫자가 아니면 `FAIL 번호가 아니다`. 검사: e2e(`decide Q3` · `decide Qx`).
+- 측정 빈틈: 훅·플러그인의 원장 `guard` 줄이 명령을 200자에서 잘라 사고 60의 재현이 세션 전사에서야 가능했다 → 1000자. `tests/field/deliver.sh`가 훅 파일(`.claude/hooks/*.mjs`)도 반영한다.
+- HAZARDS 줄 없음(규칙집·배선 경로 — 기록은 여기). **5판 동결 갱신**: 테스트 베드에 반영(L2-TRIAL-5 「차림」의 수리 반영 줄), 머지가 새 동결 — 윈도우 라운드는 그 머지 뒤의 sha로 시작한다.
+
+### Changed — 2026-10-03 문체 — 살아 있는 문서의 코인·비유를 평이한 말로 (CEO 「무리해서 모든 단어를 한국어로 번역하지 말자」)
+- 레포의 산문은 코드 명사(unit · ship · spawn · worktree · conductor · scope …)는 영어로 두고 설명은 순우리말·비유로 쓰는 문체였다 — 「침대」(test bed, 2026-09-30 HANDOFF부터 · docs 8파일 40회) · 「꼴」(형식 · docs 75회, team/ 8회) · 「이음새」 · 「선발견」 · 토양 · 백신 · 걷어 내다 같은 코인. CEO가 어색하다고 짚었다.
+- 살아 있는 문서(HANDOFF · FIELD-BENCH · L2-TRIAL-5 · L2-day-conductor · 백로그 · 후보 README)에서 바꿨다: 침대·시험대 → **테스트 베드** · 저장 꼴 → **저장 형식** · 같은 꼴 → 같은 모양 · boot 꼴 → boot 생태계별 설정 · 토양 → 낳은 조건 · 백신 → 재발 방지 · 걷어 낸다 → 제거한다 · 후발견 → 나중에 찾았다. 끝난 기록(archive · changelog · FIELD-BENCH-LOG의 행)은 그대로(기록은 고치지 않는다).
+- `team/` 산문과 그 출력을 인용한 자리(팩 절 제목 「생태계별 검증된 꼴」 · LEDGER 열 「선발견」 · STATUS 「막힌 것」의 「되풀이」 · `work.mjs system`의 「이음새」)는 그대로 — L2 5판 동결이 끝나면 팩·HAZARDS·템플릿·스크립트 문구를 함께 바꾸고 금지어 unit 테스트를 둔다(규칙은 코드로만). CLAUDE.md Language 절에 문체 한 줄.
+
 ### Changed — 2026-10-03 낡은 문장 둘 정정 (정비 채널 리뷰 — 코드에 없는 장치를 말하던 문장)
 - 이 파일의 머리말: v1의 문장이었다 — 「훅·플러그인이 `GARAGISTE_VERSION`을 지니고 session-start가 그 값을 주입한다 · Breaking 목록이 이행 체크리스트」는 v2 코드 어디에도 없다(`docs/changelog/v1.md`에만 Breaking 절이 있다). v2의 사실로 바꿨다: 버전 기록 없음 · 설치본의 정체 = 설치 커밋의 `team/` 사본 · 기준선 = `HEAD:.garagiste` · 재설치가 덮는 것(scripts·packs·훅·agents·pre-commit)과 남기는 것(team.json·HAZARDS·규칙 파일·settings) · 버전 기록은 L3 Q11.
 - 백로그 L2 게이트 「1주간 green 후 결함 0」 → 세 라운드 누적(CEO 「날짜는 측정 단위가 아니다」) — 5판 등록 커밋에서 이미 고쳤다(116396a).
@@ -31,6 +47,7 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - `work.mjs try`가 원장 `try` 줄(slug·head)을 남긴다 — 카드 시간의 시작점(측정 빈틈 — 규칙집 경로라 HAZARDS 줄 없음). 저녁 창 시작의 정의는 「첫 try 또는 tried」(지시서 「저녁」 2 · day.mjs bounds). 5판 동결에 든 7건 밖의 유일한 변경 — 등록문 머리에 적었다.
 - 백로그 L3 게이트 문장: 「unit당 CEO 분이 L1 대비 비악화」 → 기계 셈 기준, 기준선은 L2 5판의 첫 수치. HANDOFF CEO 대기 결정에서 뺐다. 5판 예측 9(CEO-분 첫 수치의 범위 · 윈도우 출처는 전사).
 - 검사: field(창 배정·벽시계·대기·카드 시간·하한 · 출처 셋과 전사 줄 가르기 · CLI의 자동 발견과 --transcript) · e2e(try 사본 → 원장 try 줄).
+- 1라운드 뒤 도구 수리(2026-10-03 — 동결 아님): 두 출처(턴 기록·전사)에 든 같은 말은 하나(`dedupe` — 글이 같고 2분 안) · 아침의 「가」 턴은 무인 구간이라 대기에서 뺀다 — 5판 리눅스 1라운드의 첫 산출이 말 수 두 배 · 아침 대기 32분으로 나왔다. 검사: field.
 
 ### Added — 2026-10-03 홀드아웃 후보 셋 — 다음 범용성 원문은 지금까지 없던 자리에서 (서명 대기 · CEO 「새 홀드아웃 원문 후보」)
 - `tests/field/briefs/candidates/`: `notes.md`(메모 색인 CLI — Rust 표준 라이브러리만: 컴파일 언어·`target/`·cargo 테스트 레이아웃·rename 원자성·오늘 날짜가 처음) · `snap.md`(폴더 스냅샷 백업 — Python 백그라운드 데몬: 프로세스 수명·7일/30일/1년 보관 규칙·잠긴 파일·원자적 쓰기·로그 돌리기가 처음) · `parcel-desk.md`(택배 보관 대장 — Node 기존 코드에 기능 넷: brownfield, L3 Q13 「boot 없이 첫 unit 출하」의 자리 — seed 요건·`setup-seed.sh` 필요는 README에). 홀드아웃 여섯이 전부 소진된 뒤의 첫 후보 — 지금까지의 자리(Node·Python·Go의 CLI·웹, 빈 폴더 시작) 밖에서 골랐다. 브라우저만 쓰는 앱(L4)과 Java·PHP·Ruby는 미룬 이유와 함께 README에.

@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { decide, makeCtx, stripQuoted, worktreeFromCommand } from '../team/scripts/guard-rules.mjs';
+import { decide, makeCtx, stripQuoted, worktreeFromCommand, writeTargets } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, gateDecision, logicLines, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
@@ -177,6 +177,32 @@ test('guard: 따옴표 안은 데이터 — 트레일러·메시지 속 언급�
   assert.ok(decide(bash('echo "$(cat x > .garagiste/team.json)"'), gctx(null)), '큰따옴표 안 $()는 실행이다 — 여전히 거부');
   assert.ok(decide(bash('git commit -m "x" --no-verify'), gctx(null)), '따옴표 밖 --no-verify는 그대로 파괴다');
   assert.equal(stripQuoted(`echo 'a > b' "c > d" e`).includes('>'), false);
+});
+test('guard: 사고 60(L2 5판 리눅스 1라운드) — 큰따옴표 안의 이스케이프된 백틱·작은따옴표·<번호>는 데이터다, 따옴표는 한 글자씩 걷는다', () => {
+  // intake가 BRIEF 원문을 그대로 add에 넣은 명령 — \`…\`를 백틱 치환으로 읽어 안의 >를 리다이렉트로, \`를 쓰기 대상으로 봤다(에이전트는 원문의 따옴표를 ”로 바꿔 우회했다)
+  const add = String.raw`node .garagiste/scripts/work.mjs add done-undo "\`todo done <번호>\`로 끝내고, \`todo undo <번호>\`로 되돌린다." --milestone M1 --accept "todo list stdout이 '밀림' 포함; todo undo <--all 번호> 뒤 다시 보임" && \
+node .garagiste/scripts/work.mjs add bad-input "잘못된 입력은 0이 아닌 코드로 끝난다." --accept "todo add x --due 2026-02-30 → exit≠0"`;
+  assert.equal(decide(bash(add), gctx(null)), null, 'intake의 add는 쓰기가 아니다');
+  assert.equal(decide(bash(`echo "it's > x"`), gctx(null)), null, '큰따옴표 안의 작은따옴표가 짝을 어긋나게 하지 않는다');
+  assert.equal(stripQuoted(String.raw`echo "\`a > b\`"`).includes('>'), false, '이스케이프된 백틱은 치환이 아니다');
+  assert.ok(decide(bash('echo "`cat x > .garagiste/team.json`"'), gctx(null)), '이스케이프 안 된 백틱은 실행이다 — 여전히 거부');
+  assert.ok(decide(bash('echo "$(echo "a" > .garagiste/team.json)"'), gctx(null)), '큰따옴표 안 $()의 안쪽 따옴표도 따라 걷는다');
+  assert.match(decide(bash('echo "unterminated > .garagiste/team.json'), gctx(null)) || '', /규칙집/, '닫히지 않은 따옴표는 셸로 본다(fail-closed)');
+  assert.equal(decide(bash(String.raw`echo a\>b`), gctx(null)), null, '따옴표 밖의 이스케이프된 >는 데이터다');
+});
+test('guard: 사고 62(L2 5판 리눅스 2라운드) — slug·경로 속 rm(edit-rm)은 지우기 verb가 아니다, 명령 자리의 rm은 그대로 쓰기다', () => {
+  const wt = `${root}/.worktrees/edit-rm`;
+  // build 팩이 공격 테스트 둘을 돌리고 소스를 읽는 명령 — \brm\b이 edit-rm-1.test.mjs의 rm에 걸려 다음 인자 edit-rm-2.test.mjs를 쓰기 대상으로 봤다(가드 거부 1 · 읽기만 하는 명령)
+  const run = `cd ${wt}; node --test tests/adversary/edit-rm-1.test.mjs tests/adversary/edit-rm-2.test.mjs 2>&1 | grep -v "^#" | grep -B2 -A25 "not ok" | head -80; cat src/todo.mjs`;
+  assert.deepEqual(writeTargets(run), []);
+  assert.equal(decide(bash(run, wt), gctx('build')), null, '읽기만 하는 명령이 거부됐다');
+  assert.deepEqual(writeTargets('node x.mjs --out tests/adversary/edit-mv-1.test.mjs'), [], 'slug 속 mv도 verb가 아니다');
+  assert.deepEqual(writeTargets('rm tests/adversary/edit-rm-2.test.mjs'), ['tests/adversary/edit-rm-2.test.mjs']);
+  assert.deepEqual(writeTargets('git rm -q tests/adversary/x.test.mjs'), ['tests/adversary/x.test.mjs']);
+  assert.deepEqual(writeTargets('/bin/rm -f tests/adversary/x.test.mjs'), ['tests/adversary/x.test.mjs'], '절대 경로의 rm은 verb다');
+  assert.deepEqual(writeTargets('true &&rm tests/adversary/x.test.mjs'), ['tests/adversary/x.test.mjs']);
+  assert.deepEqual(writeTargets('cp a.mjs tests/acceptance/edit-rm.test.mjs'), ['tests/acceptance/edit-rm.test.mjs']);
+  assert.match(decide(bash('rm tests/adversary/edit-rm-2.test.mjs', wt), gctx('build')) || '', /build 팩은 tests\/adversary\/edit-rm-2\.test\.mjs에 쓸 수 없다/);
 });
 test('checkpoint: spike worktree는 wip로 커밋하지 않는다 — 측정이 tree를 바꿔 증거를 낡게 한다 (2차 실기 사고 15)', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-ckpt-'));

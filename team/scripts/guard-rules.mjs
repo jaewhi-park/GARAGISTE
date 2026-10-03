@@ -36,16 +36,34 @@ const norm = (p) => p.replace(/\\/g, '/');
 // 따옴표 안 텍스트는 셸에선 데이터다 — 커밋 메시지의 트레일러(`<noreply@…>`)·경로 언급이 리다이렉트·쓰기 verb로 오탐됐다(첫 Windows 실기).
 // 큰따옴표 안에서도 $()·백틱은 실행되므로 그 내용만 남긴다. 우회 접두(ENV_BYPASS)·worktree 경로 추론은 따옴표로도 효력이 있어 원문을 본다.
 export function stripQuoted(command) {
-  return String(command)
+  const src = String(command)
     // heredoc 본문도 데이터다(L2 1일차: 커밋 메시지의 <noreply@…> trailer의 >가 리다이렉트로 읽혀 다음 줄이 쓰기 대상이 됐다 — 2차 실기 이후 두 번째).
     // 구분자 줄의 나머지(리다이렉트 등)는 셸로 남기고, 따옴표 없는 본문의 $()·백틱은 실행이라 그 내용만 남긴다.
     .replace(/<<-?[ \t]*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\1([^\n]*)\n([\s\S]*?)\n[ \t]*\2[ \t]*(?=\n|$)/g, (_, q, tag, rest, body) => {
       const subs = q ? null : body.match(/\$\([^)]*\)|`[^`]*`/g);
       return ` ${rest}${subs ? ` ${subs.join(' ')}` : ''} `;
-    })
-    .replace(/\\["']/g, ' ')
-    .replace(/'[^']*'/g, ' ')
-    .replace(/"([^"]*)"/g, (_, inner) => { const subs = inner.match(/\$\([^)]*\)|`[^`]*`/g); return subs ? ` ${subs.join(' ')} ` : ' '; });
+    });
+  // 따옴표는 정규식이 아니라 한 글자씩 걷는다(사고 60 — L2 5판 리눅스 1라운드: 큰따옴표 안의 \`…\`를 백틱 치환으로 읽어 안의 <번호>의 >를 리다이렉트로, \`를 쓰기 대상으로 봤다 —
+  // intake의 work.mjs add가 막히고 에이전트가 원문의 따옴표를 ”로 바꿔 적었다). 작은따옴표 안은 전부 데이터 · 큰따옴표 안도 데이터지만 이스케이프 안 된 $()·백틱은 실행이라 그 내용만 남긴다 · 따옴표 밖의 \x는 데이터다.
+  let out = ''; let i = 0; const n = src.length;
+  while (i < n) {
+    const ch = src[i];
+    if (ch === '\\') { out += ' '; i += 2; continue; }
+    if (ch === "'") { const j = src.indexOf("'", i + 1); if (j < 0) { out += src.slice(i); break; } out += ' '; i = j + 1; continue; }
+    if (ch === '"') {
+      let j = i + 1; let subs = '';
+      while (j < n && src[j] !== '"') {
+        if (src[j] === '\\') { j += 2; continue; }
+        if (src[j] === '$' && src[j + 1] === '(') { let d = 0; let k = j + 1; for (; k < n; k++) { if (src[k] === '(') d++; else if (src[k] === ')' && --d === 0) break; } subs += ` ${src.slice(j, k + 1)}`; j = k + 1; continue; }
+        if (src[j] === '`') { const k = src.indexOf('`', j + 1); if (k < 0) { j = n; break; } subs += ` ${src.slice(j, k + 1)}`; j = k + 1; continue; }
+        j++;
+      }
+      if (j >= n) { out += ` ${subs} ${src.slice(i)}`; break; } // 닫히지 않은 큰따옴표 — 나머지는 셸로 본다(fail-closed)
+      out += ` ${subs} `; i = j + 1; continue;
+    }
+    out += ch; i++;
+  }
+  return out;
 }
 // Bash도 쓰기다 — 리다이렉트 표적은 전부, in-place verb(sed -i·tee·mv·cp·rm·truncate)는 보호 구역 이름이 보일 때. 완전 차단이 아니라 최선 노력 — 법은 게이트(redproof·원장 tree 대조)다.
 const GUARDED_AREA = /(^|[\\/])(tests[\\/](acceptance|adversary)|fixtures[\\/]hostile|probes([\\/]|$)|docs[\\/]measurements[\\/]spike-)/;
@@ -58,7 +76,9 @@ export function writeTargets(command) {
     if (!t || t.startsWith('&') || t.startsWith('/dev/') || t.includes('"') || t.includes("'")) continue;
     out.push(t);
   }
-  const verb = /\b(?:sed\s+(?:-\S+\s+)*-i\S*|tee|truncate|mv|cp|rm)\b([^;&|>]*)/g;
+  // 명령 자리의 동사만 — slug·경로 속 rm(edit-rm-2.test.mjs · x.rm)은 verb가 아니다(사고 62 — L2 5판 리눅스 2라운드: build 팩의 `node --test tests/adversary/edit-rm-1… tests/adversary/edit-rm-2…`가
+  // \brm\b에 걸려 「edit-rm-2.test.mjs에 쓴다」로 거부됐다). /bin/rm·git rm·&&rm은 그대로 verb다.
+  const verb = /(?<![\w.-])(?:sed\s+(?:-\S+\s+)*-i\S*|tee|truncate|mv|cp|rm)\b([^;&|>]*)/g;
   while ((m = verb.exec(command))) {
     for (const raw of m[1].trim().split(/\s+/)) {
       const t = raw.replace(/^["']|["']$/g, '');

@@ -9,7 +9,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { answerWaits, bounds, ceoMinutes, ceoSources, cwdSlug, dayTable, parseTranscript, render, stopsBySlug } from './field/day.mjs';
+import { answerWaits, bounds, ceoMinutes, ceoSources, cwdSlug, dayTable, dedupe, parseTranscript, render, stopsBySlug } from './field/day.mjs';
 import { bystanders, childEnv, choice, compile, due, objectLine, pick } from './field/stream.mjs';
 import { PRELOAD, childEnv as clockEnv, configs } from './field/clock.mjs';
 
@@ -47,14 +47,15 @@ const budgets = { unseen_max: 3, unattended_ship_max: 5 };
 const day1 = () => dayTable({ L, units, ledgerMd, brief, until: T('09:00', D2), budgets });
 const day2 = () => dayTable({ L, units, ledgerMd, brief, since: T('09:00', D2), budgets });
 
-test('day 경계: 아침 창 끝 = 첫 ship 전 마지막 접점 · 저녁 창 시작 = 그 뒤 첫 tried · 2일차 아침에 접점이 없으면 전날 저녁의 마지막 접점', () => {
+test('day 경계: 아침 창 끝 = 첫 ship 전 마지막 접점 · 저녁 창 시작 = 그 뒤 첫 tried · --since가 있으면 그 전의 접점은 아침 끝이 아니다(5판 라운드 — 접점 줄 없는 아침은 --since)', () => {
   const b1 = bounds(L, '', T('09:00', D2));
   assert.equal(b1.firstShip.slug, 'boot');
   assert.equal(b1.morningEnd, T('10:01'));
   assert.equal(b1.eveningStart, T('11:00'));
   const b2 = bounds(L, T('09:00', D2));
   assert.equal(b2.firstShip.slug, 'list');
-  assert.equal(b2.morningEnd, T('11:03'));
+  assert.equal(b2.morningEnd, T('09:00', D2), '전날 저녁의 tried(11:03)가 아니라 이 라운드의 --since — 리눅스 2라운드의 무인 84.6분(실제 31분)');
+  assert.equal(bounds(L, '').morningEnd, T('10:01'), '--since 없이는 하한이 없다');
   assert.equal(b2.eveningStart, T('12:00', D2));
 });
 
@@ -94,7 +95,8 @@ test('day 2일차: 질문으로 넘어온 unit의 원시엔 밤이 들고, 답 �
   assert.equal(rows['add-fix'].needs, 1);
   const out = render(t, { name: 'f' });
   assert.match(out, /\| 무인 \| list \| — \| 1 \| 1387\.0 \(대기 Q2 1360\.0\) · seed가 아침 창 끝 전 \| 27\.0 \| 4\/4 \| 80K · 미기록 1 \|/);
-  assert.match(out, /- 무인 1497\.0분 · 낮 경과\(→ 낮의 세 번째 ship\) — \(낮 ship 2\)/);
+  assert.match(out, /- 경계: 아침 창 끝 2026-10-03T09:00:00\.000Z \(접점 줄 없음\)/);
+  assert.match(out, /- 무인 180\.0분 · 낮 경과\(→ 낮의 세 번째 ship\) — \(낮 ship 2\)/); // --since(09:00) → 첫 tried(12:00); 전날 11:03부터 세면 1497분
   assert.match(out, /그때 미검수 2\/3 · 무인 출하 2\/5/);
   assert.match(out, /\| 계 \| 2\(출하 2\) \| \| \| 1401\.0 \| 41\.0 \| 6\/6 \| 110K \|/);
 });
@@ -131,7 +133,7 @@ test('day CLI: 폴더에서 표를 낸다 · 시각을 못 읽으면 FAIL 한 �
     const cli = fileURLToPath(new URL('./field/day.mjs', import.meta.url));
     const r = spawnSync(process.execPath, [cli, dir, '--since', '2026-10-03T09:00:00Z'], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
-    assert.match(r.stdout, /DAY garagiste-day-\S+ · 무인 1497\.0분 · 낮 접점 0 · 낮 ship 2/);
+    assert.match(r.stdout, /DAY garagiste-day-\S+ · 무인 180\.0분 · 낮 접점 0 · 낮 ship 2/); // --since(2일차 09:00)가 아침 창 끝의 하한 — 전날 11:03부터면 1497분
     const bad = spawnSync(process.execPath, [cli, dir, '--since', '어제'], { encoding: 'utf8' });
     assert.equal(bad.status, 1);
     assert.match(bad.stdout, /^FAIL day 시각을 읽지 못했다: 어제/);
@@ -306,16 +308,16 @@ const SRC = {
   msgs: [{ ts: T('09:58'), text: '오늘은 L2 무인 하루다 …' }, { ts: T('10:00:30'), text: '범위는 M1 전부 — 가' }, { ts: T('10:59'), text: '저녁' }, { ts: T('11:00:20'), text: 'boot ok' }, { ts: T('11:01:20'), text: 'add fail — 빈 제목이 저장된다' }, { ts: T('11:02:20'), text: 'edit ok' }, { ts: T('11:03:20'), text: 'Q2 아니오' }],
   ends: [T('09:59'), T('10:01:30'), T('10:59:40'), T('11:00:50'), T('11:01:50'), T('11:02:50'), T('11:04')],
 };
-test('CEO-분 창 배정과 셈: 첫 ship 전의 말 = 아침 창(첫 말 → 「가」) · 「저녁」부터 = 저녁 창(→ 마지막 말의 턴 끝) · 대기 = 말 → 그 턴의 끝 · 카드 시간 = 원장 try → tried · unit당 · 원장만의 하한', () => {
+test('CEO-분 창 배정과 셈: 첫 ship 전의 말 = 아침 창(첫 말 → 「가」) · 「저녁」부터 = 저녁 창(→ 마지막 말의 턴 끝) · 대기 = 말 → 그 턴의 끝(「가」의 턴은 무인 구간이라 빼고) · 카드 시간 = 원장 try → tried · unit당 · 원장만의 하한', () => {
   const t = dayTable({ L: L6, units, ledgerMd, brief, until: T('09:00', D2), budgets });
   assert.equal(t.b.eveningStart, T('10:59:30'), '저녁 창 시작 = 첫 try(사본 열기) — tried보다 앞');
   const c = ceoMinutes({ L: L6, t, src: SRC, until: T('09:00', D2) });
-  assert.deepEqual([c.morning.n, c.morning.minutes, c.morning.wait, c.morning.from, c.morning.to], [2, 2.5, 2, T('09:58'), T('10:00:30')]);
+  assert.deepEqual([c.morning.n, c.morning.minutes, c.morning.wait, c.morning.from, c.morning.to], [2, 2.5, 1, T('09:58'), T('10:00:30')]); // 대기 1.0 — 「가」(10:00:30)의 턴 끝은 무인 구간의 끝이라 세지 않는다
   assert.deepEqual([c.evening.n, c.evening.minutes, c.evening.from, c.evening.to, c.evening.cards, c.evening.decisions], [5, 5, T('10:59'), T('11:04'), 3, 1]);
   assert.equal(c.evening.wait.toFixed(2), '2.83'); // 0.67 + 0.5 + 0.5 + 0.5 + 0.67
   assert.deepEqual([c.day.n, c.cards.minutes, c.cards.n, c.cards.of, c.ledger.morning, c.ledger.evening, c.perUnit], [0, 1.5, 3, 3, 1, 3.5, 2.5]);
   const out = render(t, { name: 'f', ceo: c });
-  assert.match(out, /- CEO-분\(기계 셈 — 출처: 턴 기록·스트림\): 아침 창 2\.5분\(말 2 · 09:58:00 → 10:00:30 · conductor 대기 2\.0\) · 저녁 창 5\.0분\(말 5 · 10:59:00 → 11:04:00 · 카드 3 · 결정 1 · 대기 2\.8\) · 낮의 말 0 · 카드 시간 합 1\.5분\(try → tried 3\/3\) · unit당 2\.5분\(낮 ship 3\)/);
+  assert.match(out, /- CEO-분\(기계 셈 — 출처: 턴 기록·스트림\): 아침 창 2\.5분\(말 2 · 09:58:00 → 10:00:30 · conductor 대기 1\.0\) · 저녁 창 5\.0분\(말 5 · 10:59:00 → 11:04:00 · 카드 3 · 결정 1 · 대기 2\.8\) · 낮의 말 0 · 카드 시간 합 1\.5분\(try → tried 3\/3\) · unit당 2\.5분\(낮 ship 3\)/);
   assert.match(out, /- CEO-분\(원장만 — 결정 구간, 하한\): 아침 1\.0분\(첫 접점 줄 → 아침 창 끝\) · 저녁 3\.5분\(저녁 창 시작 → 마지막 접점 줄\) · 카드 시간 합 1\.5분/);
   assert.match(out, /^DAY f · .* · CEO-분 2\.5\/5\.0$/m);
   // 출처가 없으면 하한만 — 「(CEO 기입)」은 없다
@@ -329,7 +331,7 @@ test('CEO-분 창 배정과 셈: 첫 ship 전의 말 = 아침 창(첫 말 → �
   // 2일차(since)엔 그날의 말만 — 전날 말은 세지 않는다
   const d2 = dayTable({ L, units, ledgerMd, brief, since: T('09:00', D2), budgets });
   const c2 = ceoMinutes({ L, t: d2, src: { ...SRC, msgs: [...SRC.msgs, { ts: T('09:01', D2), text: '상태 보여줘' }, { ts: T('09:03', D2), text: '가' }], ends: [...SRC.ends, T('09:02', D2), T('09:04', D2)] }, since: T('09:00', D2) });
-  assert.deepEqual([c2.morning.n, c2.morning.minutes, c2.morning.wait, c2.evening.n], [2, 2, 2, 0]);
+  assert.deepEqual([c2.morning.n, c2.morning.minutes, c2.morning.wait, c2.evening.n], [2, 2, 1, 0]);
 });
 
 test('CEO-분 출처 셋: 턴 기록(<폴더>-turn<n>.msg의 mtime = 말 · .json = 턴 끝) · 스트림(.msgs.jsonl · .stream.jsonl의 result) · 전사(~/.claude/projects/<cwd 슬러그>/*.jsonl — cwd가 맞는 user 글만) — 시각순으로 합친다', () => {
@@ -364,6 +366,10 @@ test('CEO-분 출처 셋: 턴 기록(<폴더>-turn<n>.msg의 mtime = 말 · .jso
     ]);
     assert.deepEqual(src.ends, [T('09:59'), T('10:59:40'), T('11:01:50')]);
     assert.equal(src.slug, slug);
+    // 같은 말이 두 출처에 들면 하나 — 1라운드에서 턴 기록 + 전사가 말 수를 두 배로 셌다
+    fs.appendFileSync(path.join(home, '.claude', 'projects', slug, 's1.jsonl'), JSON.stringify({ type: 'user', timestamp: T('09:58:03'), cwd: path.resolve(dir), message: { role: 'user', content: '오늘은 L2 무인 하루다' } }) + '\n');
+    assert.equal(ceoSources(dir, { home }).msgs.filter((m) => m.text === '오늘은 L2 무인 하루다').length, 1);
+    assert.deepEqual(dedupe([{ ts: T('09:58'), text: 'a' }, { ts: T('09:58:30'), text: 'a' }, { ts: T('10:05'), text: 'a' }, { ts: T('10:05:10'), text: 'b' }]).map((m) => m.ts), [T('09:58'), T('10:05'), T('10:05:10')]);
     // 전사를 직접 주면 그 파일만 · 홈에 아무것도 없으면 전사 출처 없음
     assert.deepEqual(ceoSources(dir, { home: path.join(root, 'nohome'), transcript: path.join(home, '.claude', 'projects', slug, 's1.jsonl') }).sources, ['턴 기록', '스트림', '전사']);
     assert.deepEqual(ceoSources(dir, { home: path.join(root, 'nohome') }).sources, ['턴 기록', '스트림']);

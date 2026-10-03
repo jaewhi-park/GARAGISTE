@@ -904,7 +904,8 @@ test('L2 3판 (e): 확인형 질문(--assumed)의 「예」는 RESPEC이 아니�
   assert.match(script('work', ['decide', '2', '예'], repo).out, /^PASS decide Q2\nRESPEC schedule/);
   // 가정과 다른 답도 RESPEC
   script('work', ['ask', 'schedule', '한 라운드는 한 주인가요?', '--assumed', '한 주'], repo);
-  const d3 = script('work', ['decide', '3', '아니오 — 두 주'], repo).out;
+  assert.match(script('work', ['decide', 'Qx', '아니오'], repo).out, /^FAIL 번호가 아니다: x — work\.mjs decide <n\|Q<n>>/);
+  const d3 = script('work', ['decide', 'Q3', '아니오 — 두 주'], repo).out; // 사고 61: CEO의 말은 「Q3 …」 — Q를 뗀 번호로 받는다
   assert.match(d3, /^PASS decide Q3\nRESPEC schedule/, d3);
   assert.deepEqual(unit().respec.map((r) => r.q), [2, 3]);
 });
@@ -950,6 +951,7 @@ test('system-attack(채용 2026-10-03): 범위 끝의 이음새 공격 — 출�
   git(['add', '-A'], wt); script('verify', ['quick'], wt);
   assert.equal(git(['commit', '-q', '-m', 'test(system-1): seam'], wt).status, 0);
   assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/brief\.mjs build system-1 — 공격 red 1/, 'next: 발견은 build가 고친다');
+  assert.match(script('redproof', ['system-1'], repo).out, /^PASS redproof system-1: system — 발견 1\(red였던 공격 파일 tests\/adversary\/system-1-1\.test\.mjs\)/, '사고 63: 시스템 공격 unit의 redproof는 「acceptance 없음」이 아니라 발견이다(build 팩 7단계가 부른다)');
   const bp = script('brief', ['build', 'system-1'], repo);
   assert.match(bp.out, /^PACK .*system-1-build-/, '인수 테스트 없이도 build 팩이 열린다 — 공격 테스트가 할 일이다: ' + bp.out);
   assert.match(fs.readFileSync(path.join(repo, bp.out.split(' ')[1]), 'utf8'), /## 공격 테스트 — 지금 red[\s\S]*system-1-1\.test\.mjs/);
@@ -980,6 +982,7 @@ test('system-attack(채용 2026-10-03): 범위 끝의 이음새 공격 — 출�
   const nd = nx();
   assert.match(nd, /^NEXT run node \.garagiste\/scripts\/work\.mjs drop system-2 "system-attack 발견 0 — 공격 파일 1" --forget — 발견 0/, nd);
   assert.match(script('ship', ['system-2'], repo).out, /- redproof: 시스템 공격이 결함을 찾지 못했다/, 'ship도 초록만 든 시스템 공격을 거부한다');
+  assert.match(script('redproof', ['system-2'], repo).out, /^FAIL redproof system-2: 시스템 공격 발견 0\(red였던 공격 파일 없음\) — 초록 테스트는 산출물이 아니다: node \.garagiste\/scripts\/work\.mjs drop system-2 "system-attack 발견 0" --forget/, '사고 63: 발견 0의 redproof도 다음 할 일(drop)을 말한다');
   assert.match(script('work', ['drop', 'system-2', 'system-attack 발견 0 — 공격 파일 1', '--forget'], repo).out, /^DROPPED system-2/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[x\] system-2 · /);
   assert.match(nx(), /^NEXT done SCOPE DONE/);

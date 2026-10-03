@@ -3,6 +3,7 @@
 
 ## Language
 - ko
+- 문체: 영어 기술 용어(unit · ship · spawn · worktree · test bed · conductor …)는 그대로 쓴다 — 비유·순우리말로 옮기지 않는다(침대 · 꼴 · 이음새 같은 코인). 살아 있는 문서는 2026-10-03에 고쳤고, `team/` 산문(팩·HAZARDS·템플릿)의 남은 낱말(꼴 · 이음새 · 선발견 · 걸음 · 마디)과 금지어 unit 테스트는 L2 5판 뒤에(동결)
 
 ## Commands
 - quick: `node --test tests/unit.test.mjs`

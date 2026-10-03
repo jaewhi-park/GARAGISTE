@@ -50,7 +50,7 @@
 
 2. 경계 (원장 ts로)
    - 첫 ship: 오늘 무인 하루의 첫 "kind":"ship" 줄.
-   - 아침 창 끝: 첫 ship 이전의 마지막 CEO 접점 줄("kind"이 decide·scope·tried) ts.
+   - 아침 창 끝: 첫 ship 이전의 마지막 CEO 접점 줄("kind"이 decide·scope·tried) ts — 이 라운드(이 세션의 첫 말) 뒤의 줄만. 아침에 접점 줄이 없으면(「상태 보여줘」·「가」만) 첫 말의 때가 아침 창 끝이다(5판 리눅스 2라운드: 앞 라운드 저녁의 tried를 잡아 무인 84.6분이 나왔다 — 실제 31분).
    - 저녁 창 시작: 아침 창 끝 뒤 첫 "kind":"try"(사본 열기 — 5판 원장 줄) 또는 "kind":"tried" 줄 ts(CEO가 돌아와 처음 try한 때).
    - 낮 = 아침 창 끝 → 저녁 창 시작. 저녁 창 시작 뒤에 seed되거나 출하된 unit은 「연장(유인)」.
 
@@ -126,6 +126,6 @@ CEO가 며칠 없다. 이 세션엔 아침·저녁 창이 없고, 첫 말 뒤로
 - 저녁 창의 결정: 가정이 적힌 질문(「지금은 …, 예 = 그대로」)의 맨 「예」는 `decide`가 KEPT를 내고 RESPEC이 아니다 — spec 재spawn 없음. 그 밖의 답은 3판과 같다(RESPEC → next가 spec 먼저).
 - 저녁 창의 카드: 「기계 증명」 표시가 있어도 친다(이 시험은 사람 센서를 전부 건다). 「써볼 것」은 셋까지만 보이니 tried마다 `state.mjs`로 STATUS를 다시 내 빌 때까지.
 - FAIL·가드 거부는 원장 `fail`·`guard` 줄로 남는다. 같은 FAIL이 되풀이되면 STATUS 첫 줄 「반복 FAIL n」·「막힌 것」 절 — 프레임워크 FAIL로 멈출 때 그 절을 마지막 출력에 함께 남긴다(정비 채널이 읽는 자리).
-- spec 팩은 저장 안쪽 꼴을 묻지 않고 `work.mjs default`로 정한다(「팀이 정한 것」에 뜬다 — 저녁 창에서 뒤집으려면 한 마디) · boot는 `.gitattributes`(`* text=auto eol=lf`)를 만든다 — 규칙집 드리프트가 아니다(boot의 첫 commands와 같은 자리).
+- spec 팩은 저장 형식의 안쪽(키·필드)을 묻지 않고 `work.mjs default`로 정한다(「팀이 정한 것」에 뜬다 — 저녁 창에서 뒤집으려면 한 마디) · boot는 `.gitattributes`(`* text=auto eol=lf`)를 만든다 — 규칙집 드리프트가 아니다(boot의 첫 commands와 같은 자리).
 - 정비 채널의 표(`tests/field/day.mjs`)는 5판 칸을 더 센다(미검수 사람 셈 · 원장 fail/guard 줄 · kept · 이음새 공격·보고) — conductor 몫이 아니다(위 「정비 채널의 표 스크립트」 절 그대로).
 - CEO-분은 기계가 센다 — `work.mjs try`가 원장 `try` 줄을 남기고(카드 시간의 시작), 창의 벽시계와 말 수는 세션 기록(턴 기록·스트림·전사)에서 day.mjs가 읽는다(정의 L2-TRIAL-5 「CEO-분」). conductor는 적지 않는다. 저녁 창 시작의 정의는 「첫 try 또는 tried」(위 「저녁」 2).
