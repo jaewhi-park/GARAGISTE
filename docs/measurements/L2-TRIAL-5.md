@@ -141,6 +141,7 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 테
 
 ### 차림 (2026-10-03 — 리눅스 1라운드 첫 말 전에 커밋)
 - **동결 `ceb04dd120e105b692399b223db5d6f2ed3cce38`**(PR #100 머지 커밋 — team/ tree 43b8250) · 리눅스 테스트 베드: 정비 채널 컨테이너 · claude 2.1.288 · node 22 · `tests/field/setup.sh tests/field/briefs/l2-todo-cli.md <폴더>` budget medium · 설치 커밋 bdaff30 · **규칙집 기준선 `HEAD:.garagiste` 402ac06f4568784f23db328b11fbd96367632c6b** · SELFTEST PASS 19/19 · 측정 모드(프레임워크 FAIL로 라운드가 멈추면 회 끝) · 대리 규칙 1~5 · 「가」와 「저녁」 사이의 말 0 · 저녁 창마다 시계 검사(`clock.mjs`) · 표는 `day.mjs`(CEO-분 출처: 턴 기록).
+- **수리 반영 1 (2026-10-03 — 1라운드 뒤, 2라운드 전)**: 사고 60(가드의 따옴표 벗기기 오탐 → intake 원문 변형) · 사고 61(decide가 `Q<n>`을 거부) · 훅 원장 줄 1000자. 정본 `8d47f704a3e65973bea815c51d81d8c0aa30b547`(브랜치 — **머지가 새 동결**) → 테스트 베드 반영 커밋 `284d2b3`(`deliver.sh` — scripts·packs·HAZARDS·settings·hooks), **새 규칙집 기준선 `HEAD:.garagiste` `bc9b0ced940bbe6d05711f5f9d9a1dd81f3aff6b`**. 2라운드부터 이 정본으로 돈다(등록문 동결 규칙 — 결함 수리 허용). 윈도우 라운드는 머지 뒤의 sha로 시작한다.
 
 ### 리눅스 1라운드 (2026-10-03 — 대리 CEO, 압축 · conductor 세션 4dd173c7 · 턴 8)
 - **아침 창**(`--since` 06:55:40Z): 고정 첫 말 → intake가 **M1 8**(boot·add·list·corrupt-store·done-undo·edit-rm·cross-os·bad-input) + **M2 3**(search·export-import·stats)을 올리고 Q1~Q3(todo.json 형식 · CSV 형식 · 「이번 주」= 월요일 00:00부터)을 물었다 — 원문과 어긋나지 않아 대리 「예」 셋 · 범위 M1 전부 · 「가」 06:58.

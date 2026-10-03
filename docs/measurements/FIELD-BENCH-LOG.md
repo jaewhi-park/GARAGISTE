@@ -201,6 +201,7 @@
 ### 2026-10-03 L2 5판 리눅스 1라운드 — ceb04dd(동결 = PR #100 머지) · l2-todo-cli 회귀 — 기록
 - 차림: 컨테이너 · claude 2.1.288 · 침대 설치 bdaff30(기준선 402ac06f) · budget medium · 측정 모드 · conductor 세션 4dd173c7 · 턴 8 · 대리의 말은 `todo-turn<n>.msg`. 등록·예측·판단·관찰은 `L2-TRIAL-5.md` 「리눅스 1라운드」.
 - 결과: intake M1 8 + M2 3 · Q1~Q3 「예」 · 무인 32.6분에 출하 5(boot·add·list·corrupt-store·done-undo) · 멈춤 **무인 출하 5**(미검수(사람) 1/3 — 7건의 미검수 셈이 라운드의 모양을 바꿨다: 2판은 미검수 3에서 ship 3) · 낮 접점 0 · 프레임워크 FAIL 정지 0(안내대로 풀린 FAIL 둘) · 카드 5 ok · CLOCK 4/4 · CEO-분 아침 2.8/저녁 8.9/unit당 2.3(첫 기계 수치) · $10.06.
+- 1라운드 뒤 수리 반영(시험 중 수리 — 동결 갱신): 사고 60(가드 따옴표 스캐너) · 61(decide Q<n>) — 정본 8d47f70 → 테스트 베드 284d2b3(기준선 bc9b0ced940b…). 2라운드부터 이 정본.
 - 관찰 8(장치 아님): 가드의 백틱 오탐으로 원문 따옴표 변형 · attack 팩의 저장소 밖 임시 폴더 쓰기 거부 ×3 · decide `Q1` 형식 FAIL ×4 · **tried ok 메모 셋 → bad-input**(「메모 → 수용」 후보의 둘째 근거 자리) · HAZARDS `**` 날짜 계급이 add attack에서 안 잡힘(세 번째) · try 사본 안의 tried 묶음 거부(정상) · Windows renameSync 보고만 · day.mjs CEO-분 dedupe·「가」 턴 수리(도구).
 
 ### 2026-10-02 L2 측정 9be0e15 — holdout-library 첫 측정 기록
