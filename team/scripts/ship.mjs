@@ -1,7 +1,7 @@
 // ship — 8조건 fail-closed. 통과하면 ff 머지 + LEDGER + STATUS. 이 스크립트만 보호 브랜치에 닿는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, quarantineStray, readJson, readLedger, readText, rebaseInProgress, saveUnit, sh, shell, short, stamp, strayPaths, unmergedFiles, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles, repoFiles, withScratch } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, quarantineStray, readJson, readLedger, readText, rebaseInProgress, saveUnit, sh, shell, short, stamp, strayPaths, unmergedFiles, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles, repoFiles, withScratch, systemFound } from './lib.mjs';
 import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
@@ -197,7 +197,7 @@ function main() {
     if (promoted) git(['commit', '--amend', '-q', '-m', promoted], wt, { GARAGISTE_WIP: '1' });
   }
   const runnerBlind = unit.kind === 'scaffold' && exists ? runnerProbe(c, wt) : [];
-  const found = unit.kind === 'system' ? new Set(ledger.filter((e) => e.kind === 'attack' && e.slug === slug && (e.ts || '') >= (unit.created || '') && e.red > 0).flatMap((e) => e.files || [])).size : 0; // 시스템 공격의 발견
+  const found = unit.kind === 'system' ? systemFound(ledger, slug, unit).length : 0; // 시스템 공격의 발견 — redproof.mjs의 system 분기와 같은 셈(사고 63)
   if (runnerBlind.length) appendLedger(c.main, c.team, { kind: 'runner_blind', slug, files: runnerBlind }); // boot 팩이 이 목록을 받는다
   const conds = evaluateShip({
     unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, runnerBlind, found,

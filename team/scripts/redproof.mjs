@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, fail, git, headSha, holdAsk, isMain, linkDeps, mergeBase, out, readJson, rebaseAdvice, rebaseInProgress, slugRoot, unitFile, unmergedFiles, withScratch, workTree } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, fail, git, headSha, holdAsk, isMain, linkDeps, mergeBase, out, readJson, readLedger, rebaseAdvice, rebaseInProgress, slugRoot, systemFound, unitFile, unmergedFiles, withScratch, workTree } from './lib.mjs';
 import { blindFiles, runFiles } from './verify.mjs';
 
 export function verdict(baseResults, headResults) {
@@ -39,6 +39,14 @@ function main() {
   const c0 = ctx();
   const c = { ...c0, root: slugRoot(c0, slug) }; // 사고 9: 어디서 불러도 unit worktree가 뿌리
   if (rebaseInProgress(c.root)) fail(rebaseAdvice(`redproof ${slug}`, slug, unmergedFiles(c.root), c.team.protected_branch)); // 사고 58: HEAD가 onto(main)라 base = head
+  // 사고 63(L2 5판 리눅스 2라운드): 시스템 공격 unit(work.mjs system)엔 인수 테스트가 없다 — red 증명은 「공격이 결함을 찾았다」(ship 조건 redproof = 한 번이라도 red였던 공격 파일 ≥1).
+  // 여기서 「acceptance 없음」 FAIL을 내자 build 팩이 막힌 것으로 보고하고 conductor가 next의 ship 대신 brief spec --return을 돌렸다(원장 fail 줄 둘 · 이탈 1턴).
+  const unit = readJson(unitFile(c.main, c.team, slug), null);
+  if (unit?.kind === 'system') {
+    const found = systemFound(readLedger(c.main, c.team), slug, unit);
+    if (!found.length) fail(`FAIL redproof ${slug}: 시스템 공격 발견 0(red였던 공격 파일 없음) — 초록 테스트는 산출물이 아니다: node .garagiste/scripts/work.mjs drop ${slug} "system-attack 발견 0" --forget`);
+    return out(`PASS redproof ${slug}: system — 발견 ${found.length}(red였던 공격 파일 ${found.join(' ')}) — 인수 테스트 없음, 증명은 공격 파일의 red→green(ship 조건 redproof = 발견 ≥1)`);
+  }
   const files = acceptanceFiles(c.root, c.team, slug);
   if (!files.length) fail(`FAIL redproof ${slug}: ${c.team.paths.acceptance}/${slug}* 없음`);
   const base = mergeBase(c.root, c.team.protected_branch);

@@ -16,12 +16,13 @@ const mins = (a, b) => (new Date(b) - new Date(a)) / 60000;
 const f1 = (m) => m.toFixed(1);
 const k = (n) => `${Math.round(n / 1000)}K`;
 
-// 2. 경계 — 아침 창 끝엔 하한이 없다: 아침에 접점 줄이 없으면 전날 저녁의 마지막 tried다(2판 리눅스 2일차 15:37:58Z)
+// 2. 경계 — 아침 창 끝의 하한은 --since다(5판: 라운드 = 세션이라 라운드 사이엔 아무것도 돌지 않는다 — 리눅스 2라운드의 아침이 「상태 보여줘」·「가」만이라 접점 줄이 없자
+//    1라운드 저녁의 tried(07:37)가 아침 끝이 되어 무인 84.6분이 나왔다, 실제 31분). --since 없이는 하한이 없다(2판 리눅스 2일차 15:37:58Z — 전날 저녁의 마지막 tried).
 export function bounds(L, since = '', until = END) {
   const inWin = (e) => e.ts >= since && e.ts < until;
   const firstShip = L.find((e) => e.kind === 'ship' && inWin(e)) || null;
   const anchor = firstShip?.ts ?? L.find((e) => e.kind === 'pack' && inWin(e))?.ts ?? until;
-  const morning = L.findLast((e) => CONTACT.includes(e.kind) && e.ts < anchor) || null;
+  const morning = L.findLast((e) => CONTACT.includes(e.kind) && e.ts < anchor && e.ts >= since) || null;
   const morningEnd = morning?.ts ?? (since || L[0]?.ts || '');
   // 저녁 창 시작 = 아침 창 끝 뒤 첫 try(사본 열기 — 5판 원장 줄) 또는 tried
   const evening = L.find((e) => (e.kind === 'tried' || e.kind === 'try') && e.ts > morningEnd && e.ts < until) || null;

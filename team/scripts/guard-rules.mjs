@@ -76,7 +76,9 @@ export function writeTargets(command) {
     if (!t || t.startsWith('&') || t.startsWith('/dev/') || t.includes('"') || t.includes("'")) continue;
     out.push(t);
   }
-  const verb = /\b(?:sed\s+(?:-\S+\s+)*-i\S*|tee|truncate|mv|cp|rm)\b([^;&|>]*)/g;
+  // 명령 자리의 동사만 — slug·경로 속 rm(edit-rm-2.test.mjs · x.rm)은 verb가 아니다(사고 62 — L2 5판 리눅스 2라운드: build 팩의 `node --test tests/adversary/edit-rm-1… tests/adversary/edit-rm-2…`가
+  // \brm\b에 걸려 「edit-rm-2.test.mjs에 쓴다」로 거부됐다). /bin/rm·git rm·&&rm은 그대로 verb다.
+  const verb = /(?<![\w.-])(?:sed\s+(?:-\S+\s+)*-i\S*|tee|truncate|mv|cp|rm)\b([^;&|>]*)/g;
   while ((m = verb.exec(command))) {
     for (const raw of m[1].trim().split(/\s+/)) {
       const t = raw.replace(/^["']|["']$/g, '');

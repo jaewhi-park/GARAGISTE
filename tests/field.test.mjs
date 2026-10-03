@@ -47,14 +47,15 @@ const budgets = { unseen_max: 3, unattended_ship_max: 5 };
 const day1 = () => dayTable({ L, units, ledgerMd, brief, until: T('09:00', D2), budgets });
 const day2 = () => dayTable({ L, units, ledgerMd, brief, since: T('09:00', D2), budgets });
 
-test('day 경계: 아침 창 끝 = 첫 ship 전 마지막 접점 · 저녁 창 시작 = 그 뒤 첫 tried · 2일차 아침에 접점이 없으면 전날 저녁의 마지막 접점', () => {
+test('day 경계: 아침 창 끝 = 첫 ship 전 마지막 접점 · 저녁 창 시작 = 그 뒤 첫 tried · --since가 있으면 그 전의 접점은 아침 끝이 아니다(5판 라운드 — 접점 줄 없는 아침은 --since)', () => {
   const b1 = bounds(L, '', T('09:00', D2));
   assert.equal(b1.firstShip.slug, 'boot');
   assert.equal(b1.morningEnd, T('10:01'));
   assert.equal(b1.eveningStart, T('11:00'));
   const b2 = bounds(L, T('09:00', D2));
   assert.equal(b2.firstShip.slug, 'list');
-  assert.equal(b2.morningEnd, T('11:03'));
+  assert.equal(b2.morningEnd, T('09:00', D2), '전날 저녁의 tried(11:03)가 아니라 이 라운드의 --since — 리눅스 2라운드의 무인 84.6분(실제 31분)');
+  assert.equal(bounds(L, '').morningEnd, T('10:01'), '--since 없이는 하한이 없다');
   assert.equal(b2.eveningStart, T('12:00', D2));
 });
 
@@ -94,7 +95,8 @@ test('day 2일차: 질문으로 넘어온 unit의 원시엔 밤이 들고, 답 �
   assert.equal(rows['add-fix'].needs, 1);
   const out = render(t, { name: 'f' });
   assert.match(out, /\| 무인 \| list \| — \| 1 \| 1387\.0 \(대기 Q2 1360\.0\) · seed가 아침 창 끝 전 \| 27\.0 \| 4\/4 \| 80K · 미기록 1 \|/);
-  assert.match(out, /- 무인 1497\.0분 · 낮 경과\(→ 낮의 세 번째 ship\) — \(낮 ship 2\)/);
+  assert.match(out, /- 경계: 아침 창 끝 2026-10-03T09:00:00\.000Z \(접점 줄 없음\)/);
+  assert.match(out, /- 무인 180\.0분 · 낮 경과\(→ 낮의 세 번째 ship\) — \(낮 ship 2\)/); // --since(09:00) → 첫 tried(12:00); 전날 11:03부터 세면 1497분
   assert.match(out, /그때 미검수 2\/3 · 무인 출하 2\/5/);
   assert.match(out, /\| 계 \| 2\(출하 2\) \| \| \| 1401\.0 \| 41\.0 \| 6\/6 \| 110K \|/);
 });
@@ -131,7 +133,7 @@ test('day CLI: 폴더에서 표를 낸다 · 시각을 못 읽으면 FAIL 한 �
     const cli = fileURLToPath(new URL('./field/day.mjs', import.meta.url));
     const r = spawnSync(process.execPath, [cli, dir, '--since', '2026-10-03T09:00:00Z'], { encoding: 'utf8' });
     assert.equal(r.status, 0, r.stderr);
-    assert.match(r.stdout, /DAY garagiste-day-\S+ · 무인 1497\.0분 · 낮 접점 0 · 낮 ship 2/);
+    assert.match(r.stdout, /DAY garagiste-day-\S+ · 무인 180\.0분 · 낮 접점 0 · 낮 ship 2/); // --since(2일차 09:00)가 아침 창 끝의 하한 — 전날 11:03부터면 1497분
     const bad = spawnSync(process.execPath, [cli, dir, '--since', '어제'], { encoding: 'utf8' });
     assert.equal(bad.status, 1);
     assert.match(bad.stdout, /^FAIL day 시각을 읽지 못했다: 어제/);

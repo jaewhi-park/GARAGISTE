@@ -183,6 +183,10 @@ export function listUnits(main, team) {
   if (!fs.existsSync(d)) return [];
   return fs.readdirSync(d).filter((f) => f.endsWith('.json')).map((f) => readJson(path.join(d, f), null)).filter(Boolean);
 }
+// 시스템 공격(work.mjs system)의 발견 — 이 생애에서 한 번이라도 red였던 공격 파일. ship 조건 redproof(발견 ≥1)와 redproof.mjs의 system 분기(사고 63)가 같은 셈을 쓴다
+export function systemFound(ledger, slug, unit = {}) {
+  return [...new Set(ledger.filter((e) => e.kind === 'attack' && e.slug === slug && (e.ts || '') >= (unit.created || '') && e.red > 0).flatMap((e) => e.files || []))];
+}
 export function worktreeDir(main, team, slug) { return path.join(main, team.paths.worktrees, slug); }
 // slug 작업(redproof·verify red·attack)의 뿌리는 그 unit의 worktree다 — 메인 루트에서 불러도 스스로 찾아간다.
 // (2차 실기 사고 9: 메인에서 돌리면 인수·adversary 파일이 0개라 red 0/0 거짓 초록 — ship 8조건이 막긴 했지만 라운드를 낭비시켰다)
