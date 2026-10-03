@@ -414,6 +414,7 @@ function tryCopy(c, slug) {
   if (r.status) fail(`FAIL try 사본 생성 실패 — ${(r.stderr || '').trim()}`);
   linkDeps(c.main, dir);
   const head = git(['rev-parse', '--short', 'HEAD'], dir).stdout.trim();
+  appendLedger(c.main, c.team, { kind: 'try', slug, head }); // CEO-분 카드 시간의 시작점(try → tried) — L1 1차부터 비어 있던 칸을 기계가 센다(L2-TRIAL-5 「CEO-분」, 측정 빈틈)
   out(`TRY ${slug} → .worktrees/try-${slug} (main ${head}) — 카드(${c.team.paths.units_docs}/${slug}/try.md)는 이 폴더에서 친다: 만든 파일은 사본에 남고 main은 깨끗하다 · 끝나면 메인에서 node .garagiste/scripts/work.mjs tried ${slug} ok|fail "<말>" (사본은 tried가 지운다)`);
 }
 // boot 팩의 쓰기 경로: team.json commands는 스크립트만 쓴다 — 그리고 boot(scaffold) 컨텍스트만. 다른 팩이 검증 명령을 바꾸는 것은 초록 조작이다.
