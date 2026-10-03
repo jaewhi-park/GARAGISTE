@@ -255,3 +255,39 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 테
 - **버그 말의 재료**(3라운드 저녁 카드 + 저장소 밖 사본 main ec9a203에서 다시): `todo search milk --all` · `search --bogus milk` → 아무 말 없이 exit 0(옵션이 구절에 삼켜진다; `list --bogus`는 「모르는 옵션」 exit 1) — 원문 「잘못된 입력(…)은 이유를 한 줄로 말하고 0이 아닌 코드로 끝난다」와 다른 동작이라 재현 한 줄로 쓴다(객체: `search-fix`).
 - **plan** `tests/field/plans/l2-5-q6.json` — 버그(첫 ship 뒤) · 추가(둘째 ship 뒤 — 등록문의 고정 문장) · 수정(그 뒤 첫 build 팩 unit — unit마다 값 하나: 우선순위 기본 보통→낮음 · upcoming 7→14일 · 메모 쌓기→덮어쓰기 · archive 30→90일 · export-import 엑셀→구글 시트·LF) · 방향전환(수정의 spec 재spawn 뒤 — choices는 예상 순서의 끝에서부터 archive → note → upcoming → priority). **등록문과 다른 점 하나(이유)**: 수정·방향전환의 slug는 아침 창의 intake가 정하므로 plan의 slug 자리는 placeholder(`__ARCHIVE__` 등)로 커밋하고, intake 뒤 「가」 전에 실제 slug로 채워 다시 커밋한다 — `stream.mjs run`이 plan 파일을 세션 중에도 다시 읽는다(도구 수리 `loadPlan` — 동결 아님). 버그·추가 말은 slug에 기대지 않는다.
 - 예상 흐름: export-import(RESPEC → spec 「고칠 주장 없음」 → build → ship = 첫 ship → 버그 말 → `search-fix`가 새 기능보다 먼저) → search-fix ship = 둘째 ship → 추가 말(BACKLOG 줄 · 범위 밖) → M3 첫 unit의 build 팩 → 수정 말 → 그 unit의 spec 재spawn → 방향전환(시작 전 맨 끝 unit) → … → 멈춤(SCOPE DONE이면 system-2·REPORT). 저녁 창은 Q5와 같다(시계 검사 · 카드 · 표).
+
+### 리눅스 4라운드 — Q6 인터럽트 (2026-10-03 — 대리 CEO · 스트림 세션 af75d5dc(conductor 모델 claude-sonnet-5-5) · 턴 6 · plan `tests/field/plans/l2-5-q6.json`)
+- **아침 창**(`--since` 10:59:50Z): 고정 첫 말 → 상태 → **새 원문 M3**(11:00:34, 위 「준비」) → intake가 unit 5(priority · upcoming · note · show · archive)와 Q5(archive.json 꼴) → plan을 실제 slug로 채워 커밋(세션이 11:02:22 다시 읽음) → 「Q5 예. 범위는 export-import와 M3 전부 — 가」 11:02:24. 말 3 · 2.5분(대기 1.0 — plan 채우기 포함). conductor 쪽 FAIL 둘(인자 없는 decide · slug와 `--milestone`을 섞은 scope → 「BACKLOG에 없는 slug: --milestone, M3」) → 바로 고쳐 scope 11:02:31(여섯 slug).
+- **표**(`day.mjs` — conductor의 표와 경계·출하·카드·FAIL·접점이 일치): 아침 창 끝 11:02:31(scope) · 첫 ship 11:10:27(export-import) · 저녁 창 시작 11:35:45(try) · 무인 33.2분 · 낮 경과(세 번째 ship search-fix) 23.8분 · **낮 접점 4 = 네 말**(scope 1 + BRIEF 절 3 — Q6 라운드의 정상, Q5 게이트로 세지 않는다) · 멈춤 11:34:22(`FAIL ship list-count 3/8` — **미검수 3**) — 그때 미검수 3/3(사람 센서: cross-os · export-import(엑셀) · search-fix(선발견 0)) · 드리프트 없음 · 원장 FAIL 줄 4(+ 아침 창 2) · 가드 0 · 되풀이 0 · decide 1(Q5 맨 「예」 → PASS, RESPEC 0) · 범위 끝 아님.
+
+| 구간 | unit | 구성 | 시도 | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL | RESPEC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | export-import | ①+② + 사람 센서(엑셀) | 1 | 11.2(답 대기 뺀 — 원시 64.9, 3라운드 seed) | 6/6 | 215K | 3→0/3 | base_red head_green | —(엑셀 단계는 윈도우 — 리눅스 몫은 대리가 확인: BOM+CRLF · 네 칸 · 따옴표 · `'=1+1` 왕복) | — | 1(main과 충돌 → build가 풀고 ship이 rebase를 이었다 — 사고 58 길) | 1(3라운드 Q4) |
+| 무인 | priority | ①+② | 1 | 9.9 | 6/6 | 215K | 1→0/1 | base_red head_green | ok(CEO) | 0 | 0 | 0(spec 반려 1 — 기본 보통은 필드를 쓰지 않는다로) |
+| 무인 | search-fix | ①+② | 1 | 15.7 | 3/3 | 80K | 0→0/1 | base_red head_green | ok(CEO) | 0 | 1(2/8 — attack 커밋 뒤 tree 불일치 → 다시) | 0 |
+| 무인 | list-count | ① | 1 | **미출하 — ship이 「budget: 미검수 3」 거부**(attack까지 끝) | 5/5 | 135K | 0/1 | base_red head_green | — | — | 0 | 0(수정 말로 spec 1) |
+| 계 | 4(출하 3) | | 4 | 36.9(원시 90.6) | 20/20 | 645K | 선발견 4→0 | | ok 2 · 미실시 2 | 0 | 2(한 번에 풀림) | 1 |
+
+- **Q6 네 말**(plan이 원장 시점에 넣음 · 컴파일 = 넣은 시각 → 객체 원장 줄 · `stream.mjs report q6`):
+
+| 말 | 시점(원장) | 넣은 시각 | 객체 원장 줄 | 도구 호출 | 분 | 무관 unit |
+|---|---|---|---|---|---|---|
+| 버그(search의 옵션 삼킴) | ship export-import 11:10:27.9 | 11:10:28.6(+0.7초) | unit search-fix 11:10:34(`work.mjs new search-fix`) | 2 | 0.1 | 없음(priority seed 11:10:30 뒤 그대로 돌아 11:20 출하) |
+| 추가(남은 일 개수) | ship priority 11:20:24.9 | 11:20:25.2(+0.3초) | unit list-count 11:20:32(`work.mjs brief` → `new`) | 2 | 0.1 | search-fix → spec 11:20:28(멈춤 없음) |
+| 수정(맨 아래 → 맨 위) | pack build list-count 11:27:37 | **HOLD → 대리 손 11:28:10(+34초)** | pack spec list-count 11:29:13(재spawn) | 6 | 1.0 | (대상 unit) |
+| 방향전환(archive 빼자) | pack spec list-count 11:29:13.4 | 11:29:13.7(+0.3초) | scope(archive 빠짐) 11:30:02 — `drop archive` FAIL(unit 없는 BACKLOG 줄 → --forget 안내) 뒤 scope | 11 | 0.8 | list-count → redproof 11:29:50(멈춤 없음) |
+
+- **판정: Q6 통과** — 네 말 모두 제 객체(버그 → `-fix` unit · 추가 → unit(BACKLOG 줄 남음) · 수정 → 그 unit의 spec 재spawn · 방향전환 → 그 slug가 빠진 scope, BACKLOG 줄 남음) · **무관 unit 정지 0** · 그 말들로 생긴 것: search-fix 출하 + tried ok · list-count 미출하(상한) · archive 범위 밖. 약점 하나: 수정 말이 plan에 없던 slug(list-count — 낮에 생긴 unit의 `*new` 키를 대리가 빠뜨렸다)라 HOLD → 손 34초. 3판의 방향전환 손(15.5분)과 같은 종류, 크기는 작다 — 플랜의 몫.
+- 카드 4(ok 2 · 윈도우로 2) · **CEO-분**: 아침 2.5분(말 3 · 대기 1.0) · 저녁 3.2분(말 3 · 카드 2 · 대기 0.9) · 낮의 말 4(인터럽트) · 카드 합 2.8 · unit당 1.9 · **시계 검사 PASS 4/4**(main ae27ff3) · 비용 **$6.18**(아침 0.29 · 무인 5.48 · 저녁 0.41) · 토큰 645K · 리눅스 누적 **$29.93**(네 라운드).
+- 예측 채점(4라운드 분): 3) **✓** 네 말 제 객체 · 무관 정지 0 — 짚은 위험(방향전환이 BACKLOG에만 남음)은 없었다: drop FAIL 뒤 49초에 scope 8) 누적 $29.93 — 다섯이면 ≈$36, 범위($25~40) 안 9) ✓ 아침 2.5 · 저녁 3.2 · unit당 1.9.
+- 7건마다(4라운드 분): 질문은 기본값으로 **✓**(intake Q5 1 · 맨 「예」 → PASS · RESPEC 0 · 팀이 정한 것 8 · 출하 3) · next.mjs **△**(규율 이탈 0 · attack 팩 unit당 1 · **그러나 list-count의 ship이 「budget: 미검수 3」으로 거부된 뒤에도 next가 `run ship`을 계속 냈다 → conductor가 budget 줄을 읽고 스스로 멈췄다**(옳은 멈춤 — 아침 규칙 「미검수 3이면 next가 ceo를 낸다」는 seed 자리에만 있고 ship 자리엔 없다 → **사고 64 후보**: ship 단계의 예산 정지도 next가 ceo로)) · system-attack —(범위 안 끝남) · 미검수 셈 **✓**(멈춤 = 미검수 3 — 사람 센서 셋) · report — · FAIL·가드 **△**(fail 4 — 예측 0~3 밖, 전부 안내대로 한 번에 풀림 · 가드 0 · 되풀이 0).
+- **관찰(장치 아님 — 표 이후 후보)**:
+  (a) 수정 말의 HOLD → 손(위) — plan에 `*new`(낮에 생긴 unit)를 적는 것은 등록문의 3판 plan에도 있던 열이다(대리 누락).
+  (b) **추가 → `work.mjs new`** → 범위 결정 없이 바로 돌았다(search-fix 다음 unit) — CLAUDE.md Flow 7(「추가 → add|new」)의 허용 범위이고 객체(unit)는 맞다. 등록문의 「범위에 넣는 것은 CEO 결정」과는 결이 다르다 → 후보: 추가는 `add`(BACKLOG 줄)로, 범위는 CEO — 지시서 한 줄(수리 아님, CEO 결정).
+  (c) **사고 64 후보**(next.mjs): 위 7건 줄. Q7(5라운드)의 압력은 바로 이 멈춤(ship 거부)에서 시작하므로 5라운드 전에 고친다.
+  (d) `work.mjs scope <slug> --milestone M3` 혼용이 「BACKLOG에 없는 slug: --milestone, M3」 — 문구가 원인을 말하지 않는다(후보: 혼용 거부 문구 또는 혼용 허용).
+  (e) attack 팩의 taste: `search milk —all`(맥 자동 고침의 긴 대시)은 조용히 구절 — 인수 밖, 처리 안 함(기록).
+  (f) export-import의 ship 충돌(3라운드 worktree가 add-fix·search·stats보다 앞) → 사고 58의 길(build가 풀고 ship이 rebase를 잇는다)이 그대로 작동 — 1.5분.
+  (g) conductor 세션 모델은 claude-sonnet-5-5(스트림 INIT) — turn.sh 라운드도 같은 기본값(기록 — 등록문은 conductor 모델을 정하지 않는다).
+  (h) 저녁에 카드 셋의 사본을 한 번에 열었다(try 셋 11:35:45~46) — 규칙 안.
+- **다음**: 사고 64 수리(정본 → `deliver.sh` → 수리 반영 3 → 머지 = 동결 3) 뒤 **5라운드 = Q7 압력**(「Q7」 절) — 멈춤 자리는 그대로 남아 있다: list-count가 미검수 3에 막혀 있고 윈도우 몫 둘(cross-os · export-import)은 리눅스에서 풀 수 없다. 범위에 upcoming · note · show가 남아 있다.
