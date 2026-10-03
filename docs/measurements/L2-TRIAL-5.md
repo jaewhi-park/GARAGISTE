@@ -141,3 +141,35 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 침
 
 ### 차림 (2026-10-03 — 리눅스 1라운드 첫 말 전에 커밋)
 - **동결 `ceb04dd120e105b692399b223db5d6f2ed3cce38`**(PR #100 머지 커밋 — team/ tree 43b8250) · 리눅스 침대: 정비 채널 컨테이너 · claude 2.1.288 · node 22 · `tests/field/setup.sh tests/field/briefs/l2-todo-cli.md <폴더>` budget medium · 설치 커밋 bdaff30 · **규칙집 기준선 `HEAD:.garagiste` 402ac06f4568784f23db328b11fbd96367632c6b** · SELFTEST PASS 19/19 · 측정 모드(프레임워크 FAIL로 라운드가 멈추면 회 끝) · 대리 규칙 1~5 · 「가」와 「저녁」 사이의 말 0 · 저녁 창마다 시계 검사(`clock.mjs`) · 표는 `day.mjs`(CEO-분 출처: 턴 기록).
+
+### 리눅스 1라운드 (2026-10-03 — 대리 CEO, 압축 · conductor 세션 4dd173c7 · 턴 8)
+- **아침 창**(`--since` 06:55:40Z): 고정 첫 말 → intake가 **M1 8**(boot·add·list·corrupt-store·done-undo·edit-rm·cross-os·bad-input) + **M2 3**(search·export-import·stats)을 올리고 Q1~Q3(todo.json 꼴 · CSV 꼴 · 「이번 주」= 월요일 00:00부터)을 물었다 — 원문과 어긋나지 않아 대리 「예」 셋 · 범위 M1 전부 · 「가」 06:58.
+- **표**(`day.mjs` — conductor의 표와 경계·무인·접점·출하·카드가 일치): 아침 창 끝 06:58:41(scope) · 첫 ship 07:00:41(boot) · 저녁 창 시작 07:31:15(try boot) · **무인 32.6분** · 낮 경과(세 번째 ship) 15.3분 · **낮 접점 0** · 멈춤 07:28:08(ship done-undo) — 그때 **미검수 1/3(사람 센서 — 안 써본 출하 5, 기계 증명 4은 세지 않는다) · 무인 출하 5/5** · 규칙집 드리프트: a52c139(boot의 commands — team.json 5줄, 정상) · 원장 FAIL 줄 3 · 가드 거부 4 · 되풀이 0 · decide 0 · kept 0 · RESPEC 0 · 범위 끝 없음(5/8).
+
+| 구간 | unit | 구성 | 시도 | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL | RESPEC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | boot | ② scaffold 스모크 | 1 | 1.9 | 2/2 | 38K | — | scaffold | ok(CEO) | 0 — 메모: 모르는 명령이 안내문만 내고 exit 0 → bad-input에서 본다 | 0 | 0 |
+| 무인 | add | ①+② | 1 | 5.7 | 4/4 | 96K | 6→0/6 | base_red head_green | ok(CEO) | 0 — 메모: 없는 날짜(2026-02-30)·다른 꼴(15/10/2026)·중복 태그가 그대로 저장, exit 0 → bad-input에서 본다 | 0 | 0 |
+| 무인 | list | ①+② | 1 | 7.4 | 4/4 | 120K | 2→0/3 | base_red head_green | ok(CEO) | 0 — 메모: 15/10/2026이 맨 앞 「밀림」(add 메모와 같은 뿌리) | 0 | 0 |
+| 무인 | corrupt-store | ①+② | 1 | 7.3 | 4/4 | 120K | 2→0/3 | base_red head_green | ok(CEO) | 0 | 0 | 0 |
+| 무인 | done-undo | ①+② | 1 | 6.7 | 3/3 | 107K | 0→0/4 | base_red head_green | ok(CEO) | 0 | 0 | 0 |
+| 계 | 5 | | 5 | 29.0 | 17/17 | 480K | 선발견 10→0 | | ok 5 · fail 0 | 0 | 0 | 0 |
+
+- 카드 5(ok 5 · fail 0 — 카드마다 원문 경계 입력 2~5개: 빈·공백 제목 · 없는 번호 0·abc·1.5 · todo.json 없는 폴더 · UTF-8 아닌 바이트 · 0바이트 · todos 없음 · 폴더인 todo.json · 오늘/어제 마감 — 전부 이유 한 줄과 exit 1 또는 원문대로) · 팀이 정한 것 12(그대로) · 열린 질문 0 · 팩 이유-차선 0.
+- **CEO-분(기계 셈 — 출처 턴 기록·전사, 첫 수치)**: 아침 창 2.8분(말 2 · conductor 대기 2.1) · 저녁 창 8.9분(말 6 · 카드 5 · 대기 4.2) · 낮의 말 0 · 카드 시간 합 6.7분(try → tried 5/5) · **unit당 2.3분** · 원장 하한 아침 0.0 · 저녁 6.7. 대리의 수치다(절차가 요구하는 최소 주의).
+- **시계 검사**(main 670e819 clone): `CLOCK C1·C2·C3·C4 exit 0` — **PASS 4/4**.
+- 판단 칸: 구성 — boot ②, 나머지 ①+②(인수가 CLI를 실제 기동) · **프레임워크 FAIL 정지 0** — 안내대로 한 번에 풀린 FAIL 둘(boot ship: setup `npm install`의 package-lock.json이 main에 남아 머지 되돌림 → boot 재spawn → 커밋 · done-undo ship 2/8 → 마지막 커밋 뒤 full·redproof 재실행) · 멈춤 이유 **무인 출하 5**(next가 ceo를 냈고 그 뒤 새 seed·spawn 0) · 규율 이탈 0(decide 형식 오류 ×4는 안내대로 고쳤다 — 관찰 c).
+- **판정: Q5 라운드 통과** — 낮 접점 0 · 드리프트 0(boot commands 외) · 멈춤 여섯 중 하나 · 카드 ≥3 · 프레임워크 FAIL 정지 0. **green 후 CEO 발견 결함 0(리눅스 누적 0)**.
+- 비용 **$10.06**(아침 0.86 · 무인 7.02 · 저녁 2.18) · 토큰 480K.
+- 예측 채점(1라운드 분): 1) ✓ M1 8 · 멈춤 = 무인 출하 5 · 낮 ship 5 · 접점 0 · FAIL 정지 0 · spec 저장 꼴 ask 0 5) **✗ 시계 red 0**(예측 ≥1 — 밀림·오늘 판정이 시간대·날짜에 흔들리지 않았다, 제품에 좋은 쪽) 6) ✓ 누적 0 8) 1라운드 $10.06 — 라운드 다섯이면 범위($25~40) 위쪽 9) ✓ 아침 2.8 ≤5 · 저녁 8.9 ≤15 · unit당 2.3 ≤5 · 카드 6.7 ≤10 · 출처 턴 기록(+전사).
+- 7건마다(1라운드 분): 질문은 기본값으로 **✓**(spec ask 0 · 팀이 정한 것 12 · RESPEC 0 · 출하 5) · next.mjs **✓**(attack 팩 unit당 1 · 이탈 0 · 멈춘 뒤 seed·spawn 0) · system-attack —(범위 5/8) · boot 꼴 **✓**(첫 ship 커밋에 `.gitattributes` `* text=auto eol=lf` · `.gitignore` 산출물 · `.node-version`; package-lock.json은 setup이 main에 남겨 ship FAIL 한 번 뒤 커밋) · 미검수 셈 **✓**(멈춤 = 무인 출하 5 · 미검수(사람) 1 — done-undo 선발견 0 · 낮 ship 5, 2판은 3) · report —(범위 안 끝남) · FAIL·가드 원장 **△**(fail 줄 3 · 되풀이 0 ✓ · 가드 거부 4 — 예측 0~2 밖, 관찰 b·f).
+- **관찰(장치 아님 — 표 이후 후보)**:
+  (a) **가드 오탐** — intake가 `work.mjs add`에 넣은 원문의 백틱(`` ` ``)을 가드가 Bash 쓰기로 읽어 거부(06:56) → 에이전트가 원문의 큰따옴표를 ”로 바꿔 BACKLOG에 적었다(원문 변형 — 「요약·해석 금지」의 이웃). 후보: 인용 안의 백틱은 쓰기가 아니다(a093919 「향하는 쓰기만 거부」 계열).
+  (b) attack 팩 셋(add·list·corrupt-store)이 저장소 밖 임시 폴더에 fixture를 쓰려다 가드에 막혔다(×3) — CLI 제품의 공격엔 빈 폴더가 필요하다, 팩은 우회해 끝냈다. 후보: 팩의 `os.tmpdir()` 쓰기 허용 또는 팩에 「임시 폴더는 worktree 안에」 한 줄.
+  (c) conductor가 `work.mjs decide Q1 "예"`(번호 자리에 Q1)로 FAIL ×4 뒤 숫자로 고쳤다 — 후보: decide가 `Q<n>`도 받는다(사고 23의 번호 계열).
+  (d) **tried ok 메모 셋이 모두 bad-input을 가리킨다**(boot: 모르는 명령 exit 0 · add: 없는 날짜 2026-02-30·15/10/2026·중복 태그 저장 · list: 그 날짜가 맨 앞 「밀림」). 「tried ok 메모가 뒤 unit의 수용으로」 후보의 둘째 근거 자리 — bad-input(2라운드)이 닫으면 길이 있다는 뜻, 닫지 않으면 green 후 결함이고 후보 채용.
+  (e) HAZARDS `**` 줄(attack이 두 판 연속 놓친 계급 — 없는 날짜 2026-02-30)이 add의 attack 팩에 떴는데 공격 테스트 여섯(옵션 자리·모르는 옵션·배열 아닌 todos·BOM·빈 태그·동시 add 12)에 날짜 계급이 없다 — **「놓친 계급은 HAZARDS 줄로」가 add에서 작동하지 않았다**(세 번째 놓침). (d)의 결과에 따라 사고.
+  (f) 저녁 창 가드 거부 1 — conductor가 try 사본 안에서 tried를 묶어 불러 「팩은 tried를 부르지 않는다」로 막혔다(가드는 worktree 컨텍스트를 팩으로 본다) · 묶음을 풀어 메인에서 PASS — 정상 작동.
+  (g) done-undo attack 팩이 Windows `renameSync` EPERM/EBUSY 가능성을 보고에만 남겼다(테스트 없음) — cross-os unit(M1)의 자리.
+  (h) **도구 수리(동결 아님)**: `day.mjs`의 CEO-분이 같은 말을 두 출처(턴 기록·전사)에서 두 번 세고(말 4·12) 아침의 「가」 턴(무인 구간)을 대기로 셌다(32.2분) → dedupe · 「가」 턴 제외(테스트). 위 수치는 수리 뒤의 값.
+- **다음**: 2라운드 아침 창(n일차 첫 말 → 「상태 보여줘」 → 「가」) — 범위 순서 edit-rm → cross-os → bad-input(남은 M1 셋 → SCOPE DONE → system-1 → REPORT 예측). 1라운드의 메모 셋은 CEO 말로 다시 하지 않는다(2판과 같은 조건 — (d)를 재는 자리). 침대는 이 컨테이너 세션에 산다 — 세션이 끝나면 사라진다.
