@@ -71,3 +71,34 @@
   (f) try 사본의 `python -m snap`은 editable 설치(boot의 setup `pip install -e .`) 때문에 main의 src를 실행한다 — 사본과 main이 같은 커밋이라 카드엔 영향 없음(-fix도 머지 뒤 카드).
   (g) 원문 「1분 안에」 — 실제 폴링은 2~3초. `.hidden/` 폴더는 아직 복사된다(exclude M2).
 - **다음**: 2라운드 아침 창(새 세션 「2일차」 — 상태 → 「가」) — 범위 순서 boot-fix → list-file → list-summary → deleted-mark → restore → restore-to → bad-input(7). 예측: 다시 무인 출하 5(human 센서는 start-stop만이라 미검수 3보다 먼저) · 낮 ship 5 · boot-fix 카드는 `snap`·`snap.cmd` 래퍼.
+
+### 리눅스 2라운드 (2026-10-03 — 대리 CEO · conductor 세션 8b755a9a · 턴 9~14 · 헤드리스 `turn.sh`)
+- **아침 창**(`--since` 16:59:25Z): 고정 첫 말(「상태 보여줘」) → 열린 질문 0 · 미검수 0 · 범위 순서 boot-fix → list-file → … → 「가. 매 spawn 뒤 work.mjs spawned를 남겨라」. 접점 줄 없음(decide·scope 0) — 아침 창 끝은 「가」의 때. 아침 창 CEO-분 1.0.
+- **무인**(17:00 → 19:34:57, 157.5분): ship 5(boot-fix 17:19 → list-file 17:45 → list-summary 18:09 → deleted-mark 18:56 → restore 19:34) → **멈춤 「무인 출하 5」**(미검수 1/3 — boot-fix human@win32) · 낮 접점 0 · 팩 상한 FAIL 1(restore build 33.7KB → `--large` 한 번에) · `verify.mjs FAIL gate` 1(17:03, boot-fix spec 뒤 — 안내 없는 줄, 정지 아님) · 가드 거부 5(관찰 b) · spawned 20/20 · 데몬 잔류 0.
+- **시험 장치 사고(프레임워크 아님 — 대리의 것)**: 「가」 턴을 정비 채널의 배경 상한(2시간)으로 돌려 19:00:4x에 `claude -p`가 밖에서 죽었다(restore의 첫 build 팩이 뜬 지 40초 — 그 spawn은 결과도 `spawned`도 없다). 19:01:41 같은 세션을 `--resume`으로 「CEO는 아직 없다. 세션이 밖에서 끊겼었다 — 「아침」 절대로 next.mjs 한 줄을 이어 따라라」로 이었다(낮의 말 1 — 결정 아님) → next가 같은 build 팩을 다시 내 restore가 19:34에 출하. 끊김 ≈1분이 무인 분에 든다. 뒤 턴은 `setsid`로 떼어 돌린다(`turn-bg.sh`).
+- **표**(`day.mjs` — conductor의 표와 접점·출하·토큰·카드 일치, 무인 157.2 vs 157.5 — 아침 창 끝을 첫 말의 때(16:59:25)로 잡은 대리와 첫 state.mjs 생성(16:59:44)으로 잡은 conductor의 차이): 아침 창 끝 16:59:25(첫 말 — 접점 줄 없음) · 첫 ship 17:19:25(boot-fix) · 저녁 창 시작 19:36:54(try boot-fix) · **무인 157.5분** · 낮 경과(세 번째 ship) 70.5분 · **낮 접점 0** · 멈춤 19:34:57 · 규칙집 드리프트 0(`git log --since -- .garagiste` 빔 · `HEAD:.garagiste` 3568d58e… 그대로).
+
+| 구간 | unit | 구성 | 시도 | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL | RESPEC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | boot-fix | ①+② | 1 | 18.9 | 4/4 | 136K | 3→0/3 | base_red head_green | ok(CEO) | 0 | 0 | 0 |
+| 무인 | list-file | ①+② | 1 | 26.1 | 4/4 | 153K | 5→0/5 | base_red head_green | ok(CEO) | 0 | 0 | 0 |
+| 무인 | list-summary | ①+② | 1 | 24.3 | 4/4 | 141K | 2→0/3 | base_red head_green | ok(CEO) | 0 | 0 | 0 |
+| 무인 | deleted-mark | ①+② | 1 | 46.4 | 4/4 | 176K | 4→0/4 | base_red head_green | ok(CEO) | 0 | 0 | 0 |
+| 무인 | restore | ①+② | 1 | 38.2(끊김 ≈1 포함) | 4(+1 끊김)/4 | 185K | 3→0/3 | base_red head_green | ok(CEO) | 0 | 0 | 0 |
+| 계 | 5 | | 5 | 153.9 | 20/20 | 791K | 선발견 17→0 | | ok 5 · fail 0 | **0** | 0 | 0 |
+
+- 카드 5(ok 5 · fail 0) — 전부 저장소 밖 폴더에서 원문 경계로: boot-fix ok(PATH 앞에 사본 → /tmp에서 `which snap`이 사본의 래퍼 · `snap` → `snap 0.0.1` · frobnicate·인수 없는 start는 한 줄 exit 2 · 공백 든 지킬 폴더로 start → status → stop · 저장소 밖 symlink로도 돈다 · 래퍼는 자기 옆 src를 PYTHONPATH로 실행한다 — 사본 코드 · `snap.cmd`는 리눅스 단일이라 확인 안 함) · list-file ok(세 사본 → 「2026-10-03 19:38:22  a/b.2026-10-03T19-38-22.txt」 꼴 세 줄 오름차순, 폴더 안에서 상대 경로도 같다 · 사본 없는 파일 「사본 없음」 exit 0 · 지키지 않는 파일 한 줄 exit 1) · list-summary ok(파일 2 · 사본 3 · 건너뛴 수 0 = status · 감시 없으면 「지키는 폴더 없음」 exit 0) · deleted-mark ok(지운 2초 뒤 「지워짐 2026-10-03 19:41」 · 사본 그대로 · 폴더째 지우면 파일마다 · 다시 만든 파일은 새 사본 + 지워짐 줄이 역사로 · 요약의 파일 수에 지워진 파일도) · restore ok(첫 시각으로 → v1, 덧쓴 내용의 사본이 먼저 남는다 · latest → 그 직전 마지막 사본 · 사본 이름 꼴 시각도 받음 · 이른 시각 「되살릴 사본이 없다」 exit 1 · 틀린 꼴 exit 1 · 지운 파일도 latest로 되살아남 · 되살리기는 사본 수를 늘리지 않음).
+- 열린 질문 0 · 팀이 정한 것 11(boot-fix 1 · list-file 1 · list-summary 4 · deleted-mark 3 · restore 2 — 뒤집은 것 0) · REPORT 없음(범위 10/12).
+- **CEO-분(기계 셈)**: 아침 창 1.0분(말 2) · 저녁 창 8.8분(말 3 — 카드 셋·둘을 묶어 답함 · 카드 5 · 대기 3.3) · 낮의 말 1(끊김 뒤 resume 한 줄 — 결정 아님) · 카드 시간 합 15.4분(try → tried 5/5) · **unit당 2.0분**.
+- **시계 검사**(main ce7bc34 clone `snap-r2` · full = 96 tests 328초(skipped 4 — 윈도우 몫)): `CLOCK C1·C2·C3·C4 exit 0` — **PASS 4/4**(1317초 — full이 96 tests 5.5분으로 자랐다). 1라운드와 같이 날짜 이동은 파이썬에 닿지 않는다(사실상 시간대 검사).
+- 판단 칸: 구성 — 다섯 다 ①+②(인수·공격 테스트가 `python -m snap start`로 데몬을 실제 띄운다 · boot-fix는 래퍼 실행) · **프레임워크 FAIL 정지 0**(팩 상한 FAIL 1 — `--large` 한 번에 · `FAIL gate` 1 — 다음 verify PASS) · 데몬 잔류 0(팩·카드 뒤 `pgrep -af snap` — 시계 검사와 3라운드 팩이 임시 HOME에 띄운 테스트 데몬만 잠깐 보였다).
+- **판정: Q5 라운드 통과** — 낮 접점 0 · 드리프트 0 · 멈춤 여섯 중 하나(무인 출하 5) · 카드 5 ≥3 · 프레임워크 FAIL 정지 0. **green 후 CEO 발견 결함 0**(누적 1 — 1라운드 boot). boot-fix가 1라운드의 결함을 닫았다(카드 ok).
+- 비용 **$13.32**(세션 8b755a9a 누적 — 아침 턴 9 0.52 · 「가」 턴(끊긴 몫 포함)+resume 턴 11 끝 11.77 · 저녁 1.55) · 토큰 791K.
+- 예측 채점(2라운드 분): 2) **✓** 멈춤 = 무인 출하 5(미검수 1 — human 센서는 boot-fix만) · 낮 ship 5 3) **✗ 시계 red 0**(list의 시각·「지워짐」 시각·restore의 시각 비교가 시간대에 흔들리지 않았다 — 날짜 이동은 파이썬에 닿지 않음) 4) **✓** 정지 0(팩 상한 1 · 가드 5 — 데몬·fixture·flake 없음) 5) 결함 0(누적 1) 6) 비용 $13.32(예측 7~12 — ✗ 12 초과 — 낮이 157분, 끊긴 턴의 몫이 든다) · CEO-분 아침 1.0 · 저녁 8.8 · unit당 2.0 7) **✓** FAIL 줄 되풀이 0 · RESPEC 0.
+- **관찰(장치 아님 — 측정 모드, 표 이후 후보)**:
+  (a) **낮이 1라운드보다 길다**: unit당 seed→ship 30.8분(1라운드 16.0) — build 팩이 7~16분(1라운드 2~10), deleted-mark 46분(spec 11분 · build 16분 ×2). 토큰 791K(1라운드 675K). 두 시간 배경 상한에 걸린 뿌리.
+  (b) **가드 거부 5 — 다섯 다 `$W=…` 변수 경로의 Bash heredoc 쓰기**(boot-fix `T=$(mktemp -d)` · list-file `cat > $W/src/snap/…` · list-summary `cat >> $W/src/…`·`mkdir -p $W/te…` · restore `cat > $W/src/snap/restore.py`) — 전부 worktree 안을 가리키는데 가드가 변수를 풀지 못해 거부(1라운드 셋과 같은 계급 — 6판 누적 8). 팩은 매번 다른 길로 끝냈다.
+  (c) `verify.mjs FAIL gate` 안내 없는 줄 — 2라운드에도 1(17:03 boot-fix) — 누적 2.
+  (d) 1라운드 카드 메모 「.hidden/ 복사」·「같은 백업 폴더 공유」는 이번 라운드 unit에 닿지 않았다(exclude는 M2) — deleted-mark의 fix 커밋이 「같은 백업 폴더 공유를 바로잡는다」를 담았다(팀이 스스로).
+  (e) 끊긴 spawn은 원장에 pack 줄만 남고 spawn/spawn_stop이 없다 — conductor가 「원장에는 그 pack 줄 하나에 spawn_stop이 둘일 수 있다」고 사실로 남겼다(실제: pack 20 · spawn 20 · spawn_stop 20 — 다시 띄운 팩이 새 pack 줄을 쓰지 않았다).
+- **다음**: 3라운드 아침 창(새 세션 — 상태 → 「가」) — 남은 M1 둘(restore-to → bad-input) → **SCOPE DONE** 예상 → system-attack 한 바퀴 → REPORT(낮의 일). 멈춤 = SCOPE DONE 또는 system-1 뒤 미검수. 턴은 `turn-bg.sh`(setsid)로.
