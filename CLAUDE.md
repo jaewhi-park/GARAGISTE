@@ -16,3 +16,4 @@
 - 산문은 `team/packs/*.md`·`team/HAZARDS.md`·두 규칙 파일 템플릿 합계 40 KB 이하; 새 규칙은 코드(테스트·훅 케이스)로만
 - 커밋: `type(scope): 요약` — type = feat | fix | test | docs | scaffold | delete, scope = scripts | claude | opencode | packs | install | docs | tests
 - 장치 추가는 사고(원장·HAZARDS 줄) 또는 측정에서만 — docs/BIRTH.md
+- 정비 세션(수리·시험 기록·리뷰)은 `docs/HANDOFF.md`의 시작 절차대로 — 문서는 절 단위로 읽고 파일을 통째로 읽지 않는다; 끝난 기록(`docs/changelog/`·`docs/measurements/archive/`)은 찾을 때만 grep
