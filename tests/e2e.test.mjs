@@ -897,7 +897,7 @@ test('L2 3판 (e): 확인형 질문(--assumed)의 「예」는 RESPEC이 아니�
   assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 막힌 것[^\n]*\n- work\.mjs ×2 [^\n]*FAIL --assumed는/);
   const hook = spawnSync(process.execPath, [path.join(repo, '.claude/hooks/guard.mjs')], { cwd: repo, encoding: 'utf8', input: JSON.stringify({ tool_name: 'Write', tool_input: { file_path: path.join(repo, 'src/x.mjs') }, cwd: repo }), env: { ...ENV, CLAUDE_PROJECT_DIR: repo } });
   assert.match(hook.stdout, /"permissionDecision":"deny"/, hook.stdout + hook.stderr);
-  assert.match(ledgerText(), /"kind":"guard","tool":"Write","target":"[^"]*src\/x\.mjs","reason":"conductor는 쓰지 않는다/);
+  assert.match(ledgerText(), /"kind":"guard","tool":"Write","target":"[^"]*src(?:\/|\\\\)x\.mjs","reason":"conductor는 쓰지 않는다/, '원장 target은 절대 경로라 플랫폼 표기(윈도우 src\\\\x.mjs) — 5판 윈도우 점검');
   assert.match(script('work', ['ask', 'schedule', '원문의 토요일이 아니라 뒤의 말대로 일요일이면 되나요?', '--assumed', '라운드는 일요일'], repo).out, /^Q1 queued[^\n]*「예」면 가정 그대로/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/DECISIONS.md'), 'utf8'), /- \[ \] Q1 \(schedule\): 원문의 토요일이[^\n]*지금은 「라운드는 일요일」, 예 = 그대로/, 'CEO는 「예」가 무엇을 뜻하는지 질문 줄에서 본다');
   const d1 = script('work', ['decide', '1', '예'], repo).out;

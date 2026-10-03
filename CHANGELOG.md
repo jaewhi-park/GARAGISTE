@@ -20,6 +20,10 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
 
+### Fixed — 2026-10-03 윈도우 점검(5판 동결 4, node 24.13) — 테스트 셋의 윈도우 경로 표기 (도구·테스트 — team/ 불변, 머지가 동결 5)
+- `tests/field/clock.mjs`: NODE_OPTIONS에 넣는 preload 경로의 백슬래시를 node가 이스케이프로 먹어 `C:L2…clock-preload.cjs`(모듈 없음)가 됐다 → 경로 구분자를 `/`로(`preloadArg`) — `clock preload`·`clock 실행` 테스트의 빨강 둘. 윈도우에선 시계 검사를 돌리지 않으므로 측정에 닿지 않는다.
+- `tests/e2e.test.mjs`: 가드 원장 `target`(절대 경로 — 플랫폼 표기)을 `src/x.mjs`로만 기대했다 → `src\\x.mjs`도 받는다. 규칙집·훅은 그대로.
+
 ### Fixed — 2026-10-03 사고 65 — L2 5판 리눅스 5라운드(Q7): CEO의 말로 연 unit이 팀 발의로 적혀 연속 상한에 걸렸다 (리눅스 끝의 수리 — 동결 갱신)
 - **사고 65(work.mjs new의 origin)**: CEO의 말을 conductor가 `work.mjs new`로 객체화한 unit(4라운드의 search-fix·list-count, 3라운드의 add-fix)이 `origin_kind: team`으로 적혔다 — `--from ceo`는 GARAGISTE_ADMIN(CEO 세션)에서만 받았기 때문. 부재 세션의 next가 「미검수 3」과 함께 「팀이 스스로 뜬 unit 연속 2 ≥ 2」를 냈다 — 이번엔 결과가 같았지만 다른 날이면 CEO 발의 unit 둘이 거짓 예산 정지를 만든다. 수리: CEO의 말은 `work.mjs brief`로 BRIEF에 그대로 들므로(day.mjs가 접점으로 센다) **그 말이 든 원문의 new는 ceo**(`quotesBrief` — 따옴표·백틱·공백만 다른 것은 같은 말, 8자 미만은 세지 않는다); `--from ceo`도 ADMIN 또는 BRIEF 근거가 있어야 한다. CLAUDE.md 템플릿 Flow 7에 「먼저 `work.mjs brief "<말 그대로>"`로 적고」 한 줄. 검사: unit(quotesBrief) · e2e(BRIEF에 있는 말의 new → ceo · 없는 말의 --from ceo → FAIL).
 - 리눅스 다섯 라운드 끝 — CEO 결정: 2라운드 시계 red는 「검사 주입」(등록문 「시계 검사」 셋째 계급, 사후) → **리눅스 통과(약함)**. **동결 갱신**: 테스트 베드 반영(L2-TRIAL-5 「차림」 수리 반영 4), 머지가 동결 4 — 윈도우 라운드는 그것으로.

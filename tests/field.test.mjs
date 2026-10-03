@@ -11,7 +11,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { answerWaits, bounds, ceoMinutes, ceoSources, cwdSlug, dayTable, dedupe, parseTranscript, render, stopsBySlug } from './field/day.mjs';
 import { bystanders, childEnv, choice, compile, due, loadPlan, objectLine, pick } from './field/stream.mjs';
-import { PRELOAD, childEnv as clockEnv, configs } from './field/clock.mjs';
+import { PRELOAD, childEnv as clockEnv, configs, preloadArg } from './field/clock.mjs';
 
 const T = (hms, d = '2026-10-02') => `${d}T${hms.length === 5 ? `${hms}:00` : hms}.000Z`;
 const D2 = '2026-10-03';
@@ -265,7 +265,8 @@ test('clock 설정 넷: C1 UTC+14 · C2 UTC−11 오늘 · C3 서울 +40일 · C
 
 test('clock preload: NODE_OPTIONS --require로 자식 node의 Date.now·new Date()·Date()가 오프셋만큼 옮겨지고 인자가 있는 Date·parse·instanceof·하위 클래스는 그대로 · TZ도 닿는다', () => {
   const env = clockEnv({ PATH: process.env.PATH, NODE_OPTIONS: '--no-warnings' }, { id: 'T', tz: 'Pacific/Kiritimati', offsetMs: 40 * 86400000 });
-  assert.equal(env.NODE_OPTIONS, `--no-warnings --require "${PRELOAD}"`);
+  assert.equal(env.NODE_OPTIONS, `--no-warnings --require "${PRELOAD.replace(/\\/g, '/')}"`, '구분자는 / — 윈도우의 백슬래시는 NODE_OPTIONS가 이스케이프로 먹는다');
+  assert.equal(preloadArg('C:\\L2\\garagiste-5\\tests\\field\\clock-preload.cjs'), '--require "C:/L2/garagiste-5/tests/field/clock-preload.cjs"');
   const code = 'console.log(JSON.stringify({ now: Date.now(), d: new Date().getTime(), sub: new (class D extends Date {})().getTime(), fixed: new Date(0).toISOString(), p: Date.parse("2026-01-01T00:00:00Z"), inst: new Date() instanceof Date, str: typeof Date(), tz: new Date(2026, 0, 1).getTimezoneOffset(), id: process.env.GARAGISTE_CLOCK_ID }))';
   const r = spawnSync(process.execPath, ['-e', code], { encoding: 'utf8', env });
   assert.equal(r.status, 0, r.stderr);
