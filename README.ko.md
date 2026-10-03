@@ -24,7 +24,7 @@ GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**
 | 규칙 파일 | `CLAUDE.md` (20줄) | `AGENTS.md` (20줄) |
 | 경계 | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
 | 규칙 본체 | 둘 다 `.garagiste/scripts/guard-rules.mjs` 하나 | |
-| spawn 설정 | `.claude/agents/{spec,build,attack,spike}.md` | `.opencode/agents/{conductor,spec,build,attack,spike}.md` |
+| spawn 설정 | `.claude/agents/{boot,intake,spec,build,attack,spike}.md` | `.opencode/agents/{conductor,boot,intake,spec,build,attack,spike}.md` |
 | 죽은 에이전트의 wip | SubagentStop 훅 → `checkpoint.mjs` | `task` 뒤 플러그인 → `checkpoint.mjs` |
 | conductor | 메인 세션 (CLAUDE.md Flow) | `conductor` primary agent (edit 권한 없음) |
 | 모델 | 예산 → agents 앞머리 `model:` | 기본 provider/model 상속, 팩별 `model:`은 앞머리에 직접 |
@@ -72,7 +72,7 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 | `guard-rules` · `checkpoint` | 두 하네스가 공유하는 경계 규칙과 wip 체크포인트 |
 
 ## 문서
-- [docs/GUIDE.md](docs/GUIDE.md) — 내 PC에서 돌려 보는 테스트 가이드(클론 · 시험 저장소 · 세션 · 판정선 · 모델 편성)
+- [docs/GUIDE.md](docs/GUIDE.md) — 내 PC에서 돌려 보는 테스트 가이드(클론 · 설치 · 세션 · CEO가 하는 말과 보는 것 · 판정선 · 모델 편성 · 막히면)
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — 네 문장과 뼈대 여덟, 사람의 창
 - [docs/BIRTH.md](docs/BIRTH.md) — 0 base 탄생 프로토콜, 탄생 규칙 셋, 첫 3 unit 뒤의 판정선
 - [docs/catalogue/](docs/catalogue/) — 후보 장치 카탈로그(v2 설계), v1 측정 진단, 토의 추가분. **계획이 아니다** — 사고가 나면 여기서 찾아 만든다

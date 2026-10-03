@@ -24,7 +24,7 @@ The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs ·
 | rules file | `CLAUDE.md` (20 lines) | `AGENTS.md` (20 lines) |
 | boundary | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
 | the rules themselves | both call `.garagiste/scripts/guard-rules.mjs` | |
-| spawn configs | `.claude/agents/{spec,build,attack,spike}.md` | `.opencode/agents/{conductor,spec,build,attack,spike}.md` |
+| spawn configs | `.claude/agents/{boot,intake,spec,build,attack,spike}.md` | `.opencode/agents/{conductor,boot,intake,spec,build,attack,spike}.md` |
 | wip of a dead agent | SubagentStop hook → `checkpoint.mjs` | plugin after `task` → `checkpoint.mjs` |
 | conductor | the main session (CLAUDE.md Flow) | the `conductor` primary agent (no edit permission) |
 | models | budget → `model:` in the agent files | inherits the default provider/model; per-pack `model:` by hand |
@@ -72,7 +72,7 @@ Agents receive one pack file and never talk to each other. Build has never met a
 | `guard-rules` · `checkpoint` | the boundary rules and wip checkpoint both harnesses share |
 
 ## Documents
-- [docs/GUIDE.md](docs/GUIDE.md) — run it on your own machine: clone, trial repo, session, verdict line, model assignment (Korean)
+- [docs/GUIDE.md](docs/GUIDE.md) — run it on your own machine: clone, install, session, what the CEO says and sees, verdict line, model assignment, troubleshooting (Korean)
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — four sentences, eight tenets, the human's windows (Korean)
 - [docs/BIRTH.md](docs/BIRTH.md) — the zero-base birth protocol and the verdict line after the first 3 units (Korean)
 - [docs/catalogue/](docs/catalogue/) — candidate devices (the v2 design), the v1 measurements, discussion additions. **Not a plan**: a device is built only when an incident in the ledger asks for it

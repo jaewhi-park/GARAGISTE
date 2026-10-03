@@ -1,4 +1,4 @@
-# v2 설계문서(garagiste-v2-design.md) 이후 토의에서 추가된 것 — 요약
+# v2 설계문서(DEVICES.md) 이후 토의에서 추가된 것 — 요약
 
 - 자율 레벨 L1~L5: v2 = L3(사람은 방향·현실·hard 결정만). L4는 텔레메트리(제품 사용 신호)가 있어야.
 - 장기 컨텍스트 = 층: 불변식(코드) · 생성된 모듈 지도(map.mjs) · surface.md(모듈 계약 ≤10줄) · 경로 매칭 HAZARDS · ADR(≤40줄) · measurements grep · BRIEF 원문 verbatim · 코드 grep. 팩 ≤8KB, 프롬프트 캐시 친화 접두(고정 부분 먼저).
