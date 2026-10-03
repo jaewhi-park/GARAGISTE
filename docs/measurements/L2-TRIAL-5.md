@@ -138,3 +138,6 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 침
 
 ## 라운드 표·판정
 (리눅스 1라운드부터 이 아래에 — 첫 줄은 동결 sha(머지 커밋 전체 값)와 침대 설치의 `HEAD:.garagiste`·SELFTEST. 표는 day.mjs 출력 + 판단 칸(구성 ①/② · 프레임워크 FAIL · 멈춤 이유 · 참고) + 시계 검사 줄(`CLOCK` 넷). 환경마다 따로 센다.)
+
+### 차림 (2026-10-03 — 리눅스 1라운드 첫 말 전에 커밋)
+- **동결 `ceb04dd120e105b692399b223db5d6f2ed3cce38`**(PR #100 머지 커밋 — team/ tree 43b8250) · 리눅스 침대: 정비 채널 컨테이너 · claude 2.1.288 · node 22 · `tests/field/setup.sh tests/field/briefs/l2-todo-cli.md <폴더>` budget medium · 설치 커밋 bdaff30 · **규칙집 기준선 `HEAD:.garagiste` 402ac06f4568784f23db328b11fbd96367632c6b** · SELFTEST PASS 19/19 · 측정 모드(프레임워크 FAIL로 라운드가 멈추면 회 끝) · 대리 규칙 1~5 · 「가」와 「저녁」 사이의 말 0 · 저녁 창마다 시계 검사(`clock.mjs`) · 표는 `day.mjs`(CEO-분 출처: 턴 기록).
