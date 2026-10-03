@@ -4,8 +4,20 @@ import path from 'node:path';
 import { collect, coverage } from './claims.mjs';
 import { appendLedger, ceoTouch, ctx, fail, git, isMain, listUnits, out, readJson, readLedger, readText, writeJson } from './lib.mjs';
 
-export function firstLine({ run, unseen, unseenMax, unobservedOs, decisionsOpen, coveragePct, uncertain }) {
-  return `실행: ${run || '—'} · 안 본 것 ${unseen}/${unseenMax} · target-OS 미관측 ${unobservedOs} · 결정 대기 ${decisionsOpen} · 센서 커버리지 ${coveragePct}% · 불확실: ${uncertain || '없음'}`;
+export function firstLine({ run, unseen, unseenMax, unobservedOs, decisionsOpen, coveragePct, uncertain, repeatedFails = 0 }) {
+  return `실행: ${run || '—'} · 안 본 것 ${unseen}/${unseenMax} · target-OS 미관측 ${unobservedOs} · 결정 대기 ${decisionsOpen} · 센서 커버리지 ${coveragePct}% · 불확실: ${uncertain || '없음'}${repeatedFails > 0 ? ` · 반복 FAIL ${repeatedFails}` : ''}`;
+}
+// 프레임워크 FAIL 후보(측정 빈틈 — L1 4차·L2 관찰): 마지막 CEO 접점 뒤 같은 FAIL 줄(스크립트 + 첫 80자)이 두 번 이상 — 「안내대로 해도 같은 FAIL」의 기계 쪽 정의.
+// STATUS 「막힌 것」에 뜨고 첫 줄이 센다 — 정비 채널이 읽는 자리(원격 전달은 두지 않았다: 네트워크 0은 CEO 결정).
+export function repeatedFails(ledger, since = '') {
+  const groups = new Map();
+  for (const e of ledger) {
+    if (e.kind !== 'fail' || (e.ts || '') <= (since || '')) continue;
+    const key = `${e.script} ${String(e.line || '').slice(0, 80)}`;
+    const g = groups.get(key) || { script: e.script, line: e.line, n: 0, last: '' };
+    g.n++; g.last = e.ts || ''; groups.set(key, g);
+  }
+  return [...groups.values()].filter((g) => g.n >= 2);
 }
 // 미검수 상한(채용 2026-10-03): 미검수 3이 거의 모든 라운드의 멈춤 이유였다(L2 1판 1일차 무인 376분 중 작업 ≈29분) — 사람 센서가 필요한 unit만 센다:
 // @sensor human 주장이 있거나 공격이 아무것도 못 잡은(선발견 0 — 적대 검증이 물지 않았다) unit. 기계가 증명한 unit은 STATUS에 표시되고 마일스톤 끝에 써본다. budgets.unseen_machine_exempt: false면 전부 센다(옛 규칙).
@@ -37,11 +49,13 @@ export function render(c) {
   const claims = collect(c);
   const cov = coverage(claims);
   const b = budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) });
+  const rf = repeatedFails(ledger, ceoTouch(c.main));
+  const gd = ledger.filter((e) => e.kind === 'guard' && (e.ts || '') > (ceoTouch(c.main) || ''));
   const shippedUnseen = units.filter((u) => u.state === 'shipped' && !u.tried).sort((a, b2) => (a.shipped || '').localeCompare(b2.shipped || ''));
   const unobservedOs = shippedUnseen.filter((u) => u.sensor && u.sensor.includes('@') && u.sensor.startsWith('human')).length;
   const questions = openQuestions(readText(path.join(c.main, c.team.paths.decisions)));
   const uncertain = claims.find((x) => x.status === 'unsensed') || claims.find((x) => x.status === 'unknown');
-  const line = firstLine({ run: c.team.commands.run, unseen: b.unseen, unseenMax: c.team.budgets.unseen_max, unobservedOs, decisionsOpen: questions.length, coveragePct: cov.pct, uncertain: uncertain ? `${uncertain.file}${uncertain.claim ? ' — ' + uncertain.claim : ''}` : '' });
+  const line = firstLine({ run: c.team.commands.run, unseen: b.unseen, unseenMax: c.team.budgets.unseen_max, unobservedOs, decisionsOpen: questions.length, coveragePct: cov.pct, repeatedFails: rf.length, uncertain: uncertain ? `${uncertain.file}${uncertain.claim ? ' — ' + uncertain.claim : ''}` : '' });
   const parts = [line, ''];
   parts.push('## 써볼 것 (≤3)');
   for (const u of shippedUnseen.slice(0, 3)) {
@@ -55,6 +69,7 @@ export function render(c) {
   const defaults = units.flatMap((u) => u.defaults.map((d) => `- ${u.slug}: ${d.text}`)).slice(-10);
   parts.push(...(defaults.length ? defaults : ['- 없음']));
   parts.push('', '## 멈춘 이유', ...(b.stops.length ? b.stops.map((s) => `- ${s}`) : ['- 없음 — 팀은 돈다']));
+  parts.push('', '## 막힌 것 — 같은 FAIL이 되풀이됐다(정비 채널로)', ...(rf.length ? rf.map((g) => `- ${g.script} ×${g.n} (마지막 ${g.last.slice(0, 16)}): ${g.line}`) : ['- 없음']), ...(gd.length ? [`- 가드 거부 ${gd.length} — 마지막: ${gd[gd.length - 1].reason}`] : []));
   const sc = readJson(path.join(c.main, '.garagiste', 'scope.json'), null);
   parts.push('', '## 범위');
   if (sc) { const done = sc.order.filter((s2) => units.some((u) => u.slug === s2 && u.state === 'shipped')).length; parts.push(`- 요청 ${sc.requested.length} · 선행 ${sc.required.length} · 출하 ${done}/${sc.order.length}${sc.missing.length ? ` · 없는 선행: ${sc.missing.join(', ')}` : ''}${sc.noNeeds ? ' · 선행 무시' : ''}`, `- 순서: ${sc.order.join(' → ')}`); }

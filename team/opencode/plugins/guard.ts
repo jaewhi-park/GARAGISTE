@@ -17,7 +17,16 @@ export const Guard: Plugin = async ({ directory }) => ({
     const cwd = typeof args.workdir === "string" && args.workdir ? path.resolve(directory, args.workdir) : directory
     const ti = tool === "Bash" ? { command: String(args.command ?? "") } : { file_path: String(args.filePath ?? args.path ?? "") }
     const reason = decide({ tool_name: tool, tool_input: ti, cwd }, makeCtx(directory, { cwd, env: process.env, fs }))
-    if (reason) throw new Error(`[guard] ${reason}`)
+    if (reason) {
+      // 가드 거부를 원장에 남긴다(Claude 훅과 같다 — 최선 노력)
+      try {
+        const team = JSON.parse(fs.readFileSync(path.join(directory, ".garagiste", "team.json"), "utf8").replace(/^\uFEFF/, ""))
+        const p = path.join(directory, team.paths?.ledger ?? ".garagiste/ledger/evidence.jsonl")
+        fs.mkdirSync(path.dirname(p), { recursive: true })
+        fs.appendFileSync(p, JSON.stringify({ ts: new Date().toISOString(), kind: "guard", tool, target: String((ti as Record<string, string>).file_path ?? (ti as Record<string, string>).command ?? "").slice(0, 200), reason }) + "\n")
+      } catch { /* 원장 없음 */ }
+      throw new Error(`[guard] ${reason}`)
+    }
   },
   "tool.execute.after": async (input) => {
     if (input.tool === "task") spawnStop(directory, {}) // opencode는 stop에 타입이 없다 — spawn 의도 수는 원장의 pack 줄이 센다

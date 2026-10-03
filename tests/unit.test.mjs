@@ -13,7 +13,7 @@ import { blindFiles, gateDecision, logicLines, probeNames, PROBE_TEXT } from '..
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { againCmd, attackRoundUsed, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
-import { firstLine, budgetStatus, humanNeeded, reportText } from '../team/scripts/state.mjs';
+import { firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
@@ -987,4 +987,15 @@ test('state report: SCOPE DONE의 출하 보고 한 장 — 만든 것·기계�
   assert.match(text, /## 못 본 것\n- 사람 센서 대기: tests\/acceptance\/list\.test\.mjs — 목록이 보인다\n- 결정 대기: Q3 \(list\): 번호 기준\?/);
   assert.match(text, /## 써볼 것[\s\S]*- add: docs\/units\/add\/try\.md → `node \.garagiste\/scripts\/work\.mjs try add`[\s\S]*- list: docs\/units\/list\/try\.md/);
   assert.match(text, /## 이음새 공격\n- system-1: 발견 2 → 고쳐 출하/);
+});
+
+test('state: 같은 FAIL이 되풀이되면 프레임워크 FAIL 후보 — 원장 fail 줄을 마지막 CEO 접점 뒤에서 묶어 세고 첫 줄에 「반복 FAIL n」 (측정 빈틈 — L1 4차·L2 관찰)', () => {
+  const f = (m, line, script = 'brief.mjs') => ({ ts: `2026-10-03T14:${String(m).padStart(2, '0')}:00Z`, kind: 'fail', script, line });
+  const L = [f(1, 'FAIL 팩 40KB > 32KB'), f(2, 'FAIL 팩 40KB > 32KB'), f(3, 'FAIL 다른 줄'), f(4, 'FAIL ship x 1/8', 'ship.mjs'), f(5, 'FAIL ship x 1/8', 'ship.mjs'), f(6, 'FAIL ship x 1/8', 'ship.mjs'), { ts: '2026-10-03T14:07:00Z', kind: 'pack', slug: 'x', pack: 'build' }];
+  const r = repeatedFails(L);
+  assert.deepEqual(r.map((g) => [g.script, g.n]), [['brief.mjs', 2], ['ship.mjs', 3]], '같은 줄 둘 이상만 — 한 번뿐인 FAIL은 안내대로 풀린 것');
+  assert.deepEqual(repeatedFails(L, '2026-10-03T14:03:00Z').map((g) => [g.script, g.n]), [['ship.mjs', 3]], 'CEO 접점 전의 FAIL은 세지 않는다');
+  assert.equal(repeatedFails([]).length, 0);
+  assert.match(firstLine({ run: 'x', unseen: 0, unseenMax: 3, unobservedOs: 0, decisionsOpen: 0, coveragePct: 100, uncertain: '', repeatedFails: 2 }), / · 반복 FAIL 2$/);
+  assert.doesNotMatch(firstLine({ run: 'x', unseen: 0, unseenMax: 3, unobservedOs: 0, decisionsOpen: 0, coveragePct: 100, uncertain: '' }), /반복 FAIL/, '0이면 첫 줄은 그대로');
 });

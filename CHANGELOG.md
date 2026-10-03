@@ -80,6 +80,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Added — 2026-10-03 FAIL·가드 거부가 원장에 남고, 되풀이되면 STATUS 「막힌 것」 (측정 빈틈 — L1 4차·L2 관찰 · CEO 「하나씩 수정」)
+- 모든 스크립트의 `FAIL …` 줄은 원장 `fail` 줄(스크립트·첫 줄)로, Claude 훅·opencode 플러그인의 거부는 `guard` 줄(도구·대상·이유)로 남는다 — 최선 노력(원장이 없으면 조용히). FAIL 대기의 시작점을 이웃 ts로 추정하던 측정 빈틈이 닫힌다.
+- `state.mjs`: 마지막 CEO 접점 뒤 같은 FAIL 줄이 두 번 이상이면(「안내대로 해도 같은 FAIL」의 기계 쪽 정의) STATUS 첫 줄에 「반복 FAIL n」, 「막힌 것」 절에 그 줄·횟수·가드 거부 수 — 정비 채널이 읽는 자리. 원격 전달은 두지 않았다(네트워크 0 — CEO 결정). 규칙집 경로의 장치라 HAZARDS 줄은 없다(팩에 닿지 않는다 — 기록은 여기).
+- 검사: unit(repeatedFails · firstLine) · e2e(같은 FAIL 두 번 → 원장·STATUS · 훅 거부 → 원장 guard 줄).
+
 ### Added — 2026-10-03 state.mjs report — SCOPE DONE의 출하 보고 한 장 (CEO 「결과물 가져오는 그림」 — 「하나씩 수정」)
 - `node .garagiste/scripts/state.mjs report`(범위가 끝나면 next가 낸다 — 이음새 공격 뒤): `docs/REPORT.md` 한 장 — 만든 것(원문 그대로·출하일·공격 선발견·써봤는가) · 기계가 증명한 것(LEDGER 행) · 팀이 정한 것 · 못 본 것(사람 센서 대기·결정 대기) · 써볼 것(마일스톤 끝의 try 카드) · 이음새 공격. 생성물이라 손편집 없음, 스크립트가 pathspec 커밋한다(models·commands와 같은 차선). 범위(order)마다 한 장 — -fix로 범위가 자라면 다시(scope.json `report_for` · 이음새 공격도 `system_for`).
 - team.json paths.report · ship의 문서 목록에 REPORT · README.

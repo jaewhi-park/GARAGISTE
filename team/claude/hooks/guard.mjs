@@ -7,4 +7,13 @@ let raw = ''; try { raw = fs.readFileSync(0, 'utf8'); } catch { /* 입력 없음
 let input = {}; try { input = JSON.parse(raw || '{}'); } catch { input = {}; }
 const root = process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd();
 const reason = decide(input, makeCtx(path.resolve(root), { cwd: input.cwd, fs }));
-if (reason) process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } }));
+if (reason) {
+  // 측정 빈틈(L1 4차·L2 관찰): 가드 거부는 원장 줄이 없었다 — 최선 노력으로 남긴다(원장이 없으면 조용히). 되풀이는 state.mjs 「막힌 것」이 센다.
+  try {
+    const team = JSON.parse(fs.readFileSync(path.join(root, '.garagiste', 'team.json'), 'utf8').replace(/^\uFEFF/, ''));
+    const p = path.join(root, team.paths?.ledger || '.garagiste/ledger/evidence.jsonl');
+    fs.mkdirSync(path.dirname(p), { recursive: true });
+    fs.appendFileSync(p, JSON.stringify({ ts: new Date().toISOString(), kind: 'guard', tool: input.tool_name, target: String(input.tool_input?.file_path || input.tool_input?.notebook_path || input.tool_input?.command || '').slice(0, 200), reason }) + '\n');
+  } catch { /* 원장 없음 */ }
+  process.stdout.write(JSON.stringify({ hookSpecificOutput: { hookEventName: 'PreToolUse', permissionDecision: 'deny', permissionDecisionReason: reason } }));
+}

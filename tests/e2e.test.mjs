@@ -879,6 +879,16 @@ test('L2 3판 (e): 확인형 질문(--assumed)의 「예」는 RESPEC이 아니�
   assert.match(script('work', ['new', 'schedule', '라운드는 일주일 간격의 토요일이다'], repo).out, /^UNIT schedule spec/);
   assert.match(script('brief', ['spec', 'schedule'], repo).out, /^PACK /, 'spec 팩이 돌았다 — 이제부터 닫히는 답은 사고 17의 RESPEC 대상');
   assert.match(script('work', ['ask', 'schedule', '라운드를 일요일로?', '--assumed'], repo).out, /^FAIL --assumed는 진행 중 unit의 질문에 가정 한 줄/, '가정 없는 --assumed는 받지 않는다');
+  // 측정 빈틈(L1 4차·L2 관찰): FAIL·가드 거부는 원장 줄이 없었다 — 같은 FAIL이 되풀이되면 STATUS 「막힌 것」(정비 채널의 자리)
+  script('work', ['ask', 'schedule', '라운드를 일요일로?', '--assumed'], repo);
+  const ledgerText = () => fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8');
+  assert.match(ledgerText(), /"kind":"fail","script":"work\.mjs","line":"FAIL --assumed는 진행 중 unit의 질문에 가정 한 줄/);
+  assert.match(script('state', ['--brief'], repo).out, / · 반복 FAIL 1\b/, '같은 FAIL 두 번 = 프레임워크 FAIL 후보');
+  script('state', [], repo);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 막힌 것[^\n]*\n- work\.mjs ×2 [^\n]*FAIL --assumed는/);
+  const hook = spawnSync(process.execPath, [path.join(repo, '.claude/hooks/guard.mjs')], { cwd: repo, encoding: 'utf8', input: JSON.stringify({ tool_name: 'Write', tool_input: { file_path: path.join(repo, 'src/x.mjs') }, cwd: repo }), env: { ...ENV, CLAUDE_PROJECT_DIR: repo } });
+  assert.match(hook.stdout, /"permissionDecision":"deny"/, hook.stdout + hook.stderr);
+  assert.match(ledgerText(), /"kind":"guard","tool":"Write","target":"[^"]*src\/x\.mjs","reason":"conductor는 쓰지 않는다/);
   assert.match(script('work', ['ask', 'schedule', '원문의 토요일이 아니라 뒤의 말대로 일요일이면 되나요?', '--assumed', '라운드는 일요일'], repo).out, /^Q1 queued[^\n]*「예」면 가정 그대로/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/DECISIONS.md'), 'utf8'), /- \[ \] Q1 \(schedule\): 원문의 토요일이[^\n]*지금은 「라운드는 일요일」, 예 = 그대로/, 'CEO는 「예」가 무엇을 뜻하는지 질문 줄에서 본다');
   const d1 = script('work', ['decide', '1', '예'], repo).out;
