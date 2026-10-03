@@ -80,6 +80,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Changed — 2026-10-03 환경의 긴 꼬리를 boot에서 선불 — 생태계별 검증된 꼴 · attack이 놓친 계급은 HAZARDS 줄로 (CEO 「하나씩 수정」)
+- boot 팩 4에 「생태계별 검증된 꼴」: 공통(`.gitattributes` `* text=auto eol=lf` — L2 2판 윈도우 CRLF ×4 · 산출물 .gitignore — 사고 29·38 · setup — 34) · Node(glob 러너·`{files}`·npm install) · Python(discover는 하이픈 이름을 0건 실행 — 사고 44·57, importlib 하네스) · Go(한 디렉터리 한 패키지 — 53·56, -count=1 — 54). 가드가 boot의 `.gitattributes` 쓰기를 연다.
+- HAZARDS 두 줄: boot의 첫 선택이 낳은 사고들(경로 .gitattributes·.gitignore·tests/harness·매니페스트) · attack이 두 판 연속 놓친 계급(`**` — 없는 날짜·공백만인 제목·CSV 수식: 모든 attack 팩에 떠 attack 팩 4가 테스트로 남긴다).
+- 검사: unit(팩 본문 · 가드 · HAZARDS 줄).
+
 ### Added — 2026-10-03 system-attack — 범위가 끝나면 이음새 공격 한 바퀴 (백로그 「system-attack 팩」 · 방아쇠: green 후 CEO 발견 결함이 0이 아니었다 — 벤치 파이썬 날짜 ×2 · todo 4일차 · 홀드아웃 library loan-limit — CEO 「하나씩 수정」)
 - `work.mjs system`: 출하된 unit이 둘 이상인 범위가 끝나면(next가 낸다) kind `system` unit을 연다 — spec·spike 없이 attack부터. attack 팩은 diff 대신 출하된 unit 전체의 surface·try·실행 명령을 받고(「시스템 공격」 절 · HAZARDS는 제품 파일 전부로 매칭), 발견은 `tests/adversary/system-<n>-*`의 red 테스트. red가 있으면 build가 고치고 ship(LEDGER의 red 증명 자리는 `system`, 선발견→0/총), 발견 0이면 `drop --forget`(초록 테스트는 산출물이 아니다 — ship도 거부). 한 범위에 한 바퀴(scope.json `system`). `team.json system_attack: false`로 끈다.
 - 검사: unit(nextStep · evaluateShip) · e2e(둘 출하 → system-1 발견 1 → build → ship · system-2 발견 0 → drop) · HAZARDS 한 줄.

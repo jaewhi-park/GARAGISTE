@@ -942,3 +942,13 @@ test('system-attack(채용 2026-10-03): 범위가 끝나면 이음새 공격 한
   assert.match(evaluateShip({ ...x, found: 0 }).find((k) => k.id === 'redproof').why, /결함을 찾지 못했다[\s\S]*drop system-1/);
   assert.ok(evaluateShip({ ...x, found: 2 }).every((k) => k.ok), evaluateShip({ ...x, found: 2 }).filter((k) => !k.ok).map((k) => `${k.id}: ${k.why}`).join());
 });
+
+test('boot 팩: 환경의 긴 꼬리를 선불한다 — 생태계별 검증된 꼴(.gitattributes eol=lf · 산출물 무시 · 하이픈 파일을 도는 test_file · Go 패키지) · 가드는 boot의 .gitattributes 쓰기를 연다 · attack이 놓친 계급은 HAZARDS 줄로', () => {
+  const md = fs.readFileSync(new URL('../team/packs/boot.md', import.meta.url), 'utf8');
+  for (const s of ['생태계별 검증된 꼴', '`.gitattributes`에 `* text=auto eol=lf`', '- Node:', '- Python:', '- Go:', '하이픈 이름', 'importlib', '한 디렉터리가 한 패키지', '`__pycache__/`']) assert.ok(md.includes(s), s);
+  assert.equal(decide(write(`${root}/.worktrees/boot/.gitattributes`), gctx('boot')), null, 'boot가 .gitattributes를 쓴다');
+  assert.ok(decide(write(`${root}/.worktrees/x/.gitattributes`), gctx('spec')), 'spec은 아니다');
+  const hz = fs.readFileSync(new URL('../team/HAZARDS.md', import.meta.url), 'utf8');
+  assert.match(hz, /^- `\*\*` · attack이 두 판 연속 놓친 계급/m, 'attack이 놓친 계급은 모든 팩에 뜨는 줄로');
+  assert.ok(matchHazards(hz, ['src/any.mjs']).some((l) => l.includes('놓친 계급')), '`**` 줄은 어느 diff에도 뜬다');
+});
