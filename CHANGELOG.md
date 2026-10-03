@@ -80,6 +80,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Added — 2026-10-03 state.mjs report — SCOPE DONE의 출하 보고 한 장 (CEO 「결과물 가져오는 그림」 — 「하나씩 수정」)
+- `node .garagiste/scripts/state.mjs report`(범위가 끝나면 next가 낸다 — 이음새 공격 뒤): `docs/REPORT.md` 한 장 — 만든 것(원문 그대로·출하일·공격 선발견·써봤는가) · 기계가 증명한 것(LEDGER 행) · 팀이 정한 것 · 못 본 것(사람 센서 대기·결정 대기) · 써볼 것(마일스톤 끝의 try 카드) · 이음새 공격. 생성물이라 손편집 없음, 스크립트가 pathspec 커밋한다(models·commands와 같은 차선). 범위(order)마다 한 장 — -fix로 범위가 자라면 다시(scope.json `report_for` · 이음새 공격도 `system_for`).
+- team.json paths.report · ship의 문서 목록에 REPORT · README.
+- 검사: unit(reportText · next의 범위 끝 순서) · e2e(system-attack 시험의 끝: 보고 → 커밋 → done) · HAZARDS 한 줄.
+
 ### Changed — 2026-10-03 미검수 상한은 사람 센서가 필요한 unit만 센다 — 기계가 증명한 출하물은 마일스톤 끝에 써본다 (L2 1판 1일차 무인 376분 중 작업 ≈29분 · 거의 모든 라운드의 멈춤이 미검수 3 — CEO 「하나씩 수정」)
 - `state.mjs budgetStatus`: 미검수 = 출하 뒤 안 써본 unit 중 사람 센서가 필요한 것 — `@sensor human` 주장이 있거나 공격 선발견이 0인 unit. 기계가 증명한 unit(인수 전부 machine · 공격 선발견 ≥ 1)과 scaffold·system은 세지 않고 STATUS 「써볼 것」에 「기계 증명 — 마일스톤 끝에」로 표시된다. next의 SCOPE DONE 줄이 써볼 unit을 나열한다. 무인 출하 5·팀 자발 2 상한은 그대로(back-pressure).
 - `team.json budgets.unseen_machine_exempt: false`면 옛 규칙(전부 센다). PRINCIPLES의 「미검수 3」 문장을 맞췄다.

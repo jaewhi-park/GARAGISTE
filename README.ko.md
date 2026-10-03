@@ -67,7 +67,7 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 | `boundary` | 의존성·워크플로·IPC·권한·유출 키워드 → spike 필수 |
 | `ship` | 8조건 fail-closed → ff 머지 · docs/LEDGER.md · STATUS(quick FAIL이면 머지 롤백) |
 | `claims` | 주장 그래프: 참·거짓·미검수·불명, 센서 커버리지, 다음 거짓 |
-| `state` | docs/STATUS.md 생성(첫 줄 = 전부) · 무인 정지 예산 |
+| `state` | docs/STATUS.md 생성(첫 줄 = 전부) · 무인 정지 예산 · `report`: SCOPE DONE의 출하 보고 한 장(만든 것·증명·정한 것·못 본 것·써볼 것) |
 | `doctor` | 감별 진단 — 하네스를 감지해 무엇이 죽었고 무엇을 치면 되는지 한 줄씩 |
 | `guard-rules` · `checkpoint` | 두 하네스가 공유하는 경계 규칙과 wip 체크포인트 |
 

@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { collect, coverage } from './claims.mjs';
-import { ceoTouch, ctx, isMain, listUnits, out, readJson, readLedger, readText } from './lib.mjs';
+import { appendLedger, ceoTouch, ctx, fail, git, isMain, listUnits, out, readJson, readLedger, readText, writeJson } from './lib.mjs';
 
 export function firstLine({ run, unseen, unseenMax, unobservedOs, decisionsOpen, coveragePct, uncertain }) {
   return `실행: ${run || '—'} · 안 본 것 ${unseen}/${unseenMax} · target-OS 미관측 ${unobservedOs} · 결정 대기 ${decisionsOpen} · 센서 커버리지 ${coveragePct}% · 불확실: ${uncertain || '없음'}`;
@@ -65,8 +65,58 @@ export function render(c) {
   parts.push('', `_생성: state.mjs ${new Date().toISOString()} · 주장 ${cov.total} · 손편집 없음_`, '');
   return { text: parts.join('\n'), line, stops: b.stops };
 }
+// 출하 보고(채용 2026-10-03 — CEO 「결과물 가져오는 그림」): 범위가 끝나도 CEO가 받는 것은 STATUS 첫 줄과 카드 셋뿐이었다(L2 3판 복귀 창: 원장·LEDGER·DECISIONS를 따로 읽었다).
+// 한 장 — 만든 것(원문 그대로) · 기계가 증명한 것(LEDGER 행) · 팀이 정한 것 · 못 본 것 · 써볼 것(마일스톤 끝의 try) · 이음새 공격. 생성물이라 손편집 없음.
+export function reportText({ team, scope, units, ledger, ledgerMd = '', claims = [], decisionsText = '', now = new Date().toISOString() }) {
+  const order = scope?.order || [];
+  const inScope = order.map((s) => units.find((u) => u.slug === s)).filter(Boolean);
+  const shipped = inScope.filter((u) => u.state === 'shipped');
+  const untried = shipped.filter((u) => !u.tried);
+  const systems = units.filter((u) => u.kind === 'system' && (u.state === 'shipped' || u.state === 'dropped'));
+  const rows = ledgerMd.split('\n').filter((l) => l.startsWith('| ')).map((l) => l.split('|').map((x) => x.trim()));
+  const row = (slug) => rows.find((c) => c[2] === slug);
+  const unsensed = claims.filter((x) => x.status === 'unsensed');
+  const open = openQuestions(decisionsText);
+  const defaults = units.flatMap((u) => (u.defaults || []).map((d) => `- ${u.slug}: ${d.text}`));
+  const run = team.commands.run || team.commands.quick || '—';
+  const L = [`# 출하 보고 — ${order.join(' → ')}`, '', `실행: \`${run}\` · 출하 ${shipped.length}/${order.length} · 써볼 것 ${untried.length} · 결정 대기 ${open.length} · 팀이 정한 것 ${defaults.length} · 못 본 것 ${unsensed.length}`, '', '## 만든 것 — CEO의 말 그대로'];
+  for (const u of inScope) L.push(`- **${u.slug}** (${u.milestone || 'M?'}) — "${u.origin}" · ${u.state === 'shipped' ? `출하 ${(u.shipped || '').slice(0, 10)} · 공격 선발견 ${attackFound(ledger, u)} · ${u.tried ? `써봤다 ${u.tried.result}` : '안 써봄'}` : u.state}`);
+  L.push('', '## 기계가 증명한 것 — docs/LEDGER.md', '| unit | head | full | red 증명 | attack 선발견→red/총 | sensor |', '|---|---|---|---|---|---|');
+  for (const u of shipped) { const c = row(u.slug); if (c) L.push(`| ${c[2]} | ${c[3]} | ${c[5]} | ${c[6]} | ${c[7]} | ${c[8]} |`); }
+  L.push('', '## 팀이 정한 것 (뒤집으려면 한 마디)', ...(defaults.length ? defaults : ['- 없음']));
+  const unseen = [...unsensed.map((x) => `- 사람 센서 대기: ${x.file}${x.claim ? ' — ' + x.claim : ''}`), ...open.map((q) => `- 결정 대기: ${q.replace(/^- \[ \] /, '')}`)];
+  L.push('', '## 못 본 것', ...(unseen.length ? unseen : ['- 없음 — 기계가 다 봤다']));
+  L.push('', '## 써볼 것 — 마일스톤 끝의 try', `- 실행: \`${run}\``);
+  for (const u of untried) L.push(`- ${u.slug}: ${u.kind === 'scaffold' ? '실행이 뜨는가' : u.kind === 'system' ? `이음새 공격이 고친 흐름(tests/adversary/${u.slug}-*)` : `docs/units/${u.slug}/try.md`} → \`node .garagiste/scripts/work.mjs try ${u.slug}\` → \`tried ${u.slug} ok|fail "<말>"\``);
+  if (!untried.length) L.push('- 없음 — 전부 써봤다');
+  if (systems.length) L.push('', '## 이음새 공격', ...systems.map((s) => `- ${s.slug}: ${s.state === 'shipped' ? `발견 ${attackFound(ledger, s)} → 고쳐 출하` : '발견 0 — drop'}`));
+  L.push('', `_생성: state.mjs report ${now} · 손편집 없음_`, '');
+  return L.join('\n');
+}
+function report(c) {
+  const sp = path.join(c.main, '.garagiste', 'scope.json');
+  const sc = readJson(sp, null);
+  if (!sc) fail('FAIL report: scope 없음 — 출하 보고는 범위가 끝난 뒤(work.mjs scope → … → SCOPE DONE)');
+  const units = listUnits(c.main, c.team); const ledger = readLedger(c.main, c.team);
+  const rel = c.team.paths.report || 'docs/REPORT.md';
+  const text = reportText({ team: c.team, scope: sc, units, ledger, ledgerMd: readText(path.join(c.main, c.team.paths.ledger_doc)), claims: collect(c), decisionsText: readText(path.join(c.main, c.team.paths.decisions)) });
+  const p = path.join(c.main, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text);
+  const order = sc.order || [];
+  writeJson(sp, { ...sc, report_for: order.join(',') }); // 이 범위에 한 장 — -fix로 범위가 자라면 next가 다시 낸다
+  appendLedger(c.main, c.team, { kind: 'report', path: rel, order });
+  // 생성물의 커밋 경로 — models·commands와 같은 승인된 차선(pathspec 커밋, 원장 PASS 불요)
+  let tail = '';
+  if (c.root === c.main && git(['status', '--porcelain', '--', rel], c.main).stdout.trim()) {
+    git(['add', '--', rel], c.main);
+    const cm = git(['commit', '-q', '-m', `docs(report): 출하 보고 — ${order.join(' → ')}`, '--', rel], c.main, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' });
+    tail = cm.status ? ` · 커밋 실패: ${(cm.stderr || cm.stdout).split('\n')[0]}` : ' · docs(report) 커밋';
+  }
+  const shipped = order.filter((s) => units.some((u) => u.slug === s && u.state === 'shipped'));
+  out(`REPORT ${rel} — 출하 ${shipped.length}/${order.length} · 써볼 것 ${shipped.filter((s) => !units.find((u) => u.slug === s)?.tried).length}${tail}`);
+}
 function main() {
   const c = ctx();
+  if (process.argv[2] === 'report') return report(c);
   const r = render(c);
   if (process.argv.includes('--brief')) return out(r.line);
   const p = path.join(c.main, c.team.paths.status);

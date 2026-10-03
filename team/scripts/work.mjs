@@ -210,7 +210,7 @@ function system(c) {
   const slug = `system-${units.filter((u) => u.kind === 'system').length + 1}`;
   const origin = `이음새 공격 — 출하된 unit ${shipped.length}개(${shipped.map((u) => u.slug).join(', ')})의 표면·try·실행 명령을 한 제품으로 공격한다`;
   createUnit(c, slug, origin, { kind: 'system', from: 'seed', milestone: shipped[shipped.length - 1].milestone });
-  writeJson(scopePath(c), { ...sc, system: slug });
+  writeJson(scopePath(c), { ...sc, system: slug, system_for: (sc.order || []).join(',') }); // 이 범위(order)에 한 바퀴 — -fix로 범위가 자라면 next가 다시 낸다
   appendLedger(c.main, c.team, { kind: 'system', slug, units: shipped.map((u) => u.slug) });
   out(`SYSTEM ${slug} — 출하된 unit ${shipped.length}개의 이음새: node .garagiste/scripts/brief.mjs attack ${slug} (발견은 red 테스트 → build가 고친다 · 발견 0이면 drop)`);
 }

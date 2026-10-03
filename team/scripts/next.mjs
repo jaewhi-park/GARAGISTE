@@ -28,9 +28,11 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     if (!scope) return { kind: 'ceo', text: `범위 없음 — Flow 3: CEO와 범위를 정한다(work.mjs scope --milestone M1 | <slug…>)${note}` };
     const r = pickReady({ order: scope.order || [], items: backlog, units, decisionsText });
     if (r.kind === 'done') {
-      // system-attack(채용 2026-10-03): 출하된 unit이 둘 이상인 범위의 끝은 이음새 공격 한 바퀴(한 범위에 한 번 — scope.json system)
+      // 범위(order)의 끝: 이음새 공격 한 바퀴(출하 둘 이상 — system-attack) → 출하 보고 한 장(state.mjs report) → done. 키는 order라 -fix로 범위가 자라면 둘 다 다시 돈다.
+      const key = (scope.order || []).join(',');
       const shippedN = (scope.order || []).filter((s) => units.some((x) => x.slug === s && x.state === 'shipped')).length;
-      if (systemAttack && !scope.system && shippedN >= 2) return run('work.mjs system', `범위가 끝났다 — 출하된 unit ${shippedN}개의 이음새 공격 한 바퀴(발견은 red 테스트, 발견 0이면 drop)`);
+      if (systemAttack && scope.system_for !== key && shippedN >= 2) return run('work.mjs system', `범위가 끝났다 — 출하된 unit ${shippedN}개의 이음새 공격 한 바퀴(발견은 red 테스트, 발견 0이면 drop)`);
+      if (scope.report_for !== key) return run('state.mjs report', '범위가 끝났다 — 출하 보고 한 장(docs/REPORT.md): 만든 것·증명한 것·정한 것·못 본 것·써볼 것');
       const untried = units.filter((x) => x.state === 'shipped' && !x.tried).map((x) => x.slug);
       return { kind: 'done', text: `SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위는 CEO가(work.mjs scope)${untried.length ? ` · 써볼 것 ${untried.length}: ${untried.join(', ')}(마일스톤 끝의 try)` : ''}${note}` };
     }

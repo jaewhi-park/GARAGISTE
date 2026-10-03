@@ -87,7 +87,7 @@ export function proseKb(main) {
   const files = ['CLAUDE.md', 'AGENTS.md', '.garagiste/HAZARDS.md', ...listFiles(path.join(main, '.garagiste', 'packs')).map((f) => path.join('.garagiste', 'packs', f))];
   return Math.round(files.reduce((n, f) => n + Buffer.byteLength(readText(path.join(main, f))), 0) / 1024);
 }
-const DOC_OK = (team) => [team.paths.brief, team.paths.backlog, team.paths.status, team.paths.ledger_doc, team.paths.decisions]; // 스크립트가 쓰는 CEO 문서는 ship의 문서 커밋에 실린다
+const DOC_OK = (team) => [team.paths.brief, team.paths.backlog, team.paths.status, team.paths.ledger_doc, team.paths.decisions, team.paths.report || 'docs/REPORT.md']; // 스크립트가 쓰는 CEO 문서는 ship의 문서 커밋에 실린다
 // 사고 7(2차 실기): main의 models 커밋과 boot의 commands 커밋이 team.json 인접 블록을 각자 재작성해 rebase가 텍스트 충돌 — 키는 겹치지 않았다.
 // 키 단위 3-way는 판단이 아니라 산수다: 한쪽만 바꾼 키는 그쪽, 양쪽이 같은 키를 다르게 바꾸면 병합 없음(null → 기존 FAIL 경로).
 export function mergeTeamJson(base, ours, theirs) {

@@ -951,7 +951,15 @@ test('system-attack(채용 2026-10-03): 범위 끝의 이음새 공격 — 출�
   const sh = script('ship', ['system-1'], repo);
   assert.match(sh.out, /^SHIPPED system-1 [0-9a-f]{7} sensor=machine\n[\s\S]*TRY: 이음새 공격이 고친 흐름/, sh.out);
   assert.match(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| system-1 \| [0-9a-f]{7} \| [0-9a-f]{7} \| PASS \| system \| 1→0\/1 \| machine \|/, 'LEDGER: red 증명 자리에 system, 선발견 1');
-  assert.match(nx(), /^NEXT done SCOPE DONE/, '한 바퀴 돈 범위는 done');
+  assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/state\.mjs report — 범위가 끝났다/, '한 바퀴 돈 범위는 출하 보고 한 장');
+  const rp = script('state', ['report'], repo).out;
+  assert.match(rp, /^REPORT docs\/REPORT\.md — 출하 2\/2 · 써볼 것 0 · docs\(report\) 커밋/, rp);
+  const report = fs.readFileSync(path.join(repo, 'docs/REPORT.md'), 'utf8');
+  assert.match(report, /^# 출하 보고 — one → two\n/);
+  assert.match(report, /## 만든 것[\s\S]*- \*\*one\*\* \(M1\) — "숫자 1을 준다"[\s\S]*## 기계가 증명한 것[\s\S]*## 이음새 공격\n- system-1: 발견 1 → 고쳐 출하/);
+  assert.match(git(['log', '-1', '--format=%s'], repo).out, /^docs\(report\): 출하 보고 — one → two/);
+  assert.equal(git(['status', '--porcelain'], repo).out.trim(), '', 'main은 깨끗하다');
+  assert.match(nx(), /^NEXT done SCOPE DONE/, '보고까지 낸 범위는 done');
   // 발견 0 — 초록 테스트는 산출물이 아니다: drop
   assert.match(script('work', ['system'], repo).out, /^UNIT system-2 attack/);
   script('brief', ['attack', 'system-2'], repo); script('work', ['spawned', 'system-2', 'attack'], repo);

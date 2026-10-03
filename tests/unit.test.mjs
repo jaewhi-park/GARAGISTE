@@ -13,7 +13,7 @@ import { blindFiles, gateDecision, logicLines, probeNames, PROBE_TEXT } from '..
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { againCmd, attackRoundUsed, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
-import { firstLine, budgetStatus, humanNeeded } from '../team/scripts/state.mjs';
+import { firstLine, budgetStatus, humanNeeded, reportText } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
@@ -869,7 +869,7 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   const T = (m) => `2026-10-03T10:${String(m).padStart(2, '0')}:00.000Z`;
   const u = (over) => ({ slug: 'add', kind: 'feature', state: 'spec', created: T(0), questions: [], holds: [], needs: [], respec: [], ...over });
   const backlog = [{ slug: 'add', milestone: 'M1', needs: [], done: false }, { slug: 'list', milestone: 'M1', needs: ['add'], done: false }];
-  const scope = { order: ['add', 'list'], requested: ['add', 'list'], required: [], missing: [] };
+  const scope = { order: ['add', 'list'], requested: ['add', 'list'], required: [], missing: [], report_for: 'add,list' };
   const step = (units, ledger, over = {}) => nextStep({ units, ledger, decisionsText: '', scope, backlog, stops: [], wtOf: () => ({ exists: true, rebase: false, unmerged: [] }), packPath: (s, p) => `.garagiste/session/packs/${s}-${p}-x.md`, ...over });
   const L = [];
   const push = (e) => L.push(e);
@@ -901,6 +901,7 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   assert.match(step([u({ state: 'shipped' })], L).cmd, /work\.mjs seed$/);
   assert.equal(step([u({ state: 'shipped' }), u({ slug: 'list', state: 'build', questions: [3] })], L, { decisionsText: '- [ ] Q3 (list): x' }).kind, 'wait');
   assert.equal(step([u({ state: 'shipped' }), u({ slug: 'list', state: 'shipped' })], L).kind, 'done');
+  assert.match(step([u({ state: 'shipped' }), u({ slug: 'list', state: 'shipped' })], L, { scope: { order: ['add', 'list'] } }).cmd, /state\.mjs report$/, '범위가 끝나면 출하 보고 한 장 — 그 뒤에 done');
   assert.equal(step([u({ state: 'shipped' })], L, { stops: ['미검수 3 ≥ 3'] }).kind, 'ceo');
   assert.equal(step([u({ state: 'shipped' })], L, { scope: null }).kind, 'ceo');
   assert.equal(step([], L, { backlog: [] }).kind, 'ceo');
@@ -922,11 +923,12 @@ test('system-attack(채용 2026-10-03): 범위가 끝나면 이음새 공격 한
   const T = (m) => `2026-10-03T11:${String(m).padStart(2, '0')}:00.000Z`;
   const shipped = (slug) => ({ slug, kind: 'feature', state: 'shipped', created: T(0), questions: [], needs: [] });
   const backlog = [{ slug: 'a', milestone: 'M1', needs: [], done: false }, { slug: 'b', milestone: 'M1', needs: [], done: false }];
-  const scope = { order: ['a', 'b'], requested: ['a', 'b'], required: [], missing: [] };
+  const scope = { order: ['a', 'b'], requested: ['a', 'b'], required: [], missing: [], report_for: 'a,b' };
   const base = { decisionsText: '', backlog, stops: [], systemAttack: true, wtOf: () => ({ exists: true, rebase: false, unmerged: [] }), packPath: (s, p) => `${s}-${p}.md` };
   assert.match(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope }).cmd, /work\.mjs system$/, '둘 이상 출하된 범위의 끝은 이음새 공격');
-  assert.equal(nextStep({ ...base, units: [shipped('a')], ledger: [], scope: { ...scope, order: ['a'] }, backlog: backlog.slice(0, 1) }).kind, 'done', '한 unit의 결함은 그 unit의 attack이 봤다');
-  assert.equal(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope: { ...scope, system: 'system-1' } }).kind, 'done', '한 바퀴 돈 범위는 done');
+  assert.equal(nextStep({ ...base, units: [shipped('a')], ledger: [], scope: { ...scope, order: ['a'], report_for: 'a' }, backlog: backlog.slice(0, 1) }).kind, 'done', '한 unit의 결함은 그 unit의 attack이 봤다');
+  assert.equal(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope: { ...scope, system_for: 'a,b' } }).kind, 'done', '한 바퀴 돈 범위는 done');
+  assert.match(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope: { ...scope, system_for: 'a' } }).cmd, /work\.mjs system$/, '-fix로 범위가 자라면 다시 한 바퀴');
   assert.equal(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope, systemAttack: false }).kind, 'done', 'team.json system_attack: false면 두지 않는다');
   const sys = (over) => ({ slug: 'system-1', kind: 'system', state: 'attack', created: T(1), questions: [], needs: [], respec: [], ...over });
   const L = [{ ts: T(2), kind: 'pack', slug: 'system-1', pack: 'attack' }, { ts: T(3), kind: 'spawn', slug: 'system-1', pack: 'attack' }];
@@ -965,4 +967,24 @@ test('미검수 상한(채용 2026-10-03): 사람 센서가 필요한 unit만 �
   const old = { ...team, budgets: { ...team.budgets, unseen_machine_exempt: false } };
   assert.equal(budgetStatus({ units, ledger: L, team: old, ceoTouchTs: null }).unseen, 5, '옛 규칙: 전부 센다');
   assert.ok(!humanNeeded(u('m'), L, team) && humanNeeded(u('h', { sensor: 'human@win32' }), L, team) && humanNeeded(u('z'), L, team));
+});
+
+test('state report: SCOPE DONE의 출하 보고 한 장 — 만든 것·기계가 증명한 것·팀이 정한 것·못 본 것·써볼 것·이음새 공격 (CEO 「결과물 가져오는 그림」)', () => {
+  const at = '2026-10-03T13:00:00Z';
+  const units = [
+    { slug: 'boot', kind: 'scaffold', state: 'shipped', shipped: at, created: at, origin: '할 일 CLI', milestone: 'M1', tried: { result: 'ok' }, defaults: [{ text: 'Node 22 · 의존성 0' }], sensor: 'machine' },
+    { slug: 'add', kind: 'feature', state: 'shipped', shipped: at, created: at, origin: '할 일을 더한다', milestone: 'M1', tried: null, defaults: [], sensor: 'machine' },
+    { slug: 'list', kind: 'feature', state: 'shipped', shipped: at, created: at, origin: '할 일을 본다', milestone: 'M1', tried: null, defaults: [], sensor: 'human@win32' },
+    { slug: 'system-1', kind: 'system', state: 'shipped', shipped: at, created: at, origin: '이음새 공격', milestone: 'M1', tried: null, defaults: [], sensor: 'machine' },
+  ];
+  const ledger = [{ ts: '2026-10-03T13:10:00Z', kind: 'attack', slug: 'add', red: 1, total: 1, files: ['tests/adversary/add-1.test.mjs'] }, { ts: '2026-10-03T13:20:00Z', kind: 'attack', slug: 'system-1', red: 2, total: 2, files: ['a', 'b'] }];
+  const ledgerMd = '# LEDGER\n\n| 날짜 | unit | head | tree | full | redproof | attack 선발견→red/총 | sensor |\n|---|---|---|---|---|---|---|---|\n| 2026-10-03 | boot | a1 | t1 | PASS | scaffold | — | machine |\n| 2026-10-03 | add | a2 | t2 | PASS | base_red head_green | 1→0/1 | machine |\n| 2026-10-03 | list | a3 | t3 | PASS | base_red head_green | 0→0/1 | human@win32 |\n';
+  const text = reportText({ team, scope: { order: ['boot', 'add', 'list'] }, units, ledger, ledgerMd, claims: [{ status: 'unsensed', file: 'tests/acceptance/list.test.mjs', claim: '목록이 보인다' }], decisionsText: '- [ ] Q3 (list): 번호 기준?', now: at });
+  assert.match(text, /^# 출하 보고 — boot → add → list\n\n실행: `[^`]*` · 출하 3\/3 · 써볼 것 2 · 결정 대기 1 · 팀이 정한 것 1 · 못 본 것 1/);
+  assert.match(text, /## 만든 것[\s\S]*- \*\*add\*\* \(M1\) — "할 일을 더한다" · 출하 2026-10-03 · 공격 선발견 1 · 안 써봄/);
+  assert.match(text, /## 기계가 증명한 것[\s\S]*\| add \| a2 \| PASS \| base_red head_green \| 1→0\/1 \| machine \|/);
+  assert.match(text, /## 팀이 정한 것[\s\S]*- boot: Node 22 · 의존성 0/);
+  assert.match(text, /## 못 본 것\n- 사람 센서 대기: tests\/acceptance\/list\.test\.mjs — 목록이 보인다\n- 결정 대기: Q3 \(list\): 번호 기준\?/);
+  assert.match(text, /## 써볼 것[\s\S]*- add: docs\/units\/add\/try\.md → `node \.garagiste\/scripts\/work\.mjs try add`[\s\S]*- list: docs\/units\/list\/try\.md/);
+  assert.match(text, /## 이음새 공격\n- system-1: 발견 2 → 고쳐 출하/);
 });

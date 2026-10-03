@@ -29,6 +29,7 @@
     "decisions": "docs/DECISIONS.md",
     "status": "docs/STATUS.md",
     "ledger_doc": "docs/LEDGER.md",
+    "report": "docs/REPORT.md",
     "hazards": ".garagiste/HAZARDS.md",
     "units": ".garagiste/units",
     "ledger": ".garagiste/ledger/evidence.jsonl",

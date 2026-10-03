@@ -67,7 +67,7 @@ Agents receive one pack file and never talk to each other. Build has never met a
 | `boundary` | dependency · workflow · IPC · permission · egress keywords → spike required |
 | `ship` | 8 fail-closed conditions → ff merge · docs/LEDGER.md · STATUS (rolls the merge back if main quick fails) |
 | `claims` | the claim graph: true · false · unsensed · unknown, sensor coverage, next |
-| `state` | generates docs/STATUS.md (first line is everything) · unattended stop budgets |
+| `state` | generates docs/STATUS.md (first line is everything) · unattended stop budgets · `report`: one page at SCOPE DONE (built · proven · decided · unseen · to try) |
 | `doctor` | differential diagnosis — detects the harness, says what died and what to fix |
 | `guard-rules` · `checkpoint` | the boundary rules and wip checkpoint both harnesses share |
 
