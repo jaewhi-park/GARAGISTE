@@ -20,6 +20,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
 
+### Changed — 2026-10-03 문체 — 살아 있는 문서의 코인·비유를 평이한 말로 (CEO 「무리해서 모든 단어를 한국어로 번역하지 말자」)
+- 레포의 산문은 코드 명사(unit · ship · spawn · worktree · conductor · scope …)는 영어로 두고 설명은 순우리말·비유로 쓰는 문체였다 — 「침대」(test bed, 2026-09-30 HANDOFF부터 · docs 8파일 40회) · 「꼴」(형식 · docs 75회, team/ 8회) · 「이음새」 · 「선발견」 · 토양 · 백신 · 걷어 내다 같은 코인. CEO가 어색하다고 짚었다.
+- 살아 있는 문서(HANDOFF · FIELD-BENCH · L2-TRIAL-5 · L2-day-conductor · 백로그 · 후보 README)에서 바꿨다: 침대·시험대 → **테스트 베드** · 저장 꼴 → **저장 형식** · 같은 꼴 → 같은 모양 · boot 꼴 → boot 생태계별 설정 · 토양 → 낳은 조건 · 백신 → 재발 방지 · 걷어 낸다 → 제거한다 · 후발견 → 나중에 찾았다. 끝난 기록(archive · changelog · FIELD-BENCH-LOG의 행)은 그대로(기록은 고치지 않는다).
+- `team/` 산문과 그 출력을 인용한 자리(팩 절 제목 「생태계별 검증된 꼴」 · LEDGER 열 「선발견」 · STATUS 「막힌 것」의 「되풀이」 · `work.mjs system`의 「이음새」)는 그대로 — L2 5판 동결이 끝나면 팩·HAZARDS·템플릿·스크립트 문구를 함께 바꾸고 금지어 unit 테스트를 둔다(규칙은 코드로만). CLAUDE.md Language 절에 문체 한 줄.
+
 ### Changed — 2026-10-03 낡은 문장 둘 정정 (정비 채널 리뷰 — 코드에 없는 장치를 말하던 문장)
 - 이 파일의 머리말: v1의 문장이었다 — 「훅·플러그인이 `GARAGISTE_VERSION`을 지니고 session-start가 그 값을 주입한다 · Breaking 목록이 이행 체크리스트」는 v2 코드 어디에도 없다(`docs/changelog/v1.md`에만 Breaking 절이 있다). v2의 사실로 바꿨다: 버전 기록 없음 · 설치본의 정체 = 설치 커밋의 `team/` 사본 · 기준선 = `HEAD:.garagiste` · 재설치가 덮는 것(scripts·packs·훅·agents·pre-commit)과 남기는 것(team.json·HAZARDS·규칙 파일·settings) · 버전 기록은 L3 Q11.
 - 백로그 L2 게이트 「1주간 green 후 결함 0」 → 세 라운드 누적(CEO 「날짜는 측정 단위가 아니다」) — 5판 등록 커밋에서 이미 고쳤다(116396a).
