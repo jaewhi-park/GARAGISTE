@@ -36,3 +36,6 @@
 
 ## 라운드 표·판정
 (라운드마다 채운다 — 5판 「라운드 표·판정」의 꼴 그대로)
+
+### 차림 (2026-10-03 — 리눅스 1라운드 첫 말 전에 커밋)
+- **동결 6 `50b6f11957bd03de02226f30038c2729b6162fc2`**(PR #106 머지 커밋 — snap 서명 · team/ tree는 동결 5와 같다) · 리눅스 테스트 베드: 정비 채널 컨테이너 · claude 2.1.288 · node 22 · python 3.11.15 · `tests/field/setup.sh tests/field/briefs/holdout-snap.md <scratchpad>/bench-1003/snap medium` → 설치 커밋 `48d5f3e` · **규칙집 기준선 `HEAD:.garagiste` `3663aa8ba07a418ff6fbc98d7fa10ba4e261ea6a`** · SELFTEST PASS 19/19. 턴 기록 `snap-turn<n>.msg/.json` · 라운드 시작 `snap-round<n>.since`.
