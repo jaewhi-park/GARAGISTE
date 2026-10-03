@@ -1,0 +1,25 @@
+[
+  { "id": "bug", "when": { "kind": "ship", "nth": 1 },
+    "text": "버그: `todo search milk --all`을 치면 → 아무 말 없이 exit 0으로 끝난다(옵션이 검색 구절에 삼켜진다 — `search --bogus milk`도 같다), 원문은 「잘못된 입력(없는 번호, 없는 날짜 등)은 이유를 한 줄로 말하고 0이 아닌 코드로 끝난다」",
+    "object": { "kind": ["unit", "scope_fix"], "slug": "-fix$" }, "call": "work\\.mjs (new|add) \\S+-fix" },
+  { "id": "add", "when": { "kind": "ship", "nth": 2 },
+    "text": "`todo list` 맨 아래에 남은 일 개수를 한 줄로 보여 줘.",
+    "object": { "kind": ["unit"], "fresh": true }, "call": "work\\.mjs (add|new) " },
+  { "id": "modify", "when": { "kind": "pack", "pack": "build", "after": "add", "exclude": "-fix$" },
+    "texts": {
+      "priority": "우선순위 기본은 보통이 아니라 낮음으로 하자.",
+      "upcoming": "upcoming은 7일이 아니라 14일 안으로 바꾸자.",
+      "note": "메모는 쌓지 말고 하나만 두자 — 다시 붙이면 덮어쓴다.",
+      "show": "show에서 메모 대신 끝낸 시각을 보여 주자.",
+      "archive": "archive는 30일이 아니라 90일이 지난 일로 바꾸자.",
+      "export-import": "CSV는 엑셀이 아니라 구글 시트에서 열리면 된다 — 줄 끝은 LF로."
+    },
+    "object": { "kind": ["pack"], "pack": "spec", "slugOf": "modify" } },
+  { "id": "pivot", "when": { "kind": "pack", "pack": "spec", "after": "modify", "slugOf": "modify" },
+    "choices": [
+      { "slug": "archive", "text": "archive는 이번 범위에서 빼자. 나중에 다시 정한다." },
+      { "slug": "show", "text": "show는 이번 범위에서 빼자. 나중에 다시 정한다." },
+      { "slug": "upcoming", "text": "upcoming은 이번 범위에서 빼자. 나중에 다시 정한다." }
+    ],
+    "object": { "kind": ["scope", "drop"], "target": true } }
+]

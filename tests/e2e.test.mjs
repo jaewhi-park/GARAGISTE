@@ -210,6 +210,7 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('work', ['needs', 'memo', 'session'], path.join(repo, '.worktrees', 'net')).out, /^FAIL needs는 메인 저장소에서만/);
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"needs","slug":"memo","from":\["session","Q2"\],"to":\["session"\]/);
   assert.match(script('work', ['decide', '2', 'CSV 하나'], repo).out, /^PASS decide Q2/);
+  assert.match(script('work', ['scope', 'export', '--milestone', 'M1'], repo).out, /^FAIL scope: slug 목록과 --milestone\/--range는 함께 쓸 수 없다/, 'L2 5판 4라운드: 혼용은 원인을 말한다(「BACKLOG에 없는 slug: --milestone」이 아니라)');
   const sc = script('work', ['scope', 'export'], repo).out;
   assert.match(sc, /^SCOPE 요청 1 · 선행 2 · 없는 선행 0\n- 선행: session \(memo가 needs\) · memo \(export가 needs\)\n- 순서: session → memo → export/, sc);
   // L2 1일차: unit은 한 번에 하나 — 일하는 unit(net)이 있으면 seed는 열지 않는다(병렬 seed가 사고 26의 토양이었다)

@@ -924,6 +924,11 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   assert.match(step([u({ state: 'build' })], L).cmd, /verify\.mjs attack add$/, '고친 뒤엔 attack 팩을 새로 띄우지 않고 기존 공격 테스트만(한 바퀴)');
   push({ ts: T(11), kind: 'attack', slug: 'add', total: 2, red: 0 });
   assert.match(step([u({ state: 'build' })], L).cmd, /ship\.mjs add$/, 'red 0이면 ship');
+  // 사고 64(L2 5판 리눅스 4라운드): 미검수 3이면 ship은 budget으로 거부한다 — next가 ship을 계속 내지 않고 ship 직전에서 ceo
+  const blocked = step([u({ state: 'build' })], L, { stops: ['미검수 3 ≥ 3 — CEO가 써봐야 출하가 열린다'] });
+  assert.equal(blocked.kind, 'ceo');
+  assert.match(blocked.text, /^STOP 미검수 3 ≥ 3 — CEO가 써봐야 출하가 열린다 — 예산 정지: add는 red 0으로 ship 직전에 서 있다/);
+  assert.match(step([u({ state: 'attack' })], L, { stops: ['CEO 접점 없이 출하 5 ≥ 5'] }).text, /^STOP CEO 접점 없이 출하 5/, 'attack 상태에서 red 0이어도 같다');
   // 출하되면 seed · 질문에 걸린 unit은 자리를 막지 않는다 · 범위가 끝나면 done · 예산 정지와 범위 없음은 CEO
   assert.match(step([u({ state: 'shipped' })], L).cmd, /work\.mjs seed$/);
   assert.equal(step([u({ state: 'shipped' }), u({ slug: 'list', state: 'build', questions: [3] })], L, { decisionsText: '- [ ] Q3 (list): x' }).kind, 'wait');

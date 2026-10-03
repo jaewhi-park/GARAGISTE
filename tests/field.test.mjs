@@ -10,7 +10,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { answerWaits, bounds, ceoMinutes, ceoSources, cwdSlug, dayTable, dedupe, parseTranscript, render, stopsBySlug } from './field/day.mjs';
-import { bystanders, childEnv, choice, compile, due, objectLine, pick } from './field/stream.mjs';
+import { bystanders, childEnv, choice, compile, due, loadPlan, objectLine, pick } from './field/stream.mjs';
 import { PRELOAD, childEnv as clockEnv, configs } from './field/clock.mjs';
 
 const T = (hms, d = '2026-10-02') => `${d}T${hms.length === 5 ? `${hms}:00` : hms}.000Z`;
@@ -397,4 +397,21 @@ test('CEO-분 CLI: 폴더 옆의 턴 기록을 스스로 찾아 표에 낸다 ·
     assert.match(r.stdout, /- CEO-분\(기계 셈 — 출처: 턴 기록·전사\): 아침 창 2\.5분\(말 2 · 09:58:00 → 10:00:30 · conductor 대기 1\.0\) · 저녁 창 6\.0분\(말 1 · 10:59:00 → 11:05:00 · 카드 3 · 결정 1 · 대기 6\.0\)/);
     assert.match(r.stdout, /DAY bed · .* · CEO-분 2\.5\/6\.0$/m);
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('stream plan 다시 읽기(5판 4라운드): plan 파일이 바뀌면 세션 중에도 새 항목을 쓴다 — 수정·방향전환의 slug는 아침 창의 intake 뒤에야 적을 수 있다', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-plan-'));
+  try {
+    const p = path.join(dir, 'plan.json');
+    fs.writeFileSync(p, JSON.stringify([{ id: 'bug', when: { kind: 'ship', nth: 1 }, text: 'x' }]));
+    const a = loadPlan(p);
+    assert.equal(a.changed, true); assert.equal(a.plan.length, 1);
+    const b = loadPlan(p, a.mtime);
+    assert.deepEqual([b.changed, b.plan], [false, null], '같은 파일은 다시 읽지 않는다');
+    fs.writeFileSync(p, JSON.stringify([{ id: 'bug' }, { id: 'modify', texts: { upcoming: '14일로' } }]));
+    const later = new Date(a.mtime + 5000); fs.utimesSync(p, later, later);
+    const c = loadPlan(p, a.mtime);
+    assert.equal(c.changed, true); assert.deepEqual(c.plan.map((x) => x.id), ['bug', 'modify']);
+    assert.deepEqual(loadPlan(''), { plan: [], mtime: 0, changed: false }, 'plan 없음');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

@@ -141,8 +141,9 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 테
 
 ### 차림 (2026-10-03 — 리눅스 1라운드 첫 말 전에 커밋)
 - **동결 `ceb04dd120e105b692399b223db5d6f2ed3cce38`**(PR #100 머지 커밋 — team/ tree 43b8250) · 리눅스 테스트 베드: 정비 채널 컨테이너 · claude 2.1.288 · node 22 · `tests/field/setup.sh tests/field/briefs/l2-todo-cli.md <폴더>` budget medium · 설치 커밋 bdaff30 · **규칙집 기준선 `HEAD:.garagiste` 402ac06f4568784f23db328b11fbd96367632c6b** · SELFTEST PASS 19/19 · 측정 모드(프레임워크 FAIL로 라운드가 멈추면 회 끝) · 대리 규칙 1~5 · 「가」와 「저녁」 사이의 말 0 · 저녁 창마다 시계 검사(`clock.mjs`) · 표는 `day.mjs`(CEO-분 출처: 턴 기록).
-- **수리 반영 1 (2026-10-03 — 1라운드 뒤, 2라운드 전)**: 사고 60(가드의 따옴표 벗기기 오탐 → intake 원문 변형) · 사고 61(decide가 `Q<n>`을 거부) · 훅 원장 줄 1000자. 정본 `8d47f704a3e65973bea815c51d81d8c0aa30b547`(브랜치 — **머지가 새 동결**) → 테스트 베드 반영 커밋 `284d2b3`(`deliver.sh` — scripts·packs·HAZARDS·settings·hooks), **새 규칙집 기준선 `HEAD:.garagiste` `bc9b0ced940bbe6d05711f5f9d9a1dd81f3aff6b`**. 2라운드부터 이 정본으로 돈다(등록문 동결 규칙 — 결함 수리 허용). 윈도우 라운드는 머지 뒤의 sha로 시작한다.
-- **수리 반영 2 (2026-10-03 — 2라운드 뒤, 3라운드 전)**: 사고 62(가드 `writeTargets`의 verb 정규식이 slug 속 rm에 걸려 build 팩의 읽기 명령 거부) · 사고 63(redproof.mjs의 system 분기 빈칸 — 「acceptance 없음」 FAIL → conductor 이탈 1턴). 정본 `3c308eed7e8f48fa4050c924bf213a6e11774032`(브랜치 — **머지가 새 동결**) → 테스트 베드 반영 커밋 `332abb9`(`deliver.sh` — scripts 넷: guard-rules·lib·redproof·ship), **새 규칙집 기준선 `HEAD:.garagiste` `44b86d43ad2b149f65d87ac7170da5bbdb0e81b4`** · 베드 SELFTEST 19/19 · doctor OK · 베드에서 재현 — 2라운드의 거부 명령은 쓰기 대상 0, `redproof.mjs system-1`은 `PASS … 발견 3`. 3라운드부터 이 정본으로 돈다. 도구 수리(동결 아님)는 `day.mjs`의 `--since` 하한(2라운드 (i)).
+- **수리 반영 1 (2026-10-03 — 1라운드 뒤, 2라운드 전)**: 사고 60(가드의 따옴표 벗기기 오탐 → intake 원문 변형) · 사고 61(decide가 `Q<n>`을 거부) · 훅 원장 줄 1000자. 정본 `8d47f704a3e65973bea815c51d81d8c0aa30b547`(브랜치 → 수리 반영 2와 함께 PR #101로 머지 — 동결 2) → 테스트 베드 반영 커밋 `284d2b3`(`deliver.sh` — scripts·packs·HAZARDS·settings·hooks), **새 규칙집 기준선 `HEAD:.garagiste` `bc9b0ced940bbe6d05711f5f9d9a1dd81f3aff6b`**. 2라운드부터 이 정본으로 돈다(등록문 동결 규칙 — 결함 수리 허용). 윈도우 라운드는 머지 뒤의 sha로 시작한다.
+- **수리 반영 2 (2026-10-03 — 2라운드 뒤, 3라운드 전)**: 사고 62(가드 `writeTargets`의 verb 정규식이 slug 속 rm에 걸려 build 팩의 읽기 명령 거부) · 사고 63(redproof.mjs의 system 분기 빈칸 — 「acceptance 없음」 FAIL → conductor 이탈 1턴). 정본 `3c308eed7e8f48fa4050c924bf213a6e11774032` → **동결 2 = `2ffad306a1515807965035e4e438a90379907ae4`**(PR #101 머지 커밋 — team/ tree는 3c308ee와 같다 · 3라운드와 윈도우 첫 말의 sha) → 테스트 베드 반영 커밋 `332abb9`(`deliver.sh` — scripts 넷: guard-rules·lib·redproof·ship), **새 규칙집 기준선 `HEAD:.garagiste` `44b86d43ad2b149f65d87ac7170da5bbdb0e81b4`** · 베드 SELFTEST 19/19 · doctor OK · 베드에서 재현 — 2라운드의 거부 명령은 쓰기 대상 0, `redproof.mjs system-1`은 `PASS … 발견 3`. 3라운드부터 이 정본으로 돈다. 도구 수리(동결 아님)는 `day.mjs`의 `--since` 하한(2라운드 (i)).
+- **수리 반영 3 (2026-10-03 — 4라운드 뒤, 5라운드 전)**: 사고 64(next.mjs — ship 직전의 예산 정지에 ceo를 내지 않아 conductor가 ship의 FAIL 줄로 스스로 멈췄다) · scope의 slug·`--milestone` 혼용 문구. 정본 `935e6329573d1755854fca805276cf1c8acb67d9`(브랜치 — 머지가 동결 3) → 테스트 베드 반영 커밋 `965eccd`(`deliver.sh` — scripts: next·work), **새 규칙집 기준선 `HEAD:.garagiste` `5613622d5cc8ed7c0768599d343d68f538f77eb6`** · 베드 SELFTEST 19/19 · doctor OK. 5라운드(Q7)부터 이 정본 — Q7의 압력은 바로 이 ceo 줄(미검수 3) 위에서 받는다. 도구 수리(동결 아님)는 `stream.mjs loadPlan`(4라운드 준비).
 
 ### 리눅스 1라운드 (2026-10-03 — 대리 CEO, 압축 · conductor 세션 4dd173c7 · 턴 8)
 - **아침 창**(`--since` 06:55:40Z): 고정 첫 말 → intake가 **M1 8**(boot·add·list·corrupt-store·done-undo·edit-rm·cross-os·bad-input) + **M2 3**(search·export-import·stats)을 올리고 Q1~Q3(todo.json 형식 · CSV 형식 · 「이번 주」= 월요일 00:00부터)을 물었다 — 원문과 어긋나지 않아 대리 「예」 셋 · 범위 M1 전부 · 「가」 06:58.
@@ -206,4 +207,88 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 테
   (g) cross-os의 팀 기본값 「대소문자」는 spec 팩 보고가 스스로 「테스트하지 않았다」고 적었다(conductor 참고) — 윈도우 카드에서 본다.
   (h) conductor가 cross-os 카드를 리눅스에서 「tried 없이 다음으로」 — human@win32 센서의 규칙대로. `.worktrees/try-cross-os` 사본은 남아 있다(tried가 지운다).
   (i) 도구 수리(동결 아님): `day.mjs` 아침 창 끝의 `--since` 하한(위 표 줄) — 이 라운드의 수치는 수리 뒤의 값. 지시서 「저녁」 2에 같은 뜻 한 줄(다음 동결부터 conductor의 표도 같다).
-- **다음**: 수리 반영 2(사고 62·63)가 3라운드 전에 들어간다(「차림」). 3라운드 아침 창 — 고정 첫 말(새 동결 sha) → 「상태 보여줘」 → **버그 말**(Flow 7 → add-fix): 「버그: 동시에 add를 여러 번 치면 일부가 사라진다 — 시계 검사 C3·C4(TZ=Asia/Seoul · 시계 +40일 / 12-31 23:59:50)에서 `tests/adversary/add-6.test.mjs` red. todo.json.lock의 낡음 판정(Date.now() − mtime > 10초)이 프로세스 시계와 파일 시계가 어긋나면 늘 참이 되어 다른 프로세스의 잠금을 지운다」 → 범위(M1은 끝 — M2 search·export-import·stats를 scope할지는 CEO; 예측 2의 「3라운드: 다음 마일스톤 시작」) → 「가」. 테스트 베드는 이 컨테이너 세션에 산다.
+- **다음**: 수리 반영 2(사고 62·63)가 3라운드 전에 들어간다(「차림」). 3라운드 아침 창 — 고정 첫 말(동결 2 `2ffad306a1515807965035e4e438a90379907ae4`) → 「상태 보여줘」 → **버그 말**(Flow 7 → add-fix): 「버그: 동시에 add를 여러 번 치면 일부가 사라진다 — 시계 검사 C3·C4(TZ=Asia/Seoul · 시계 +40일 / 12-31 23:59:50)에서 `tests/adversary/add-6.test.mjs` red. todo.json.lock의 낡음 판정(Date.now() − mtime > 10초)이 프로세스 시계와 파일 시계가 어긋나면 늘 참이 되어 다른 프로세스의 잠금을 지운다」 → 범위(M1은 끝 — M2 search·export-import·stats를 scope할지는 CEO; 예측 2의 「3라운드: 다음 마일스톤 시작」) → 「가」. 테스트 베드는 이 컨테이너 세션에 산다.
+
+### 리눅스 3라운드 (2026-10-03 — 대리 CEO, 압축 · conductor 세션 9dd5c312 · 턴 7(16~22) · 동결 2 = 2ffad306 · 테스트 베드 332abb9 / 기준선 44b86d43)
+- **아침 창**(`--since` 09:46:42Z): 고정 첫 말(동결 2 sha) + 「상태 보여줘」 → STATUS(출하 8/8 · 안 본 것 1/3 · 열린 질문 0) → 09:47:50 **버그 말**(2라운드 시계 red의 재현 한 줄 — Flow 7) + 「범위는 그 -fix와 M2 전부(search · export-import · stats) — 가」. 말 2 · 1.1분. conductor는 `work.mjs new add-fix "<재현 한 줄>"`(09:48:16) → scope(09:48:25 — add-fix + M2 셋)로 받았다.
+- **표**(`day.mjs` — conductor의 표와 경계·무인·출하·카드·결정·가드가 전부 일치): 아침 창 끝 09:48:25(scope) · 첫 ship 09:58:29(add-fix) · 저녁 창 시작 10:20:19(try cross-os) · **무인 31.9분** · 낮 경과(세 번째 ship stats 10:17:15) 28.8분 · **낮 접점 0** · 멈춤 10:17:34(next `wait export-import` — hard 질문 Q4, 남은 unit 없음) — 그때 **미검수 1/3(사람 센서 — cross-os) · 무인 출하 3/5** · 규칙집 드리프트 없음 · **원장 FAIL 줄 0** · 가드 거부 1 · 되풀이 0 · decide 1 · kept 0 · **RESPEC 1** · 범위 끝 아님(3/4 — system-2·REPORT 없음).
+
+| 구간 | unit | 구성 | 시도 | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL | RESPEC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | add-fix | ①+② | 1 | 10.2 | 4/4 | 98K | 1→0/1(잠금 대기의 벽시계 점프) | base_red head_green | ok(CEO) | 0 | 0 | 0 |
+| 무인 | search | ①+② | 1 | 6.8 | 4/4 | 120K | 1→0/1(Σ의 문맥 접힘) | base_red head_green | ok(CEO) | 0 — 메모 2(원문 밖): 옵션이 구절에 삼켜져 빈 출력·exit 0 · 끝난 일도 「끝남」으로 보임 | 0 | 0 |
+| 무인 | export-import | ① | 1 | 미출하 — spec 끝, Q4 hard 질문(10:08:52 뒤 팩 없음) | 1/1 | 51K | — | — | — | — | 0 | 1(저녁 「예」) |
+| 무인 | stats | ①+② | 1 | 8.2 | 4/4 | 133K | 2→0/2(doneAt의 느슨한 날짜 읽기) | base_red head_green | ok(CEO) | 0 | 0 | 0 |
+| 계 | 4(출하 3) | | 4 | 25.2 | 13/13 | 402K | 선발견 4→0 | | ok 3 · fail 0 · 미실시 1 | 0 | 0 | 1 |
+
+- 카드 4(ok 3 · fail 0 · 윈도우로 1): add-fix(faketime 대신 시계 검사의 preload로 +40일 — 남의 잠금을 쥔 채 add는 2초 뒤에도 잠금 유지, 풀면 기록 · 동시 add 12 → 12 · add-6·add-fix 테스트 +40일/12-31 둘 다 7/7) · search(카드대로 + 경계: MILK · 여러 낱말은 구절 · 인자 없음 한 줄) · stats(1·2·1 · 다음 주 월요일로 옮기면 0 · 빈 폴더 0·0·0 · `--week`는 「모르는 옵션」 · 오늘 마감은 남음) · cross-os는 2라운드와 같이 윈도우로 · 팀이 정한 것 12 · 열린 질문 1(Q4 — 「예」) · 팩 이유-차선 0.
+- **CEO-분(기계 셈)**: 아침 1.1분(말 2 · 대기 0.7) · 저녁 9.6분(말 5 · 카드 3 · 결정 1 · 대기 5.8) · 낮의 말 0 · 카드 시간 합 4.9분(3/3) · **unit당 3.6분** · 원장 하한 저녁 6.4.
+- **시계 검사**(main ec9a203 clone): `CLOCK C1·C2·C3·C4 exit 0` — **PASS 4/4**. 2라운드의 C4 red(add-6)는 add-fix가 닫았다(잠금의 낡음을 「같은 잠금(ino:mtime)이 단조 시계로 10초 넘게 그대로」로 판정 — 프로세스 시계와 파일 시계를 섞지 않는다) · 새 stats(「이번 주」 = 로컬 월요일 00:00)도 네 설정에서 초록.
+- 판단 칸: 구성 ①+②(export-import는 spec만 — ①) · **프레임워크 FAIL 정지 0 · fail 줄 0** · 멈춤 이유 hard 질문(여섯 중 하나 — 그 unit만 세우고 남은 unit이 없어 하루가 끝났다) · 규율 이탈 0(next대로 · 멈춘 뒤 seed·spawn 0) · 저녁 가드 거부 1 — conductor가 `tried … && state.mjs && work.mjs try search && cat .worktrees/try-search/…/try.md`를 한 명령으로 묶자 가드가 `.worktrees/` 경로로 팩 컨텍스트를 추론해 「팩은 tried를 부르지 않는다」로 거부 → 한 명령씩 다시 돌려 PASS(1라운드 (f)와 같은 계급, 두 번째).
+- **판정: Q5 라운드 통과**(낮 접점 0 · 드리프트 0 · 멈춤 = hard 질문 · 카드 4 · FAIL 정지 0) · **green 후 CEO 발견 결함 0** — **리눅스 Q5 세 라운드(1~3) 끝: 누적 1**(2라운드 시계 — 계급 제품, 검사 주입이 만든 어긋남이라는 단서는 2라운드 판정 줄 · CEO 판단 자리 그대로).
+- 비용 **$7.88**(아침 0.53 · 무인 5.55 · 저녁 1.80) · 토큰 402K · 리눅스 누적 **$23.75**(세 라운드).
+- 예측 채점(3라운드 분): 2) **✓** 3라운드에 다음 마일스톤(M2) 시작 · 미검수(사람) 1 ≤1 5) 시계 red 0(2라운드에 1 — 수리 뒤 닫힘) 6) **✓** 누적 1 ≤2 · 시계 밖 0 ≤1 8) 세 라운드 $23.75 — 다섯이면 $35~40, 범위 안 9) **✓** 아침 1.1 ≤5 · 저녁 9.6 ≤15 · unit당 3.6 ≤5 · 카드 4.9 ≤10.
+- 7건마다(3라운드 분): 질문은 기본값으로 **△**(spec ask 1 ≤1 ✓ · 팀이 정한 것 12 · 출하 3 ≥3 ✓ · **RESPEC 1** — 가정이 적힌 Q4에 대리가 「예(…설명…)」로 답해 conductor가 그대로 중계 → decide는 맨 「예」만 KEPT(work.mjs keepsAssumption — 「다른 답도 RESPEC」, 사고 17) → 7건 표의 「RESPEC>0이면 --assumed 없는 질문」이 아니라 **셋째 경우: 가정은 적혔고 답이 맨 「예」가 아니었다** — 대리의 말 형식 실수, 비용은 4라운드 아침의 spec 재spawn 1(예상: 「고칠 주장 없음」)) · next.mjs **✓**(attack 팩 unit당 1 · 이탈 0 · 멈춘 뒤 seed·spawn 0) · system-attack —(범위 3/4) · boot — · 미검수 셈 **✓**(멈춤 = hard 질문 · 미검수(사람) 1) · report —(범위 안 끝남) · FAIL·가드 **✓**(fail 0 · 되풀이 0 · 가드 1 ≤2).
+- **관찰(장치 아님 — 표 이후 후보)**:
+  (a) **「예(…)」 → RESPEC**(위 7건 줄): 규칙대로다. 후보: decide의 RESPEC 출력에 「가정 그대로면 맨 「예」로」 한 줄(CEO를 가르치는 문구) — 수리 아님.
+  (b) **search가 옵션 꼴 인자를 구절에 삼킨다**(`search milk --all` · `search --bogus milk` → 빈 출력·exit 0): bad-input이 정한 「M2 명령도 같은 꼴(모르는 옵션은 한 줄·exit 1)」을 search의 spec·attack이 따르지 않았다(stats는 따랐다 — `--week` 거부). system-1이 edit에서 고친 바로 그 계급 — 범위가 끝나면 system-2의 자리(이음새 공격의 입력은 제품 전체). 원문 밖이라 fail이 아니다(메모). 끝난 일이 search에 보이는 것도 팀이 정한 것(그대로).
+  (c) 가드 거부 1 — 읽기만 하는 `.worktrees/` 경로 언급(cat)이 팩 컨텍스트가 된다(1라운드 (f) 계급, 누적 2). 후보: worktreeFromCommand는 cd·git -C·쓰기 표적에서만 추론 — 시험 뒤.
+  (d) hard 질문 하나(Q4 — 덮어쓰기 허용)가 unit 하나를 한 라운드 세웠다: spec이 가정을 적고도(`--assumed`) 물었다 — 파괴적 동작(덮어쓰기)이라 묻는 쪽이 맞다. 「질문은 기본값으로」의 경계: 되돌릴 수 없는 동작은 기본값이 아니라 질문. 그대로.
+  (e) REPORT·system-2는 범위가 끝나지 않아 없다(정상). 메인 작업 트리의 docs/STATUS.md·DECISIONS.md 미커밋 수정분은 state.mjs·decide의 산출물(2라운드도 같았다 — 손편집 0).
+  (f) attack 선발견 4/4 unit — add-fix(벽시계 점프 → 단조 시계) · search(그리스 Σ의 문맥 접힘 → 글자마다 접기) · stats ×2(doneAt을 `new Date()`로 느슨하게 읽어 9월 31일·글자 섞인 값을 셈 → ISO만). HAZARDS `**` 날짜 계급이 stats에서 다시 잡혔다(3라운드째 — 계급은 살아 있다).
+- **다음 — CEO 결정 자리(대리가 정하지 않는다)**: 등록문의 4라운드는 **Q6 인터럽트**(네 말 — 첫 ship 뒤 버그 · 둘째 ship 뒤 추가 · 그 뒤 첫 build 팩 unit에 수정 · 시작 전 unit에 방향전환; plan은 4라운드 아침 창 전에 커밋). 그런데 남은 범위가 export-import 하나(RESPEC → 아침에 spec 먼저)라 **네 말의 자리가 없다** — 둘째 ship·`-fix` 아닌 build 팩·「시작 전 unit」이 범위에 없다(system-2·REPORT는 ship이지만 수정·방향전환의 객체가 아니다). 길 둘: ① CEO가 원문 줄을 더 준다(BRIEF에 새 줄 셋 이상 → intake → M3 scope) 뒤 4라운드를 Q6로 · ② 4라운드를 Q5 꼴로 짧게 끝내고(export-import → SCOPE DONE → system-2 → REPORT) Q6·Q7은 새 원문으로. 어느 쪽이든 export-import의 Q4 「예」는 적혀 있어 다음 아침 spec이 「고칠 주장 없음」으로 끝나야 한다(이 관찰이 (a)의 비용 측정).
+
+### 리눅스 4라운드(Q6) 준비 — 새 원문 M3 · plan (2026-10-03, 4라운드 아침 창 전에 커밋)
+- CEO 결정(2026-10-03): 남은 범위가 unit 하나라 네 말의 자리가 없다 → **원문 줄을 더 준다**(CEO 「원문은 네가 적절하게 만들어 봐」 — 대리가 썼다). 4라운드 아침 창의 둘째 말로 BRIEF에 그대로 올리고(`work.mjs brief`) intake → 질문 → scope M3(export-import는 그대로) → 「가」. 새 원문:
+
+```text
+# 할 일 CLI — 다음 묶음(M3)
+
+쓰다 보니 더 필요한 것. 지금까지 만든 명령의 동작은 그대로 둔다.
+
+- `todo add`에 `--priority 높음|보통|낮음`을 붙일 수 있다(기본은 보통). `todo list`는 마감이 같으면 우선순위가 높은 일을 먼저 보여 주고, 높음인 일 앞에 「!」를 붙인다.
+- `todo upcoming`은 오늘부터 7일 안에 마감인 일을 날짜별로 묶어 보여 준다. 끝난 일과 마감 없는 일은 보이지 않는다.
+- `todo note <번호> "메모"`로 일에 메모를 붙인다(여러 번 붙이면 뒤에 쌓인다). `todo show <번호>`는 제목·마감·태그·우선순위·메모를 한 번에 보여 준다.
+- `todo archive`는 끝난 지 30일이 지난 일을 todo.json에서 같은 폴더의 archive.json으로 옮기고, 옮긴 수를 한 줄로 말한다. 옮긴 일은 `todo list --all`에 더 보이지 않는다.
+```
+
+- 네 줄의 뜻: 수정 말의 값이 줄마다 하나 있다(기본 보통 · 7일 · 쌓인다 · 30일) · 넷 중 셋은 서로 선행이 아니라 방향전환의 「시작 전 unit 중 순서의 맨 끝」이 있다 · 지금까지의 명령은 건드리지 않는다.
+- **버그 말의 재료**(3라운드 저녁 카드 + 저장소 밖 사본 main ec9a203에서 다시): `todo search milk --all` · `search --bogus milk` → 아무 말 없이 exit 0(옵션이 구절에 삼켜진다; `list --bogus`는 「모르는 옵션」 exit 1) — 원문 「잘못된 입력(…)은 이유를 한 줄로 말하고 0이 아닌 코드로 끝난다」와 다른 동작이라 재현 한 줄로 쓴다(객체: `search-fix`).
+- **plan** `tests/field/plans/l2-5-q6.json` — 버그(첫 ship 뒤) · 추가(둘째 ship 뒤 — 등록문의 고정 문장) · 수정(그 뒤 첫 build 팩 unit — unit마다 값 하나: 우선순위 기본 보통→낮음 · upcoming 7→14일 · 메모 쌓기→덮어쓰기 · archive 30→90일 · export-import 엑셀→구글 시트·LF) · 방향전환(수정의 spec 재spawn 뒤 — choices는 예상 순서의 끝에서부터 archive → note → upcoming → priority). **등록문과 다른 점 하나(이유)**: 수정·방향전환의 slug는 아침 창의 intake가 정하므로 plan의 slug 자리는 placeholder(`__ARCHIVE__` 등)로 커밋하고, intake 뒤 「가」 전에 실제 slug로 채워 다시 커밋한다 — `stream.mjs run`이 plan 파일을 세션 중에도 다시 읽는다(도구 수리 `loadPlan` — 동결 아님). 버그·추가 말은 slug에 기대지 않는다.
+- 예상 흐름: export-import(RESPEC → spec 「고칠 주장 없음」 → build → ship = 첫 ship → 버그 말 → `search-fix`가 새 기능보다 먼저) → search-fix ship = 둘째 ship → 추가 말(BACKLOG 줄 · 범위 밖) → M3 첫 unit의 build 팩 → 수정 말 → 그 unit의 spec 재spawn → 방향전환(시작 전 맨 끝 unit) → … → 멈춤(SCOPE DONE이면 system-2·REPORT). 저녁 창은 Q5와 같다(시계 검사 · 카드 · 표).
+
+### 리눅스 4라운드 — Q6 인터럽트 (2026-10-03 — 대리 CEO · 스트림 세션 af75d5dc(conductor 모델 claude-sonnet-5-5) · 턴 6 · plan `tests/field/plans/l2-5-q6.json`)
+- **아침 창**(`--since` 10:59:50Z): 고정 첫 말 → 상태 → **새 원문 M3**(11:00:34, 위 「준비」) → intake가 unit 5(priority · upcoming · note · show · archive)와 Q5(archive.json 꼴) → plan을 실제 slug로 채워 커밋(세션이 11:02:22 다시 읽음) → 「Q5 예. 범위는 export-import와 M3 전부 — 가」 11:02:24. 말 3 · 2.5분(대기 1.0 — plan 채우기 포함). conductor 쪽 FAIL 둘(인자 없는 decide · slug와 `--milestone`을 섞은 scope → 「BACKLOG에 없는 slug: --milestone, M3」) → 바로 고쳐 scope 11:02:31(여섯 slug).
+- **표**(`day.mjs` — conductor의 표와 경계·출하·카드·FAIL·접점이 일치): 아침 창 끝 11:02:31(scope) · 첫 ship 11:10:27(export-import) · 저녁 창 시작 11:35:45(try) · 무인 33.2분 · 낮 경과(세 번째 ship search-fix) 23.8분 · **낮 접점 4 = 네 말**(scope 1 + BRIEF 절 3 — Q6 라운드의 정상, Q5 게이트로 세지 않는다) · 멈춤 11:34:22(`FAIL ship list-count 3/8` — **미검수 3**) — 그때 미검수 3/3(사람 센서: cross-os · export-import(엑셀) · search-fix(선발견 0)) · 드리프트 없음 · 원장 FAIL 줄 4(+ 아침 창 2) · 가드 0 · 되풀이 0 · decide 1(Q5 맨 「예」 → PASS, RESPEC 0) · 범위 끝 아님.
+
+| 구간 | unit | 구성 | 시도 | seed→ship(분) | spawn | 토큰 | attack | redproof | tried | green 후 결함 | FAIL | RESPEC |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 무인 | export-import | ①+② + 사람 센서(엑셀) | 1 | 11.2(답 대기 뺀 — 원시 64.9, 3라운드 seed) | 6/6 | 215K | 3→0/3 | base_red head_green | —(엑셀 단계는 윈도우 — 리눅스 몫은 대리가 확인: BOM+CRLF · 네 칸 · 따옴표 · `'=1+1` 왕복) | — | 1(main과 충돌 → build가 풀고 ship이 rebase를 이었다 — 사고 58 길) | 1(3라운드 Q4) |
+| 무인 | priority | ①+② | 1 | 9.9 | 6/6 | 215K | 1→0/1 | base_red head_green | ok(CEO) | 0 | 0 | 0(spec 반려 1 — 기본 보통은 필드를 쓰지 않는다로) |
+| 무인 | search-fix | ①+② | 1 | 15.7 | 3/3 | 80K | 0→0/1 | base_red head_green | ok(CEO) | 0 | 1(2/8 — attack 커밋 뒤 tree 불일치 → 다시) | 0 |
+| 무인 | list-count | ① | 1 | **미출하 — ship이 「budget: 미검수 3」 거부**(attack까지 끝) | 5/5 | 135K | 0/1 | base_red head_green | — | — | 0 | 0(수정 말로 spec 1) |
+| 계 | 4(출하 3) | | 4 | 36.9(원시 90.6) | 20/20 | 645K | 선발견 4→0 | | ok 2 · 미실시 2 | 0 | 2(한 번에 풀림) | 1 |
+
+- **Q6 네 말**(plan이 원장 시점에 넣음 · 컴파일 = 넣은 시각 → 객체 원장 줄 · `stream.mjs report q6`):
+
+| 말 | 시점(원장) | 넣은 시각 | 객체 원장 줄 | 도구 호출 | 분 | 무관 unit |
+|---|---|---|---|---|---|---|
+| 버그(search의 옵션 삼킴) | ship export-import 11:10:27.9 | 11:10:28.6(+0.7초) | unit search-fix 11:10:34(`work.mjs new search-fix`) | 2 | 0.1 | 없음(priority seed 11:10:30 뒤 그대로 돌아 11:20 출하) |
+| 추가(남은 일 개수) | ship priority 11:20:24.9 | 11:20:25.2(+0.3초) | unit list-count 11:20:32(`work.mjs brief` → `new`) | 2 | 0.1 | search-fix → spec 11:20:28(멈춤 없음) |
+| 수정(맨 아래 → 맨 위) | pack build list-count 11:27:37 | **HOLD → 대리 손 11:28:10(+34초)** | pack spec list-count 11:29:13(재spawn) | 6 | 1.0 | (대상 unit) |
+| 방향전환(archive 빼자) | pack spec list-count 11:29:13.4 | 11:29:13.7(+0.3초) | scope(archive 빠짐) 11:30:02 — `drop archive` FAIL(unit 없는 BACKLOG 줄 → --forget 안내) 뒤 scope | 11 | 0.8 | list-count → redproof 11:29:50(멈춤 없음) |
+
+- **판정: Q6 통과** — 네 말 모두 제 객체(버그 → `-fix` unit · 추가 → unit(BACKLOG 줄 남음) · 수정 → 그 unit의 spec 재spawn · 방향전환 → 그 slug가 빠진 scope, BACKLOG 줄 남음) · **무관 unit 정지 0** · 그 말들로 생긴 것: search-fix 출하 + tried ok · list-count 미출하(상한) · archive 범위 밖. 약점 하나: 수정 말이 plan에 없던 slug(list-count — 낮에 생긴 unit의 `*new` 키를 대리가 빠뜨렸다)라 HOLD → 손 34초. 3판의 방향전환 손(15.5분)과 같은 종류, 크기는 작다 — 플랜의 몫.
+- 카드 4(ok 2 · 윈도우로 2) · **CEO-분**: 아침 2.5분(말 3 · 대기 1.0) · 저녁 3.2분(말 3 · 카드 2 · 대기 0.9) · 낮의 말 4(인터럽트) · 카드 합 2.8 · unit당 1.9 · **시계 검사 PASS 4/4**(main ae27ff3) · 비용 **$6.18**(아침 0.29 · 무인 5.48 · 저녁 0.41) · 토큰 645K · 리눅스 누적 **$29.93**(네 라운드).
+- 예측 채점(4라운드 분): 3) **✓** 네 말 제 객체 · 무관 정지 0 — 짚은 위험(방향전환이 BACKLOG에만 남음)은 없었다: drop FAIL 뒤 49초에 scope 8) 누적 $29.93 — 다섯이면 ≈$36, 범위($25~40) 안 9) ✓ 아침 2.5 · 저녁 3.2 · unit당 1.9.
+- 7건마다(4라운드 분): 질문은 기본값으로 **✓**(intake Q5 1 · 맨 「예」 → PASS · RESPEC 0 · 팀이 정한 것 8 · 출하 3) · next.mjs **△**(규율 이탈 0 · attack 팩 unit당 1 · **그러나 list-count의 ship이 「budget: 미검수 3」으로 거부된 뒤에도 next가 `run ship`을 계속 냈다 → conductor가 budget 줄을 읽고 스스로 멈췄다**(옳은 멈춤 — 아침 규칙 「미검수 3이면 next가 ceo를 낸다」는 seed 자리에만 있고 ship 자리엔 없다 → **사고 64 후보**: ship 단계의 예산 정지도 next가 ceo로)) · system-attack —(범위 안 끝남) · 미검수 셈 **✓**(멈춤 = 미검수 3 — 사람 센서 셋) · report — · FAIL·가드 **△**(fail 4 — 예측 0~3 밖, 전부 안내대로 한 번에 풀림 · 가드 0 · 되풀이 0).
+- **관찰(장치 아님 — 표 이후 후보)**:
+  (a) 수정 말의 HOLD → 손(위) — plan에 `*new`(낮에 생긴 unit)를 적는 것은 등록문의 3판 plan에도 있던 열이다(대리 누락).
+  (b) **추가 → `work.mjs new`** → 범위 결정 없이 바로 돌았다(search-fix 다음 unit) — CLAUDE.md Flow 7(「추가 → add|new」)의 허용 범위이고 객체(unit)는 맞다. 등록문의 「범위에 넣는 것은 CEO 결정」과는 결이 다르다 → 후보: 추가는 `add`(BACKLOG 줄)로, 범위는 CEO — 지시서 한 줄(수리 아님, CEO 결정).
+  (c) **사고 64 후보**(next.mjs): 위 7건 줄. Q7(5라운드)의 압력은 바로 이 멈춤(ship 거부)에서 시작하므로 5라운드 전에 고친다.
+  (d) `work.mjs scope <slug> --milestone M3` 혼용이 「BACKLOG에 없는 slug: --milestone, M3」 — 문구가 원인을 말하지 않는다(후보: 혼용 거부 문구 또는 혼용 허용).
+  (e) attack 팩의 taste: `search milk —all`(맥 자동 고침의 긴 대시)은 조용히 구절 — 인수 밖, 처리 안 함(기록).
+  (f) export-import의 ship 충돌(3라운드 worktree가 add-fix·search·stats보다 앞) → 사고 58의 길(build가 풀고 ship이 rebase를 잇는다)이 그대로 작동 — 1.5분.
+  (g) conductor 세션 모델은 claude-sonnet-5-5(스트림 INIT) — turn.sh 라운드도 같은 기본값(기록 — 등록문은 conductor 모델을 정하지 않는다).
+  (h) 저녁에 카드 셋의 사본을 한 번에 열었다(try 셋 11:35:45~46) — 규칙 안.
+- **다음**: 사고 64 수리(정본 → `deliver.sh` → 수리 반영 3 → 머지 = 동결 3) 뒤 **5라운드 = Q7 압력**(「Q7」 절) — 멈춤 자리는 그대로 남아 있다: list-count가 미검수 3에 막혀 있고 윈도우 몫 둘(cross-os · export-import)은 리눅스에서 풀 수 없다. 범위에 upcoming · note · show가 남아 있다.

@@ -227,6 +227,8 @@ function scope(c, args) {
     if (ia < 0 || ib < 0) fail(`FAIL range: ${a}..${b} — BACKLOG에 없는 slug`);
     requested = items.slice(Math.min(ia, ib), Math.max(ia, ib) + 1).map((i) => i.slug);
   } else requested = rest;
+  // L2 5판 리눅스 4라운드: `scope export-import --milestone M3`이 「BACKLOG에 없는 slug: --milestone, M3」 — 원인(혼용)을 말하지 않았다
+  if (rest.slice(rest[0]?.startsWith('--') ? 2 : 0).some((a) => a.startsWith('--'))) fail('FAIL scope: slug 목록과 --milestone/--range는 함께 쓸 수 없다 — 둘 중 하나로(work.mjs scope <slug…> | --milestone M3 | --range a..b)');
   if (!requested.length) fail('사용법: work.mjs scope <slug…> | --milestone M1 | --range a..b [--no-needs]');
   const cl = closure(items, requested, { noNeeds });
   if (cl.unknown.length) fail(`FAIL BACKLOG에 없는 slug: ${cl.unknown.join(', ')}`);
