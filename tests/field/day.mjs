@@ -54,7 +54,17 @@ export function ceoSources(dir, { home = os.homedir(), transcript = null } = {})
   const files = transcript ? [transcript] : transcriptFiles(abs, home);
   for (const f of files) { const r = parseTranscript(readLines(f), abs); if (r.msgs.length || r.ends.length) { found.add('전사'); msgs.push(...r.msgs); ends.push(...r.ends); } }
   msgs.sort((a, b) => a.ts.localeCompare(b.ts)); ends.sort();
-  return { sources: SOURCES.filter((x) => found.has(x)), msgs, ends, slug: cwdSlug(abs) };
+  return { sources: SOURCES.filter((x) => found.has(x)), msgs: dedupe(msgs), ends, slug: cwdSlug(abs) };
+}
+// 같은 말이 두 출처에 든다(턴 기록의 .msg와 그 세션의 전사 — L2 5판 리눅스 1라운드에서 말 수가 두 배로 세어졌다): 글이 같고 2분 안이면 하나 — 먼저 적힌 ts를 남긴다
+export function dedupe(msgs) {
+  const out = [];
+  for (const m of msgs) {
+    const prev = out.findLast((x) => x.text.trim() === m.text.trim());
+    if (prev && Math.abs(mins(prev.ts, m.ts)) <= 2) continue;
+    out.push(m);
+  }
+  return out;
 }
 function transcriptFiles(abs, home) {
   const d = path.join(home, '.claude', 'projects', cwdSlug(abs));
@@ -75,7 +85,7 @@ export function parseTranscript(lines, abs) {
   return { msgs, ends };
 }
 // 5판 — CEO-분(L2-TRIAL-5 「CEO-분」): 창 배정은 원장 경계로(첫 ship 전 = 아침 · 그 뒤 첫 「저녁」부터 = 저녁 · 사이 = 낮의 말), 벽시계 = 아침 첫 말 → 마지막 말(「가」) · 「저녁」 → 마지막 말의 턴 끝(표),
-// 대기 = 말 → 그 턴의 끝, 카드 시간 = 원장 try → 그 slug의 다음 tried, unit당 = 두 창의 합 ÷ 낮 ship. 원장만의 하한(결정 구간)은 출처가 없어도 나온다. 판단 없음 — 「저녁」은 프로토콜의 고정 말이다.
+// 대기 = 말 → 그 턴의 끝(아침의 「가」 턴은 무인 구간이라 빼고), 카드 시간 = 원장 try → 그 slug의 다음 tried, unit당 = 두 창의 합 ÷ 낮 ship. 원장만의 하한(결정 구간)은 출처가 없어도 나온다. 판단 없음 — 「저녁」은 프로토콜의 고정 말이다.
 export function ceoMinutes({ L, t, src, since = '', until = END }) {
   const msgs = src.msgs.filter((m) => m.ts >= since && m.ts < until);
   const ends = src.ends.filter((x) => x >= since && x < until);
@@ -87,6 +97,8 @@ export function ceoMinutes({ L, t, src, since = '', until = END }) {
   const evening = evStart ? rest.filter((m) => m.ts >= evStart.ts) : [];
   const day = rest.filter((m) => !evStart || m.ts < evStart.ts);
   const wait = (list) => list.reduce((acc, m) => { const e = endOf(msgs.indexOf(m)); return acc + (e ? mins(m.ts, e) : 0); }, 0);
+  // 아침 창의 마지막 말(「가」)의 턴은 무인 구간이다 — CEO는 자리를 뜬다(1라운드에서 32분이 대기로 잡혔다): 아침 대기는 그 앞의 말까지만
+  const morningWait = wait(morning.slice(0, -1));
   const evEnd = evening.length ? (endOf(msgs.indexOf(evening.at(-1))) ?? evening.at(-1).ts) : null;
   const trieds = L.filter((e) => e.kind === 'tried' && e.ts >= since && e.ts < until);
   const cards = trieds.map((tr) => { const open = L.findLast((e) => e.kind === 'try' && e.slug === tr.slug && e.ts < tr.ts && e.ts >= since); return open ? mins(open.ts, tr.ts) : null; });
@@ -97,7 +109,7 @@ export function ceoMinutes({ L, t, src, since = '', until = END }) {
   const eMin = evening.length ? mins(evStart.ts, evEnd) : null;
   return {
     sources: src.sources, slug: src.slug,
-    morning: { n: morning.length, minutes: mMin, wait: wait(morning), from: morning[0]?.ts ?? null, to: morning.at(-1)?.ts ?? null },
+    morning: { n: morning.length, minutes: mMin, wait: morningWait, from: morning[0]?.ts ?? null, to: morning.at(-1)?.ts ?? null },
     day: { n: day.length },
     evening: { n: evening.length, minutes: eMin, wait: wait(evening), from: evStart?.ts ?? null, to: evEnd, cards: t.cards.length, decisions: evStart ? L.filter((e) => e.kind === 'decide' && e.ts >= evStart.ts && e.ts < until).length : 0 },
     cards: { minutes: cards.reduce((acc, x) => acc + (x ?? 0), 0), n: cards.filter((x) => x !== null).length, of: trieds.length },
