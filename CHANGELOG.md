@@ -1,6 +1,6 @@
 # Changelog
 
-Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`, and `session-start.mjs` names it in the injected context. A running project keeps the release it was installed with until its CEO decides to upgrade — the "Breaking for running projects" list of a release is the migration checklist; re-run `install.sh <flavor> -Project <repo>` afterwards.
+v2엔 릴리스 태그도 버전 기록도 아직 없다. 설치본의 정체는 설치한 GARAGISTE 커밋의 `team/` 사본이고, 프로젝트 쪽 기준선은 규칙집 tree — `git rev-parse HEAD:.garagiste`(시험 등록·반영 블록이 이 값으로 대조한다)다. `install.sh <flavor> -Project <repo>`를 다시 돌리면 scripts·packs·훅·agents·pre-commit은 덮고, team.json(편성·commands)·HAZARDS(제품 오버레이)·규칙 파일(CLAUDE.md/AGENTS.md)·settings는 남긴다 — 그 뒤 doctor·selftest가 PASS여야 설치다. 설치본에 버전을 적고 업그레이드를 diff가 보이는 unit으로 하는 것은 백로그 L3 Q11이다. 아래 절은 최근 것부터 — 수리는 사고 번호로, 채용은 CEO의 말로.
 
 ## v2 — 2026-09-29 · 증거 팀 (unreleased)
 
@@ -19,6 +19,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - conductor 가드: `.worktrees/` 밖 Edit/Write 거부(GARAGISTE_ADMIN=1 예외). 팩 다섯(intake 추가), -Budget에 intake 모델.
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
+
+### Changed — 2026-10-03 낡은 문장 둘 정정 (정비 채널 리뷰 — 코드에 없는 장치를 말하던 문장)
+- 이 파일의 머리말: v1의 문장이었다 — 「훅·플러그인이 `GARAGISTE_VERSION`을 지니고 session-start가 그 값을 주입한다 · Breaking 목록이 이행 체크리스트」는 v2 코드 어디에도 없다(`docs/changelog/v1.md`에만 Breaking 절이 있다). v2의 사실로 바꿨다: 버전 기록 없음 · 설치본의 정체 = 설치 커밋의 `team/` 사본 · 기준선 = `HEAD:.garagiste` · 재설치가 덮는 것(scripts·packs·훅·agents·pre-commit)과 남기는 것(team.json·HAZARDS·규칙 파일·settings) · 버전 기록은 L3 Q11.
+- 백로그 L2 게이트 「1주간 green 후 결함 0」 → 세 라운드 누적(CEO 「날짜는 측정 단위가 아니다」) — 5판 등록 커밋에서 이미 고쳤다(116396a).
+- 그 밖의 버전·업그레이드·재설치 문장(install.sh·install.ps1의 「재설치의 -Budget이 기존 편성을 지우지 않는다」)은 코드와 맞아 그대로다.
 
 ### Added — 2026-10-03 CEO-분 기계 셈 — 「시간은 공짜, 주의는 비싸다」의 주의를 처음 잰다 (L1 1차부터 비어 있던 「(CEO 기입)」 · 정비 채널 제안 → CEO 「진행」)
 - 정의(`docs/measurements/L2-TRIAL-5.md` 「CEO-분」): 창의 벽시계(아침 창 = CEO의 첫 말 → 마지막 말 「가」 · 저녁 창 = 「저녁」 → 마지막 말의 턴 끝(표)) · 말 수 · conductor 대기(말 → 그 턴의 끝) · 낮의 말 · 카드 시간(원장 `try` → 그 slug의 `tried`) · unit당(두 창의 합 ÷ 낮 ship) · 원장만일 때의 하한(결정 구간). 판단 없음 — 「저녁」은 프로토콜의 고정 말. 대리 CEO의 수치는 「절차가 요구하는 최소 주의」, 윈도우 라운드가 사람의 수치.
