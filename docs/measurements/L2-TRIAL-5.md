@@ -105,8 +105,9 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 테
    ```
    마지막 줄 값이 규칙집 기준선(정비 채널에 붙인다). 시험 중 재설치·models 변경 금지.
 2. **라운드마다** — 폴더에서 새 `claude` 세션. 첫 말 직전에 `(Get-Date).ToUniversalTime().ToString('s') + 'Z'` 값을 적어 둔다.
-   - 1라운드 첫 말: 「오늘은 L2 무인 하루다. `git fetch https://github.com/jaewhi-park/GARAGISTE <동결 sha>` 뒤 `git show FETCH_HEAD:docs/measurements/L2-day-conductor.md`를 읽어라. 「아침」 절이 오늘의 규칙이다. 내가 돌아와 「저녁」이라고 하면 「저녁」 절대로 한다. docs/BRIEF-draft.md로 brief를 축적하고 intake를 돌려라. 질문은 한 줄씩 예/아니오로 — 대신 답하지 않는다.」 → 질문에 예/아니오 → 「범위는 M1 전부 — 가」 → 자리를 뜬다(conductor가 멈출 때까지).
-   - 2·3라운드 첫 말: 위 줄에서 마지막 두 문장(brief·질문)을 빼고 → 「상태 보여줘」 → 열린 질문에 답 → 「가」.
+   - 1라운드 첫 말: 「오늘은 L2 무인 하루다. `git fetch https://github.com/jaewhi-park/GARAGISTE <동결 sha>` 뒤 `git show FETCH_HEAD:docs/measurements/L2-day-conductor.md`를 읽어라. 「아침」 절이 오늘의 규칙이다. 내가 돌아와 「저녁」이라고 하면 「저녁」 절대로 한다. docs/BRIEF-draft.md로 brief를 축적하고 intake를 돌려라. 질문은 한 줄씩 예/아니오로 — 대신 답하지 않는다. 서브에이전트(Agent)는 run_in_background 없이 끝날 때까지 기다려라.」 → 질문에 예/아니오 → 「범위는 M1 전부 — 가」 → 자리를 뜬다(conductor가 멈출 때까지). **낮에는 conductor에게 말하지 않는다** — 상태가 궁금하면 다른 PowerShell 창에서 `Get-Content docs\STATUS.md`·`Get-Content .garagiste\ledger\evidence.jsonl -Tail 5`(읽기만).
+   - **1라운드 기록(2026-10-03)**: 위 「run_in_background 없이」 문장은 리눅스 첫 말(헤드리스)에만 있었고 윈도우 첫 말엔 빠져 있었다(등록문의 누락). conductor가 팩을 백그라운드 Agent로 띄우고 「사용량이 오면 기록하고 다음 걸음으로」 하며 턴을 끝내, CEO가 「지금 상황은?」 ×2로 깨워야 다음 걸음(ship·다음 팩)이 돌았다 → CEO가 낮에 한 줄(「서브에이전트는 run_in_background 없이 … 계속해」)을 넣고 자리를 떴다. 1라운드의 낮의 말 3(상황 질문 2 · 절차 지시 1 — 범위·결정에 닿지 않음)은 CEO-분에 그대로 남긴다; 원장 접점 줄(decide·tried·scope)·BRIEF 절은 0. 2·3라운드 첫 말엔 그 문장이 든다.
+   - 2·3라운드 첫 말: 위 줄에서 brief·질문 두 문장을 빼고(「run_in_background 없이」 문장은 둔다) → 「상태 보여줘」 → 열린 질문에 답 → 「가」.
    - 저녁: 「저녁」 → 카드마다 conductor가 연 사본 `.worktrees\try-<slug>`에서 친다(「기계 증명」 표시가 있어도) → 「<slug> ok」 또는 「<slug> fail + 한 줄」 → 열린 질문에 예/아니오 → conductor가 표를 낸다. 범위가 끝난 라운드면 docs/REPORT.md도 한 번 읽는다(읽는 데 든 분을 적는다).
    - 저녁 끝에 한 줄 — 출력 전체를 정비 채널에 붙인다: `node C:\L2\garagiste-5\tests\field\day.mjs C:\L2\futsal-win --since <그 라운드 첫 말 전에 적은 값>`. 출력의 「CEO-분(기계 셈 — 출처: 전사)」 줄이 그 PC의 claude 세션 전사(`%USERPROFILE%\.claude\projects\C--L2-futsal-win\*.jsonl`)에서 나온다 — 「출처 없음」이면 그 줄도 그대로 붙인다(첫 라운드 전에 한 번 돌려 확인해도 된다).
 3. **정션 점검(3판과 같다)** — 프로젝트에 의존성 디렉터리(node_modules)가 생기면 그 뒤 첫 ship 직후 main의 그 디렉터리가 그대로인지 한 번 본다. 첫 커밋에 `.gitattributes`가 있는지, 라운드 중 CRLF 되돌림 커밋이 있는지(2판 ×4) 본다.
