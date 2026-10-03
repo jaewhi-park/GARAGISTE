@@ -88,9 +88,22 @@ export function writeTargets(command) {
   return out;
 }
 // 한 명령 안의 `cd <dir> &&`는 그 뒤 상대 경로의 뿌리다 — 훅의 cwd는 명령 전의 위치라 `cd .worktrees/x && rm dist`가 저장소 루트의 dist로 읽힌다
+// 사고 67(L2 6판): 팩은 `W=<worktree>; …\ncd $W\ncat > pyproject.toml` 처럼 줄 시작의 cd도 쓴다 — 첫 cd 문(줄·구분자 뒤)이 뿌리다
 export function cdBase(command, cwd) {
-  const m = /^\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*(?:&&|;)/.exec(String(command));
+  const m = /(?:^|[;&|\n])\s*cd\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))\s*(?:&&|;|\n|$)/.exec(String(command));
   return m ? path.resolve(cwd, m[1] ?? m[2] ?? m[3]) : cwd;
+}
+// 사고 67(L2 6판 세 라운드 — 가드 거부 9/9): 팩의 Bash heredoc 쓰기가 전부 `W=<worktree 절대 경로>; … cat > $W/src/x.py` 꼴이라 가드가 $W를 풀지 못해
+// worktree 안 쓰기를 「밖」으로 거부했다(팩은 매번 다른 길로 끝냈다 — 턴 낭비). 같은 명령 안의 단순 대입(값이 $(…)·백틱·다른 변수가 아닌 것)만 풀고,
+// 풀 수 없는 변수는 그대로 둔다(저장소 안 상대 경로로 읽혀 fail-closed). 쓰기 경계 자체는 그대로 — 풀린 경로에 같은 규칙이 붙는다.
+export function expandAssignments(command) {
+  const src = String(command);
+  const vars = new Map();
+  const re = /(?:^|[;&|\n]|\s)(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"\n]*)"|'([^'\n]*)'|([^\s;&|'"]+))/g;
+  let m;
+  while ((m = re.exec(src))) { const v = m[2] ?? m[3] ?? m[4]; if (/[`$]/.test(v)) vars.delete(m[1]); else vars.set(m[1], v); }
+  if (!vars.size) return src;
+  return src.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g, (all, a, b) => (vars.has(a ?? b) ? vars.get(a ?? b) : all));
 }
 // L2 1일차: conductor의 mv가 CEO의 파일을 옮겼다 — 리다이렉트처럼 rm·mv·cp·tee도 쓰기다. 명령 자리의 동사만 본다(경로 속 rm은 명령이 아니다).
 // rm·mv·tee는 인자 전부가 쓰기 대상(mv의 원본은 사라진다), cp는 마지막 인자(목적지)만.
@@ -127,7 +140,7 @@ export function decide(input, ctx) {
   const cwd = input.cwd || ctx.cwd || process.cwd();
   const admin = !!ctx.env.GARAGISTE_ADMIN;
   if (tool === 'Bash' || tool === 'PowerShell') {
-    const c = String(ti.command || '');
+    const c = expandAssignments(String(ti.command || '')); // 사고 67: 같은 명령의 단순 대입($W=…)을 먼저 푼다
     const cq = stripQuoted(c); // 쓰기·파괴 판정은 따옴표 밖 텍스트로만
     if (DESTRUCTIVE.test(cq)) return '파괴적 git — stash·rebase·merge·reset --hard·force push·보호 브랜치 push·--no-verify는 없다. 머지는 ship.mjs만.';
     // DESTRUCTIVE의 push 정규식은 main|master 고정 — 보호 브랜치가 다른 이름이면 여기서 막는다 (L0 부검의 발견)

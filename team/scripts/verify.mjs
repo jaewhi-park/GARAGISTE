@@ -117,6 +117,10 @@ function attack(slug, c) {
   appendLedger(c.main, c.team, { kind: 'attack', slug, tree: workTree(c.root), total: res.length, red: reds, files: res.filter((r) => r.exit !== 0).map((r) => r.file) });
   out(`ATTACK ${slug} red ${reds}/${res.length}`);
 }
+// 사고 69(L2 6판 2건): 원장 fail 줄은 첫 줄(300자)만 남아 「FAIL gate」엔 이유가 없었다 — conductor 「안내가 없어 조치하지 않았다」. 첫 이유를 첫 줄에, 나머지는 아래 줄.
+export function gateFailLine(reasons) {
+  return `FAIL gate — ${reasons[0]}${reasons.length > 1 ? ` (+${reasons.length - 1})` : ''}\n${reasons.map((r) => `- ${r}`).join('\n')}`;
+}
 function gate(c) {
   const base = mergeBase(c.root, c.team.protected_branch);
   const d = gateDecision({
@@ -127,7 +131,7 @@ function gate(c) {
     branch: currentBranch(c.root), protectedBranch: c.team.protected_branch, env: process.env, budgets: c.team.budgets,
     hasHead: !git(['rev-parse', '--verify', '-q', 'HEAD'], c.root).status,
   });
-  if (!d.ok) fail(`FAIL gate\n${d.reasons.map((r) => `- ${r}`).join('\n')}`);
+  if (!d.ok) fail(gateFailLine(d.reasons));
   appendLedger(c.main, c.team, { kind: 'gate', tree: indexTree(c.root), branch: currentBranch(c.root), logic: d.logic, wip: d.wip, initial: !!d.initial, large: process.env.GARAGISTE_LARGE_STEP || null, ship: !!process.env.GARAGISTE_SHIP });
   out(`PASS gate${d.wip ? ' wip' : ''}${d.initial ? ' initial' : ''}`);
 }
