@@ -1,4 +1,5 @@
 // 필드 도구: 하루 표(tests/field/day.mjs)가 L2-day-conductor 「저녁」의 정의대로 세는가 — 합성 원장으로.
+// Q6 스트림 세션(tests/field/stream.mjs)이 등록문(L2-TRIAL-3 4일)의 원장 시점에 네 말을 넣고 컴파일을 세는가.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,6 +8,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { answerWaits, bounds, dayTable, render, stopsBySlug } from './field/day.mjs';
+import { bystanders, childEnv, compile, due, pick } from './field/stream.mjs';
 
 const T = (hms, d = '2026-10-02') => `${d}T${hms.length === 5 ? `${hms}:00` : hms}.000Z`;
 const D2 = '2026-10-03';
@@ -138,4 +140,72 @@ test('day 팩 이유-차선(측정 H3): 원장의 large 팩을 표 아래에 센
   const L3 = L.map((x) => (x.kind === 'pack' && x.slug === 'edit' && x.pack === 'build' ? { ...x, bytes: 34.5 * 1024, large: '공격 테스트 5개가 실렸다', cap_kb: 32 } : x));
   const out = render(dayTable({ L: L3, units, ledgerMd, brief, until: T('09:00', D2), budgets }), { name: 'f' });
   assert.match(out, /\n- 팩 이유-차선 1:\n {2}- edit build 34\.5KB\(상한 32KB\) — 「공격 테스트 5개가 실렸다」\n/);
+});
+
+// Q6 — 등록문의 네 시점: 첫 ship(버그) · 둘째 ship(추가) · 그 뒤 처음 build 팩이 조립된 unit(-fix 제외 · 수정) · 수정의 spec 재spawn(방향전환)
+const Q6 = [
+  { id: 'bug', when: { kind: 'ship', nth: 1 }, text: '순위표에서 … → …, 원문은 …', object: { kind: ['unit', 'scope_fix'], slug: '-fix$' }, call: 'work\\.mjs (new|add) \\S+-fix' },
+  { id: 'add', when: { kind: 'ship', nth: 2 }, text: '팀 화면에 그 팀의 최근 5경기 결과(날짜·상대·점수)를 보여 줘.', object: { kind: ['unit'], fresh: true }, call: 'work\\.mjs (add|new) ' },
+  { id: 'modify', when: { kind: 'pack', pack: 'build', after: 'add', exclude: '-fix$' }, texts: { standings: '이기면 2점으로 바꾸자', 'team-register': '팀 이름은 20자까지' }, object: { kind: ['pack'], pack: 'spec', slugOf: 'modify' } },
+  { id: 'pivot', when: { kind: 'pack', pack: 'spec', after: 'modify', slugOf: 'modify' }, choices: [{ slug: 'csv-export', text: 'CSV 내려받기는 이번엔 빼자' }, { slug: 'match-move', text: '날짜 옮기기는 이번엔 빼자' }], object: { kind: ['drop'] } },
+];
+const Lq = [
+  e(T('09:00'), 'ship', { slug: 'old' }), // 세션 전(since 앞) — 세지 않는다
+  e(T('10:00'), 'unit', { slug: 'a' }), e(T('10:10'), 'ship', { slug: 'a' }),
+  e(T('10:11'), 'unit', { slug: 'b' }), e(T('10:12'), 'unit', { slug: 'a-fix' }), e(T('10:20'), 'ship', { slug: 'b' }),
+  e(T('10:21'), 'unit', { slug: 'recent5' }), e(T('10:22'), 'pack', { slug: 'a-fix', pack: 'build' }), e(T('10:25'), 'unit', { slug: 'standings' }),
+  e(T('10:30'), 'pack', { slug: 'standings', pack: 'build' }), e(T('10:31'), 'pack', { slug: 'recent5', pack: 'spec' }), e(T('10:33'), 'pack', { slug: 'standings', pack: 'spec' }),
+  e(T('10:35'), 'drop', { slug: 'csv-export' }), e(T('10:50'), 'pack', { slug: 'recent5', pack: 'build' }),
+];
+// 대리의 세션: 말을 넣는 시각은 원장 줄 뒤 몇 초
+const play = (L, units = []) => {
+  const sent = {}; const msgs = [];
+  for (const x of L) {
+    for (const d of due(Q6, L.filter((y) => y.ts <= x.ts), sent, units, T('09:30'))) {
+      const m = { ts: d.line.ts.replace('.000Z', '.500Z'), id: d.item.id, text: d.text, line: d.line, object: d.item.object, call: d.item.call, backlog: ['a', 'b', 'standings', 'csv-export'] };
+      sent[m.id] = m; msgs.push(m);
+    }
+  }
+  return msgs;
+};
+
+test('stream plan: 첫 ship → 버그 · 둘째 ship → 추가 · 그 뒤 처음 build 팩(-fix 제외) → 그 unit의 수정 · 그 unit의 spec 재spawn → 방향전환', () => {
+  const msgs = play(Lq);
+  assert.deepEqual(msgs.map((m) => [m.id, m.line.kind, m.line.slug]), [['bug', 'ship', 'a'], ['add', 'ship', 'b'], ['modify', 'pack', 'standings'], ['pivot', 'pack', 'standings']]);
+  assert.equal(msgs[2].text, '이기면 2점으로 바꾸자');
+  assert.equal(msgs[3].text, 'CSV 내려받기는 이번엔 빼자');
+  // plan에 그 slug의 말이 없으면 null(HOLD — 대리가 손으로) · 이미 시작한 unit은 방향전환의 다음 이름으로
+  assert.equal(pick(Q6[2], { slug: 'recent5' }), null);
+  // 낮에 생긴 unit(띄울 때 BACKLOG에 없던 slug)은 texts['*new'] — BACKLOG에 있던 slug는 그 밖이라 HOLD
+  const Qn = { ...Q6[2], texts: { ...Q6[2].texts, '*new': '최근 3경기만 보여 줘' } };
+  assert.equal(pick(Qn, { slug: 'recent5' }, [], ['standings', 'roster-view']), '최근 3경기만 보여 줘');
+  assert.equal(pick(Qn, { slug: 'roster-view' }, [], ['standings', 'roster-view']), null);
+  assert.equal(pick(Q6[3], null, [{ slug: 'csv-export', state: 'spec' }]), '날짜 옮기기는 이번엔 빼자');
+  assert.equal(pick(Q6[3], null, [{ slug: 'csv-export', state: 'dropped' }]), 'CSV 내려받기는 이번엔 빼자');
+});
+
+test('stream 컴파일: 넣은 시각 → 그 말의 객체 원장 줄(버그 -fix unit · 추가 = 넣을 때 BACKLOG에 없던 unit · 수정 = 그 unit의 spec 팩 · 방향전환 = drop)까지 도구 호출 수와 분', () => {
+  const msgs = play(Lq);
+  const tool = (hms, cmd) => ({ t: T(hms), e: { type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Bash', input: { command: cmd } }] } } });
+  const events = [tool('10:10:40', 'node .garagiste/scripts/work.mjs new a-fix "…"'), tool('10:11:30', 'node .garagiste/scripts/work.mjs seed'),
+    tool('10:20:40', 'node .garagiste/scripts/work.mjs add recent5 "…"'), tool('10:20:50', 'node .garagiste/scripts/work.mjs new recent5 "…"'),
+    { t: T('10:30:10'), e: { type: 'user', message: { content: [{ type: 'tool_result' }] } } }, tool('10:32', 'node .garagiste/scripts/brief.mjs spec standings')];
+  const c = Object.fromEntries(compile(msgs, Lq, events).map((x) => [x.id, x]));
+  assert.deepEqual([c.bug.obj.kind, c.bug.obj.slug, c.bug.calls, c.bug.minutes.toFixed(1)], ['unit', 'a-fix', 2, '2.0']);
+  assert.deepEqual([c.add.obj.slug, c.add.calls, c.add.firstCalls], ['recent5', 2, 1]);
+  assert.deepEqual([c.modify.obj.pack, c.modify.obj.slug, c.modify.calls], ['spec', 'standings', 1]);
+  assert.deepEqual([c.pivot.obj.kind, c.pivot.obj.slug, c.pivot.calls], ['drop', 'csv-export', 0]);
+});
+
+test('stream 무관 unit: 말을 넣을 때 진행 중이던 unit마다 말 뒤 첫 원장 줄 — 없으면 null(멈춘 것)', () => {
+  const b = Object.fromEntries(bystanders(play(Lq), Lq).map((x) => [x.id, x.units.map((u) => [u.slug, u.next?.kind ?? null])]));
+  assert.deepEqual(b.bug, []);
+  assert.deepEqual(b.add, [['a-fix', 'pack']]);
+  assert.deepEqual(b.modify, [['a-fix', null], ['recent5', 'pack'], ['standings', 'pack']]);
+});
+
+test('stream 자식 환경: 부모 세션의 CLAUDE* 변수는 걷고 인증에 필요한 것만 남긴다(turn.sh와 같은 목록) · 커밋 이름은 ceo', () => {
+  const env = childEnv({ CLAUDECODE: '1', CLAUDE_CODE_SESSION_ID: 'p', CLAUDE_CODE_ACCOUNT_UUID: 'u', CLAUDE_SESSION_INGRESS_TOKEN_FILE: '/t', PATH: '/bin' });
+  assert.deepEqual(Object.keys(env).filter((k) => k.startsWith('CLAUDE')).sort(), ['CLAUDE_CODE_ACCOUNT_UUID', 'CLAUDE_SESSION_INGRESS_TOKEN_FILE']);
+  assert.equal(env.PATH, '/bin'); assert.equal(env.GIT_AUTHOR_NAME, 'ceo');
 });
