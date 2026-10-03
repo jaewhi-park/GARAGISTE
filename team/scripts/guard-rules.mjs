@@ -30,7 +30,7 @@ export const PACK_RULES = {
   attack: { allow: [/^tests\/adversary\//, /^fixtures\/hostile\//] },
   spike: { allow: [/^docs\/measurements\/spike-[^/]+\.md$/] },
   // boot(kind scaffold): 스택·진입점·스모크·규칙 파일. 테스트 폴더는 unit 하나·프로브 없음
-  boot: { allow: [/^(package\.json|pnpm-workspace\.yaml|pnpm-lock\.yaml|package-lock\.json|pyproject\.toml|uv\.lock|requirements[^/]*\.txt|Cargo\.toml|go\.mod|\.node-version|\.python-version|\.nvmrc|\.tool-versions|\.gitignore|README(\.[a-z]{2})?\.md|CLAUDE\.md|AGENTS\.md|tsconfig[^/]*\.json|[^/]*\.config\.[a-z]+)$/, /^src\//, /^tests\/unit\//, /^tests\/harness\//, /^docs\/units\/[^/]+\//] },
+  boot: { allow: [/^(package\.json|pnpm-workspace\.yaml|pnpm-lock\.yaml|package-lock\.json|pyproject\.toml|uv\.lock|requirements[^/]*\.txt|Cargo\.toml|go\.mod|\.node-version|\.python-version|\.nvmrc|\.tool-versions|\.gitignore|\.gitattributes|README(\.[a-z]{2})?\.md|CLAUDE\.md|AGENTS\.md|tsconfig[^/]*\.json|[^/]*\.config\.[a-z]+)$/, /^src\//, /^tests\/unit\//, /^tests\/harness\//, /^docs\/units\/[^/]+\//] },
 };
 const norm = (p) => p.replace(/\\/g, '/');
 // 따옴표 안 텍스트는 셸에선 데이터다 — 커밋 메시지의 트레일러(`<noreply@…>`)·경로 언급이 리다이렉트·쓰기 verb로 오탐됐다(첫 Windows 실기).

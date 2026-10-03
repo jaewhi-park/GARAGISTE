@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { REQUIRED_TEAM_KEYS, git, hasFileSlot, isMain, out, readJson, readText, scriptRoot } from './lib.mjs';
 
-export const SCRIPTS = ['lib', 'verify', 'redproof', 'work', 'brief', 'boundary', 'ship', 'state', 'claims', 'doctor', 'guard-rules', 'checkpoint', 'selftest'];
+export const SCRIPTS = ['lib', 'verify', 'redproof', 'work', 'brief', 'boundary', 'ship', 'state', 'claims', 'doctor', 'guard-rules', 'checkpoint', 'selftest', 'next'];
 // 갓 설치된 저장소에서 정상인 항목 — 이것만 빼고 전부가 설치(--fresh)·seed·ship을 fail-closed로 막는다(훅 침묵사 계열이 여기 들어오면 안 된다)
 export const FRESH_OK = [/alive 마커 없음/, /commands\.(quick|full|test_file) 비어 있음/];
 export function blocking(problems) { return problems.filter((p) => !FRESH_OK.some((re) => re.test(p))); }

@@ -13,10 +13,11 @@ import { blindFiles, gateDecision, logicLines, probeNames, PROBE_TEXT } from '..
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { againCmd, attackRoundUsed, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
-import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
+import { firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
+import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
+import { nextStep, render } from '../team/scripts/next.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
@@ -585,7 +586,8 @@ test('brief: 결정은 스코프 — 전역(intake)+이 unit+needs만, 전체는
 });
 test('HAZARDS: 줄마다 팩에 닿는 경로가 있다 — 규칙집(.garagiste/**)·main 전용 문서만 가리키는 줄은 팩에 영영 안 떠 산문 예산만 먹었다(35줄 · 15KB)', () => {
   const text = fs.readFileSync(new URL('../team/HAZARDS.md', import.meta.url), 'utf8');
-  const unreachable = /^(\.garagiste\/(?!team\.json$)|docs\/(BACKLOG|STATUS|LEDGER|DECISIONS|BRIEF)\.md$)/; // team.json은 boot가 worktree에서 바꾼다(work.mjs commands)
+  // team.json은 boot가 worktree에서 바꾼다(work.mjs commands). 배선(.claude·.opencode·opencode.json·.githooks)은 가드가 막고, .worktrees/는 팩의 바뀐 파일(worktree 상대 경로)에 없다(2026-10-03 정리)
+  const unreachable = /^(\.garagiste\/(?!team\.json$)|\.claude\/|\.opencode\/|opencode\.json$|\.githooks\/|\.worktrees\/|docs\/(BACKLOG|STATUS|LEDGER|DECISIONS|BRIEF)\.md$)/;
   for (const l of text.split('\n').filter((x) => x.startsWith('- '))) {
     const globs = [...l.split(' · ')[0].matchAll(/`([^`]+)`/g)].map((m) => m[1]);
     assert.ok(globs.some((g) => !unreachable.test(g)), `팩에 닿지 않는 줄 — 기록은 CHANGELOG로: ${l.slice(0, 70)}`);
@@ -843,4 +845,158 @@ test('lib: Windows PowerShell이 붙인 BOM이 있어도 team.json을 읽는다'
   assert.equal(readJson(path.join(d, '.garagiste', 'team.json'), null).version, 2);
   // 사고 18: 폴더 이름('GARAGISTE')을 가정하면 fresh 클론(GARAGISTE-fresh)·scratch worktree에서 거짓 실패 — 경로로 비교한다
   assert.equal(scriptRoot(new URL('../team/scripts/lib.mjs', import.meta.url).href), path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), '스크립트 위치에서 저장소 루트를 안다');
+});
+
+test('work ask/decide: L2 3판 (e) — 확인형 질문(--assumed)의 맨 「예」는 가정 그대로라 RESPEC이 아니다; 가정 없는 「예」(사고 17)와 가정과 다른 답은 RESPEC', () => {
+  const u = { slug: 'schedule', assumed: [{ q: 10, text: '라운드는 일요일' }] };
+  for (const a of ['예', '네', ' 예.', 'yes', 'OK', '그대로', '맞다', 'y']) assert.equal(keepsAssumption(u, 10, a), '라운드는 일요일', a);
+  for (const a of ['아니오', '예 — 단 공휴일은 빼고', '일요일', '', undefined]) assert.equal(keepsAssumption(u, 10, a), null, String(a));
+  assert.equal(keepsAssumption(u, 11, '예'), null, '가정을 적지 않은 질문의 「예」는 무엇을 가정했는지 기계가 모른다 — 사고 17대로 RESPEC');
+  assert.equal(keepsAssumption({ slug: 'x' }, 10, '예'), null);
+  const { flags, pos } = parseArgs(['schedule', '라운드는 일요일인가?', '--assumed', '라운드는 일요일'], 'ask');
+  assert.deepEqual({ flags, pos }, { flags: { assumed: '라운드는 일요일' }, pos: ['schedule', '라운드는 일요일인가?'] });
+});
+test('spec·intake 팩: 저장 안쪽 꼴은 default, 질문은 되돌리기 어려운 것만 — L2 3판 2·3라운드의 저장 꼴 질문 6개(모두 「예」, 라운드당 출하 1)', () => {
+  const spec = fs.readFileSync(new URL('../team/packs/spec.md', import.meta.url), 'utf8');
+  const rule4 = (/^4\. (.*)$/m.exec(spec) || ['', ''])[1];
+  assert.match(rule4, /work\.mjs default <slug>/, 'spec 팩 4: 저장 안쪽 꼴은 기본값');
+  assert.match(rule4, /--assumed/, 'spec 팩 4: 주장 뒤의 확인형 질문은 --assumed');
+  assert.doesNotMatch(spec, /데이터 모델·파일 형식은 정하지 않는다/, '옛 규칙(저장 꼴마다 ask)은 사라진다');
+  const intake = fs.readFileSync(new URL('../team/packs/intake.md', import.meta.url), 'utf8');
+  assert.match(intake, /저장소 하나[^\n]*질문 하나/, 'intake 팩 5: 저장은 저장소 하나에 질문 하나');
+});
+
+test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec→redproof→build→attack→verify→(build)→ship, 팩은 조립→spawn→증거 순 (L2 2판 윈도우 28·20바퀴 · 3판 규율 이탈)', () => {
+  const T = (m) => `2026-10-03T10:${String(m).padStart(2, '0')}:00.000Z`;
+  const u = (over) => ({ slug: 'add', kind: 'feature', state: 'spec', created: T(0), questions: [], holds: [], needs: [], respec: [], ...over });
+  const backlog = [{ slug: 'add', milestone: 'M1', needs: [], done: false }, { slug: 'list', milestone: 'M1', needs: ['add'], done: false }];
+  const scope = { order: ['add', 'list'], requested: ['add', 'list'], required: [], missing: [], report_for: 'add,list' };
+  const step = (units, ledger, over = {}) => nextStep({ units, ledger, decisionsText: '', scope, backlog, stops: [], wtOf: () => ({ exists: true, rebase: false, unmerged: [] }), packPath: (s, p) => `.garagiste/session/packs/${s}-${p}-x.md`, ...over });
+  const L = [];
+  const push = (e) => L.push(e);
+  assert.deepEqual(step([u()], L), { kind: 'run', cmd: 'node .garagiste/scripts/brief.mjs spec add', why: 'add의 spec 팩이 아직 없다' }, '갓 열린 unit: spec 팩부터');
+  push({ ts: T(1), kind: 'pack', slug: 'add', pack: 'spec' });
+  assert.equal(step([u()], L).kind, 'spawn');
+  assert.match(render(step([u()], L)), /^NEXT spawn spec add \.garagiste\/session\/packs\/add-spec-x\.md — .*Agent\(subagent_type: "spec", prompt: "\.garagiste\/session\/packs\/add-spec-x\.md"\).*work\.mjs spawned add spec/);
+  push({ ts: T(2), kind: 'spawn_stop', pack: 'spec' }); // 훅의 기계 기록으로도 끝난 것으로 본다
+  assert.match(step([u()], L).cmd, /redproof\.mjs add$/, 'spec 뒤엔 RED 증명');
+  push({ ts: T(3), kind: 'redproof', slug: 'add', base_red: true, head_green: null });
+  assert.match(step([u()], L).cmd, /brief\.mjs build add$/, 'RED면 build');
+  assert.match(step([u()], [...L, { ts: T(3), kind: 'redproof', slug: 'add', base_red: false, head_green: null }]).why, /FAIL/, 'base green이면 그 FAIL의 안내가 길이다');
+  assert.match(step([u()], [...L, { ts: T(3), kind: 'redproof', slug: 'add', base_red: true, head_green: true }]).cmd, /brief\.mjs attack add$/, 're-spec에서 기존 코드가 이미 만족하면 build 없이 attack 새 바퀴');
+  push({ ts: T(4), kind: 'pack', slug: 'add', pack: 'build' });
+  assert.equal(step([u({ state: 'build' })], L).kind, 'spawn');
+  push({ ts: T(5), kind: 'spawn', slug: 'add', pack: 'build' }); // conductor의 spawned 기록
+  assert.match(step([u({ state: 'build' })], L).cmd, /brief\.mjs attack add$/, 'build 뒤엔 공격 한 바퀴');
+  push({ ts: T(6), kind: 'pack', slug: 'add', pack: 'attack' });
+  assert.equal(step([u({ state: 'attack' })], L).kind, 'spawn');
+  push({ ts: T(7), kind: 'spawn', slug: 'add', pack: 'attack' });
+  assert.match(step([u({ state: 'attack' })], L).cmd, /verify\.mjs attack add$/, 'attack이 verify를 안 남겼으면 센다');
+  push({ ts: T(8), kind: 'attack', slug: 'add', total: 2, red: 1 });
+  assert.match(step([u({ state: 'attack' })], L).cmd, /brief\.mjs build add$/, 'red가 남으면 build 다시');
+  push({ ts: T(9), kind: 'pack', slug: 'add', pack: 'build' }); push({ ts: T(10), kind: 'spawn', slug: 'add', pack: 'build' });
+  assert.match(step([u({ state: 'build' })], L).cmd, /verify\.mjs attack add$/, '고친 뒤엔 attack 팩을 새로 띄우지 않고 기존 공격 테스트만(한 바퀴)');
+  push({ ts: T(11), kind: 'attack', slug: 'add', total: 2, red: 0 });
+  assert.match(step([u({ state: 'build' })], L).cmd, /ship\.mjs add$/, 'red 0이면 ship');
+  // 출하되면 seed · 질문에 걸린 unit은 자리를 막지 않는다 · 범위가 끝나면 done · 예산 정지와 범위 없음은 CEO
+  assert.match(step([u({ state: 'shipped' })], L).cmd, /work\.mjs seed$/);
+  assert.equal(step([u({ state: 'shipped' }), u({ slug: 'list', state: 'build', questions: [3] })], L, { decisionsText: '- [ ] Q3 (list): x' }).kind, 'wait');
+  assert.equal(step([u({ state: 'shipped' }), u({ slug: 'list', state: 'shipped' })], L).kind, 'done');
+  assert.match(step([u({ state: 'shipped' }), u({ slug: 'list', state: 'shipped' })], L, { scope: { order: ['add', 'list'] } }).cmd, /state\.mjs report$/, '범위가 끝나면 출하 보고 한 장 — 그 뒤에 done');
+  assert.equal(step([u({ state: 'shipped' })], L, { stops: ['미검수 3 ≥ 3'] }).kind, 'ceo');
+  assert.equal(step([u({ state: 'shipped' })], L, { scope: null }).kind, 'ceo');
+  assert.equal(step([], L, { backlog: [] }).kind, 'ceo');
+  // re-spec·늦은 spike·충돌·scaffold·한 번에 하나
+  assert.match(step([u({ state: 'build', respec: [{ q: 3 }] })], L).cmd, /brief\.mjs spec add$/, '진행 중에 온 답은 spec이 먼저(사고 17)');
+  const spike = [{ ts: T(1), kind: 'pack', slug: 'net', pack: 'spike' }, { ts: T(2), kind: 'spawn', slug: 'net', pack: 'spike' }];
+  assert.match(step([u({ slug: 'net', state: 'spike' })], spike).cmd, /brief\.mjs spec net$/, 'boundary HIT unit: spike 뒤 spec');
+  assert.match(step([u({ slug: 'net', state: 'spike' })], [{ ts: T(0), kind: 'pack', slug: 'net', pack: 'spec' }, ...spike]).cmd, /ship\.mjs net$/, '출하 때 diff-HIT로 늦게 잰 spike 뒤엔 ship 다시');
+  const conflict = [...L, { ts: T(12), kind: 'ship_conflict', slug: 'add', files: ['src/a.mjs'] }];
+  const rebase = (unmerged) => ({ wtOf: () => ({ exists: true, rebase: true, unmerged }) });
+  assert.match(step([u({ state: 'build' })], conflict, rebase(['src/a.mjs'])).cmd, /brief\.mjs build add$/, '충돌 표시는 build가 푼다(사고 26)');
+  assert.equal(step([u({ state: 'build' })], [...conflict, { ts: T(13), kind: 'pack', slug: 'add', pack: 'build' }], rebase(['src/a.mjs'])).kind, 'spawn');
+  assert.match(step([u({ state: 'build' })], conflict, rebase([])).cmd, /ship\.mjs add$/, '다 풀렸으면 ship이 잇는다(사고 58)');
+  assert.match(step([u({ slug: 'boot', kind: 'scaffold', state: 'boot' })], [{ ts: T(1), kind: 'pack', slug: 'boot', pack: 'boot' }, { ts: T(2), kind: 'spawn', slug: 'boot', pack: 'boot' }]).cmd, /ship\.mjs boot$/, 'scaffold는 boot 팩 하나로 출하');
+  assert.match(step([u({ slug: 'late', created: T(9) }), u({ state: 'build' })], L).cmd, /ship\.mjs add$/, '한 번에 하나 — 먼저 연 unit부터');
+});
+
+test('system-attack(채용 2026-10-03): 범위가 끝나면 이음새 공격 한 바퀴 — 발견은 red 테스트, 발견 0이면 drop(초록 테스트는 산출물이 아니다)', () => {
+  const T = (m) => `2026-10-03T11:${String(m).padStart(2, '0')}:00.000Z`;
+  const shipped = (slug) => ({ slug, kind: 'feature', state: 'shipped', created: T(0), questions: [], needs: [] });
+  const backlog = [{ slug: 'a', milestone: 'M1', needs: [], done: false }, { slug: 'b', milestone: 'M1', needs: [], done: false }];
+  const scope = { order: ['a', 'b'], requested: ['a', 'b'], required: [], missing: [], report_for: 'a,b' };
+  const base = { decisionsText: '', backlog, stops: [], systemAttack: true, wtOf: () => ({ exists: true, rebase: false, unmerged: [] }), packPath: (s, p) => `${s}-${p}.md` };
+  assert.match(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope }).cmd, /work\.mjs system$/, '둘 이상 출하된 범위의 끝은 이음새 공격');
+  assert.equal(nextStep({ ...base, units: [shipped('a')], ledger: [], scope: { ...scope, order: ['a'], report_for: 'a' }, backlog: backlog.slice(0, 1) }).kind, 'done', '한 unit의 결함은 그 unit의 attack이 봤다');
+  assert.equal(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope: { ...scope, system_for: 'a,b' } }).kind, 'done', '한 바퀴 돈 범위는 done');
+  assert.match(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope: { ...scope, system_for: 'a' } }).cmd, /work\.mjs system$/, '-fix로 범위가 자라면 다시 한 바퀴');
+  assert.equal(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope, systemAttack: false }).kind, 'done', 'team.json system_attack: false면 두지 않는다');
+  const sys = (over) => ({ slug: 'system-1', kind: 'system', state: 'attack', created: T(1), questions: [], needs: [], respec: [], ...over });
+  const L = [{ ts: T(2), kind: 'pack', slug: 'system-1', pack: 'attack' }, { ts: T(3), kind: 'spawn', slug: 'system-1', pack: 'attack' }];
+  const all = (ledger, s = sys()) => nextStep({ ...base, units: [shipped('a'), shipped('b'), s], ledger, scope });
+  assert.match(all(L).cmd, /verify\.mjs attack system-1$/);
+  assert.match(all([...L, { ts: T(4), kind: 'attack', slug: 'system-1', total: 3, red: 0 }]).cmd, /work\.mjs drop system-1 "system-attack 발견 0 — 공격 파일 3" --forget$/, '발견 0이면 drop');
+  const found = [...L, { ts: T(4), kind: 'attack', slug: 'system-1', total: 3, red: 2, files: ['tests/adversary/system-1-1.test.mjs', 'tests/adversary/system-1-2.test.mjs'] }];
+  assert.match(all(found).cmd, /brief\.mjs build system-1$/, '발견은 build가 고친다');
+  const fixed = [...found, { ts: T(5), kind: 'pack', slug: 'system-1', pack: 'build' }, { ts: T(6), kind: 'spawn', slug: 'system-1', pack: 'build' }, { ts: T(7), kind: 'attack', slug: 'system-1', total: 3, red: 0 }];
+  assert.match(all(fixed, sys({ state: 'build' })).cmd, /ship\.mjs system-1$/, '고친 뒤 red 0이면 ship');
+  // ship: 시스템 공격의 red 증명은 「한 번이라도 red였던 공격 파일 ≥ 1」
+  const x = { unit: sys({ state: 'build' }), slug: 'system-1', worktreeExists: true, clean: true, tree: 't', ledger: [{ kind: 'verify', mode: 'full', exit: 0, tree: 't' }, { kind: 'attack', slug: 'system-1', tree: 't', total: 3, red: 0 }], changed: [], runnerBlind: [], requireAttack: true, spikeText: '', lastSubject: 'fix(seam): x', stops: [], proseKb: 1, proseMax: 40, openQuestions: [] };
+  assert.match(evaluateShip({ ...x, found: 0 }).find((k) => k.id === 'redproof').why, /결함을 찾지 못했다[\s\S]*drop system-1/);
+  assert.ok(evaluateShip({ ...x, found: 2 }).every((k) => k.ok), evaluateShip({ ...x, found: 2 }).filter((k) => !k.ok).map((k) => `${k.id}: ${k.why}`).join());
+});
+
+test('boot 팩: 환경의 긴 꼬리를 선불한다 — 생태계별 검증된 꼴(.gitattributes eol=lf · 산출물 무시 · 하이픈 파일을 도는 test_file · Go 패키지) · 가드는 boot의 .gitattributes 쓰기를 연다 · attack이 놓친 계급은 HAZARDS 줄로', () => {
+  const md = fs.readFileSync(new URL('../team/packs/boot.md', import.meta.url), 'utf8');
+  for (const s of ['생태계별 검증된 꼴', '`.gitattributes`에 `* text=auto eol=lf`', '- Node:', '- Python:', '- Go:', '하이픈 이름', 'importlib', '한 디렉터리가 한 패키지', '`__pycache__/`']) assert.ok(md.includes(s), s);
+  assert.equal(decide(write(`${root}/.worktrees/boot/.gitattributes`), gctx('boot')), null, 'boot가 .gitattributes를 쓴다');
+  assert.ok(decide(write(`${root}/.worktrees/x/.gitattributes`), gctx('spec')), 'spec은 아니다');
+  const hz = fs.readFileSync(new URL('../team/HAZARDS.md', import.meta.url), 'utf8');
+  assert.match(hz, /^- `\*\*` · attack이 두 판 연속 놓친 계급/m, 'attack이 놓친 계급은 모든 팩에 뜨는 줄로');
+  assert.ok(matchHazards(hz, ['src/any.mjs']).some((l) => l.includes('놓친 계급')), '`**` 줄은 어느 diff에도 뜬다');
+});
+
+test('미검수 상한(채용 2026-10-03): 사람 센서가 필요한 unit만 센다 — @sensor human 주장 또는 공격 선발견 0; 기계가 증명한 unit·scaffold·system은 세지 않고 마일스톤 끝에 써본다', () => {
+  const at = '2026-10-03T12:00:00Z';
+  const L = [{ ts: '2026-10-03T12:30:00Z', kind: 'attack', slug: 'm', red: 1, total: 2, files: ['tests/adversary/m-1.test.mjs'] }, { ts: '2026-10-03T12:40:00Z', kind: 'attack', slug: 'm', red: 0, total: 2, files: [] }];
+  const u = (slug, over) => ({ slug, kind: 'feature', state: 'shipped', shipped: at, created: at, tried: null, origin_kind: 'seed', sensor: 'machine', ...over });
+  const units = [u('m'), u('h', { sensor: 'human@win32' }), u('z'), u('boot', { kind: 'scaffold' }), u('system-1', { kind: 'system' })];
+  const b = budgetStatus({ units, ledger: L, team, ceoTouchTs: null });
+  assert.deepEqual({ unseen: b.unseen, untried: b.untried }, { unseen: 2, untried: 5 }, '사람 주장(h)과 공격이 못 문 unit(z)만 — m(선발견 1)·boot·system은 아니다');
+  assert.equal(b.stops.length, 0, '2 < 3 — 멈추지 않는다');
+  assert.match(budgetStatus({ units: [...units, u('z2')], ledger: L, team, ceoTouchTs: null }).stops.join(), /미검수 3 ≥ 3[^\n]*기계 증명 3은 세지 않았다/);
+  const old = { ...team, budgets: { ...team.budgets, unseen_machine_exempt: false } };
+  assert.equal(budgetStatus({ units, ledger: L, team: old, ceoTouchTs: null }).unseen, 5, '옛 규칙: 전부 센다');
+  assert.ok(!humanNeeded(u('m'), L, team) && humanNeeded(u('h', { sensor: 'human@win32' }), L, team) && humanNeeded(u('z'), L, team));
+});
+
+test('state report: SCOPE DONE의 출하 보고 한 장 — 만든 것·기계가 증명한 것·팀이 정한 것·못 본 것·써볼 것·이음새 공격 (CEO 「결과물 가져오는 그림」)', () => {
+  const at = '2026-10-03T13:00:00Z';
+  const units = [
+    { slug: 'boot', kind: 'scaffold', state: 'shipped', shipped: at, created: at, origin: '할 일 CLI', milestone: 'M1', tried: { result: 'ok' }, defaults: [{ text: 'Node 22 · 의존성 0' }], sensor: 'machine' },
+    { slug: 'add', kind: 'feature', state: 'shipped', shipped: at, created: at, origin: '할 일을 더한다', milestone: 'M1', tried: null, defaults: [], sensor: 'machine' },
+    { slug: 'list', kind: 'feature', state: 'shipped', shipped: at, created: at, origin: '할 일을 본다', milestone: 'M1', tried: null, defaults: [], sensor: 'human@win32' },
+    { slug: 'system-1', kind: 'system', state: 'shipped', shipped: at, created: at, origin: '이음새 공격', milestone: 'M1', tried: null, defaults: [], sensor: 'machine' },
+  ];
+  const ledger = [{ ts: '2026-10-03T13:10:00Z', kind: 'attack', slug: 'add', red: 1, total: 1, files: ['tests/adversary/add-1.test.mjs'] }, { ts: '2026-10-03T13:20:00Z', kind: 'attack', slug: 'system-1', red: 2, total: 2, files: ['a', 'b'] }];
+  const ledgerMd = '# LEDGER\n\n| 날짜 | unit | head | tree | full | redproof | attack 선발견→red/총 | sensor |\n|---|---|---|---|---|---|---|---|\n| 2026-10-03 | boot | a1 | t1 | PASS | scaffold | — | machine |\n| 2026-10-03 | add | a2 | t2 | PASS | base_red head_green | 1→0/1 | machine |\n| 2026-10-03 | list | a3 | t3 | PASS | base_red head_green | 0→0/1 | human@win32 |\n';
+  const text = reportText({ team, scope: { order: ['boot', 'add', 'list'] }, units, ledger, ledgerMd, claims: [{ status: 'unsensed', file: 'tests/acceptance/list.test.mjs', claim: '목록이 보인다' }], decisionsText: '- [ ] Q3 (list): 번호 기준?', now: at });
+  assert.match(text, /^# 출하 보고 — boot → add → list\n\n실행: `[^`]*` · 출하 3\/3 · 써볼 것 2 · 결정 대기 1 · 팀이 정한 것 1 · 못 본 것 1/);
+  assert.match(text, /## 만든 것[\s\S]*- \*\*add\*\* \(M1\) — "할 일을 더한다" · 출하 2026-10-03 · 공격 선발견 1 · 안 써봄/);
+  assert.match(text, /## 기계가 증명한 것[\s\S]*\| add \| a2 \| PASS \| base_red head_green \| 1→0\/1 \| machine \|/);
+  assert.match(text, /## 팀이 정한 것[\s\S]*- boot: Node 22 · 의존성 0/);
+  assert.match(text, /## 못 본 것\n- 사람 센서 대기: tests\/acceptance\/list\.test\.mjs — 목록이 보인다\n- 결정 대기: Q3 \(list\): 번호 기준\?/);
+  assert.match(text, /## 써볼 것[\s\S]*- add: docs\/units\/add\/try\.md → `node \.garagiste\/scripts\/work\.mjs try add`[\s\S]*- list: docs\/units\/list\/try\.md/);
+  assert.match(text, /## 이음새 공격\n- system-1: 발견 2 → 고쳐 출하/);
+});
+
+test('state: 같은 FAIL이 되풀이되면 프레임워크 FAIL 후보 — 원장 fail 줄을 마지막 CEO 접점 뒤에서 묶어 세고 첫 줄에 「반복 FAIL n」 (측정 빈틈 — L1 4차·L2 관찰)', () => {
+  const f = (m, line, script = 'brief.mjs') => ({ ts: `2026-10-03T14:${String(m).padStart(2, '0')}:00Z`, kind: 'fail', script, line });
+  const L = [f(1, 'FAIL 팩 40KB > 32KB'), f(2, 'FAIL 팩 40KB > 32KB'), f(3, 'FAIL 다른 줄'), f(4, 'FAIL ship x 1/8', 'ship.mjs'), f(5, 'FAIL ship x 1/8', 'ship.mjs'), f(6, 'FAIL ship x 1/8', 'ship.mjs'), { ts: '2026-10-03T14:07:00Z', kind: 'pack', slug: 'x', pack: 'build' }];
+  const r = repeatedFails(L);
+  assert.deepEqual(r.map((g) => [g.script, g.n]), [['brief.mjs', 2], ['ship.mjs', 3]], '같은 줄 둘 이상만 — 한 번뿐인 FAIL은 안내대로 풀린 것');
+  assert.deepEqual(repeatedFails(L, '2026-10-03T14:03:00Z').map((g) => [g.script, g.n]), [['ship.mjs', 3]], 'CEO 접점 전의 FAIL은 세지 않는다');
+  assert.equal(repeatedFails([]).length, 0);
+  assert.match(firstLine({ run: 'x', unseen: 0, unseenMax: 3, unobservedOs: 0, decisionsOpen: 0, coveragePct: 100, uncertain: '', repeatedFails: 2 }), / · 반복 FAIL 2$/);
+  assert.doesNotMatch(firstLine({ run: 'x', unseen: 0, unseenMax: 3, unobservedOs: 0, decisionsOpen: 0, coveragePct: 100, uncertain: '' }), /반복 FAIL/, '0이면 첫 줄은 그대로');
 });

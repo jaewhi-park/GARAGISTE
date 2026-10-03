@@ -2,7 +2,7 @@
 
 > Coding is making claims true. Claims are tests, probes and invariants; the team is a scheduler over that graph; the human supplies direction, reality and accountability — and keeps the windows.
 
-GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), twelve judgment-free scripts, a boundary hook or plugin, and a ledger.
+GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), fourteen judgment-free scripts, a boundary hook or plugin, and a ledger.
 
 - **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
 - **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all eight conditions hold.
@@ -24,7 +24,7 @@ The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs ·
 | rules file | `CLAUDE.md` (20 lines) | `AGENTS.md` (20 lines) |
 | boundary | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
 | the rules themselves | both call `.garagiste/scripts/guard-rules.mjs` | |
-| spawn configs | `.claude/agents/{spec,build,attack,spike}.md` | `.opencode/agents/{conductor,spec,build,attack,spike}.md` |
+| spawn configs | `.claude/agents/{boot,intake,spec,build,attack,spike}.md` | `.opencode/agents/{conductor,boot,intake,spec,build,attack,spike}.md` |
 | wip of a dead agent | SubagentStop hook → `checkpoint.mjs` | plugin after `task` → `checkpoint.mjs` |
 | conductor | the main session (CLAUDE.md Flow) | the `conductor` primary agent (no edit permission) |
 | models | budget → `model:` in the agent files | inherits the default provider/model; per-pack `model:` by hand |
@@ -59,19 +59,20 @@ Agents receive one pack file and never talk to each other. Build has never met a
 ## Scripts (zero judgment)
 | script | does |
 |---|---|
-| `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · new · ask · decide · default · tried · list · models (one place) · spawned (ledger) |
+| `next` | the loop's next step, one line: run · spawn · ceo · wait · done — the conductor follows this line only (seed → spec → redproof → build → attack → ship; re-spec, late spike, conflict, one unit at a time) |
+| `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · system (seam attack at the end of a scope) · new · ask (`--assumed`) · decide · default · tried · list · models (one place) · spawned (ledger) |
 | `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
 | `redproof` | proves acceptance tests are red on base and green on head |
 | `boundary` | dependency · workflow · IPC · permission · egress keywords → spike required |
 | `ship` | 8 fail-closed conditions → ff merge · docs/LEDGER.md · STATUS (rolls the merge back if main quick fails) |
 | `claims` | the claim graph: true · false · unsensed · unknown, sensor coverage, next |
-| `state` | generates docs/STATUS.md (first line is everything) · unattended stop budgets |
+| `state` | generates docs/STATUS.md (first line is everything) · unattended stop budgets · `report`: one page at SCOPE DONE (built · proven · decided · unseen · to try) |
 | `doctor` | differential diagnosis — detects the harness, says what died and what to fix |
 | `guard-rules` · `checkpoint` | the boundary rules and wip checkpoint both harnesses share |
 
 ## Documents
-- [docs/GUIDE.md](docs/GUIDE.md) — run it on your own machine: clone, trial repo, session, verdict line, model assignment (Korean)
+- [docs/GUIDE.md](docs/GUIDE.md) — run it on your own machine: clone, install, session, what the CEO says and sees, verdict line, model assignment, troubleshooting (Korean)
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — four sentences, eight tenets, the human's windows (Korean)
 - [docs/BIRTH.md](docs/BIRTH.md) — the zero-base birth protocol and the verdict line after the first 3 units (Korean)
 - [docs/catalogue/](docs/catalogue/) — candidate devices (the v2 design), the v1 measurements, discussion additions. **Not a plan**: a device is built only when an incident in the ledger asks for it

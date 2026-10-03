@@ -273,7 +273,15 @@ export function withScratch(root, ref, fn) {
   try { for (const r of roots) linkDeps(r, dir); return fn(dir); } finally { for (const r of roots) unlinkDeps(r, dir); git(['worktree', 'remove', '--force', dir], root); }
 }
 export function out(line) { process.stdout.write(line + '\n'); }
-export function fail(line, code = 1) { out(line); process.exit(code); }
+export function fail(line, code = 1) { out(line); recordFail(line); process.exit(code); }
+// 측정 빈틈(L1 4차·L2 관찰): 팩 FAIL·가드 거부는 원장 줄이 없어 FAIL 대기의 시작점을 이웃 ts로 추정했다 — FAIL 줄은 원장에 남는다(최선 노력: 저장소·team.json이 없으면 조용히). 되풀이는 state.mjs가 센다.
+function recordFail(line) {
+  if (!/^FAIL /.test(String(line))) return;
+  try {
+    const main = mainRoot(process.cwd());
+    appendLedger(main, loadTeam(main), { kind: 'fail', script: path.basename(process.argv[1] || ''), line: String(line).split('\n')[0].slice(0, 300) });
+  } catch { /* 원장 없음 */ }
+}
 export function isMain(metaUrl) {
   if (!process.argv[1] || path.resolve(process.argv[1]) !== fileURLToPath(metaUrl)) return false;
   rootFromScript(metaUrl);

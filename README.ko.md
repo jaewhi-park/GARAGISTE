@@ -2,7 +2,7 @@
 
 > 코딩은 주장을 참으로 만드는 일이다. 주장은 테스트·프로브·불변식이고, 팀은 그 그래프 위의 스케줄러이며, 사람은 방향·현실·책임 — 그리고 창이다.
 
-GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 여섯 팩(boot·intake·spec·build·attack·spike), 판단 없는 스크립트 열둘, 경계를 지키는 훅/플러그인, 그리고 원장이다.
+GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 여섯 팩(boot·intake·spec·build·attack·spike), 판단 없는 스크립트 열넷, 경계를 지키는 훅/플러그인, 그리고 원장이다.
 
 - **실행되지 않은 것은 믿지 않는다.** 스펙은 red 인수 테스트, 승인은 exit code, 리뷰의 산출물은 실패하는 테스트.
 - **루프는 기계가 끝낸다.** 커밋 게이트가 원장과 tree를 대조하고, `ship`은 8조건이 전부 참일 때만 main에 닿는다.
@@ -24,7 +24,7 @@ GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**
 | 규칙 파일 | `CLAUDE.md` (20줄) | `AGENTS.md` (20줄) |
 | 경계 | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
 | 규칙 본체 | 둘 다 `.garagiste/scripts/guard-rules.mjs` 하나 | |
-| spawn 설정 | `.claude/agents/{spec,build,attack,spike}.md` | `.opencode/agents/{conductor,spec,build,attack,spike}.md` |
+| spawn 설정 | `.claude/agents/{boot,intake,spec,build,attack,spike}.md` | `.opencode/agents/{conductor,boot,intake,spec,build,attack,spike}.md` |
 | 죽은 에이전트의 wip | SubagentStop 훅 → `checkpoint.mjs` | `task` 뒤 플러그인 → `checkpoint.mjs` |
 | conductor | 메인 세션 (CLAUDE.md Flow) | `conductor` primary agent (edit 권한 없음) |
 | 모델 | 예산 → agents 앞머리 `model:` | 기본 provider/model 상속, 팩별 `model:`은 앞머리에 직접 |
@@ -59,19 +59,20 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 ## 스크립트 (판단 0)
 | 스크립트 | 하는 일 |
 |---|---|
-| `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · new · ask · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
+| `next` | 루프의 다음 한 걸음을 한 줄로: run · spawn · ceo · wait · done — conductor는 이 줄만 따른다(seed → spec → redproof → build → attack → ship, re-spec·늦은 spike·충돌·한 번에 하나) |
+| `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · system(범위 끝의 이음새 공격) · new · ask(`--assumed`) · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
 | `brief` | 팩 조립 ≤8 KB(intake는 32 KB) — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |
 | `redproof` | 인수 테스트가 base에서 red · head에서 green임을 증명 |
 | `boundary` | 의존성·워크플로·IPC·권한·유출 키워드 → spike 필수 |
 | `ship` | 8조건 fail-closed → ff 머지 · docs/LEDGER.md · STATUS(quick FAIL이면 머지 롤백) |
 | `claims` | 주장 그래프: 참·거짓·미검수·불명, 센서 커버리지, 다음 거짓 |
-| `state` | docs/STATUS.md 생성(첫 줄 = 전부) · 무인 정지 예산 |
+| `state` | docs/STATUS.md 생성(첫 줄 = 전부) · 무인 정지 예산 · `report`: SCOPE DONE의 출하 보고 한 장(만든 것·증명·정한 것·못 본 것·써볼 것) |
 | `doctor` | 감별 진단 — 하네스를 감지해 무엇이 죽었고 무엇을 치면 되는지 한 줄씩 |
 | `guard-rules` · `checkpoint` | 두 하네스가 공유하는 경계 규칙과 wip 체크포인트 |
 
 ## 문서
-- [docs/GUIDE.md](docs/GUIDE.md) — 내 PC에서 돌려 보는 테스트 가이드(클론 · 시험 저장소 · 세션 · 판정선 · 모델 편성)
+- [docs/GUIDE.md](docs/GUIDE.md) — 내 PC에서 돌려 보는 테스트 가이드(클론 · 설치 · 세션 · CEO가 하는 말과 보는 것 · 판정선 · 모델 편성 · 막히면)
 - [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — 네 문장과 뼈대 여덟, 사람의 창
 - [docs/BIRTH.md](docs/BIRTH.md) — 0 base 탄생 프로토콜, 탄생 규칙 셋, 첫 3 unit 뒤의 판정선
 - [docs/catalogue/](docs/catalogue/) — 후보 장치 카탈로그(v2 설계), v1 측정 진단, 토의 추가분. **계획이 아니다** — 사고가 나면 여기서 찾아 만든다

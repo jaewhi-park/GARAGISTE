@@ -10,7 +10,7 @@
    `@claim <한 문장 — 무엇이 참이 되는가>` · `@milestone <id>` · `@sensor machine@<os> | human@<os>`.
    기계가 확인할 수 없는 주장만 `human`으로 표시한다. 그 주장은 CEO가 「써봤다」 하기 전까지 참이 아니다.
 3. `try.md`: 명령 1줄 · 단계 ≤3 · 기대 결과. 이것이 CEO가 보는 거울이다.
-4. `surface.md` ≤10줄: build가 부를 인터페이스와 설계 노트. 데이터 모델·파일 형식은 정하지 않는다 — 그것은 hard 결정이라 `node .garagiste/scripts/work.mjs ask <slug> "<질문>"`으로 큐에 넣는다.
+4. `surface.md` ≤10줄: build가 부를 인터페이스와 설계 노트. 이미 결정된 저장(「결정된 것」의 파일·DB) 안쪽의 꼴 — 어느 키에 무엇을, 레코드의 필드 — 은 질문이 아니라 기본값이다: 정하고 `node .garagiste/scripts/work.mjs default <slug> "<정한 꼴 한 줄>"`에 남긴 뒤 계속한다(CEO가 한 마디로 뒤집는다, unit은 멈추지 않는다). 질문(`work.mjs ask <slug> "<질문>"`)은 되돌리기 어려운 것뿐이다 — 새 저장소·외부 서비스·돈·삭제·유출·설치 형태, 또는 원문과 결정이 서로 어긋나 주장을 쓸 수 없을 때. 주장을 쓴 뒤에 묻게 되면 `--assumed "<지금 주장이 가정한 것>"`을 붙여 「예」가 곧 지금 주장이게 한다 — 「예」면 spec은 다시 돌지 않는다.
 5. 원문이 정하지 않은 것을 네가 정했다면 `work.mjs default <slug> "<정한 것>"`에 남긴다(CEO가 한 마디로 뒤집는다).
 6. 끝내기 전에 `node .garagiste/scripts/redproof.mjs <slug>` → `RED` 줄을 확인한다. red가 아니면 테스트가 아니다.
 7. 이미 인수 테스트가 있는 unit(re-spec — CEO의 말이 바뀌었다)이면: 새 원문과 어긋나는 주장만 고치고 나머지는 건드리지 않는다. 끝은 같다 — redproof RED.

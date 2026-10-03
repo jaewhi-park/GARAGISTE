@@ -29,6 +29,7 @@
     "decisions": "docs/DECISIONS.md",
     "status": "docs/STATUS.md",
     "ledger_doc": "docs/LEDGER.md",
+    "report": "docs/REPORT.md",
     "hazards": ".garagiste/HAZARDS.md",
     "units": ".garagiste/units",
     "ledger": ".garagiste/ledger/evidence.jsonl",
@@ -76,6 +77,7 @@
   },
   "budgets": {
     "unseen_max": 3,
+    "unseen_machine_exempt": true,
     "unattended_ship_max": 5,
     "no_ceo_units_max": 2,
     "prose_kb_max": 40,
@@ -86,5 +88,6 @@
   "sensors": {
     "human_os": []
   },
-  "require_attack": true
+  "require_attack": true,
+  "system_attack": true
 }

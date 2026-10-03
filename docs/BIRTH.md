@@ -7,10 +7,10 @@
 2. `.garagiste/scripts/verify.mjs` — 검증을 돌리고 원장에 `{tree, exit}`를 남기고, 커밋 게이트로 원장과 tree를 대조한다.
 3. 규칙 파일 20줄(`CLAUDE.md` 또는 `AGENTS.md`) — 명령과 Flow.
 
-페르소나 없음. conductor는 Claude Code에선 메인 세션, opencode에선 edit 권한 없는 primary agent다. 팩 넷(spec·build·attack·spike)은 10줄 spawn 설정 + 쓰기 경계로만 존재한다.
+페르소나 없음. conductor는 Claude Code에선 메인 세션, opencode에선 edit 권한 없는 primary agent다. 팩 여섯(boot·intake·spec·build·attack·spike)은 10줄 spawn 설정 + 쓰기 경계로만 존재한다.
 
 ## Unit 1 — 기계가 닫은 첫 루프
-CEO 한 문장 → `work.mjs new` → spec 팩이 red 주장을 쓴다 → `redproof.mjs`가 RED를 확인 → build 팩이 green으로 → 커밋 게이트 → attack 팩이 실패하는 테스트를 남긴다 → build 재spawn → red 0 → `ship.mjs` 7조건 → LEDGER 한 줄 → try.md → CEO 「써봤다」.
+CEO 한 문장 → `work.mjs new` → spec 팩이 red 주장을 쓴다 → `redproof.mjs`가 RED를 확인 → build 팩이 green으로 → 커밋 게이트 → attack 팩이 실패하는 테스트를 남긴다 → build 재spawn → red 0 → `ship.mjs` 8조건 → LEDGER 한 줄 → try.md → CEO 「써봤다」.
 `tests/e2e.test.mjs`가 이 루프를 모델 0·네트워크 0으로 재현한다. 그것이 이 프레임워크의 탄생 시험이다.
 
 ## 탄생 규칙 셋
@@ -19,7 +19,7 @@ CEO 한 문장 → `work.mjs new` → spec 팩이 red 주장을 쓴다 → `redp
 - **이름은 쓰기 경계다.** 새 역할이 필요해서 팩을 만드는 일은 없다. 새 경계가 필요할 때만 팩이 생긴다.
 
 ## 탄생 시험 — v1 사고 재생
-`team/HAZARDS.md`의 열한 줄은 v1 세 프로젝트에서 실제로 난 사고다. 갓 태어난 팀에 그 사고를 재생해 뚫리는 것마다 장치 하나를 만든다. 종이 설계 없이 센서를 얻는 가장 정직한 길이고, 첫 장치 수를 최대 열한 개로 묶는다.
+`team/HAZARDS.md`의 앞 줄들은 v1 세 프로젝트에서 실제로 난 사고고, 그 뒤는 v2의 실기·시험·벤치에서 난 사고다(번호와 수리는 CHANGELOG). 갓 태어난 팀에 그 사고를 재생해 뚫리는 것마다 장치 하나를 만든다 — 종이 설계 없이 센서를 얻는 가장 정직한 길이다.
 
 ## 첫 3 unit 뒤의 판정
 | 지표 | v1 실측 | 판정선 |
@@ -32,4 +32,4 @@ CEO 한 문장 → `work.mjs new` → spec 팩이 red 주장을 쓴다 → `redp
 선을 넘지 못하면 그 자리에서 멈춘다. 이 표가 나오기 전까지 v2의 모든 수치는 주장이고, 실행되지 않은 주장은 믿지 않는다.
 
 ## 어디서
-GARAGISTE 저장소가 아니라 프로젝트 안에서. 첫 프로젝트는 코드 0줄에 Windows 사고 이력이 있는 것이 좋다. 나머지 프로젝트는 v1 그대로 두고 둘의 규칙이 발동할 때 옮긴다.
+GARAGISTE 저장소가 아니라 프로젝트 안에서. 첫 프로젝트는 코드 0줄에 Windows 사고 이력이 있는 것이 좋다.

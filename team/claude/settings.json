@@ -12,6 +12,7 @@
       "Bash(node .garagiste/scripts/claims.mjs:*)",
       "Bash(node .garagiste/scripts/doctor.mjs:*)",
       "Bash(node .garagiste/scripts/selftest.mjs:*)",
+      "Bash(node .garagiste/scripts/next.mjs:*)",
       "Bash(node:*)",
       "Bash(npm:*)", "Bash(pnpm:*)", "Bash(npx:*)", "Bash(yarn:*)", "Bash(bun:*)", "Bash(deno:*)",
       "Bash(python:*)", "Bash(python3:*)", "Bash(uv:*)", "Bash(pytest:*)", "Bash(pip:*)", "Bash(ruff:*)", "Bash(mypy:*)",
