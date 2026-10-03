@@ -11,12 +11,15 @@
 ```text
 [L2 무인 하루 — 낮 규칙]
 - 오늘은 L2 무인 하루다. CEO는 「가」 뒤 자리를 뜬다(대개 밤새). CEO가 돌아와 「저녁」이라고 할 때까지 CEO 접점은 없다.
-- 루프는 CLAUDE.md Flow 4 그대로이고 unit은 한 번에 하나다: seed → … → ship이 끝나야 다음 seed.
-  예외는 진행 중 unit이 CEO 질문(열린 Q)에 걸려 멈춘 때뿐이다.
+- 루프는 CLAUDE.md Flow 4 그대로 — node .garagiste/scripts/next.mjs가 낸 한 줄만 따른다(run이면 그 명령 · spawn이면 그 팩 · ceo|wait|done이면 멈추고 그 줄을 남긴다).
+  unit은 한 번에 하나(next가 센다): seed → … → ship이 끝나야 다음 seed. 예외는 진행 중 unit이 CEO 질문(열린 Q)에 걸려 멈춘 때뿐이다.
 - 멈춤은 여섯뿐: hard 질문(그 unit만) · 미검수 3 · 무인 출하 5 · spike 허용 밖 · 프레임워크 FAIL · SCOPE DONE.
-  미검수 3이면 새 seed도 하지 않는다.
+  미검수는 사람 센서가 필요한 unit만 센다(@sensor human 또는 공격 선발견 0) — 기계가 증명한 unit은 STATUS 「써볼 것」에 「기계 증명」으로 보이고 세지 않는다.
+  미검수 3이면 새 seed도 하지 않는다(next가 ceo를 낸다).
+  범위가 끝나면 next가 이음새 공격(work.mjs system → attack 팩 → 발견이면 build → ship · 발견 0이면 drop)과 출하 보고(state.mjs report)를 먼저 내고 그 뒤가 SCOPE DONE이다 — 둘은 낮의 일이다(CEO 접점이 아니다).
 - 프레임워크 FAIL(안내대로 해도 같은 FAIL이 반복되거나, 안내가 없거나 실행할 수 없는 FAIL)이면
   그 줄 전문을 남기고 그날 루프를 멈춘다 — 돌던 unit도 새 spawn 없이 멈춘다. 우회·수리·스크립트 편집 금지.
+  FAIL 줄은 원장에 남고 되풀이되면 STATUS 첫 줄 「반복 FAIL n」·「막힌 것」 절에 뜬다 — 그 절이 정비 채널로 가는 줄이다(멈출 때 함께 남긴다).
 - 안내 끝에 `work.mjs ask <slug> … --hold`가 있는 FAIL(CEO 결정만 요구하는 것 — 두 번째 spec 반려 · 팩 상한의 2배 초과 · 이미 충족 — 2배 안의 팩 FAIL은 질문이 아니다: 그 줄대로 `--large "<이유>"`)은
   hard 질문이다: 그 줄대로 올리고 그 unit만 세운 채 다음 seed — 그날을 멈추지 않는다.
 - try 위임 없음: tried는 CEO가 돌아와서 한다(낮의 tried는 원장에 CEO 접점으로 찍힌다).
@@ -37,9 +40,11 @@
 1. try 카드 — 표보다 먼저
    - docs/STATUS.md 「써볼 것」의 카드를 전부 CEO에게 하나씩 낸다. 카드마다 먼저 node .garagiste/scripts/work.mjs try <slug>를
      돌려 그 사본 폴더(.worktrees/try-<slug>)를 함께 준다 — CEO는 그 폴더에서 카드를 친다(main은 깨끗하게 남는다). 위임 없음: tried는 전부 CEO다.
+     「기계 증명」 표시가 있는 카드도 낸다(이 시험은 사람 센서를 전부 건다). 「써볼 것」은 셋까지만 보이니 tried마다 node .garagiste/scripts/state.mjs로 STATUS를 다시 내 빌 때까지 잇는다.
    - CEO가 「<slug> ok」 또는 「<slug> fail + 한 줄」로 답하면 work.mjs tried <slug> ok|fail "<CEO 말 그대로>"
      (fail엔 말이 필수 — 그 말이 <slug>-fix의 재현이다. 사본은 tried가 지운다).
-   - 열린 질문(docs/DECISIONS.md 「정해 주세요」)이 있으면 그다음에 예/아니오로 묻고 decide.
+   - 열린 질문(docs/DECISIONS.md 「정해 주세요」)이 있으면 그다음에 예/아니오로 묻고 decide. decide가 KEPT를 내면(가정이 적힌 질문의 「예」) 그 unit은 그대로다 — spec 재spawn 없음(next가 센다).
+   - 범위가 끝난 라운드면 docs/REPORT.md(출하 보고)를 CEO에게 한 번 보인다 — 손편집 없음.
    - 사본 밖(메인 루트·저장소 밖)에 파일이 생겼으면 지우거나 옮기지 말고 CEO에게 그 경로를 말한다.
    - 카드와 질문이 끝난 뒤에 표를 만든다. 카드가 끝나도 새 unit은 seed하지 않는다 — 그날은 여기까지다.
 
@@ -81,7 +86,7 @@
    - 카드: 낸 카드 수 · ok · fail
    - CEO-분: 아침 창 「(CEO 기입)」 · 저녁 창 「(CEO 기입)」
    - 팀이 정한 것: .garagiste/units/*.json의 defaults 중 at이 아침 창 끝 뒤인 것 — 수와 그 줄들(slug: 내용)
-   - 프레임워크 FAIL 전문: 멈춘 줄 그대로(없으면 「없음」)
+   - 프레임워크 FAIL 전문: 멈춘 줄 그대로(없으면 「없음」) · 막힌 것: docs/STATUS.md 「막힌 것」 절 그대로(없으면 「없음」)
    - 참고: 낮 동안 에이전트가 한 일 중 규칙 밖으로 보인 것(없으면 「없음」) — 판단하지 말고 사실만.
 ```
 
@@ -112,3 +117,14 @@ CEO가 며칠 없다. 이 세션엔 아침·저녁 창이 없고, 첫 말 뒤로
 ## 3판(archive/L2-TRIAL-3.md)의 차이 (2026-10-02)
 - 「부재」 절(Q7 — 부재 사흘)을 새로 두었다. 규칙은 「아침」의 낮 규칙 그대로이고 새 규칙이 아니다 — 상한에서 멈추는 것도, 규칙을 바꾸지 않는 것도 지시서가 아니라 프레임워크(스크립트·게이트·가드)가 지키는지 본다.
 - 「아침」에 한 줄: 낮의 CEO 말은 CLAUDE.md 7(인터럽트)대로 — 등록된 Flow 7의 재진술이다(Q6 날엔 낮에 CEO의 말이 온다, 미리 알리지 않는다).
+
+## 5판(L2-TRIAL-5.md)의 차이 (2026-10-03 — 7건 뒤의 정본)
+- 「하루」는 라운드다(CEO 2026-10-03) — 이 지시서의 「오늘·그날·저녁」은 한 라운드(아침 창 → 무인 구간 → 저녁 창)를 가리킨다. 라운드마다 새 세션, 연달아 돌려도 된다.
+- 루프는 `next.mjs` 한 줄(아침 절) — Flow 4~7의 바퀴 수·순서·재개를 conductor가 정하지 않는다. attack 팩은 spec 뒤 한 바퀴, 고친 뒤엔 `verify.mjs attack`만(next가 낸다).
+- 미검수 상한은 사람 센서가 필요한 unit만 센다 — 라운드가 미검수 3에서 멈추지 않을 수 있다. 그래도 멈춤은 여섯 그대로다(무인 출하 5 · SCOPE DONE이 더 자주 온다).
+- 범위가 끝나면 낮에 둘이 더 돈다: 이음새 공격(`work.mjs system` → attack 팩 → 발견이면 build → ship · 발견 0이면 `drop --forget`)과 출하 보고(`state.mjs report` → docs/REPORT.md 커밋). 그 뒤 next가 `done SCOPE DONE`을 낸다 — 그때 멈춘다(저녁 창에 REPORT를 CEO에게 보인다).
+- 저녁 창의 결정: 가정이 적힌 질문(「지금은 …, 예 = 그대로」)의 맨 「예」는 `decide`가 KEPT를 내고 RESPEC이 아니다 — spec 재spawn 없음. 그 밖의 답은 3판과 같다(RESPEC → next가 spec 먼저).
+- 저녁 창의 카드: 「기계 증명」 표시가 있어도 친다(이 시험은 사람 센서를 전부 건다). 「써볼 것」은 셋까지만 보이니 tried마다 `state.mjs`로 STATUS를 다시 내 빌 때까지.
+- FAIL·가드 거부는 원장 `fail`·`guard` 줄로 남는다. 같은 FAIL이 되풀이되면 STATUS 첫 줄 「반복 FAIL n」·「막힌 것」 절 — 프레임워크 FAIL로 멈출 때 그 절을 마지막 출력에 함께 남긴다(정비 채널이 읽는 자리).
+- spec 팩은 저장 안쪽 꼴을 묻지 않고 `work.mjs default`로 정한다(「팀이 정한 것」에 뜬다 — 저녁 창에서 뒤집으려면 한 마디) · boot는 `.gitattributes`(`* text=auto eol=lf`)를 만든다 — 규칙집 드리프트가 아니다(boot의 첫 commands와 같은 자리).
+- 정비 채널의 표(`tests/field/day.mjs`)는 5판 칸을 더 센다(미검수 사람 셈 · 원장 fail/guard 줄 · kept · 이음새 공격·보고) — conductor 몫이 아니다(위 「정비 채널의 표 스크립트」 절 그대로).
