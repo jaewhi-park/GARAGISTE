@@ -7,7 +7,7 @@
 2. **절 단위로 읽는다 — 파일을 통째로 읽지 않는다**(`grep -n '^## '`로 절 제목을 보고 필요한 절만 `sed -n`). 순서와 범위:
    - `CHANGELOG.md` — 전체(최근 절만 남아 ≈14KB). 옛 수리 기록(2026-09-29~10-02, 사고 1~59)과 v1은 `docs/changelog/` — 사고 번호·날짜를 찾을 때만 grep.
    - `docs/measurements/L2-TRIAL-4.md` — 「단위」「무엇을 재나」「라운드의 모양」「판정·게이트」 절(새 등록의 설계 재료). 「윈도우 — CEO가 할 일」은 윈도우 일을 할 때만.
-   - `docs/V2-REPAIR-BACKLOG.md` — 끝의 「표 이후 후보」 절만. 앞의 L0·L1은 끝난 수리의 기록이다.
+   - `docs/V2-REPAIR-BACKLOG.md` — 끝의 「표 이후 후보」 절만(앞은 L2~L4 요구와 헌법). L0·L1 완료 기록은 `docs/changelog/backlog-L0-L1-2026-09-29.md`.
    - `docs/measurements/FIELD-BENCH.md` — 규칙 전체(≈15KB). 결과는 `FIELD-BENCH-LOG.md` — 표의 마지막 행과 마지막 기록 절만.
    - `team/HAZARDS.md` — 머리말만. 줄은 수리할 경로로 grep.
    - 끝난 시험(L1 1~4차 · L2 1~3판 · 필드 시험 1·2)은 `docs/measurements/archive/`. 결론은 L2-TRIAL-4 「왜 4판인가」와 FIELD-BENCH 「홀드아웃」에 있다 — 날짜·수치를 인용할 때만 그 절을 grep.
