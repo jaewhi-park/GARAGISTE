@@ -318,6 +318,8 @@ function needsCmd(c, slug, list) {
 }
 function decide(c, n, answer) {
   if (c.root !== c.main) fail('FAIL decide는 메인 저장소에서만 — 질문의 답은 CEO 접점이다, 팩이 만들지 않는다');
+  n = String(n ?? '').replace(/^[Qq]/, ''); // 사고 61(L2 5판 리눅스 1라운드): CEO의 말은 「Q1 예」라 conductor가 `decide Q1 "예"`로 FAIL ×4 — 번호는 Q를 떼고 받는다
+  if (!/^\d+$/.test(n)) fail(`FAIL 번호가 아니다: ${n || '(없음)'} — work.mjs decide <n|Q<n>> "<답>"`);
   if (!answer) fail('FAIL 답이 없다: work.mjs decide <n> "<답>"');
   const p = decisionsFile(c);
   const updated = decideLine(readText(p), Number(n), answer, new Date().toISOString().slice(0, 10));

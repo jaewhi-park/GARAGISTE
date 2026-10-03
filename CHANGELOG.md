@@ -20,6 +20,12 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
 
+### Fixed — 2026-10-03 사고 60·61 — L2 5판 리눅스 1라운드의 가드 오탐과 decide 번호 (시험 중 수리 — 동결 갱신)
+- **사고 60(가드 오탐 → 원문 변형)**: intake 팩이 BRIEF 원문을 그대로 `work.mjs add`에 넣은 Bash를 가드가 거부했다 — `stripQuoted`가 정규식 셋으로 따옴표를 벗겨, 큰따옴표 안의 이스케이프된 백틱(`` \` ``)을 실행 치환으로 읽고 안의 `<번호>`의 `>`를 리다이렉트로, `` \` ``를 쓰기 대상으로 봤다. 에이전트는 원문의 큰따옴표를 ”로 바꿔 우회했다(BACKLOG에 변형된 원문 — 「요약·해석 금지」의 이웃). 수리: 따옴표를 한 글자씩 걷는 셸 인식 스캐너 — 작은따옴표 안은 데이터, 큰따옴표 안도 데이터지만 이스케이프 안 된 `$()`·백틱만 실행으로 남긴다, 따옴표 밖의 `\x`는 데이터, 닫히지 않은 따옴표는 셸로(fail-closed). heredoc 전처리는 그대로. 검사: unit(1라운드 add 명령의 재현 · 작은따옴표 · 이스케이프된 백틱 · `$()` 안쪽 따옴표 · 닫히지 않은 따옴표) — 기존 오탐 테스트(첫 Windows 실기 · L2 1일차)는 그대로 초록.
+- **사고 61(decide 번호)**: CEO의 말은 「Q1 예」인데 `work.mjs decide Q1 "예"`는 「QQ1 열린 질문 없음」 FAIL ×4(1라운드 아침 창) — Q를 떼고 받는다, 숫자가 아니면 `FAIL 번호가 아니다`. 검사: e2e(`decide Q3` · `decide Qx`).
+- 측정 빈틈: 훅·플러그인의 원장 `guard` 줄이 명령을 200자에서 잘라 사고 60의 재현이 세션 전사에서야 가능했다 → 1000자. `tests/field/deliver.sh`가 훅 파일(`.claude/hooks/*.mjs`)도 반영한다.
+- HAZARDS 줄 없음(규칙집·배선 경로 — 기록은 여기). **5판 동결 갱신**: 테스트 베드에 반영(L2-TRIAL-5 「차림」의 수리 반영 줄), 머지가 새 동결 — 윈도우 라운드는 그 머지 뒤의 sha로 시작한다.
+
 ### Changed — 2026-10-03 문체 — 살아 있는 문서의 코인·비유를 평이한 말로 (CEO 「무리해서 모든 단어를 한국어로 번역하지 말자」)
 - 레포의 산문은 코드 명사(unit · ship · spawn · worktree · conductor · scope …)는 영어로 두고 설명은 순우리말·비유로 쓰는 문체였다 — 「침대」(test bed, 2026-09-30 HANDOFF부터 · docs 8파일 40회) · 「꼴」(형식 · docs 75회, team/ 8회) · 「이음새」 · 「선발견」 · 토양 · 백신 · 걷어 내다 같은 코인. CEO가 어색하다고 짚었다.
 - 살아 있는 문서(HANDOFF · FIELD-BENCH · L2-TRIAL-5 · L2-day-conductor · 백로그 · 후보 README)에서 바꿨다: 침대·시험대 → **테스트 베드** · 저장 꼴 → **저장 형식** · 같은 꼴 → 같은 모양 · boot 꼴 → boot 생태계별 설정 · 토양 → 낳은 조건 · 백신 → 재발 방지 · 걷어 낸다 → 제거한다 · 후발견 → 나중에 찾았다. 끝난 기록(archive · changelog · FIELD-BENCH-LOG의 행)은 그대로(기록은 고치지 않는다).

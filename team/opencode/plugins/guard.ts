@@ -23,7 +23,7 @@ export const Guard: Plugin = async ({ directory }) => ({
         const team = JSON.parse(fs.readFileSync(path.join(directory, ".garagiste", "team.json"), "utf8").replace(/^\uFEFF/, ""))
         const p = path.join(directory, team.paths?.ledger ?? ".garagiste/ledger/evidence.jsonl")
         fs.mkdirSync(path.dirname(p), { recursive: true })
-        fs.appendFileSync(p, JSON.stringify({ ts: new Date().toISOString(), kind: "guard", tool, target: String((ti as Record<string, string>).file_path ?? (ti as Record<string, string>).command ?? "").slice(0, 200), reason }) + "\n")
+        fs.appendFileSync(p, JSON.stringify({ ts: new Date().toISOString(), kind: "guard", tool, target: String((ti as Record<string, string>).file_path ?? (ti as Record<string, string>).command ?? "").slice(0, 1000), reason }) + "\n")
       } catch { /* 원장 없음 */ }
       throw new Error(`[guard] ${reason}`)
     }

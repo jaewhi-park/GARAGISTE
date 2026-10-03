@@ -904,7 +904,8 @@ test('L2 3판 (e): 확인형 질문(--assumed)의 「예」는 RESPEC이 아니�
   assert.match(script('work', ['decide', '2', '예'], repo).out, /^PASS decide Q2\nRESPEC schedule/);
   // 가정과 다른 답도 RESPEC
   script('work', ['ask', 'schedule', '한 라운드는 한 주인가요?', '--assumed', '한 주'], repo);
-  const d3 = script('work', ['decide', '3', '아니오 — 두 주'], repo).out;
+  assert.match(script('work', ['decide', 'Qx', '아니오'], repo).out, /^FAIL 번호가 아니다: x — work\.mjs decide <n\|Q<n>>/);
+  const d3 = script('work', ['decide', 'Q3', '아니오 — 두 주'], repo).out; // 사고 61: CEO의 말은 「Q3 …」 — Q를 뗀 번호로 받는다
   assert.match(d3, /^PASS decide Q3\nRESPEC schedule/, d3);
   assert.deepEqual(unit().respec.map((r) => r.q), [2, 3]);
 });
