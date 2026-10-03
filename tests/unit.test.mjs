@@ -586,7 +586,8 @@ test('brief: 결정은 스코프 — 전역(intake)+이 unit+needs만, 전체는
 });
 test('HAZARDS: 줄마다 팩에 닿는 경로가 있다 — 규칙집(.garagiste/**)·main 전용 문서만 가리키는 줄은 팩에 영영 안 떠 산문 예산만 먹었다(35줄 · 15KB)', () => {
   const text = fs.readFileSync(new URL('../team/HAZARDS.md', import.meta.url), 'utf8');
-  const unreachable = /^(\.garagiste\/(?!team\.json$)|docs\/(BACKLOG|STATUS|LEDGER|DECISIONS|BRIEF)\.md$)/; // team.json은 boot가 worktree에서 바꾼다(work.mjs commands)
+  // team.json은 boot가 worktree에서 바꾼다(work.mjs commands). 배선(.claude·.opencode·opencode.json·.githooks)은 가드가 막고, .worktrees/는 팩의 바뀐 파일(worktree 상대 경로)에 없다(2026-10-03 정리)
+  const unreachable = /^(\.garagiste\/(?!team\.json$)|\.claude\/|\.opencode\/|opencode\.json$|\.githooks\/|\.worktrees\/|docs\/(BACKLOG|STATUS|LEDGER|DECISIONS|BRIEF)\.md$)/;
   for (const l of text.split('\n').filter((x) => x.startsWith('- '))) {
     const globs = [...l.split(' · ')[0].matchAll(/`([^`]+)`/g)].map((m) => m[1]);
     assert.ok(globs.some((g) => !unreachable.test(g)), `팩에 닿지 않는 줄 — 기록은 CHANGELOG로: ${l.slice(0, 70)}`);

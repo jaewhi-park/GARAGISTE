@@ -1,26 +1,19 @@
 # HAZARDS — 사고 1건 = 검사 1개
 
-줄 형식: `- \`<경로 패턴>\` … · <사고 한 줄> · 검사: <테스트·프로브·훅·스크립트>`. 경로 패턴이 없는 줄은 brief가 팩에 넣지 않고 doctor가 거부한다. 산문 규칙은 여기 쓰지 않는다 — 검사가 없으면 줄도 없다. 팩에 닿지 않는 줄(경로가 규칙집 `.garagiste/**`·main 전용 문서뿐 — 팩은 그 경로를 바꾸지 못한다)도 두지 않는다: 그 사고의 기록은 CHANGELOG다.
+줄 형식: `- \`<경로 패턴>\` … · <사고 한 줄> · 검사: <테스트·프로브·훅·스크립트>`. 경로 패턴이 없는 줄은 brief가 팩에 넣지 않고 doctor가 거부한다. 산문 규칙은 여기 쓰지 않는다 — 검사가 없으면 줄도 없다. 팩에 닿지 않는 줄(경로가 규칙집 `.garagiste/**`·배선 `.claude/**`·`.opencode/**`·`.worktrees/**`·main 전용 문서뿐 — 팩은 그 경로를 바꾸지 못하고, 바뀐 파일은 worktree 상대 경로다)도 두지 않는다: 그 사고의 기록은 CHANGELOG다.
 
 - `**/electron/**` `**/renderer/**` · 렌더러가 하얀 화면인데 ready 이벤트는 발화해 스모크가 통과했다 · 검사: boot 스모크는 실제 진입점 실행 + 이 줄이 팩에 뜨면 attack이 실제 기동 부정 테스트(pageerror 0·DOM 마커)를 tests/adversary에 남긴다(attack 팩 4)
 - `**/package.json` `**/pyproject.toml` `build/**` · 패키징 산출물에 라이선스 미확인 의존성이 동봉됐고 설치 형태를 정한 사람이 없었다 · 검사: spike 필수 행 license·default + 산출물 스캔
 - `**/subprocess*` `**/child_process*` `**/*spawn*` · 네트워크 0 규칙이 자식 프로세스에서 세 번 재발했다 — 가드 없는 자식은 트래픽을 시도하지 않아 센서가 침묵했다 · 검사: 이 줄이 팩에 뜨면 attack이 자식 프로세스 양성 캐너리(막히지 않으면 red)를 tests/adversary에 남긴다(attack 팩 4)
 - `**/session*` `**/persist*` · 세션 영속화가 홈 디렉터리에 썼다 · 검사: 이 줄이 팩에 뜨면 attack이 홈 디렉터리 쓰기 부정 테스트를 남긴다(attack 팩 4) + verify 로그의 산출 경로 확인
 - `docs/**` `**/*.md` · 문서만 고친 커밋이 main을 빨갛게 했다(무검증 커밋) · 검사: 커밋 게이트 — 모든 커밋 tree↔quick PASS(verify.mjs gate)
-- `.claude/hooks/**` `.claude/settings.json` `.opencode/plugins/**` `opencode.json` · Windows에서 훅이 조용히 죽었다(상대 경로) — 경계가 없는 세션이 정상처럼 돌았다 · 검사: session-start alive 마커 + doctor 감별 진단 + `${CLAUDE_PROJECT_DIR}` 절대 경로
-- `.worktrees/**` · 서브에이전트가 컨텍스트 상한으로 죽으며 미커밋 작업이 사라졌다 · 검사: SubagentStop wip 체크포인트(spawn-log.mjs) + 팩 이어받기 절(brief.mjs)
 - `tests/**` `.garagiste/ledger/**` · 초록을 만들기 위해 테스트·설정·원장을 고쳤다 · 검사: ship redproof(base red·head green, tree 단위) + 커밋 게이트 tree↔원장 대조 + guard의 원장·규칙집·commands·마커 쓰기 거부
 - `**/*install*` `**/*bundle*` · 출하물의 설치 형태가 조용한 기본값으로 정해졌다 · 검사: boundary 키워드 → spike 필수 행 default + `work.mjs default` → 「팀이 정한 것」
 - `**` · 리눅스 관측이 Windows 기동을 대신 통과시켰다 · 검사: 원장 platform 필드 + `@sensor human@win32` 주장은 tried 전까지 참이 아니다(claims.mjs)
 - `**` · 19시간 무인 실행이 규칙집을 완화해 드리프트했다 · 검사: guard `.garagiste/**` 쓰기 거부 + 무인 출하 예산 + CEO 접점 없는 unit 연속 상한(ship.mjs)
 - `.garagiste/scripts/**` `.garagiste/team.json` · 첫 실제 build 팩(12KB)이 상한 8KB를 넘어 루프가 멈췄다 — 상한은 실측 없는 추정이었고, 초과분은 법(인수 5.4KB)이 아니라 부대물이었다(2차 실기) · 검사: 기본 상한 16KB + fit이 이어받기·try·surface를 포인터로 강등(법은 불가침) — unit 테스트
 - `**/vitest.config*` `**/*.config.*` `.garagiste/packs/boot.md` · 메인 full이 `.worktrees/` 아래 진행 중 unit의 red 테스트까지 쓸어 담았고, 의존성은 사라진 unit worktree에만 설치돼 다음 unit이 결정된 스택(zod)을 맨손으로 우회했다(2차 실기) · 검사: boot 팩의 러너 exclude 규칙 + ship이 매니페스트 변경 출하에 메인 설치 NOTE — e2e
-- `tests/**` `.garagiste/scripts/lib.mjs` · 정본 테스트가 win32 원격 클론에서 6건 거짓 실패 — e2e의 bash 미탐색(spawn null)·URL.pathname 경로(/C:/…)·depDirs 역슬래시·폴더 이름(GARAGISTE) 가정(3차 준비 검증이 잡음) · 검사: bash 탐색 + 없으면 명시 SKIP, fileURLToPath, 구분자 정규화, 경로 비교 — win32 재실행이 확인
-- `install.sh` `install.ps1` · 설치기가 첫 커밋 실패를 경고로 삼키고 성공을 선언했다(fail-open — doctor·selftest만 fail-closed였다) · 검사: 첫 커밋 실패 = 설치 FAIL(exit 1), git 출력이 이유로 남는다
 - `.garagiste/scripts/**` `.garagiste/team.json` · RESPEC으로 인수 3파일이 된 unit의 build 팩이 법만으로 17KB(전문 21KB) > 상한 16KB — FAIL 안내의 「unit split」은 명령이 없고 「부대물이면 상한을 올려라」는 FAIL 시점에 참일 수 없어 conductor가 따를 길이 없었다(4차 실기) · 검사: FAIL은 법 초과임을 말하고 CEO 결정 둘(상한을 실측 숫자 이상으로·drop 뒤 add)을 명령으로 준다 + 기본 상한 32(실측 — 벤치의 build 팩 28·31KB) + 상한~2배는 이유 한 줄(`--large`, 원장)로 지나간다 — 결정 ①만 측정마다 CEO에게 갔다(H3) — unit·e2e
-- `.garagiste/scripts/guard-rules.mjs` `.claude/hooks/**` · 가드가 원장 읽기(sed -n·2>/dev/null)와 heredoc 커밋 메시지의 <…> trailer를 쓰기로 오탐했고, 반대로 conductor의 mv·rm·cp는 worktree 밖에서도 통과시켜 CEO의 try 산출 파일이 옮겨졌다(L2 1일차) · 검사: 원장은 향하는 쓰기만 거부 · heredoc 본문은 데이터 · mv·rm·cp·tee도 worktree 밖이면 거부 · 명령 안의 cd가 상대 경로의 뿌리 · 메모리 파일 문구 — guard 단위 테스트
-- `.claude/settings.json` `.garagiste/scripts/**` · 새 설치의 boot 팩이 worktree에서 `cd <wt> && git …`·`git -C <wt> …`로 커밋하려다 허용 목록에 없어 승인 대기로 막혔다 — 무인·헤드리스면 wip HEAD로 끝나고 ship은 scaffold에 「build를 다시 띄워」라 했다(필드 시험 두 곳, 사고 27) · 검사: 허용 목록에 cd·git -C, wip HEAD 안내는 unit 정체의 팩 — settings·ship 단위 테스트
-- `.garagiste/scripts/**` `.worktrees/**` · worktree의 .garagiste/scripts는 브랜치가 갈라질 때의 사본이라 main에 든 정비(사고 30)가 진행 중 unit에 닿지 않았다 — build가 worktree의 옛 redproof로 이미 고쳐진 FAIL을 다시 보고 빈손으로 끝났다(필드 시험 1, 사고 31) · 검사: worktree에서 불린 스크립트는 main의 같은 스크립트로 넘긴다(인자·cwd·종료 코드 그대로, 같은 법이면 넘기지 않음) — unit 테스트
 - `.garagiste/scripts/**` `CLAUDE.md` `AGENTS.md` · build가 「인수 테스트가 서로 어긋난다(-30000 ⊃ 3000)」는 `spec:` 줄을 남겼는데 Flow에 그 줄을 받는 길이 없고 redproof FAIL은 build 재spawn만 말해 빈손 build가 반복됐다(필드 시험 1, 사고 33) · 검사: `brief.mjs spec <slug> --return "<줄>"`이 spec 팩에 반려 절을 싣고(원장 spec_return), 두 번째 반려는 CEO에게, redproof FAIL이 그 길을 말한다 — e2e
 - `.garagiste/team.json` `.garagiste/scripts/**` · boot이 의존성 0이라 setup="true"를 두었는데 뒤 unit이 dev 의존성을 더했다 — ship은 「setup을 돌렸다, 다음 worktree가 물려받는다」고 했지만 아무것도 깔리지 않아 다음 unit의 full이 ERR_MODULE_NOT_FOUND(필드 시험 2, 사고 34) · 검사: 설치 명령 없는(무동작 포함) 의존성 출하는 머지 전 FAIL + CEO 한 줄, 메인의 commands는 스스로 커밋하고 setup을 main에서 돌림, worktree의 verify가 main의 의존성 디렉터리를 잇는다 — unit·e2e
 - `.worktrees/**` `.gitignore` · worktree의 의존성 링크(node_modules → main)는 디렉터리가 아니라 흔한 `.gitignore`의 `node_modules/`에 안 걸린다 — 미추적으로 보여 커밋에 이 기계의 경로가 들어갔다(필드 시험 2, 사고 35) · 검사: 링크는 로컬 제외(info/exclude)에 스스로 둔다 — unit 테스트
