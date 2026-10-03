@@ -80,6 +80,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Added — 2026-10-03 next.mjs — Flow 4~7의 다음 한 걸음을 스크립트가 낸다 (L2 2판 윈도우 28·20바퀴 · 3판 규율 이탈 — CEO 「하나씩 수정」)
+- `node .garagiste/scripts/next.mjs`: unit 상태·원장·worktree에서 다음 한 줄 — `NEXT run <명령>` · `NEXT spawn <팩> <slug> <PACK 경로>` · `NEXT ceo|wait|done`. 순서(seed → spec → redproof → build → attack → verify attack → ship), RESPEC은 spec 먼저, 늦은 spike 뒤엔 ship, 충돌은 build가 풀고 ship이 잇는다, 한 번에 하나(먼저 연 unit), 질문에 걸린 unit은 자리를 막지 않는다, 예산 정지·SCOPE DONE은 CEO에게. 팩은 조립(원장 pack) → 띄움(spawned 또는 훅의 spawn_stop) → 증거(redproof·attack 줄이 팩 뒤에 있는가)로 센다.
+- CLAUDE.md·AGENTS.md 템플릿 Flow 4가 next 한 줄로 줄었다 — 규율 이탈이 났던 산문 빈칸(바퀴 수·대리 답·재개)이 코드로. settings 허용 목록·doctor SCRIPTS·README에 next.
+- 검사: unit(nextStep의 분기) · e2e(탄생 시험의 매 걸음에서 next가 그 걸음을 말한다) · HAZARDS 한 줄.
+
 ### Changed — 2026-10-03 질문은 기본값으로 — 저장 안쪽 꼴은 default, 확인형 질문의 「예」는 RESPEC이 아니다 (L2 3판 리눅스 2·3라운드 측정 (e) — CEO 「하나씩 수정」)
 - spec 팩 4: 이미 결정된 저장(파일·DB) 안쪽의 꼴(키·필드)은 `work.mjs default`로 정하고 계속한다 — ask는 되돌리기 어려운 것(새 저장소·외부 서비스·돈·삭제·유출·설치 형태)과 원문·결정의 충돌뿐. intake 팩 5: 저장은 저장소 하나에 질문 하나, 팀의 제안을 질문에 담는다.
 - `work.mjs ask <slug> "<질문>" --assumed "<지금 주장이 가정한 것>"`: 질문 줄에 가정이 보이고(「지금은 …, 예 = 그대로」), `decide`의 맨 「예」(예·네·yes·ok·그대로…)는 원장 `kept` 줄만 남기고 RESPEC을 걸지 않는다(KEPT). 가정 없는 「예」와 가정과 다른 답은 사고 17대로 RESPEC. 근거: 3판 2·3라운드의 Q6~Q9·Q11이 전부 「예」, RESPEC 뒤 spec은 「고칠 주장 없음」 — 라운드당 출하 1.

@@ -2,7 +2,7 @@
 
 > Coding is making claims true. Claims are tests, probes and invariants; the team is a scheduler over that graph; the human supplies direction, reality and accountability — and keeps the windows.
 
-GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), twelve judgment-free scripts, a boundary hook or plugin, and a ledger.
+GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), fourteen judgment-free scripts, a boundary hook or plugin, and a ledger.
 
 - **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
 - **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all eight conditions hold.
@@ -59,7 +59,8 @@ Agents receive one pack file and never talk to each other. Build has never met a
 ## Scripts (zero judgment)
 | script | does |
 |---|---|
-| `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · new · ask · decide · default · tried · list · models (one place) · spawned (ledger) |
+| `next` | the loop's next step, one line: run · spawn · ceo · wait · done — the conductor follows this line only (seed → spec → redproof → build → attack → ship; re-spec, late spike, conflict, one unit at a time) |
+| `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · new · ask (`--assumed`) · decide · default · tried · list · models (one place) · spawned (ledger) |
 | `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
 | `redproof` | proves acceptance tests are red on base and green on head |

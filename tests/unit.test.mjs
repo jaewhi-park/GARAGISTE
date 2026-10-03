@@ -17,6 +17,7 @@ import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
+import { nextStep, render } from '../team/scripts/next.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
@@ -862,4 +863,57 @@ test('spec·intake 팩: 저장 안쪽 꼴은 default, 질문은 되돌리기 어
   assert.doesNotMatch(spec, /데이터 모델·파일 형식은 정하지 않는다/, '옛 규칙(저장 꼴마다 ask)은 사라진다');
   const intake = fs.readFileSync(new URL('../team/packs/intake.md', import.meta.url), 'utf8');
   assert.match(intake, /저장소 하나[^\n]*질문 하나/, 'intake 팩 5: 저장은 저장소 하나에 질문 하나');
+});
+
+test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec→redproof→build→attack→verify→(build)→ship, 팩은 조립→spawn→증거 순 (L2 2판 윈도우 28·20바퀴 · 3판 규율 이탈)', () => {
+  const T = (m) => `2026-10-03T10:${String(m).padStart(2, '0')}:00.000Z`;
+  const u = (over) => ({ slug: 'add', kind: 'feature', state: 'spec', created: T(0), questions: [], holds: [], needs: [], respec: [], ...over });
+  const backlog = [{ slug: 'add', milestone: 'M1', needs: [], done: false }, { slug: 'list', milestone: 'M1', needs: ['add'], done: false }];
+  const scope = { order: ['add', 'list'], requested: ['add', 'list'], required: [], missing: [] };
+  const step = (units, ledger, over = {}) => nextStep({ units, ledger, decisionsText: '', scope, backlog, stops: [], wtOf: () => ({ exists: true, rebase: false, unmerged: [] }), packPath: (s, p) => `.garagiste/session/packs/${s}-${p}-x.md`, ...over });
+  const L = [];
+  const push = (e) => L.push(e);
+  assert.deepEqual(step([u()], L), { kind: 'run', cmd: 'node .garagiste/scripts/brief.mjs spec add', why: 'add의 spec 팩이 아직 없다' }, '갓 열린 unit: spec 팩부터');
+  push({ ts: T(1), kind: 'pack', slug: 'add', pack: 'spec' });
+  assert.equal(step([u()], L).kind, 'spawn');
+  assert.match(render(step([u()], L)), /^NEXT spawn spec add \.garagiste\/session\/packs\/add-spec-x\.md — .*Agent\(subagent_type: "spec", prompt: "\.garagiste\/session\/packs\/add-spec-x\.md"\).*work\.mjs spawned add spec/);
+  push({ ts: T(2), kind: 'spawn_stop', pack: 'spec' }); // 훅의 기계 기록으로도 끝난 것으로 본다
+  assert.match(step([u()], L).cmd, /redproof\.mjs add$/, 'spec 뒤엔 RED 증명');
+  push({ ts: T(3), kind: 'redproof', slug: 'add', base_red: true, head_green: null });
+  assert.match(step([u()], L).cmd, /brief\.mjs build add$/, 'RED면 build');
+  assert.match(step([u()], [...L, { ts: T(3), kind: 'redproof', slug: 'add', base_red: false, head_green: null }]).why, /FAIL/, 'base green이면 그 FAIL의 안내가 길이다');
+  assert.match(step([u()], [...L, { ts: T(3), kind: 'redproof', slug: 'add', base_red: true, head_green: true }]).cmd, /brief\.mjs attack add$/, 're-spec에서 기존 코드가 이미 만족하면 build 없이 attack 새 바퀴');
+  push({ ts: T(4), kind: 'pack', slug: 'add', pack: 'build' });
+  assert.equal(step([u({ state: 'build' })], L).kind, 'spawn');
+  push({ ts: T(5), kind: 'spawn', slug: 'add', pack: 'build' }); // conductor의 spawned 기록
+  assert.match(step([u({ state: 'build' })], L).cmd, /brief\.mjs attack add$/, 'build 뒤엔 공격 한 바퀴');
+  push({ ts: T(6), kind: 'pack', slug: 'add', pack: 'attack' });
+  assert.equal(step([u({ state: 'attack' })], L).kind, 'spawn');
+  push({ ts: T(7), kind: 'spawn', slug: 'add', pack: 'attack' });
+  assert.match(step([u({ state: 'attack' })], L).cmd, /verify\.mjs attack add$/, 'attack이 verify를 안 남겼으면 센다');
+  push({ ts: T(8), kind: 'attack', slug: 'add', total: 2, red: 1 });
+  assert.match(step([u({ state: 'attack' })], L).cmd, /brief\.mjs build add$/, 'red가 남으면 build 다시');
+  push({ ts: T(9), kind: 'pack', slug: 'add', pack: 'build' }); push({ ts: T(10), kind: 'spawn', slug: 'add', pack: 'build' });
+  assert.match(step([u({ state: 'build' })], L).cmd, /verify\.mjs attack add$/, '고친 뒤엔 attack 팩을 새로 띄우지 않고 기존 공격 테스트만(한 바퀴)');
+  push({ ts: T(11), kind: 'attack', slug: 'add', total: 2, red: 0 });
+  assert.match(step([u({ state: 'build' })], L).cmd, /ship\.mjs add$/, 'red 0이면 ship');
+  // 출하되면 seed · 질문에 걸린 unit은 자리를 막지 않는다 · 범위가 끝나면 done · 예산 정지와 범위 없음은 CEO
+  assert.match(step([u({ state: 'shipped' })], L).cmd, /work\.mjs seed$/);
+  assert.equal(step([u({ state: 'shipped' }), u({ slug: 'list', state: 'build', questions: [3] })], L, { decisionsText: '- [ ] Q3 (list): x' }).kind, 'wait');
+  assert.equal(step([u({ state: 'shipped' }), u({ slug: 'list', state: 'shipped' })], L).kind, 'done');
+  assert.equal(step([u({ state: 'shipped' })], L, { stops: ['미검수 3 ≥ 3'] }).kind, 'ceo');
+  assert.equal(step([u({ state: 'shipped' })], L, { scope: null }).kind, 'ceo');
+  assert.equal(step([], L, { backlog: [] }).kind, 'ceo');
+  // re-spec·늦은 spike·충돌·scaffold·한 번에 하나
+  assert.match(step([u({ state: 'build', respec: [{ q: 3 }] })], L).cmd, /brief\.mjs spec add$/, '진행 중에 온 답은 spec이 먼저(사고 17)');
+  const spike = [{ ts: T(1), kind: 'pack', slug: 'net', pack: 'spike' }, { ts: T(2), kind: 'spawn', slug: 'net', pack: 'spike' }];
+  assert.match(step([u({ slug: 'net', state: 'spike' })], spike).cmd, /brief\.mjs spec net$/, 'boundary HIT unit: spike 뒤 spec');
+  assert.match(step([u({ slug: 'net', state: 'spike' })], [{ ts: T(0), kind: 'pack', slug: 'net', pack: 'spec' }, ...spike]).cmd, /ship\.mjs net$/, '출하 때 diff-HIT로 늦게 잰 spike 뒤엔 ship 다시');
+  const conflict = [...L, { ts: T(12), kind: 'ship_conflict', slug: 'add', files: ['src/a.mjs'] }];
+  const rebase = (unmerged) => ({ wtOf: () => ({ exists: true, rebase: true, unmerged }) });
+  assert.match(step([u({ state: 'build' })], conflict, rebase(['src/a.mjs'])).cmd, /brief\.mjs build add$/, '충돌 표시는 build가 푼다(사고 26)');
+  assert.equal(step([u({ state: 'build' })], [...conflict, { ts: T(13), kind: 'pack', slug: 'add', pack: 'build' }], rebase(['src/a.mjs'])).kind, 'spawn');
+  assert.match(step([u({ state: 'build' })], conflict, rebase([])).cmd, /ship\.mjs add$/, '다 풀렸으면 ship이 잇는다(사고 58)');
+  assert.match(step([u({ slug: 'boot', kind: 'scaffold', state: 'boot' })], [{ ts: T(1), kind: 'pack', slug: 'boot', pack: 'boot' }, { ts: T(2), kind: 'spawn', slug: 'boot', pack: 'boot' }]).cmd, /ship\.mjs boot$/, 'scaffold는 boot 팩 하나로 출하');
+  assert.match(step([u({ slug: 'late', created: T(9) }), u({ state: 'build' })], L).cmd, /ship\.mjs add$/, '한 번에 하나 — 먼저 연 unit부터');
 });

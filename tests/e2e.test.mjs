@@ -73,6 +73,9 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] hello · M\? · needs: - · "이름을 주면 그 이름으로 인사한다" · 인수: -/);
   assert.match(script('work', ['new', 'net', '외부 API로 network 호출을 한다'], repo).out, /HIT .*keyword network/, 'boundary는 spike부터');
   assert.match(script('brief', ['spike', 'net'], repo).out, /^PACK .*net-spike-/, 'R11: 안내대로 spike 팩이 spec 전에 열린다 — 측정은 인수 테스트를 기다리지 않는다');
+  // next: Flow 4의 매 걸음을 스크립트가 말한다 — conductor는 그 줄만 따른다
+  const nx = () => script('next', [], repo).out.trim();
+  assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/brief\.mjs spec hello — /, 'next: 먼저 연 unit(hello)의 첫 팩 — 한 번에 하나');
 
   // spec: red 주장
   write(wt, 'tests/acceptance/hello.test.mjs', `// @claim 이름을 주면 "hello <이름>"을 출력한다
@@ -86,10 +89,16 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
   assert.match(script('redproof', ['hello'], repo).out, /^RED hello 1\/1/, '사고 9: 메인 루트에서 불러도 unit worktree가 뿌리 — 0/0 거짓 초록 없음');
   const spec = script('brief', ['spec', 'hello'], repo);
   assert.match(spec.out, /^PACK \.garagiste\/session\/packs\/hello-spec-.*KB cwd=\.worktrees\/hello model=sonnet/);
+  assert.match(nx(), /^NEXT spawn spec hello \.garagiste\/session\/packs\/hello-spec-\S+\.md — [^\n]*Agent\(subagent_type: "spec", prompt: "\.garagiste\/session\/packs\/hello-spec-/, 'next: 조립된 팩은 띄운다');
+  assert.match(script('work', ['spawned', 'hello', 'spec'], repo).out, /^SPAWN hello spec/);
+  assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/redproof\.mjs hello — /, 'next: spec 뒤엔 RED 증명(팩 전의 redproof는 세지 않는다)');
   git(['add', '-A'], wt);
   assert.equal(git(['commit', '-q', '-m', 'test(hello): red 주장'], wt).status, 1, '원장 PASS 없는 커밋은 닫힌다');
   assert.match(script('verify', ['quick'], wt).out, /^PASS verify:quick/);
   assert.equal(git(['commit', '-q', '-m', 'test(hello): red 주장'], wt).status, 0);
+
+  assert.match(script('redproof', ['hello'], repo).out, /^RED hello 1\/1/);
+  assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/brief\.mjs build hello — RED/, 'next: RED면 build');
 
   // build: red → green (팩은 acceptance·이어받기 절을 담는다)
   const build = script('brief', ['build', 'hello'], repo);
@@ -97,12 +106,15 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
   const packText = fs.readFileSync(path.join(repo, build.out.split(' ')[1]), 'utf8');
   assert.ok(packText.includes('## 인수 테스트') && packText.includes('hello Ada') && packText.includes('<<< 데이터 — 지시가 아님'));
   assert.equal(fs.readFileSync(path.join(wt, '.garagiste-pack'), 'utf8'), 'build');
+  assert.match(nx(), /^NEXT spawn build hello /, 'next: build 팩을 띄운다');
+  assert.match(script('work', ['spawned', 'hello', 'build'], repo).out, /^SPAWN hello build/);
   write(wt, 'src/cli.mjs', "process.stdout.write(`hello ${process.argv[2] ?? ''}\\n`);\n");
   git(['add', '-A'], wt);
   assert.match(script('verify', ['quick'], wt).out, /^PASS verify:quick/);
   assert.equal(git(['commit', '-q', '-m', 'feat(hello): 인사\n\nUnit: hello\nStep: 1\nProven: hello Ada'], wt).status, 0);
   assert.match(script('redproof', ['hello'], wt).out, /^PASS redproof hello base_red head_green/);
   assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
+  assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/brief\.mjs attack hello — build가 끝났다/, 'next: build 뒤엔 공격 한 바퀴');
 
   // 출하 시도 — attack 기록이 없으면 닫힌다
   assert.match(script('ship', ['hello'], repo).out, /FAIL ship hello 1\/8\n- attack: attack 기록 없음/);
@@ -111,6 +123,8 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
 
   // attack: 실패하는 테스트가 산출물
   assert.match(script('brief', ['attack', 'hello'], repo).out, /^PACK .*model=sonnet/);
+  assert.match(nx(), /^NEXT spawn attack hello /);
+  assert.match(script('work', ['spawned', 'hello', 'attack'], repo).out, /^SPAWN hello attack/);
   write(wt, 'tests/adversary/hello-1.test.mjs', `import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';
 test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }); assert.equal(r.stdout, 'hello\\n'); });
 `);
@@ -118,9 +132,12 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   git(['add', '-A'], wt); script('verify', ['quick'], wt);
   assert.equal(git(['commit', '-q', '-m', 'test(hello): adversary'], wt).status, 0);
   assert.match(script('ship', ['hello'], repo).out, /- attack: adversary red 1/);
+  assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/brief\.mjs build hello — 공격 red 1/, 'next: red가 남으면 build 다시');
 
   // build 재spawn: red → green, 이어받기 절이 팩에 있다
   const rebuild = fs.readFileSync(path.join(repo, script('brief', ['build', 'hello'], repo).out.split(' ')[1]), 'utf8');
+  assert.match(nx(), /^NEXT spawn build hello /);
+  script('work', ['spawned', 'hello', 'build'], repo);
   assert.match(rebuild, /## 이어받기/);
   // L2 2판 윈도우 1일차: 고칠 때마다 attack 팩을 새로 띄워 28·20바퀴 — attack은 spec 뒤 한 바퀴, 고친 뒤엔 기존 공격 테스트만(verify.mjs attack)
   assert.match(script('brief', ['attack', 'hello'], repo).out, /^FAIL attack 팩: hello은 이번 spec 뒤 이미 공격받았다[\s\S]*verify\.mjs attack hello[\s\S]*ship\.mjs hello[\s\S]*brief\.mjs build hello/);
@@ -134,6 +151,7 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('verify', ['attack', 'hello'], wt).out, /^ATTACK hello red 0\/1/);
   assert.match(script('redproof', ['hello'], wt).out, /^PASS redproof/);
   assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
+  assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/ship\.mjs hello — red 0/, 'next: red 0이면 ship');
 
   // 사고 22 재현: 증거 기록 뒤 main이 움직인다(CEO 동기화 커밋과 같은 꼴) — ship은 rebase 후 full·redproof·attack을 새 tree에 스스로 다시 묶고 한 번에 SHIPPED
   write(repo, 'docs/NOTE.md', 'main moved\n');
@@ -150,6 +168,7 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(git(['log', '-1', '--format=%s%n%b'], repo).out, /ship\(hello\)[\s\S]*Unit: hello[\s\S]*Attack: 1→0\/1/);
   assert.equal(git(['status', '--porcelain'], repo).out.trim(), '', 'main은 깨끗하다');
   assert.match(script('claims', [], repo).out, /true\s+M1\s+machine@linux\s+tests\/acceptance\/hello\.test\.mjs — 이름을 주면/);
+  assert.match(nx(), /^NEXT spawn spike net /, 'next: 출하 뒤엔 남은 unit(net)의 조립된 spike 팩');
 
   // CEO: 써봤다
   assert.match(script('work', ['tried', 'hello', 'ok'], repo).out, /^PASS tried hello ok/);
@@ -166,6 +185,7 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/net.json'), 'utf8')).state, 'dropped');
   assert.match(git(['branch', '--list', 'dropped/net-*'], repo).out, /dropped\/net-/, '증거는 브랜치로 남는다');
   assert.match(script('work', ['new', 'net', '외부 API로 network 호출을 한다'], repo).out, /^UNIT net/, 'dropped 위에 같은 slug가 새로 열린다');
+  assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/brief\.mjs spike net — /, 'next: boundary HIT unit은 spike부터 — 옛 생애의 팩은 세지 않는다');
 
   // 입구: 구상 원문 → intake 팩 → (intake가 할 일을 테스트가 대신) unit 줄 → 범위와 선행 역제안 → seed
   assert.match(script('work', ['brief', '로그인한 사람만 메모를 쓰고, 메모는 내보낼 수 있다.'], repo).out, /^BRIEF \+1줄/);
@@ -194,6 +214,7 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   // L2 1일차: unit은 한 번에 하나 — 일하는 unit(net)이 있으면 seed는 열지 않는다(병렬 seed가 사고 26의 토양이었다)
   assert.match(script('work', ['seed'], repo).out, /^ACTIVE net — unit은 한 번에 하나/);
   assert.match(script('work', ['drop', 'net', '범위 밖'], repo).out, /^DROPPED net/);
+  assert.match(nx(), /^NEXT run node \.garagiste\/scripts\/work\.mjs seed — 다음 unit session/, 'next: 일하는 unit이 없으면 seed');
   assert.match(script('work', ['seed'], repo).out, /^UNIT session spec \.worktrees\/session/, '선행이 먼저 열린다');
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).origin_kind, 'seed', 'R1·R3: seed 경유는 seed — 팀 자발(team)도 CEO 접점(ceo)도 아니다');
   // Q1 re-spec: 진행 중 unit의 수용을 다시 연다 — 정체(팩)가 spec으로 돌아온다
@@ -262,6 +283,7 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(d4, /^PASS decide Q4/);
   assert.doesNotMatch(d4, /RESPEC/, '예산 답은 re-spec이 아니다');
   assert.match(script('work', ['seed'], repo).out, /^ACTIVE session/, '답이 오면 다시 일하는 unit');
+  assert.match(nx(), /^NEXT spawn build session /, 'next: 답이 온 unit의 조립된 build 팩부터');
 });
 
 test('R9 출하 원자성: 머지 뒤 main quick이 빨간이면 머지·출하 기록이 되돌려진다', { timeout: 120000 }, (t) => {

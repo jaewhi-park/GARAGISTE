@@ -2,7 +2,7 @@
 
 > 코딩은 주장을 참으로 만드는 일이다. 주장은 테스트·프로브·불변식이고, 팀은 그 그래프 위의 스케줄러이며, 사람은 방향·현실·책임 — 그리고 창이다.
 
-GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 여섯 팩(boot·intake·spec·build·attack·spike), 판단 없는 스크립트 열둘, 경계를 지키는 훅/플러그인, 그리고 원장이다.
+GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 여섯 팩(boot·intake·spec·build·attack·spike), 판단 없는 스크립트 열넷, 경계를 지키는 훅/플러그인, 그리고 원장이다.
 
 - **실행되지 않은 것은 믿지 않는다.** 스펙은 red 인수 테스트, 승인은 exit code, 리뷰의 산출물은 실패하는 테스트.
 - **루프는 기계가 끝낸다.** 커밋 게이트가 원장과 tree를 대조하고, `ship`은 8조건이 전부 참일 때만 main에 닿는다.
@@ -59,7 +59,8 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 ## 스크립트 (판단 0)
 | 스크립트 | 하는 일 |
 |---|---|
-| `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · new · ask · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
+| `next` | 루프의 다음 한 걸음을 한 줄로: run · spawn · ceo · wait · done — conductor는 이 줄만 따른다(seed → spec → redproof → build → attack → ship, re-spec·늦은 spike·충돌·한 번에 하나) |
+| `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · new · ask(`--assumed`) · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
 | `brief` | 팩 조립 ≤8 KB(intake는 32 KB) — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |
 | `redproof` | 인수 테스트가 base에서 red · head에서 green임을 증명 |
