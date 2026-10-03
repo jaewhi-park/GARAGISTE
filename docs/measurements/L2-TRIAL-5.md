@@ -236,3 +236,22 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 테
   (e) REPORT·system-2는 범위가 끝나지 않아 없다(정상). 메인 작업 트리의 docs/STATUS.md·DECISIONS.md 미커밋 수정분은 state.mjs·decide의 산출물(2라운드도 같았다 — 손편집 0).
   (f) attack 선발견 4/4 unit — add-fix(벽시계 점프 → 단조 시계) · search(그리스 Σ의 문맥 접힘 → 글자마다 접기) · stats ×2(doneAt을 `new Date()`로 느슨하게 읽어 9월 31일·글자 섞인 값을 셈 → ISO만). HAZARDS `**` 날짜 계급이 stats에서 다시 잡혔다(3라운드째 — 계급은 살아 있다).
 - **다음 — CEO 결정 자리(대리가 정하지 않는다)**: 등록문의 4라운드는 **Q6 인터럽트**(네 말 — 첫 ship 뒤 버그 · 둘째 ship 뒤 추가 · 그 뒤 첫 build 팩 unit에 수정 · 시작 전 unit에 방향전환; plan은 4라운드 아침 창 전에 커밋). 그런데 남은 범위가 export-import 하나(RESPEC → 아침에 spec 먼저)라 **네 말의 자리가 없다** — 둘째 ship·`-fix` 아닌 build 팩·「시작 전 unit」이 범위에 없다(system-2·REPORT는 ship이지만 수정·방향전환의 객체가 아니다). 길 둘: ① CEO가 원문 줄을 더 준다(BRIEF에 새 줄 셋 이상 → intake → M3 scope) 뒤 4라운드를 Q6로 · ② 4라운드를 Q5 꼴로 짧게 끝내고(export-import → SCOPE DONE → system-2 → REPORT) Q6·Q7은 새 원문으로. 어느 쪽이든 export-import의 Q4 「예」는 적혀 있어 다음 아침 spec이 「고칠 주장 없음」으로 끝나야 한다(이 관찰이 (a)의 비용 측정).
+
+### 리눅스 4라운드(Q6) 준비 — 새 원문 M3 · plan (2026-10-03, 4라운드 아침 창 전에 커밋)
+- CEO 결정(2026-10-03): 남은 범위가 unit 하나라 네 말의 자리가 없다 → **원문 줄을 더 준다**(CEO 「원문은 네가 적절하게 만들어 봐」 — 대리가 썼다). 4라운드 아침 창의 둘째 말로 BRIEF에 그대로 올리고(`work.mjs brief`) intake → 질문 → scope M3(export-import는 그대로) → 「가」. 새 원문:
+
+```text
+# 할 일 CLI — 다음 묶음(M3)
+
+쓰다 보니 더 필요한 것. 지금까지 만든 명령의 동작은 그대로 둔다.
+
+- `todo add`에 `--priority 높음|보통|낮음`을 붙일 수 있다(기본은 보통). `todo list`는 마감이 같으면 우선순위가 높은 일을 먼저 보여 주고, 높음인 일 앞에 「!」를 붙인다.
+- `todo upcoming`은 오늘부터 7일 안에 마감인 일을 날짜별로 묶어 보여 준다. 끝난 일과 마감 없는 일은 보이지 않는다.
+- `todo note <번호> "메모"`로 일에 메모를 붙인다(여러 번 붙이면 뒤에 쌓인다). `todo show <번호>`는 제목·마감·태그·우선순위·메모를 한 번에 보여 준다.
+- `todo archive`는 끝난 지 30일이 지난 일을 todo.json에서 같은 폴더의 archive.json으로 옮기고, 옮긴 수를 한 줄로 말한다. 옮긴 일은 `todo list --all`에 더 보이지 않는다.
+```
+
+- 네 줄의 뜻: 수정 말의 값이 줄마다 하나 있다(기본 보통 · 7일 · 쌓인다 · 30일) · 넷 중 셋은 서로 선행이 아니라 방향전환의 「시작 전 unit 중 순서의 맨 끝」이 있다 · 지금까지의 명령은 건드리지 않는다.
+- **버그 말의 재료**(3라운드 저녁 카드 + 저장소 밖 사본 main ec9a203에서 다시): `todo search milk --all` · `search --bogus milk` → 아무 말 없이 exit 0(옵션이 구절에 삼켜진다; `list --bogus`는 「모르는 옵션」 exit 1) — 원문 「잘못된 입력(…)은 이유를 한 줄로 말하고 0이 아닌 코드로 끝난다」와 다른 동작이라 재현 한 줄로 쓴다(객체: `search-fix`).
+- **plan** `tests/field/plans/l2-5-q6.json` — 버그(첫 ship 뒤) · 추가(둘째 ship 뒤 — 등록문의 고정 문장) · 수정(그 뒤 첫 build 팩 unit — unit마다 값 하나: 우선순위 기본 보통→낮음 · upcoming 7→14일 · 메모 쌓기→덮어쓰기 · archive 30→90일 · export-import 엑셀→구글 시트·LF) · 방향전환(수정의 spec 재spawn 뒤 — choices는 예상 순서의 끝에서부터 archive → note → upcoming → priority). **등록문과 다른 점 하나(이유)**: 수정·방향전환의 slug는 아침 창의 intake가 정하므로 plan의 slug 자리는 placeholder(`__ARCHIVE__` 등)로 커밋하고, intake 뒤 「가」 전에 실제 slug로 채워 다시 커밋한다 — `stream.mjs run`이 plan 파일을 세션 중에도 다시 읽는다(도구 수리 `loadPlan` — 동결 아님). 버그·추가 말은 slug에 기대지 않는다.
+- 예상 흐름: export-import(RESPEC → spec 「고칠 주장 없음」 → build → ship = 첫 ship → 버그 말 → `search-fix`가 새 기능보다 먼저) → search-fix ship = 둘째 ship → 추가 말(BACKLOG 줄 · 범위 밖) → M3 첫 unit의 build 팩 → 수정 말 → 그 unit의 spec 재spawn → 방향전환(시작 전 맨 끝 unit) → … → 멈춤(SCOPE DONE이면 system-2·REPORT). 저녁 창은 Q5와 같다(시계 검사 · 카드 · 표).

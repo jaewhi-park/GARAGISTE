@@ -114,9 +114,16 @@ export function childEnv(env) {
   return { ...out, GIT_AUTHOR_NAME: 'ceo', GIT_AUTHOR_EMAIL: 'ceo@field', GIT_COMMITTER_NAME: 'ceo', GIT_COMMITTER_EMAIL: 'ceo@field' };
 }
 
+// plan 파일은 세션 중에도 다시 읽는다(5판 4라운드: 수정·방향전환의 slug는 아침 창의 intake가 정하므로 plan을 「가」 전에 채워 커밋한다 — 세션은 아침 창부터 하나다)
+export function loadPlan(planPath, prevMtime = 0) {
+  if (!planPath) return { plan: [], mtime: 0, changed: false };
+  const mtime = fs.statSync(planPath).mtimeMs;
+  if (mtime === prevMtime) return { plan: null, mtime, changed: false };
+  return { plan: JSON.parse(fs.readFileSync(planPath, 'utf8')), mtime, changed: true };
+}
 function run(dir, tag, planPath) {
   const F = files(dir, tag);
-  const plan = planPath ? JSON.parse(fs.readFileSync(planPath, 'utf8')) : [];
+  let { plan, mtime: planMtime } = loadPlan(planPath);
   const since = new Date().toISOString();
   if (!fs.existsSync(F.in)) fs.writeFileSync(F.in, '');
   const child = spawn('claude', ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--max-turns', '400'],
@@ -146,6 +153,8 @@ function run(dir, tag, planPath) {
   });
   child.stderr.on('data', (d) => fs.appendFileSync(`${F.stream}.err`, d));
   const tick = () => {
+    const r = loadPlan(planPath, planMtime);
+    if (r.changed) { plan = r.plan; planMtime = r.mtime; console.log(`PLAN ${new Date().toISOString()} 다시 읽음 — ${plan.length}항목 (${plan.map((p) => p.id).join(' ')})`); }
     const size = fs.statSync(F.in).size;
     if (size > inOff) {
       const fd = fs.openSync(F.in, 'r'); const b = Buffer.alloc(size - inOff); fs.readSync(fd, b, 0, b.length, inOff); fs.closeSync(fd);
