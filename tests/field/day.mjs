@@ -1,6 +1,7 @@
 // day.mjs <프로젝트 폴더> [--since <ISO>] [--until <ISO>] — 원장 → L2 하루 표. docs/measurements/L2-day-conductor.md 「저녁」 2~5의 정의 그대로(판단 없는 산수)
 // + 답 대기를 뺀 seed→ship(L1 수치를 같은 표에서). 정비 채널이 conductor와 독립으로 낸다 — 판단이 드는 칸(구성 ①/② · 프레임워크 FAIL · 멈춤 이유 · 참고)은 「표 밖」.
 // --since = 그날 세션을 연 시각(그날의 첫 ship을 찾는 데만 쓴다) · --until = 다음 날의 --since(여러 날 원장에서 지난 날을 낼 때)
+// 5판(7건 뒤의 정본 — L2-TRIAL-5): 미검수는 사람 센서 unit만(state.mjs humanNeeded와 같은 셈) · 원장 fail/guard 줄과 되풀이 · decide/kept/RESPEC · 이음새 공격·출하 보고 — 라운드 전체(저녁 창 포함)에서 센다
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -73,7 +74,7 @@ function unitRow({ L, b, until, u, slug, stops, ledgerMd }) {
   return {
     slug, seed, ship: ship?.ts ?? null, tries: seeds.length,
     span: b.eveningStart && (seed >= b.eveningStart || (ship && ship.ts >= b.eveningStart)) ? '연장(유인)' : '무인',
-    comp: u.kind === 'scaffold' ? '—' : u.boundary?.hit ? '③ seed' : packs.some((p) => p.pack === 'spike') ? '③ ship' : '—',
+    comp: u.kind === 'scaffold' ? '—' : u.kind === 'system' ? 'system' : u.boundary?.hit ? '③ seed' : packs.some((p) => p.pack === 'spike') ? '③ ship' : '—',
     raw: ship ? mins(seed, ship.ts) : null, wait: w.minutes, waitQs: w.qs, early: seed < b.morningEnd,
     stage: ship ? null : now.some((e) => e.kind === 'drop') ? 'drop' : open.length ? open.map((n) => `Q${n}`).join(',') : packs.at(-1)?.pack ?? 'seed',
     packs: packs.length, stops: done.length, odd: done.some((s) => s.odd),
@@ -100,13 +101,36 @@ export function dayTable({ L, units = [], ledgerMd = '', brief = '', since = '',
   // 멈춘 때의 계수 — state.mjs budgetStatus와 같은 셈을 그 시각으로(접점 = decide·scope·tried 줄 + BRIEF 절)
   const at = last?.ts ?? b.morningEnd;
   const shipsTo = L.filter((e) => e.kind === 'ship' && e.ts <= at);
-  const unseen = [...new Set(shipsTo.map((e) => e.slug))].filter((s) => {
+  const untriedAt = [...new Set(shipsTo.map((e) => e.slug))].filter((s) => {
     const sh = shipsTo.findLast((e) => e.slug === s);
     return !L.some((e) => e.kind === 'tried' && e.slug === s && e.ts > sh.ts && e.ts <= at);
-  }).length;
+  });
+  // 5판 — 상한은 사람 센서가 필요한 unit만 센다(state.mjs humanNeeded와 같은 셈): @sensor human · 공격 선발견 0(red>0 공격 줄의 files가 없다); scaffold·system은 세지 않는다. budgets.unseen_machine_exempt === false면 전부(옛 규칙)
+  const humanNeeded = (s) => {
+    const u = units.find((x) => x.slug === s) || {};
+    if (budgets.unseen_machine_exempt === false) return true;
+    if (u.sensor && String(u.sensor).startsWith('human')) return true;
+    if (u.kind === 'scaffold' || u.kind === 'system') return false;
+    const seed = L.findLast((e) => e.kind === 'unit' && e.slug === s && e.ts <= at)?.ts ?? '';
+    return !L.some((e) => e.kind === 'attack' && e.slug === s && e.ts >= seed && e.ts <= at && e.red > 0 && (e.files || []).length);
+  };
+  const unseen = untriedAt.filter(humanNeeded).length;
   const touch = [...L.filter((e) => CONTACT.includes(e.kind) && e.ts <= at).map((e) => e.ts), ...briefs.filter((x) => x.ts <= at).map((x) => x.ts)].sort().at(-1) || '';
+  // 5판 칸 — 라운드 전체(낮 + 저녁 창): 결정·FAIL 줄은 저녁 창에도 생긴다
+  const inRound = (ts) => ts > b.morningEnd && ts < until;
+  const fails = L.filter((e) => e.kind === 'fail' && inRound(e.ts));
+  const groups = new Map();
+  for (const e of fails) { const key = `${e.script} ${String(e.line || '').slice(0, 80)}`; groups.set(key, { script: e.script, n: (groups.get(key)?.n || 0) + 1 }); } // state.mjs repeatedFails와 같은 키
+  const systems = L.filter((e) => e.kind === 'system' && inRound(e.ts)).map((sy) => ({
+    slug: sy.slug, units: sy.units || [],
+    found: new Set(L.filter((e) => e.kind === 'attack' && e.slug === sy.slug && e.ts > sy.ts && e.ts < until && e.red > 0).flatMap((e) => e.files || [])).size,
+    end: L.find((e) => ['ship', 'drop'].includes(e.kind) && e.slug === sy.slug && e.ts > sy.ts && e.ts < until)?.kind ?? '진행 중',
+  }));
   return {
-    b, rows, budgets, last, unseen, unattended: shipsTo.filter((e) => e.ts > touch).length,
+    b, rows, budgets, last, unseen, untried: untriedAt.length, unattended: shipsTo.filter((e) => e.ts > touch).length,
+    fails, guards: L.filter((e) => e.kind === 'guard' && inRound(e.ts)), repeated: [...groups.values()].filter((g) => g.n >= 2),
+    decides: L.filter((e) => e.kind === 'decide' && inRound(e.ts)), kepts: L.filter((e) => e.kind === 'kept' && inRound(e.ts)), respecs: L.filter((e) => e.kind === 'respec' && inRound(e.ts)),
+    systems, reports: L.filter((e) => e.kind === 'report' && inRound(e.ts)),
     dayShips: L.filter((e) => e.kind === 'ship' && inDay(e.ts)),
     contacts: L.filter((e) => CONTACT.includes(e.kind) && inDay(e.ts)),
     briefs: briefs.filter(inside),
@@ -128,8 +152,12 @@ export function render(t, { name = '', drift = null } = {}) {
   o.push(`- 무인 ${unattended} · 낮 경과(→ 낮의 세 번째 ship) ${third ? `${f1(mins(b.morningEnd, third.ts))}분` : `— (낮 ship ${t.dayShips.length})`}`);
   o.push(`- 낮 접점 ${touches}(목표 0)${touches ? ':' : ''}`, ...t.contacts.map((e) => `  - \`${JSON.stringify(e)}\``), ...t.briefs.map((x) => `  - BRIEF \`${x.line}\``));
   for (const x of t.briefsEdge || []) o.push(`  - (경계 분 — 절 시각이 분 단위라 낮인지 가를 수 없어 세지 않았다) BRIEF \`${x.line}\``);
-  o.push(`- 멈춤: 낮의 마지막 원장 줄 ${t.last ? `${t.last.ts} (${who(t.last)})` : '없음'} · 그때 미검수 ${t.unseen}/${t.budgets.unseen_max ?? '?'} · 무인 출하 ${t.unattended}/${t.budgets.unattended_ship_max ?? '?'} — 이유(여섯 중 하나)는 conductor의 마지막 줄로(표 밖)`);
+  o.push(`- 멈춤: 낮의 마지막 원장 줄 ${t.last ? `${t.last.ts} (${who(t.last)})` : '없음'} · 그때 미검수 ${t.unseen}/${t.budgets.unseen_max ?? '?'}${t.untried !== t.unseen ? `(사람 센서 — 안 써본 출하 ${t.untried}, 기계 증명 ${t.untried - t.unseen}은 세지 않는다)` : ''} · 무인 출하 ${t.unattended}/${t.budgets.unattended_ship_max ?? '?'} — 이유(여섯 중 하나)는 conductor의 마지막 줄로(표 밖)`);
   if (drift) o.push(`- 규칙집 드리프트: ${drift.log || '없음'} · HEAD:.garagiste ${drift.tree || '—'}`);
+  // 5판 칸(L2-TRIAL-5 「예측 — 7건마다」가 읽는 자리)
+  o.push(`- 원장 FAIL 줄 ${t.fails.length} · 가드 거부 ${t.guards.length} · 되풀이(같은 줄 2회 이상) ${t.repeated.length}${t.repeated.length ? `: ${t.repeated.map((g) => `${g.script} ×${g.n}`).join(' · ')}` : ''} — 라운드 전체(저녁 창 포함)`);
+  o.push(`- 결정: decide ${t.decides.length} · 「예」 가정 그대로(kept) ${t.kepts.length} · RESPEC ${t.respecs.length}`);
+  o.push(`- 범위 끝: 이음새 공격 ${t.systems.length ? t.systems.map((sy) => `${sy.slug}(unit ${sy.units.length}) 발견 ${sy.found} → ${sy.end}`).join(' · ') : '없음'} · 출하 보고 ${t.reports.length ? t.reports.map((r) => `${r.path} ${r.ts}`).join(' · ') : '없음'}`);
   o.push('', '| 구간 | unit | 구성 | 시도 | seed→ship 원시(분) | 답 대기 뺀(분) | spawn 의도/완료 | 토큰 | attack | redproof | tried | green 후 CEO 발견 결함 | 프레임워크 FAIL | RESPEC | needs 수정 |', `|${'---|'.repeat(15)}`);
   for (const r of rows) {
     const raw = r.raw === null ? `미출하 — ${r.stage}` : `${f1(r.raw)}${r.wait ? ` (대기 ${r.waitQs.map((q) => `Q${q}`).join(',')} ${f1(r.wait)})` : ''}`;
@@ -146,7 +174,7 @@ export function render(t, { name = '', drift = null } = {}) {
   o.push(`- 팩 이유-차선 ${t.lanes.length}${t.lanes.length ? ':' : ''}`, ...t.lanes.map((e) => `  - ${e.slug} ${e.pack} ${f1(e.bytes / 1024)}KB(상한 ${e.cap_kb}KB) — 「${e.large}」`));
   o.push('- 표 밖(판단 — conductor가 넘긴 줄·인수 파일·관찰로 채운다): 구성 ①/② · 프레임워크 FAIL 칸과 전문 · 멈춤 이유 · 참고');
   if (rows.some((r) => r.odd)) o.push('- ※ 같은 팩이 겹쳐 떠서 spawn_stop의 slug가 어긋날 수 있다(정의대로 바로 앞 같은 팩의 slug로 셌다)');
-  o.push('', `DAY ${name} · 무인 ${unattended} · 낮 접점 ${touches} · 낮 ship ${t.dayShips.length} · 연장 ${rows.filter((r) => r.span !== '무인').length} · 미출하 ${rows.length - shipped.length} · 토큰 ${k(sum(rows, (r) => r.tokens))} · 카드 ok ${t.cards.filter((e) => e.result === 'ok').length}/fail ${t.cards.filter((e) => e.result === 'fail').length}`);
+  o.push('', `DAY ${name} · 무인 ${unattended} · 낮 접점 ${touches} · 낮 ship ${t.dayShips.length} · 연장 ${rows.filter((r) => r.span !== '무인').length} · 미출하 ${rows.length - shipped.length} · 토큰 ${k(sum(rows, (r) => r.tokens))} · 카드 ok ${t.cards.filter((e) => e.result === 'ok').length}/fail ${t.cards.filter((e) => e.result === 'fail').length} · FAIL줄 ${t.fails.length} · 가드 ${t.guards.length} · kept ${t.kepts.length}`);
   return o.join('\n');
 }
 
