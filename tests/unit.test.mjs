@@ -1031,3 +1031,13 @@ test('state: 같은 FAIL이 되풀이되면 프레임워크 FAIL 후보 — 원�
   assert.match(firstLine({ run: 'x', unseen: 0, unseenMax: 3, unobservedOs: 0, decisionsOpen: 0, coveragePct: 100, uncertain: '', repeatedFails: 2 }), / · 반복 FAIL 2$/);
   assert.doesNotMatch(firstLine({ run: 'x', unseen: 0, unseenMax: 3, unobservedOs: 0, decisionsOpen: 0, coveragePct: 100, uncertain: '' }), /반복 FAIL/, '0이면 첫 줄은 그대로');
 });
+
+test('work quotesBrief(사고 65): CEO의 말이 BRIEF에 그대로 있나 — 따옴표·백틱·공백만 다른 것은 같은 말, 8자 미만은 세지 않는다', async () => {
+  const { quotesBrief } = await import('../team/scripts/work.mjs');
+  const brief = '# BRIEF\n\n## 2026-10-03 11:10\n버그: `todo search milk --all`을 치면 → 아무 말 없이 exit 0으로 끝난다, 원문은 「잘못된 입력은 이유 한 줄」\n';
+  assert.equal(quotesBrief(brief, 'todo search milk --all을 치면 → 아무 말 없이 exit 0으로 끝난다'), true);
+  assert.equal(quotesBrief(brief, '"todo search milk --all"을  치면 → 아무 말 없이 exit 0으로 끝난다'), true, '따옴표·공백만 다른 것');
+  assert.equal(quotesBrief(brief, 'todo list 맨 아래에 남은 일 개수를 보여 준다'), false, 'BRIEF에 없는 말은 팀 발의');
+  assert.equal(quotesBrief(brief, 'exit 0'), false, '짧은 조각은 우연이라 세지 않는다');
+  assert.equal(quotesBrief('', 'todo search milk --all을 치면 → 아무 말 없이 exit 0으로 끝난다'), false);
+});

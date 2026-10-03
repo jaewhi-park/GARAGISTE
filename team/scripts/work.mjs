@@ -167,13 +167,22 @@ function add(c, slug, origin, flags) {
   appendBacklog(c, line);
   out(`ADD ${slug} ${flags.milestone || 'M?'} needs=${needs.join(',') || '-'}${flags.kind && flags.kind !== 'feature' ? ` kind=${flags.kind}` : ''}`);
 }
+// CEO의 말이 BRIEF에 그대로 있나 — 따옴표·백틱·공백만 다른 것은 같은 말(사고 65). 짧은 원문(8자 미만)은 우연히 들어 있을 수 있어 세지 않는다
+export function quotesBrief(briefText, origin) {
+  const norm = (s) => String(s || '').replace(/[\s`"“”'‘’「」]/g, '');
+  const o = norm(origin);
+  return o.length >= 8 && norm(briefText).includes(o);
+}
 function createUnit(c, slug, origin, opts = {}) {
   if (!SLUG_RE.test(slug || '')) fail('FAIL slug: 소문자·숫자·하이픈 2~41자');
   if (!origin) fail('FAIL 원문이 없다');
-  // origin_kind = 이 unit이 어디서 왔나: seed(범위의 BACKLOG 경유) · ceo(CEO 본인 = ADMIN 세션) · team(팀 발의 — 연속 상한이 센다)
-  const from = opts.from || (process.env.GARAGISTE_ADMIN ? 'ceo' : 'team');
+  // origin_kind = 이 unit이 어디서 왔나: seed(범위의 BACKLOG 경유) · ceo(CEO 본인 = ADMIN 세션, 또는 CEO의 말이 BRIEF에 그대로 있는 원문) · team(팀 발의 — 연속 상한이 센다)
+  // 사고 65(L2 5판 리눅스 5라운드): CEO의 말을 conductor가 new로 객체화한 unit(버그 -fix · 추가)이 team으로 적혀 「팀이 스스로 뜬 unit 연속 2」가 CEO 발의 unit에 걸렸다(거짓 예산 정지의 자리).
+  // CEO의 말은 work.mjs brief로 BRIEF에 그대로 든다(day.mjs가 접점으로 센다) — 그 말이 든 원문은 ceo. --from ceo도 같은 근거(ADMIN 또는 BRIEF)가 있어야 한다.
+  const quoted = !process.env.GARAGISTE_ADMIN && quotesBrief(readText(path.join(c.main, c.team.paths.brief)), origin);
+  const from = opts.from || (process.env.GARAGISTE_ADMIN || quoted ? 'ceo' : 'team');
   if (!['ceo', 'team', 'seed'].includes(from)) fail(`FAIL --from은 ceo|team (받은 값: ${from})`);
-  if (from === 'ceo' && opts.from === 'ceo' && !process.env.GARAGISTE_ADMIN) fail('FAIL --from ceo는 GARAGISTE_ADMIN=1(CEO 세션)에서만 — 팀 발의는 team이다');
+  if (from === 'ceo' && opts.from === 'ceo' && !process.env.GARAGISTE_ADMIN && !quoted) fail('FAIL --from ceo는 CEO의 말이 BRIEF에 그대로 있어야 한다(work.mjs brief "<말 그대로>" 먼저) 또는 GARAGISTE_ADMIN=1(CEO 세션) — 없으면 팀 발의 team이다');
   const prev = readJson(unitFile(c.main, c.team, slug), null);
   if (prev && prev.state !== 'dropped') fail(`FAIL unit 있음: ${slug}`); // dropped 위에는 같은 slug가 새로 열린다 (kill-and-respawn)
   const wt = worktreeDir(c.main, c.team, slug);

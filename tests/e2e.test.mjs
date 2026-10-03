@@ -70,6 +70,12 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   const wt = path.join(repo, '.worktrees', 'hello');
   assert.equal(fs.readFileSync(path.join(wt, '.garagiste-pack'), 'utf8'), 'spec');
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/hello.json'), 'utf8')).origin_kind, 'team', 'R3: 팀 세션의 new는 team — ADMIN(CEO 세션)만 ceo');
+  // 사고 65(L2 5판 리눅스 5라운드): CEO의 말이 BRIEF에 그대로 있으면 팀 세션의 new도 ceo — 「팀이 스스로 뜬 unit 연속」이 CEO 발의 unit을 세지 않는다
+  assert.match(script('work', ['new', 'hello-x', '팀이 지어낸 것 하나', '--from', 'ceo'], repo).out, /^FAIL --from ceo는 CEO의 말이 BRIEF에 그대로 있어야 한다/, 'BRIEF에 없는 말의 --from ceo는 거부');
+  script('work', ['brief', '버그: 인사에 이름이 두 번 나온다 — 「안녕 철수 철수」'], repo);
+  assert.match(script('work', ['new', 'hello-fix', '버그: 인사에 이름이 두 번 나온다 — "안녕 철수 철수"'], repo).out, /^UNIT hello-fix /);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/hello-fix.json'), 'utf8')).origin_kind, 'ceo', '사고 65: BRIEF에 그대로 있는 말(따옴표만 다름)은 CEO 발의');
+  assert.match(script('work', ['drop', 'hello-fix', '시험용 — 지운다', '--forget'], repo).out, /^DROPPED hello-fix/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /- \[ \] hello · M\? · needs: - · "이름을 주면 그 이름으로 인사한다" · 인수: -/);
   assert.match(script('work', ['new', 'net', '외부 API로 network 호출을 한다'], repo).out, /HIT .*keyword network/, 'boundary는 spike부터');
   assert.match(script('brief', ['spike', 'net'], repo).out, /^PACK .*net-spike-/, 'R11: 안내대로 spike 팩이 spec 전에 열린다 — 측정은 인수 테스트를 기다리지 않는다');
