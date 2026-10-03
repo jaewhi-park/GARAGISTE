@@ -21,9 +21,11 @@ export function configs(now = new Date()) {
   ];
 }
 
-// 자식 환경 — 있는 NODE_OPTIONS 뒤에 preload를 잇는다(공백이 든 경로는 큰따옴표)
+// 자식 환경 — 있는 NODE_OPTIONS 뒤에 preload를 잇는다(공백이 든 경로는 큰따옴표). 경로의 구분자는 /로 — NODE_OPTIONS는 백슬래시를 이스케이프로 먹어
+// 윈도우 경로 C:\L2\…\clock-preload.cjs가 C:L2…clock-preload.cjs로 읽혔다(5판 윈도우 점검, node 24 — 테스트 둘이 빨강). 윈도우 node는 /도 받는다.
+export const preloadArg = (p) => `--require "${String(p).replace(/\\/g, '/')}"`;
 export function childEnv(env, { id = '', tz, offsetMs, preload = PRELOAD }) {
-  return { ...env, TZ: tz, GARAGISTE_CLOCK_ID: id, GARAGISTE_CLOCK_OFFSET_MS: String(offsetMs), NODE_OPTIONS: [env.NODE_OPTIONS, `--require "${preload}"`].filter(Boolean).join(' ') };
+  return { ...env, TZ: tz, GARAGISTE_CLOCK_ID: id, GARAGISTE_CLOCK_OFFSET_MS: String(offsetMs), NODE_OPTIONS: [env.NODE_OPTIONS, preloadArg(preload)].filter(Boolean).join(' ') };
 }
 
 export function runOne(dir, cmd, cfg, log) {
