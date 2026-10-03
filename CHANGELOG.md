@@ -23,6 +23,8 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 ### Fixed — 2026-10-03 윈도우 점검(5판 동결 4, node 24.13) — 테스트 셋의 윈도우 경로 표기 (도구·테스트 — team/ 불변, 머지가 동결 5)
 - `tests/field/clock.mjs`: NODE_OPTIONS에 넣는 preload 경로의 백슬래시를 node가 이스케이프로 먹어 `C:L2…clock-preload.cjs`(모듈 없음)가 됐다 → 경로 구분자를 `/`로(`preloadArg`) — `clock preload`·`clock 실행` 테스트의 빨강 둘. 윈도우에선 시계 검사를 돌리지 않으므로 측정에 닿지 않는다.
 - `tests/e2e.test.mjs`: 가드 원장 `target`(절대 경로 — 플랫폼 표기)을 `src/x.mjs`로만 기대했다 → `src\\x.mjs`도 받는다. 규칙집·훅은 그대로.
+- `tests/field/turn.ps1`(측정 도구): 윈도우 헤드리스 턴 래퍼 — PC의 Claude Code는 팩(Agent)이 늘 백그라운드라 대화형 세션은 팩이 끝나도 깨어나지 않았다(5판 윈도우 시운전); `-p`는 팩을 기다리므로 리눅스 `turn.sh`와 같은 길로 돈다.
+- **CEO 결정(2026-10-03) — L2 5판 닫기, 리눅스 단일 운영**: 리눅스 몫 통과(약함) · 윈도우 라운드는 1라운드 낮까지 돌고 접음(카드 비용이 개발을 늦춘다). GARAGISTE는 당분간 리눅스(컨테이너·WSL)에서만 운영한다 — `install.ps1`·윈도우 문구는 남지만 측정으로 뒷받침되지 않는다(`L2-TRIAL-5.md` 「5판 닫기」).
 
 ### Fixed — 2026-10-03 사고 65 — L2 5판 리눅스 5라운드(Q7): CEO의 말로 연 unit이 팀 발의로 적혀 연속 상한에 걸렸다 (리눅스 끝의 수리 — 동결 갱신)
 - **사고 65(work.mjs new의 origin)**: CEO의 말을 conductor가 `work.mjs new`로 객체화한 unit(4라운드의 search-fix·list-count, 3라운드의 add-fix)이 `origin_kind: team`으로 적혔다 — `--from ceo`는 GARAGISTE_ADMIN(CEO 세션)에서만 받았기 때문. 부재 세션의 next가 「미검수 3」과 함께 「팀이 스스로 뜬 unit 연속 2 ≥ 2」를 냈다 — 이번엔 결과가 같았지만 다른 날이면 CEO 발의 unit 둘이 거짓 예산 정지를 만든다. 수리: CEO의 말은 `work.mjs brief`로 BRIEF에 그대로 들므로(day.mjs가 접점으로 센다) **그 말이 든 원문의 new는 ceo**(`quotesBrief` — 따옴표·백틱·공백만 다른 것은 같은 말, 8자 미만은 세지 않는다); `--from ceo`도 ADMIN 또는 BRIEF 근거가 있어야 한다. CLAUDE.md 템플릿 Flow 7에 「먼저 `work.mjs brief "<말 그대로>"`로 적고」 한 줄. 검사: unit(quotesBrief) · e2e(BRIEF에 있는 말의 new → ceo · 없는 말의 --from ceo → FAIL).

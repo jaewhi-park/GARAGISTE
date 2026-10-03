@@ -104,9 +104,15 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 테
    git -C C:\L2\futsal-win rev-parse HEAD:.garagiste
    ```
    마지막 줄 값이 규칙집 기준선(정비 채널에 붙인다). 시험 중 재설치·models 변경 금지.
-2. **라운드마다** — 폴더에서 새 `claude` 세션. 첫 말 직전에 `(Get-Date).ToUniversalTime().ToString('s') + 'Z'` 값을 적어 둔다.
-   - 1라운드 첫 말: 「오늘은 L2 무인 하루다. `git fetch https://github.com/jaewhi-park/GARAGISTE <동결 sha>` 뒤 `git show FETCH_HEAD:docs/measurements/L2-day-conductor.md`를 읽어라. 「아침」 절이 오늘의 규칙이다. 내가 돌아와 「저녁」이라고 하면 「저녁」 절대로 한다. docs/BRIEF-draft.md로 brief를 축적하고 intake를 돌려라. 질문은 한 줄씩 예/아니오로 — 대신 답하지 않는다.」 → 질문에 예/아니오 → 「범위는 M1 전부 — 가」 → 자리를 뜬다(conductor가 멈출 때까지).
-   - 2·3라운드 첫 말: 위 줄에서 마지막 두 문장(brief·질문)을 빼고 → 「상태 보여줘」 → 열린 질문에 답 → 「가」.
+2. **라운드마다 — 헤드리스 턴 래퍼 `tests/field/turn.ps1`**(리눅스 `turn.sh`와 같은 기록 이름 `<폴더>-turn<n>.msg/.json` — day.mjs의 CEO-분이 읽는다). 대화형 `claude`는 쓰지 않는다(아래 시운전 기록). 첫 말 직전에 `(Get-Date).ToUniversalTime().ToString('s') + 'Z'` 값을 적어 둔다. 한 턴 = 한 말, 번호 n은 라운드를 넘어 이어 센다:
+   ```powershell
+   $G = 'C:\L2\garagiste-5'; $F = 'C:\L2\futsal-win'
+   & $G\tests\field\turn.ps1 $F <n> '<말>'            # 새 세션 — 출력 둘째 줄 「session <id>」를 적어 둔다
+   & $G\tests\field\turn.ps1 $F <n+1> '<말>' <id>     # 같은 세션에 이어서
+   ```
+   - 첫 말(새 세션 — 리눅스 2~5라운드와 같다; intake는 시운전에서 끝났다): 「오늘은 L2 무인 하루다(GARAGISTE 필드 시험 — 정비 채널이 CEO를 대리한다). `git fetch https://github.com/jaewhi-park/GARAGISTE <동결 sha>` 뒤 `git show FETCH_HEAD:docs/measurements/L2-day-conductor.md`를 읽어라. 「아침」 절이 오늘의 규칙이다. 내가 돌아와 「저녁」이라고 하면 「저녁」 절대로 한다. 이 세션은 헤드리스라 백그라운드 알림을 받을 수 없으니, 서브에이전트(Agent)는 run_in_background 없이 끝날 때까지 기다려라. 상태 보여줘.」 → 열린 질문이 있으면 맨 「예」/「아니오」(한 턴에 전부: 「Q1 예. Q2 아니오.」) → 「범위는 M1 전부 — 가. 매 spawn 뒤 work.mjs spawned를 남겨라.」 — 이 「가」 턴이 그날의 무인 구간이다(멈출 때까지 돈다, 수십 분 · 창을 닫지 않는다). **낮에는 말하지 않는다** — 상태는 다른 창에서 `Get-Content docs\STATUS.md`·`Get-Content .garagiste\ledger\evidence.jsonl -Tail 5`(읽기만).
+   - 저녁: 「저녁」 → 카드마다 conductor가 연 `.worktrees\try-<slug>`에서 친다(「기계 증명」 표시가 있어도) → 한 턴에 「<slug> ok」 또는 「<slug> fail + 한 줄」 → 열린 질문에 예/아니오 → conductor가 표를 낸다. 범위가 끝난 라운드면 docs\REPORT.md도 한 번 읽는다(읽는 데 든 분을 적는다).
+   - **시운전(0라운드) 기록(2026-10-03 — 대화형 `claude`, 셈에 넣지 않는다)**: 그 PC의 Claude Code는 Agent 도구에 run_in_background 옵션이 없고 팩이 늘 백그라운드로 돌며, 끝나도 대화형 세션의 모델이 깨어나지 않았다 — conductor는 「사용량이 오면 기록하고 다음 걸음으로」 하며 턴을 끝내고, CEO가 「지금 상황은?」 ×2로 깨워야 다음 걸음이 돌았다(낮의 말 3 — 상황 질문 2 · 절차 지시 1). 헤드리스 탐침(`claude -p "Agent 하나 …"`)은 `subagent_stats.requested.foreground 1`로 팩을 기다렸다 → 리눅스처럼 헤드리스 턴으로 돈다. 시운전에서 된 것: intake(M1 13 unit) · boot 출하 55eb8af(첫 ship은 package-lock.json이 main에 남아 FAIL → 안내대로 boot 재spawn → 통과 — 리눅스 1라운드와 같은 모양 · 첫 커밋에 `.gitattributes` `* text=auto eol=lf`) · serve spec RED 2/2 · serve build 팩 띄움(미완). **윈도우 1~3라운드는 이 상태에서 헤드리스로 시작한다**(재설치 금지 — 상태는 원장에 있다). PC의 conductor 기본 모델은 claude-opus-5-5(리눅스 세션은 sonnet-5-5) — 비용 비교에 적는다.
    - 저녁: 「저녁」 → 카드마다 conductor가 연 사본 `.worktrees\try-<slug>`에서 친다(「기계 증명」 표시가 있어도) → 「<slug> ok」 또는 「<slug> fail + 한 줄」 → 열린 질문에 예/아니오 → conductor가 표를 낸다. 범위가 끝난 라운드면 docs/REPORT.md도 한 번 읽는다(읽는 데 든 분을 적는다).
    - 저녁 끝에 한 줄 — 출력 전체를 정비 채널에 붙인다: `node C:\L2\garagiste-5\tests\field\day.mjs C:\L2\futsal-win --since <그 라운드 첫 말 전에 적은 값>`. 출력의 「CEO-분(기계 셈 — 출처: 전사)」 줄이 그 PC의 claude 세션 전사(`%USERPROFILE%\.claude\projects\C--L2-futsal-win\*.jsonl`)에서 나온다 — 「출처 없음」이면 그 줄도 그대로 붙인다(첫 라운드 전에 한 번 돌려 확인해도 된다).
 3. **정션 점검(3판과 같다)** — 프로젝트에 의존성 디렉터리(node_modules)가 생기면 그 뒤 첫 ship 직후 main의 그 디렉터리가 그대로인지 한 번 본다. 첫 커밋에 `.gitattributes`가 있는지, 라운드 중 CRLF 되돌림 커밋이 있는지(2판 ×4) 본다.
@@ -320,3 +326,13 @@ Q6·Q7은 플랫폼과 무관한 흐름이라 리눅스로 잰다. 리눅스 테
   (e) 복귀 창에서 카드 셋의 사본을 한 번에 열었다(4라운드와 같다).
 - **리눅스 끝 — 5판 게이트의 리눅스 몫**: Q5 세 라운드 통과(1~3) · Q6 통과(4) · Q7 통과(5) · 4·5라운드와 복귀 창의 결함 0 · **누적 「green 후 CEO 발견 결함」 1**(2라운드 시계 — add-6의 잠금 낡음 판정, 3라운드 add-fix로 닫힘). 글자대로는 **누적 1 ≠ 0 → 리눅스 게이트 미통과**. 그 1건의 계급이 CEO 자리다(2라운드 판정 줄): 「제품」이면 미통과 그대로(수리는 됐으니 재판은 새 판), 「검사 주입의 산물」(프로세스 시계와 파일 시계의 어긋남은 preload가 만든 것)이면 셈에서 빼고 통과. 대리는 등록문대로 셌고 판단하지 않는다. **윈도우 Q5 세 라운드는 CEO가 동결 3으로**(「윈도우 — CEO가 할 일」).
 - **리눅스 판정(CEO 결정 2026-10-03): 통과(약함 — 사후 분류)** — 2라운드 시계 red를 「검사 주입」으로 분류해 누적 green 후 CEO 발견 결함 0 · Q5 3/3 · Q6 · Q7 통과. 「약함」의 뜻: 그 계급은 시험 뒤에 적은 셋째 계급이다(3판 Q6 재판정 「통과(약함)」과 같은 꼴 — 결함 셈이 아니라 분류가 사후). 사고 65(수리 반영 4)는 리눅스 끝에 들어갔다 — 윈도우 라운드는 그 머지(동결 4)로 시작한다.
+
+### 윈도우 차림 (2026-10-03 — CEO의 PC · 동결 5)
+- **동결 5 = `9479a3c233f3fdd9372c650442131d117cbee6aa`**(PR #104 머지 — 윈도우 점검 수리, team/ tree는 동결 4·3과 같다) · PC 점검 `node --test "tests/*.test.mjs"` 초록(node 24.13 · 건너뜀 1은 윈도우에서 뛰어넘는 테스트).
+- 테스트 베드 `C:\L2\futsal-win` — 원문 `holdout-futsal.md`(소진된 홀드아웃 — **회귀**) · `install.ps1 claude -Budget medium`(doctor·SELFTEST PASS가 설치의 조건) · **규칙집 기준선 `HEAD:.garagiste` `9940d7e875cef2e46c9590675fb4e6ecc1b7b66e`**. 시험 중 재설치·models 변경 금지.
+- 라운드마다: 첫 말 전에 `(Get-Date).ToUniversalTime().ToString('s') + 'Z'` → 1라운드 첫 말(brief·intake 포함, 「윈도우 — CEO가 할 일」 2) → 예/아니오(맨 「예」) → 「범위는 M1 전부 — 가」 → 멈춤 → 「저녁」 → 카드(`.worktrees\try-<slug>`) → 표 → `day.mjs … --since <적은 값>` 출력 전체를 정비 채널에. 시계 검사는 없다. 윈도우 세 라운드 누적 green 후 CEO 발견 결함 0이면 윈도우 몫 통과 — 리눅스 통과(약함)와 합쳐 5판이 닫힌다.
+
+### 5판 닫기 — CEO 결정 (2026-10-03): 리눅스 단일로 간다
+- **윈도우 몫은 접는다.** 이유: 그 PC의 Claude Code는 팩(Agent)이 늘 백그라운드라 대화형 세션으로는 무인 하루가 돌지 않았고(시운전), 헤드리스 래퍼(`turn.ps1`)로는 돌지만 라운드마다 CEO가 PC에서 서버를 띄워 카드를 치는 비용이 개발을 늦춘다. 윈도우 1라운드는 헤드리스로 아침(상태 → 「가」)과 낮까지 돌았다(세션 db5e517c · 「가」 턴까지 $6.20 · 저녁 창에 카드 6장 — boot·serve·local-only·team-add·player-add·roster — 이 열렸다) → 카드를 치지 않고 중단, 표 없음. 그 PC의 테스트 베드와 턴 기록은 수집하지 않는다.
+- **5판의 결론**: L2 게이트는 **리눅스 몫만 — 통과(약함, 사후 분류)**(Q5 3/3 · Q6 · Q7 · 2라운드 시계 red는 「검사 주입」). 윈도우 Q5 세 라운드는 측정하지 않았으므로 「둘 다면 L2 통과」의 둘째 조건은 비어 있다 — **L2는 리눅스에서 통과한 것으로 두고, GARAGISTE는 당분간 리눅스(컨테이너·WSL)에서만 운영한다.** 윈도우를 다시 재려면 이 등록의 「윈도우 — CEO가 할 일」(헤드리스)을 그대로 쓰면 된다.
+- 리눅스 누적 $32.99 · 수리 반영 1~4(사고 60~65) · 동결 1~5(ceb04dd → 2ffad306 → 95281279 → 3324334 → 9479a3c2). 표 이후 후보는 HANDOFF 「CEO 대기 결정」에.
