@@ -2,7 +2,9 @@
 // + 답 대기를 뺀 seed→ship(L1 수치를 같은 표에서). 정비 채널이 conductor와 독립으로 낸다 — 판단이 드는 칸(구성 ①/② · 프레임워크 FAIL · 멈춤 이유 · 참고)은 「표 밖」.
 // --since = 그날 세션을 연 시각(그날의 첫 ship을 찾는 데만 쓴다) · --until = 다음 날의 --since(여러 날 원장에서 지난 날을 낼 때)
 // 5판(7건 뒤의 정본 — L2-TRIAL-5): 미검수는 사람 센서 unit만(state.mjs humanNeeded와 같은 셈) · 원장 fail/guard 줄과 되풀이 · decide/kept/RESPEC · 이음새 공격·출하 보고 — 라운드 전체(저녁 창 포함)에서 센다
+// + CEO-분 기계 셈(L2-TRIAL-5 「CEO-분」): CEO의 말과 conductor의 턴 끝을 출처 셋(턴 기록 · 스트림 · claude 세션 전사)에서 읽어 창의 벽시계 · 말 수 · 대기 · 카드 시간(원장 try → tried)을 센다. 출처가 없으면 원장만의 하한(결정 구간) — 「(CEO 기입)」은 없다.
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -21,8 +23,87 @@ export function bounds(L, since = '', until = END) {
   const anchor = firstShip?.ts ?? L.find((e) => e.kind === 'pack' && inWin(e))?.ts ?? until;
   const morning = L.findLast((e) => CONTACT.includes(e.kind) && e.ts < anchor) || null;
   const morningEnd = morning?.ts ?? (since || L[0]?.ts || '');
-  const evening = L.find((e) => e.kind === 'tried' && e.ts > morningEnd && e.ts < until) || null;
-  return { firstShip, morning, morningEnd, evening, eveningStart: evening?.ts ?? null, end: evening?.ts ?? until };
+  // 저녁 창 시작 = 아침 창 끝 뒤 첫 try(사본 열기 — 5판 원장 줄) 또는 tried
+  const evening = L.find((e) => (e.kind === 'tried' || e.kind === 'try') && e.ts > morningEnd && e.ts < until) || null;
+  return { firstShip, anchor, morning, morningEnd, evening, eveningStart: evening?.ts ?? null, end: evening?.ts ?? until };
+}
+
+// 5판 — CEO-분의 출처: CEO의 말(ts·text)과 conductor의 턴 끝(ts). 셋을 합친다 — 턴 기록(<폴더>-turn<n>.msg = 말 · .json = 턴 끝, turn.sh) ·
+// 스트림(<폴더>-<tag>.msgs.jsonl = 말 · .stream.jsonl의 result = 턴 끝, stream.mjs) · claude 세션 전사(~/.claude/projects/<cwd 슬러그>/*.jsonl — CEO PC).
+const SOURCES = ['턴 기록', '스트림', '전사'];
+const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const cwdSlug = (abs) => abs.replace(/[\\/:]/g, '-');
+export function ceoSources(dir, { home = os.homedir(), transcript = null } = {}) {
+  const abs = path.resolve(dir); const parent = path.dirname(abs); const base = path.basename(abs);
+  const msgs = []; const ends = []; const found = new Set();
+  const iso = (p) => new Date(fs.statSync(p).mtimeMs).toISOString();
+  let names = []; try { names = fs.readdirSync(parent); } catch { names = []; }
+  for (const n of names) {
+    const turn = new RegExp(`^${esc(base)}-turn(\\d+)\\.msg$`).exec(n);
+    if (turn) {
+      msgs.push({ ts: iso(path.join(parent, n)), text: readText(path.join(parent, n)).trim(), src: 'turn' }); found.add('턴 기록');
+      const j = path.join(parent, `${base}-turn${turn[1]}.json`); if (fs.existsSync(j)) ends.push(iso(j));
+      continue;
+    }
+    const stream = new RegExp(`^${esc(base)}-(.+)\\.msgs\\.jsonl$`).exec(n);
+    if (stream) {
+      for (const m of readLines(path.join(parent, n))) if (m.ts) { msgs.push({ ts: m.ts, text: String(m.text ?? ''), src: 'stream' }); found.add('스트림'); }
+      for (const x of readLines(path.join(parent, `${base}-${stream[1]}.stream.jsonl`))) if (x.t && x.e?.type === 'result') ends.push(x.t);
+    }
+  }
+  const files = transcript ? [transcript] : transcriptFiles(abs, home);
+  for (const f of files) { const r = parseTranscript(readLines(f), abs); if (r.msgs.length || r.ends.length) { found.add('전사'); msgs.push(...r.msgs); ends.push(...r.ends); } }
+  msgs.sort((a, b) => a.ts.localeCompare(b.ts)); ends.sort();
+  return { sources: SOURCES.filter((x) => found.has(x)), msgs, ends, slug: cwdSlug(abs) };
+}
+function transcriptFiles(abs, home) {
+  const d = path.join(home, '.claude', 'projects', cwdSlug(abs));
+  try { return fs.readdirSync(d).filter((x) => x.endsWith('.jsonl')).map((x) => path.join(d, x)); } catch { return []; }
+}
+// 전사의 줄들 → CEO의 말(user 줄의 글 — 문자열 또는 text 블록)과 assistant 줄의 ts(턴의 움직임). tool_result 줄 · 곁가지(isSidechain) · `<`로 시작하는 하네스 줄 · cwd가 다른 줄은 아니다
+const normPath = (p) => String(p).replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
+export function parseTranscript(lines, abs) {
+  const msgs = []; const ends = [];
+  for (const o of lines) {
+    if (!o || !o.timestamp || o.isSidechain || (o.cwd && normPath(o.cwd) !== normPath(abs))) continue;
+    const c = o.message?.content;
+    if (o.type === 'assistant') { ends.push(o.timestamp); continue; }
+    if (o.type !== 'user') continue;
+    const text = typeof c === 'string' ? c : Array.isArray(c) && !c.some((b) => b?.type === 'tool_result') ? c.filter((b) => b?.type === 'text').map((b) => b.text).join('\n') : '';
+    if (text.trim() && !/^\s*</.test(text)) msgs.push({ ts: o.timestamp, text, src: 'transcript' });
+  }
+  return { msgs, ends };
+}
+// 5판 — CEO-분(L2-TRIAL-5 「CEO-분」): 창 배정은 원장 경계로(첫 ship 전 = 아침 · 그 뒤 첫 「저녁」부터 = 저녁 · 사이 = 낮의 말), 벽시계 = 아침 첫 말 → 마지막 말(「가」) · 「저녁」 → 마지막 말의 턴 끝(표),
+// 대기 = 말 → 그 턴의 끝, 카드 시간 = 원장 try → 그 slug의 다음 tried, unit당 = 두 창의 합 ÷ 낮 ship. 원장만의 하한(결정 구간)은 출처가 없어도 나온다. 판단 없음 — 「저녁」은 프로토콜의 고정 말이다.
+export function ceoMinutes({ L, t, src, since = '', until = END }) {
+  const msgs = src.msgs.filter((m) => m.ts >= since && m.ts < until);
+  const ends = src.ends.filter((x) => x >= since && x < until);
+  const endOf = (i) => ends.filter((x) => x > msgs[i].ts && x < (msgs[i + 1]?.ts ?? until)).at(-1) ?? null; // 그 말의 턴 끝 — 다음 말 전의 마지막 턴 끝
+  const anchor = t.b.anchor ?? until;
+  const morning = msgs.filter((m) => m.ts < anchor);
+  const rest = msgs.filter((m) => m.ts >= anchor);
+  const evStart = rest.find((m) => /저녁/.test(m.text)) ?? (t.b.eveningStart ? rest.findLast((m) => m.ts < t.b.eveningStart) ?? null : null);
+  const evening = evStart ? rest.filter((m) => m.ts >= evStart.ts) : [];
+  const day = rest.filter((m) => !evStart || m.ts < evStart.ts);
+  const wait = (list) => list.reduce((acc, m) => { const e = endOf(msgs.indexOf(m)); return acc + (e ? mins(m.ts, e) : 0); }, 0);
+  const evEnd = evening.length ? (endOf(msgs.indexOf(evening.at(-1))) ?? evening.at(-1).ts) : null;
+  const trieds = L.filter((e) => e.kind === 'tried' && e.ts >= since && e.ts < until);
+  const cards = trieds.map((tr) => { const open = L.findLast((e) => e.kind === 'try' && e.slug === tr.slug && e.ts < tr.ts && e.ts >= since); return open ? mins(open.ts, tr.ts) : null; });
+  const contacts = L.filter((e) => CONTACT.includes(e.kind) && e.ts >= since && e.ts < until);
+  const mFirst = contacts.find((e) => e.ts <= t.b.morningEnd) ?? null;
+  const eLast = t.b.eveningStart ? contacts.findLast((e) => e.ts >= t.b.eveningStart) ?? null : null;
+  const mMin = morning.length ? mins(morning[0].ts, morning.at(-1).ts) : null;
+  const eMin = evening.length ? mins(evStart.ts, evEnd) : null;
+  return {
+    sources: src.sources, slug: src.slug,
+    morning: { n: morning.length, minutes: mMin, wait: wait(morning), from: morning[0]?.ts ?? null, to: morning.at(-1)?.ts ?? null },
+    day: { n: day.length },
+    evening: { n: evening.length, minutes: eMin, wait: wait(evening), from: evStart?.ts ?? null, to: evEnd, cards: t.cards.length, decisions: evStart ? L.filter((e) => e.kind === 'decide' && e.ts >= evStart.ts && e.ts < until).length : 0 },
+    cards: { minutes: cards.reduce((acc, x) => acc + (x ?? 0), 0), n: cards.filter((x) => x !== null).length, of: trieds.length },
+    ledger: { morning: mFirst ? mins(mFirst.ts, t.b.morningEnd) : null, evening: t.b.eveningStart && eLast ? mins(t.b.eveningStart, eLast.ts) : null },
+    perUnit: t.dayShips.length && msgs.length ? ((mMin ?? 0) + (eMin ?? 0)) / t.dayShips.length : null,
+  };
 }
 
 // spawn_stop엔 slug가 없다 — 바로 앞 같은 pack 값 pack 줄의 slug로 센다. 그 앞의 같은 값 pack이 다른 slug이고 아직 stop이 없었으면 겹쳐 뜬 것(odd)
@@ -141,7 +222,7 @@ export function dayTable({ L, units = [], ledgerMd = '', brief = '', since = '',
   };
 }
 
-export function render(t, { name = '', drift = null } = {}) {
+export function render(t, { name = '', drift = null, ceo = null } = {}) {
   const { b, rows } = t;
   const who = (e) => (e ? `${e.kind} ${e.slug ?? (e.q ? `Q${e.q}` : '')}`.trim() : '');
   const third = t.dayShips[2];
@@ -169,16 +250,22 @@ export function render(t, { name = '', drift = null } = {}) {
   const ok = rows.filter((r) => r.tried === 'ok').length; const bad = rows.filter((r) => r.tried === 'fail').length;
   o.push(`| 계 | ${rows.length}(출하 ${shipped.length}) | | | ${f1(sum(shipped, (r) => r.raw))} | ${f1(sum(shipped, (r) => r.raw - r.wait))} | ${sum(rows, (r) => r.packs)}/${sum(rows, (r) => r.stops)} | ${k(sum(rows, (r) => r.tokens))} | 선발견 ${sum(rows, (r) => Number(/^(\d+)→/.exec(r.attack)?.[1] || 0))} | ${rows.filter((r) => r.redproof !== '—').length} | ok ${ok} · fail ${bad} | ${bad} | — | ${sum(rows, (r) => r.respec)} | ${sum(rows, (r) => r.needs)} |`);
   o.push('', `- 카드: ${t.cards.length} · ok ${t.cards.filter((e) => e.result === 'ok').length} · fail ${t.cards.filter((e) => e.result === 'fail').length}`);
-  o.push('- CEO-분: 아침 창 (CEO 기입) · 저녁 창 (CEO 기입)');
+  // 5판 — CEO-분 기계 셈(L2-TRIAL-5 「CEO-분」): 손 기입은 없다
+  const fm = (x) => (x === null || x === undefined ? '—' : f1(x));
+  const hms = (ts) => (ts ? ts.slice(11, 19) : '—');
+  if (ceo && ceo.sources.length) o.push(`- CEO-분(기계 셈 — 출처: ${ceo.sources.join('·')}): 아침 창 ${fm(ceo.morning.minutes)}분(말 ${ceo.morning.n} · ${hms(ceo.morning.from)} → ${hms(ceo.morning.to)} · conductor 대기 ${f1(ceo.morning.wait)}) · 저녁 창 ${fm(ceo.evening.minutes)}분(말 ${ceo.evening.n} · ${hms(ceo.evening.from)} → ${hms(ceo.evening.to)} · 카드 ${ceo.evening.cards} · 결정 ${ceo.evening.decisions} · 대기 ${f1(ceo.evening.wait)}) · 낮의 말 ${ceo.day.n} · 카드 시간 합 ${f1(ceo.cards.minutes)}분(try → tried ${ceo.cards.n}/${ceo.cards.of}) · unit당 ${fm(ceo.perUnit)}분(낮 ship ${t.dayShips.length})`);
+  else if (ceo) o.push(`- CEO-분(기계 셈): 출처 없음 — <폴더>-turn<n>.msg/.json(turn.sh) · <폴더>-<tag>.msgs.jsonl(stream.mjs) · ~/.claude/projects/${ceo.slug ?? '<cwd 슬러그>'}/*.jsonl(claude 세션 전사)이 없다. --transcript <파일>로 줄 수 있다`);
+  if (ceo) o.push(`- CEO-분(원장만 — 결정 구간, 하한): 아침 ${fm(ceo.ledger.morning)}분(첫 접점 줄 → 아침 창 끝) · 저녁 ${fm(ceo.ledger.evening)}분(저녁 창 시작 → 마지막 접점 줄) · 카드 시간 합 ${f1(ceo.cards.minutes)}분(try → tried ${ceo.cards.n}/${ceo.cards.of})`);
   o.push(`- 팀이 정한 것 ${t.defaults.length}${t.defaults.length ? ':' : ''}`, ...t.defaults.map((d) => `  - ${d.slug}: ${d.text}`));
   o.push(`- 팩 이유-차선 ${t.lanes.length}${t.lanes.length ? ':' : ''}`, ...t.lanes.map((e) => `  - ${e.slug} ${e.pack} ${f1(e.bytes / 1024)}KB(상한 ${e.cap_kb}KB) — 「${e.large}」`));
   o.push('- 표 밖(판단 — conductor가 넘긴 줄·인수 파일·관찰로 채운다): 구성 ①/② · 프레임워크 FAIL 칸과 전문 · 멈춤 이유 · 참고');
   if (rows.some((r) => r.odd)) o.push('- ※ 같은 팩이 겹쳐 떠서 spawn_stop의 slug가 어긋날 수 있다(정의대로 바로 앞 같은 팩의 slug로 셌다)');
-  o.push('', `DAY ${name} · 무인 ${unattended} · 낮 접점 ${touches} · 낮 ship ${t.dayShips.length} · 연장 ${rows.filter((r) => r.span !== '무인').length} · 미출하 ${rows.length - shipped.length} · 토큰 ${k(sum(rows, (r) => r.tokens))} · 카드 ok ${t.cards.filter((e) => e.result === 'ok').length}/fail ${t.cards.filter((e) => e.result === 'fail').length} · FAIL줄 ${t.fails.length} · 가드 ${t.guards.length} · kept ${t.kepts.length}`);
+  o.push('', `DAY ${name} · 무인 ${unattended} · 낮 접점 ${touches} · 낮 ship ${t.dayShips.length} · 연장 ${rows.filter((r) => r.span !== '무인').length} · 미출하 ${rows.length - shipped.length} · 토큰 ${k(sum(rows, (r) => r.tokens))} · 카드 ok ${t.cards.filter((e) => e.result === 'ok').length}/fail ${t.cards.filter((e) => e.result === 'fail').length} · FAIL줄 ${t.fails.length} · 가드 ${t.guards.length} · kept ${t.kepts.length}${ceo ? ` · CEO-분 ${fm(ceo.morning.minutes)}/${fm(ceo.evening.minutes)}` : ''}`);
   return o.join('\n');
 }
 
 const readText = (p) => { try { return fs.readFileSync(p, 'utf8'); } catch { return ''; } };
+const readLines = (p) => readText(p).split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
 const readJson = (p, d) => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return d; } };
 
 function main() {
@@ -189,7 +276,7 @@ function main() {
     if (Number.isNaN(d.getTime())) { console.log(`FAIL day 시각을 읽지 못했다: ${x} — ISO로(예: 2026-10-02T15:28:06Z)`); process.exit(1); }
     return d.toISOString();
   };
-  if (!dir || !fs.existsSync(dir)) { console.log('사용법: node tests/field/day.mjs <프로젝트 폴더> [--since <ISO 시각>] [--until <ISO 시각>]'); process.exit(1); }
+  if (!dir || !fs.existsSync(dir)) { console.log('사용법: node tests/field/day.mjs <프로젝트 폴더> [--since <ISO 시각>] [--until <ISO 시각>] [--transcript <claude 세션 전사 .jsonl>]'); process.exit(1); }
   const team = readJson(path.join(dir, '.garagiste', 'team.json'), {});
   const P = { ledger: '.garagiste/ledger/evidence.jsonl', units: '.garagiste/units', ledger_doc: 'docs/LEDGER.md', brief: 'docs/BRIEF.md', ...(team.paths || {}) };
   const L = readText(path.join(dir, P.ledger)).split('\n').filter(Boolean)
@@ -203,6 +290,7 @@ function main() {
   const git = (args) => { const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' }); return r.status === 0 ? r.stdout.trim() : null; };
   // 정의는 --since만이다 — 저녁 창의 CEO 커밋(팩 상한 ① 등)도 그날의 드리프트다. --until은 지난 날을 다시 낼 때 다음 날 경계로만
   const log = git(['log', '--oneline', `--since=${t.b.morningEnd}`, ...(until !== END ? [`--until=${until}`] : []), '--', '.garagiste']);
-  console.log(render(t, { name: path.basename(path.resolve(dir)), drift: { log: log === null ? '(git 실패)' : log.split('\n').filter(Boolean).join(' · '), tree: git(['rev-parse', 'HEAD:.garagiste']) } }));
+  const ceo = ceoMinutes({ L, t, src: ceoSources(dir, { transcript: opt('--transcript') }), since, until });
+  console.log(render(t, { name: path.basename(path.resolve(dir)), drift: { log: log === null ? '(git 실패)' : log.split('\n').filter(Boolean).join(' · '), tree: git(['rev-parse', 'HEAD:.garagiste']) }, ceo }));
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) main();
