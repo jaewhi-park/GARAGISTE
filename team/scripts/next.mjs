@@ -78,6 +78,9 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   const finish = () => {
     if (A.red > 0) return brief('build', `공격 red ${A.red} — build 다시`);
     if (u.kind === 'system' && !mine.some((e) => e.kind === 'attack' && e.red > 0)) return run(`work.mjs drop ${slug} "system-attack 발견 0 — 공격 파일 ${A.total}" --forget`, '발견 0 — 초록 테스트는 산출물이 아니다(탐색은 원장에 남는다)');
+    // 사고 64(L2 5판 리눅스 4라운드): red 0인데 예산 정지(미검수 3)면 ship이 budget 조건으로 거부한다 — 예산 정지의 ceo는 seed 자리에만 있어 next가 ship을 계속 냈고
+    // conductor가 ship의 FAIL 줄을 읽어 스스로 멈췄다. ship 직전에도 같은 ceo — 그 unit은 red 0으로 서 있고 CEO가 써봐야 출하가 열린다.
+    if (stops.length) return { kind: 'ceo', text: `STOP ${stops.join('; ')} — 예산 정지: ${slug}는 red 0으로 ship 직전에 서 있다 — CEO에게 docs/STATUS.md 「써볼 것」·「정해 주세요」` };
     return run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
   };
   if (st === 'build') {
