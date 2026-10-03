@@ -7,7 +7,8 @@ cp "$G"/team/scripts/*.mjs .garagiste/scripts/
 cp "$G"/team/packs/*.md .garagiste/packs/
 cp "$G"/team/HAZARDS.md .garagiste/HAZARDS.md
 cp "$G"/team/claude/settings.json .claude/settings.json
-CH=$(git status --porcelain -- .garagiste/scripts .garagiste/packs .garagiste/HAZARDS.md .claude/settings.json | awk '{print $2}')
+[ -d .claude/hooks ] && cp "$G"/team/claude/hooks/*.mjs .claude/hooks/  # 훅도 정본이다(사고 60의 원장 줄 절단은 훅 파일에 있었다)
+CH=$(git status --porcelain -- .garagiste/scripts .garagiste/packs .garagiste/HAZARDS.md .claude/settings.json .claude/hooks | awk '{print $2}')
 [ -z "$CH" ] && { echo "no change"; exit 0; }
 GIT_AUTHOR_NAME=ceo GIT_AUTHOR_EMAIL=ceo@field GIT_COMMITTER_NAME=ceo GIT_COMMITTER_EMAIL=ceo@field GARAGISTE_SHIP=1 GARAGISTE_WIP=1 git commit -q -m "$MSG" -- $CH
 echo "DELIVERED $(git log --oneline -1) · $(echo $CH | tr '\n' ' ')"
