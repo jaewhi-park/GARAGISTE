@@ -31,7 +31,8 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
       // system-attack(채용 2026-10-03): 출하된 unit이 둘 이상인 범위의 끝은 이음새 공격 한 바퀴(한 범위에 한 번 — scope.json system)
       const shippedN = (scope.order || []).filter((s) => units.some((x) => x.slug === s && x.state === 'shipped')).length;
       if (systemAttack && !scope.system && shippedN >= 2) return run('work.mjs system', `범위가 끝났다 — 출하된 unit ${shippedN}개의 이음새 공격 한 바퀴(발견은 red 테스트, 발견 0이면 drop)`);
-      return { kind: 'done', text: `SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위는 CEO가(work.mjs scope)${note}` };
+      const untried = units.filter((x) => x.state === 'shipped' && !x.tried).map((x) => x.slug);
+      return { kind: 'done', text: `SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위는 CEO가(work.mjs scope)${untried.length ? ` · 써볼 것 ${untried.length}: ${untried.join(', ')}(마일스톤 끝의 try)` : ''}${note}` };
     }
     if (r.kind === 'ready') return run('work.mjs seed', `다음 unit ${r.slug}를 연다${note}`);
     if (r.kind === 'wait') return { kind: 'wait', text: `${r.slug} needs ${r.unmet.join(',')} — ${r.unmet.some((n) => /^Q\d+$/.test(n)) ? 'CEO 결정이 먼저(work.mjs decide)' : '선행 unit이 먼저'}${note}` };

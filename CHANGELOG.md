@@ -80,6 +80,11 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 하위 불릿 내용: 사고 14 수리가 「같은 줄 내용」을 요구하자, 내용을 하위 불릿에 둔 정당한 spike 행이 미완으로 읽혔다. spikeComplete를 줄 단위 파서로 — 내용은 같은 줄 또는 **더 깊은 들여쓰기의 다음 줄**, 같은 깊이의 다음 행이 바로 오면 빈 행(조임 유지).
 - wip 재발: 늦은 spike 뒤 build는 제품 변경이 없어 측정 파일을 다시 wip로 커밋했고 ship이 같은 두 줄로 반복 실패했다(재spawn 루프). ship이 **spike 파일만 든 wip HEAD를 `docs(spike): <slug> 측정`으로 amend 승격** — 메시지만 바뀌고 tree는 불변이라 이미 기록된 full·redproof·attack 증거가 그대로 유효하고, build 재spawn 자체가 불필요해진다. 검사: spikeComplete 하위 불릿 케이스 + spikeOnlyFiles 단위 테스트.
 
+### Changed — 2026-10-03 미검수 상한은 사람 센서가 필요한 unit만 센다 — 기계가 증명한 출하물은 마일스톤 끝에 써본다 (L2 1판 1일차 무인 376분 중 작업 ≈29분 · 거의 모든 라운드의 멈춤이 미검수 3 — CEO 「하나씩 수정」)
+- `state.mjs budgetStatus`: 미검수 = 출하 뒤 안 써본 unit 중 사람 센서가 필요한 것 — `@sensor human` 주장이 있거나 공격 선발견이 0인 unit. 기계가 증명한 unit(인수 전부 machine · 공격 선발견 ≥ 1)과 scaffold·system은 세지 않고 STATUS 「써볼 것」에 「기계 증명 — 마일스톤 끝에」로 표시된다. next의 SCOPE DONE 줄이 써볼 unit을 나열한다. 무인 출하 5·팀 자발 2 상한은 그대로(back-pressure).
+- `team.json budgets.unseen_machine_exempt: false`면 옛 규칙(전부 센다). PRINCIPLES의 「미검수 3」 문장을 맞췄다.
+- 검사: unit(budgetStatus · humanNeeded) · e2e(탄생 시험: hello는 선발견 1이라 안 본 것 0/3, 카드엔 표시) · HAZARDS 한 줄.
+
 ### Changed — 2026-10-03 환경의 긴 꼬리를 boot에서 선불 — 생태계별 검증된 꼴 · attack이 놓친 계급은 HAZARDS 줄로 (CEO 「하나씩 수정」)
 - boot 팩 4에 「생태계별 검증된 꼴」: 공통(`.gitattributes` `* text=auto eol=lf` — L2 2판 윈도우 CRLF ×4 · 산출물 .gitignore — 사고 29·38 · setup — 34) · Node(glob 러너·`{files}`·npm install) · Python(discover는 하이픈 이름을 0건 실행 — 사고 44·57, importlib 하네스) · Go(한 디렉터리 한 패키지 — 53·56, -count=1 — 54). 가드가 boot의 `.gitattributes` 쓰기를 연다.
 - HAZARDS 두 줄: boot의 첫 선택이 낳은 사고들(경로 .gitattributes·.gitignore·tests/harness·매니페스트) · attack이 두 판 연속 놓친 계급(`**` — 없는 날짜·공백만인 제목·CSV 수식: 모든 attack 팩에 떠 attack 팩 4가 테스트로 남긴다).

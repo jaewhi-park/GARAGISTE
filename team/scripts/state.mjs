@@ -7,18 +7,28 @@ import { ceoTouch, ctx, isMain, listUnits, out, readJson, readLedger, readText }
 export function firstLine({ run, unseen, unseenMax, unobservedOs, decisionsOpen, coveragePct, uncertain }) {
   return `실행: ${run || '—'} · 안 본 것 ${unseen}/${unseenMax} · target-OS 미관측 ${unobservedOs} · 결정 대기 ${decisionsOpen} · 센서 커버리지 ${coveragePct}% · 불확실: ${uncertain || '없음'}`;
 }
+// 미검수 상한(채용 2026-10-03): 미검수 3이 거의 모든 라운드의 멈춤 이유였다(L2 1판 1일차 무인 376분 중 작업 ≈29분) — 사람 센서가 필요한 unit만 센다:
+// @sensor human 주장이 있거나 공격이 아무것도 못 잡은(선발견 0 — 적대 검증이 물지 않았다) unit. 기계가 증명한 unit은 STATUS에 표시되고 마일스톤 끝에 써본다. budgets.unseen_machine_exempt: false면 전부 센다(옛 규칙).
+export function attackFound(ledger, u) { return new Set(ledger.filter((e) => e.kind === 'attack' && e.slug === u.slug && (e.ts || '') >= (u.created || '') && e.red > 0).flatMap((e) => e.files || [])).size; }
+export function humanNeeded(u, ledger, team) {
+  if (team.budgets.unseen_machine_exempt === false) return true;
+  if (u.sensor && String(u.sensor).startsWith('human')) return true;
+  if (u.kind === 'scaffold' || u.kind === 'system') return false;
+  return attackFound(ledger, u) === 0;
+}
 export function budgetStatus({ units, ledger, team, ceoTouchTs }) {
   const stops = [];
   const shipped = units.filter((u) => u.state === 'shipped').sort((a, b) => (a.shipped || '').localeCompare(b.shipped || ''));
-  const unseen = shipped.filter((u) => !u.tried);
-  if (unseen.length >= team.budgets.unseen_max) stops.push(`미검수 ${unseen.length} ≥ ${team.budgets.unseen_max} — CEO가 써봐야 출하가 열린다`);
+  const untried = shipped.filter((u) => !u.tried);
+  const unseen = untried.filter((u) => humanNeeded(u, ledger, team));
+  if (unseen.length >= team.budgets.unseen_max) stops.push(`미검수 ${unseen.length} ≥ ${team.budgets.unseen_max} — CEO가 써봐야 출하가 열린다${untried.length > unseen.length ? `(기계 증명 ${untried.length - unseen.length}은 세지 않았다)` : ''}`);
   const since = ceoTouchTs || '';
   const unattended = ledger.filter((e) => e.kind === 'ship' && e.ts > since).length;
   if (unattended >= team.budgets.unattended_ship_max) stops.push(`CEO 접점 없이 출하 ${unattended} ≥ ${team.budgets.unattended_ship_max}`);
   let trailing = 0;
   for (let i = shipped.length - 1; i >= 0 && shipped[i].origin_kind === 'team'; i--) trailing++;
   if (trailing >= team.budgets.no_ceo_units_max) stops.push(`팀이 스스로 뜬 unit 연속 ${trailing} ≥ ${team.budgets.no_ceo_units_max}`);
-  return { stops, unseen: unseen.length, unattended };
+  return { stops, unseen: unseen.length, untried: untried.length, unattended };
 }
 export function openQuestions(decisionsText) { return [...decisionsText.matchAll(/^- \[ \] Q\d+.*$/gm)].map((m) => m[0]); }
 export function render(c) {
@@ -37,7 +47,7 @@ export function render(c) {
   for (const u of shippedUnseen.slice(0, 3)) {
     const tryMd = readText(path.join(c.main, c.team.paths.units_docs, u.slug, 'try.md')).trim();
     const fallback = u.kind === 'scaffold' ? `  실행: \`${c.team.commands.run || c.team.commands.quick}\`` : u.kind === 'system' ? `  이음새 공격이 고친 흐름: tests/adversary/${u.slug}-* 가 가리키는 대로` : '  (try.md 없음)'; // scaffold(boot)·system(이음새 공격)엔 try.md가 없다
-    parts.push(`- **${u.slug}** — "${u.origin}"`, ...(tryMd ? tryMd.split('\n').slice(0, 6).map((l) => `  ${l}`) : [fallback]), `  → \`node .garagiste/scripts/work.mjs try ${u.slug}\`(main을 더럽히지 않는 사본 — 카드는 거기서) → \`node .garagiste/scripts/work.mjs tried ${u.slug} ok|fail "<말>"\``);
+    parts.push(`- **${u.slug}** — "${u.origin}"${humanNeeded(u, ledger, c.team) ? '' : ` · 기계 증명(공격 선발견 ${attackFound(ledger, u)}) — 상한에 세지 않는다, 마일스톤 끝에 써봐도 된다`}`, ...(tryMd ? tryMd.split('\n').slice(0, 6).map((l) => `  ${l}`) : [fallback]), `  → \`node .garagiste/scripts/work.mjs try ${u.slug}\`(main을 더럽히지 않는 사본 — 카드는 거기서) → \`node .garagiste/scripts/work.mjs tried ${u.slug} ok|fail "<말>"\``);
   }
   if (!shippedUnseen.length) parts.push('- 없음');
   parts.push('', '## 정해 주세요', ...(questions.length ? questions : ['- 없음']));

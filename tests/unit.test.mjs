@@ -13,7 +13,7 @@ import { blindFiles, gateDecision, logicLines, probeNames, PROBE_TEXT } from '..
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { againCmd, attackRoundUsed, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
-import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
+import { firstLine, budgetStatus, humanNeeded } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
@@ -951,4 +951,18 @@ test('boot 팩: 환경의 긴 꼬리를 선불한다 — 생태계별 검증된 
   const hz = fs.readFileSync(new URL('../team/HAZARDS.md', import.meta.url), 'utf8');
   assert.match(hz, /^- `\*\*` · attack이 두 판 연속 놓친 계급/m, 'attack이 놓친 계급은 모든 팩에 뜨는 줄로');
   assert.ok(matchHazards(hz, ['src/any.mjs']).some((l) => l.includes('놓친 계급')), '`**` 줄은 어느 diff에도 뜬다');
+});
+
+test('미검수 상한(채용 2026-10-03): 사람 센서가 필요한 unit만 센다 — @sensor human 주장 또는 공격 선발견 0; 기계가 증명한 unit·scaffold·system은 세지 않고 마일스톤 끝에 써본다', () => {
+  const at = '2026-10-03T12:00:00Z';
+  const L = [{ ts: '2026-10-03T12:30:00Z', kind: 'attack', slug: 'm', red: 1, total: 2, files: ['tests/adversary/m-1.test.mjs'] }, { ts: '2026-10-03T12:40:00Z', kind: 'attack', slug: 'm', red: 0, total: 2, files: [] }];
+  const u = (slug, over) => ({ slug, kind: 'feature', state: 'shipped', shipped: at, created: at, tried: null, origin_kind: 'seed', sensor: 'machine', ...over });
+  const units = [u('m'), u('h', { sensor: 'human@win32' }), u('z'), u('boot', { kind: 'scaffold' }), u('system-1', { kind: 'system' })];
+  const b = budgetStatus({ units, ledger: L, team, ceoTouchTs: null });
+  assert.deepEqual({ unseen: b.unseen, untried: b.untried }, { unseen: 2, untried: 5 }, '사람 주장(h)과 공격이 못 문 unit(z)만 — m(선발견 1)·boot·system은 아니다');
+  assert.equal(b.stops.length, 0, '2 < 3 — 멈추지 않는다');
+  assert.match(budgetStatus({ units: [...units, u('z2')], ledger: L, team, ceoTouchTs: null }).stops.join(), /미검수 3 ≥ 3[^\n]*기계 증명 3은 세지 않았다/);
+  const old = { ...team, budgets: { ...team.budgets, unseen_machine_exempt: false } };
+  assert.equal(budgetStatus({ units, ledger: L, team: old, ceoTouchTs: null }).unseen, 5, '옛 규칙: 전부 센다');
+  assert.ok(!humanNeeded(u('m'), L, team) && humanNeeded(u('h', { sensor: 'human@win32' }), L, team) && humanNeeded(u('z'), L, team));
 });
