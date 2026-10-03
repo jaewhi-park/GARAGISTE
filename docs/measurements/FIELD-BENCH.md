@@ -61,7 +61,7 @@ node tests/field/stream.mjs run $B/field1 day4 --plan <plan.json>   # Q6(L2-TRIA
   - n일차 첫 말: 1일차 첫 말에서 brief·intake 두 문장을 빼고 끝에 `상태 보여줘.` · n일차 둘째 말: 열린 질문의 답(있으면) 뒤 `가. 매 spawn 뒤 work.mjs spawned를 남겨라.`
   - 저녁 말: `저녁` — 그 뒤 카드마다 대리 규칙 2, 열린 질문은 대리 규칙 3. conductor가 표를 내면 그날 끝.
 - **대리 CEO는 창에서만 말한다**(대리 규칙 1~5 그대로 + 이것): 「가」와 「저녁」 사이엔 어떤 말도 보내지 않는다(낮 접점 0). conductor가 낮에 멈추거나 여섯 멈춤 밖에서 턴을 끝내도 그것이 그날의 끝이다 — 다음 말은 「저녁」이고, 여섯 밖이면 규율 이탈로 센다. 낮에 올라온 질문은 저녁 창에서 답한다.
-- **표**: 저녁 창이 끝나면 대리가 `node tests/field/day.mjs <폴더> --since <그날 첫 말을 보낸 ISO 시각>`(지난 날은 `--until <다음 날 --since>`) — DAY 줄과 표를 `FIELD-BENCH-LOG.md`의 L2 결과 원장과 기록 절에 적는다. conductor가 대화에 낸 표는 대조용(다르면 둘 다 적는다). 판단이 드는 칸(구성 ①/② · 프레임워크 FAIL · 멈춤 이유 · 참고)은 conductor의 줄과 대리의 관찰로 채운다.
+- **표**: 저녁 창이 끝나면 대리가 `node tests/field/day.mjs <폴더> --since <그날 첫 말을 보낸 ISO 시각>`(지난 날은 `--until <다음 날 --since>`) — DAY 줄과 표를 `FIELD-BENCH-LOG.md`의 L2 결과 원장과 기록 절에 적는다. conductor가 대화에 낸 표는 대조용(다르면 둘 다 적는다). **CEO-분은 같은 표가 기계로 센다**(2026-10-03 — 출처: 턴 기록 `<폴더>-turn<n>.msg/.json` · 스트림 `.msgs.jsonl` · CEO PC의 전사 `~/.claude/projects/<cwd 슬러그>/*.jsonl`, `--transcript <파일>` — 정의 `L2-TRIAL-5.md` 「CEO-분」; 「(CEO 기입)」은 없다). 판단이 드는 칸(구성 ①/② · 프레임워크 FAIL · 멈춤 이유 · 참고)은 conductor의 줄과 대리의 관찰로 채운다.
 - **회의 길이**: 범위(M1)가 SCOPE DONE이 될 때까지 날을 잇는다. 측정 모드에서 프레임워크 FAIL로 그날이 멈추면 그 회는 거기서 끝. 하루는 대개 미검수 3에서 멈추니 M1이 n unit이면 약 n/3일.
 - **판정(날마다)**: 낮 접점 0 · 미검수 3 또는 SCOPE DONE으로 정상 정지 · 프레임워크 FAIL 0 · try 산출물로 막힌 ship 0 · green 후 CEO 발견 결함 0 · conductor 규율 이탈 0. **L2 게이트** = 처음 3일 누적 green 후 결함 0(등록문과 같다). **L1 수치(같은 표)** = unit마다 답 대기 뺀 seed→ship ≤75분 · spawn 의도 ≤8 · 미검수 ≤3.
 - **비용**: 날마다 그 세션의 마지막 턴 json의 `total_cost_usd`를 더한다. 예상(높게) — `l2-todo-cli` 한 회 ≈ $15(2판 리눅스 911K 토큰) · `holdout-library` 한 회 ≈ $30.

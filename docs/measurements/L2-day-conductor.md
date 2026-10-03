@@ -51,7 +51,7 @@
 2. 경계 (원장 ts로)
    - 첫 ship: 오늘 무인 하루의 첫 "kind":"ship" 줄.
    - 아침 창 끝: 첫 ship 이전의 마지막 CEO 접점 줄("kind"이 decide·scope·tried) ts.
-   - 저녁 창 시작: 아침 창 끝 뒤 첫 "kind":"tried" 줄 ts(CEO가 돌아와 처음 try한 때).
+   - 저녁 창 시작: 아침 창 끝 뒤 첫 "kind":"try"(사본 열기 — 5판 원장 줄) 또는 "kind":"tried" 줄 ts(CEO가 돌아와 처음 try한 때).
    - 낮 = 아침 창 끝 → 저녁 창 시작. 저녁 창 시작 뒤에 seed되거나 출하된 unit은 「연장(유인)」.
 
 3. 표 머리 (한 줄씩)
@@ -84,7 +84,7 @@
 
 5. 표 아래
    - 카드: 낸 카드 수 · ok · fail
-   - CEO-분: 아침 창 「(CEO 기입)」 · 저녁 창 「(CEO 기입)」
+   - CEO-분: 적지 않는다 — 기계 셈(정비 채널의 tests/field/day.mjs · 정의는 L2-TRIAL-5 「CEO-분」: 창의 벽시계 · 말 수 · 대기 · 카드 시간 try→tried)
    - 팀이 정한 것: .garagiste/units/*.json의 defaults 중 at이 아침 창 끝 뒤인 것 — 수와 그 줄들(slug: 내용)
    - 프레임워크 FAIL 전문: 멈춘 줄 그대로(없으면 「없음」) · 막힌 것: docs/STATUS.md 「막힌 것」 절 그대로(없으면 「없음」)
    - 참고: 낮 동안 에이전트가 한 일 중 규칙 밖으로 보인 것(없으면 「없음」) — 판단하지 말고 사실만.
@@ -128,3 +128,4 @@ CEO가 며칠 없다. 이 세션엔 아침·저녁 창이 없고, 첫 말 뒤로
 - FAIL·가드 거부는 원장 `fail`·`guard` 줄로 남는다. 같은 FAIL이 되풀이되면 STATUS 첫 줄 「반복 FAIL n」·「막힌 것」 절 — 프레임워크 FAIL로 멈출 때 그 절을 마지막 출력에 함께 남긴다(정비 채널이 읽는 자리).
 - spec 팩은 저장 안쪽 꼴을 묻지 않고 `work.mjs default`로 정한다(「팀이 정한 것」에 뜬다 — 저녁 창에서 뒤집으려면 한 마디) · boot는 `.gitattributes`(`* text=auto eol=lf`)를 만든다 — 규칙집 드리프트가 아니다(boot의 첫 commands와 같은 자리).
 - 정비 채널의 표(`tests/field/day.mjs`)는 5판 칸을 더 센다(미검수 사람 셈 · 원장 fail/guard 줄 · kept · 이음새 공격·보고) — conductor 몫이 아니다(위 「정비 채널의 표 스크립트」 절 그대로).
+- CEO-분은 기계가 센다 — `work.mjs try`가 원장 `try` 줄을 남기고(카드 시간의 시작), 창의 벽시계와 말 수는 세션 기록(턴 기록·스트림·전사)에서 day.mjs가 읽는다(정의 L2-TRIAL-5 「CEO-분」). conductor는 적지 않는다. 저녁 창 시작의 정의는 「첫 try 또는 tried」(위 「저녁」 2).

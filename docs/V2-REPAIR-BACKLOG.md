@@ -40,7 +40,7 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
   v1에서 살아남을 자격이 있는 것(assess·parity — 대상이 사람 마음이 아니라 코드): 현행 동작의 characterization 테스트 = 수용 기준, redproof 그대로 작동. incremental intake(오프셋 재개)는 있음 — LACUNA 레거시 intake 팩 151KB가 반례 근거.
   검사: 기존 코드베이스 1개에서 boot 없이 첫 unit 출하.
 
-**L3 게이트: unit당 CEO 분이 L1 대비 비악화 + opencode 환경에서 L0 게이트 전부 재현.**
+**L3 게이트: unit당 CEO-분(기계 셈 — `docs/measurements/L2-TRIAL-5.md` 「CEO-분」; 기준선은 L2 5판의 첫 수치 — L1 표의 CEO-분 칸은 한 번도 채워지지 않았다) 비악화 + opencode 환경에서 L0 게이트 전부 재현.**
 
 ---
 

@@ -20,6 +20,13 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
 
+### Added — 2026-10-03 CEO-분 기계 셈 — 「시간은 공짜, 주의는 비싸다」의 주의를 처음 잰다 (L1 1차부터 비어 있던 「(CEO 기입)」 · 정비 채널 제안 → CEO 「진행」)
+- 정의(`docs/measurements/L2-TRIAL-5.md` 「CEO-분」): 창의 벽시계(아침 창 = CEO의 첫 말 → 마지막 말 「가」 · 저녁 창 = 「저녁」 → 마지막 말의 턴 끝(표)) · 말 수 · conductor 대기(말 → 그 턴의 끝) · 낮의 말 · 카드 시간(원장 `try` → 그 slug의 `tried`) · unit당(두 창의 합 ÷ 낮 ship) · 원장만일 때의 하한(결정 구간). 판단 없음 — 「저녁」은 프로토콜의 고정 말. 대리 CEO의 수치는 「절차가 요구하는 최소 주의」, 윈도우 라운드가 사람의 수치.
+- 출처 셋(`tests/field/day.mjs` `ceoSources` — 자동 발견 · `--transcript <파일>`): 턴 기록(`<폴더>-turn<n>.msg/.json`) · 스트림(`<폴더>-<tag>.msgs.jsonl` + `.stream.jsonl`의 result) · claude 세션 전사(`~/.claude/projects/<cwd 슬러그>/*.jsonl` — user 줄의 글이 말, tool_result 줄·곁가지·`<`로 시작하는 하네스 줄은 아니다, assistant 줄이 턴 끝). 없으면 원장 하한만 — 「(CEO 기입)」은 지시서·표에서 지웠다.
+- `work.mjs try`가 원장 `try` 줄(slug·head)을 남긴다 — 카드 시간의 시작점(측정 빈틈 — 규칙집 경로라 HAZARDS 줄 없음). 저녁 창 시작의 정의는 「첫 try 또는 tried」(지시서 「저녁」 2 · day.mjs bounds). 5판 동결에 든 7건 밖의 유일한 변경 — 등록문 머리에 적었다.
+- 백로그 L3 게이트 문장: 「unit당 CEO 분이 L1 대비 비악화」 → 기계 셈 기준, 기준선은 L2 5판의 첫 수치. HANDOFF CEO 대기 결정에서 뺐다. 5판 예측 9(CEO-분 첫 수치의 범위 · 윈도우 출처는 전사).
+- 검사: field(창 배정·벽시계·대기·카드 시간·하한 · 출처 셋과 전사 줄 가르기 · CLI의 자동 발견과 --transcript) · e2e(try 사본 → 원장 try 줄).
+
 ### Added — 2026-10-03 홀드아웃 후보 셋 — 다음 범용성 원문은 지금까지 없던 자리에서 (서명 대기 · CEO 「새 홀드아웃 원문 후보」)
 - `tests/field/briefs/candidates/`: `notes.md`(메모 색인 CLI — Rust 표준 라이브러리만: 컴파일 언어·`target/`·cargo 테스트 레이아웃·rename 원자성·오늘 날짜가 처음) · `snap.md`(폴더 스냅샷 백업 — Python 백그라운드 데몬: 프로세스 수명·7일/30일/1년 보관 규칙·잠긴 파일·원자적 쓰기·로그 돌리기가 처음) · `parcel-desk.md`(택배 보관 대장 — Node 기존 코드에 기능 넷: brownfield, L3 Q13 「boot 없이 첫 unit 출하」의 자리 — seed 요건·`setup-seed.sh` 필요는 README에). 홀드아웃 여섯이 전부 소진된 뒤의 첫 후보 — 지금까지의 자리(Node·Python·Go의 CLI·웹, 빈 폴더 시작) 밖에서 골랐다. 브라우저만 쓰는 앱(L4)과 Java·PHP·Ruby는 미룬 이유와 함께 README에.
 - 서명 = CEO가 하나를 `holdout-<이름>.md`로 옮기는 머지(FIELD-BENCH 「홀드아웃」 후보 줄 · HANDOFF). 서명 전까지 측정·수리에 쓰지 않는다 — 원문이 훈련 데이터가 되면 점수가 아니다.
