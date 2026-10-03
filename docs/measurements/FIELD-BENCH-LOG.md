@@ -204,7 +204,8 @@
 ### 2026-10-03 L2 5판 리눅스 4라운드(Q6 인터럽트) — 동결 2 2ffad306 · 스트림 세션 · 새 원문 M3 — 기록
 - 차림: 같은 테스트 베드 · `stream.mjs run … --plan tests/field/plans/l2-5-q6.json`(세션 af75d5dc · 턴 6) · CEO 결정으로 원문 네 줄(M3)을 대리가 썼다(`L2-TRIAL-5.md` 「4라운드(Q6) 준비」) · plan은 intake가 slug를 정한 뒤 「가」 전에 채워 커밋(stream이 다시 읽는다 — 도구 수리 loadPlan).
 - 결과: 아침 말 3(상태 → 원문·intake(unit 5 · Q5) → 「Q5 예 · 범위 export-import + M3 — 가」) → 무인 33.2분에 export-import·priority·search-fix 출하 · list-count는 ship이 미검수 3으로 거부 → 멈춤 · **네 말 전부 객체 도달**(버그 → search-fix unit 0.1분 · 추가 → list-count unit 0.1분 · 수정 → list-count spec 재spawn 1.0분(plan 누락으로 HOLD → 손 34초) · 방향전환 → archive가 빠진 scope 0.8분) · 무관 unit 정지 0 · 카드 4(ok 2 · 윈도우로 2) · CLOCK 4/4 · 결함 0 · $6.18(리눅스 누적 $29.93).
-- 관찰 8: plan `*new` 누락(대리) · 추가가 `new`로 바로 돈다(범위 결정 없이 — Flow 7 허용) · **next가 ship의 예산 거부 뒤에도 `run ship`(사고 64 후보 — 5라운드 전에 수리)** · scope slug+--milestone 혼용 문구 · 공격 taste(긴 대시) · 충돌 ship은 사고 58 길로 1.5분 · conductor 모델 sonnet-5-5 · 카드 셋 한 번에.
+- 관찰 8: plan `*new` 누락(대리) · 추가가 `new`로 바로 돈다(범위 결정 없이 — Flow 7 허용) · **next가 ship의 예산 거부 뒤에도 `run ship`(사고 64 — 수리)** · scope slug+--milestone 혼용 문구(수리) · 공격 taste(긴 대시) · 충돌 ship은 사고 58 길로 1.5분 · conductor 모델 sonnet-5-5 · 카드 셋 한 번에.
+- 4라운드 뒤 수리 반영 3(시험 중 수리 — 동결 갱신): 사고 64(next.mjs — ship 직전의 예산 정지도 ceo) · scope 혼용 문구 — 정본 935e632 → 테스트 베드 965eccd(기준선 5613622d5cc8…) · SELFTEST 19/19. 5라운드부터 이 정본.
 
 ### 2026-10-03 L2 5판 리눅스 3라운드 — 동결 2 2ffad306(PR #101 · 테스트 베드 332abb9) · l2-todo-cli 회귀 — 기록
 - 차림: 같은 컨테이너·테스트 베드 · 새 conductor 세션 9dd5c312 · 턴 7(16~22) · 대리의 말은 `todo-turn<n>.msg`. 등록·예측·판단·관찰은 `L2-TRIAL-5.md` 「리눅스 3라운드」.
