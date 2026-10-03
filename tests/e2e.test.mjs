@@ -845,3 +845,31 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   const st = script('selftest', [], repo);
   assert.match(st.out, /SELFTEST PASS \d+\/\d+/, st.out);
 });
+
+test('L2 3판 (e): 확인형 질문(--assumed)의 「예」는 RESPEC이 아니다 — 저장 꼴 질문 6개가 모두 「예」였는데 각각 spec 재spawn을 낳아 라운드당 출하 1', { timeout: 60000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-assumed-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'README.md', '# p\n');
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  assert.match(script('work', ['new', 'schedule', '라운드는 일주일 간격의 토요일이다'], repo).out, /^UNIT schedule spec/);
+  assert.match(script('brief', ['spec', 'schedule'], repo).out, /^PACK /, 'spec 팩이 돌았다 — 이제부터 닫히는 답은 사고 17의 RESPEC 대상');
+  assert.match(script('work', ['ask', 'schedule', '라운드를 일요일로?', '--assumed'], repo).out, /^FAIL --assumed는 진행 중 unit의 질문에 가정 한 줄/, '가정 없는 --assumed는 받지 않는다');
+  assert.match(script('work', ['ask', 'schedule', '원문의 토요일이 아니라 뒤의 말대로 일요일이면 되나요?', '--assumed', '라운드는 일요일'], repo).out, /^Q1 queued[^\n]*「예」면 가정 그대로/);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/DECISIONS.md'), 'utf8'), /- \[ \] Q1 \(schedule\): 원문의 토요일이[^\n]*지금은 「라운드는 일요일」, 예 = 그대로/, 'CEO는 「예」가 무엇을 뜻하는지 질문 줄에서 본다');
+  const d1 = script('work', ['decide', '1', '예'], repo).out;
+  assert.match(d1, /^PASS decide Q1\nKEPT schedule — Q1 「예」는 가정 그대로\(라운드는 일요일\)/, d1);
+  assert.doesNotMatch(d1, /RESPEC/, '「예」는 spec 재spawn이 아니다');
+  const unit = () => JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/schedule.json'), 'utf8'));
+  assert.ok(!(unit().respec || []).length, 'build·attack·ship은 그대로 열려 있다');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"kept","slug":"schedule","q":1,"assumed":"라운드는 일요일"/);
+  // 가정 없는 「예」는 사고 17대로 RESPEC — 무엇을 가정했는지 기계가 모른다
+  script('work', ['ask', 'schedule', '시즌이 해를 넘겨도 되나요?'], repo);
+  assert.match(script('work', ['decide', '2', '예'], repo).out, /^PASS decide Q2\nRESPEC schedule/);
+  // 가정과 다른 답도 RESPEC
+  script('work', ['ask', 'schedule', '한 라운드는 한 주인가요?', '--assumed', '한 주'], repo);
+  const d3 = script('work', ['decide', '3', '아니오 — 두 주'], repo).out;
+  assert.match(d3, /^PASS decide Q3\nRESPEC schedule/, d3);
+  assert.deepEqual(unit().respec.map((r) => r.q), [2, 3]);
+});

@@ -15,7 +15,7 @@ import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGa
 import { againCmd, attackRoundUsed, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs } from '../team/scripts/work.mjs';
+import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
@@ -843,4 +843,23 @@ test('lib: Windows PowerShell이 붙인 BOM이 있어도 team.json을 읽는다'
   assert.equal(readJson(path.join(d, '.garagiste', 'team.json'), null).version, 2);
   // 사고 18: 폴더 이름('GARAGISTE')을 가정하면 fresh 클론(GARAGISTE-fresh)·scratch worktree에서 거짓 실패 — 경로로 비교한다
   assert.equal(scriptRoot(new URL('../team/scripts/lib.mjs', import.meta.url).href), path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'), '스크립트 위치에서 저장소 루트를 안다');
+});
+
+test('work ask/decide: L2 3판 (e) — 확인형 질문(--assumed)의 맨 「예」는 가정 그대로라 RESPEC이 아니다; 가정 없는 「예」(사고 17)와 가정과 다른 답은 RESPEC', () => {
+  const u = { slug: 'schedule', assumed: [{ q: 10, text: '라운드는 일요일' }] };
+  for (const a of ['예', '네', ' 예.', 'yes', 'OK', '그대로', '맞다', 'y']) assert.equal(keepsAssumption(u, 10, a), '라운드는 일요일', a);
+  for (const a of ['아니오', '예 — 단 공휴일은 빼고', '일요일', '', undefined]) assert.equal(keepsAssumption(u, 10, a), null, String(a));
+  assert.equal(keepsAssumption(u, 11, '예'), null, '가정을 적지 않은 질문의 「예」는 무엇을 가정했는지 기계가 모른다 — 사고 17대로 RESPEC');
+  assert.equal(keepsAssumption({ slug: 'x' }, 10, '예'), null);
+  const { flags, pos } = parseArgs(['schedule', '라운드는 일요일인가?', '--assumed', '라운드는 일요일'], 'ask');
+  assert.deepEqual({ flags, pos }, { flags: { assumed: '라운드는 일요일' }, pos: ['schedule', '라운드는 일요일인가?'] });
+});
+test('spec·intake 팩: 저장 안쪽 꼴은 default, 질문은 되돌리기 어려운 것만 — L2 3판 2·3라운드의 저장 꼴 질문 6개(모두 「예」, 라운드당 출하 1)', () => {
+  const spec = fs.readFileSync(new URL('../team/packs/spec.md', import.meta.url), 'utf8');
+  const rule4 = (/^4\. (.*)$/m.exec(spec) || ['', ''])[1];
+  assert.match(rule4, /work\.mjs default <slug>/, 'spec 팩 4: 저장 안쪽 꼴은 기본값');
+  assert.match(rule4, /--assumed/, 'spec 팩 4: 주장 뒤의 확인형 질문은 --assumed');
+  assert.doesNotMatch(spec, /데이터 모델·파일 형식은 정하지 않는다/, '옛 규칙(저장 꼴마다 ask)은 사라진다');
+  const intake = fs.readFileSync(new URL('../team/packs/intake.md', import.meta.url), 'utf8');
+  assert.match(intake, /저장소 하나[^\n]*질문 하나/, 'intake 팩 5: 저장은 저장소 하나에 질문 하나');
 });

@@ -110,6 +110,13 @@ export function respecTargets({ units, ledger, n }) {
     && ledger.some((e) => e.kind === 'pack' && e.pack === 'spec' && e.slug === u.slug && (e.ts || '') >= (u.created || '')))
     .map((u) => u.slug);
 }
+// L2 3판 리눅스 2·3라운드 측정 (e): spec이 올린 저장 꼴 질문(Q6~Q9·Q11)이 모두 「예」였는데 각각 RESPEC을 걸어 다음 라운드의 spec이 「고칠 주장 없음」으로 끝났다 — 라운드당 출하 1.
+// 가정을 적은 질문(ask --assumed)의 맨 「예」는 지금 주장 그대로라 re-spec이 아니다. 가정 없는 「예」는 무엇을 가정했는지 기계가 모르니 사고 17대로 RESPEC, 다른 답도 RESPEC.
+const CONFIRM = /^\s*(예|네|응|그래|그렇다|맞다|맞아|그대로|ok|okay|yes|y)\s*[.!。]?\s*$/i;
+export function keepsAssumption(unit, n, answer) {
+  const a = (unit?.assumed || []).find((x) => Number(x.q) === Number(n));
+  return a && CONFIRM.test(String(answer || '')) ? a.text : null;
+}
 // BACKLOG 열린 줄 하나의 needs만 바꾼다 — 다른 줄은 바이트 그대로, 닫힌 줄·없는 줄은 null
 export function setNeeds(text, slug, needs) {
   const re = new RegExp(`^(- \\[ \\] ${slug} · \\S+ · needs: )\\S+( · .*)$`, 'm');
@@ -245,6 +252,9 @@ function ask(c, slug, question, flags = {}) {
   const u = slug === 'intake' ? null : loadUnit(c.main, c.team, slug);
   // 사고 59(홀드아웃 library): CEO 결정만 요구하는 FAIL은 그 unit만 세운다 — --hold는 답이 와도 re-spec하지 않는다(답의 길은 그 FAIL의 안내)
   if (flags.hold && !u) fail('FAIL --hold는 진행 중 unit의 질문에만 — work.mjs ask <slug> "<질문>" --hold');
+  // L2 3판 리눅스 2·3라운드 측정 (e): 주장을 쓴 뒤의 확인형 질문은 「예」가 곧 지금 주장이다 — --assumed에 그 가정을 적으면 decide의 맨 「예」가 RESPEC을 걸지 않는다(keepsAssumption)
+  const assumed = typeof flags.assumed === 'string' ? flags.assumed.trim() : '';
+  if ('assumed' in flags && (!u || !assumed)) fail('FAIL --assumed는 진행 중 unit의 질문에 가정 한 줄 — work.mjs ask <slug> "<질문>" --assumed "<지금 주장이 가정한 것>"');
   const forSlugs = flags.for ? flags.for.split(',').map((s) => s.trim()).filter(Boolean) : [];
   let bl = readBacklog(c);
   const items = parseBacklog(bl);
@@ -253,15 +263,15 @@ function ask(c, slug, question, flags = {}) {
   const p = decisionsFile(c);
   const text = readText(p);
   const n = nextQuestionNumber(text);
-  const line = `- [ ] Q${n} (${slug}): ${q(question)}`;
+  const line = `- [ ] Q${n} (${slug}): ${q(question)}${assumed ? ` — 지금은 「${q(assumed)}」, 예 = 그대로` : ''}`;
   fs.writeFileSync(p, text.includes('## 정해 주세요') ? text.replace('## 정해 주세요\n', `## 정해 주세요\n${line}\n`) : text + `\n## 정해 주세요\n${line}\n`);
-  if (u) { if (flags.hold) u.holds = [...(u.holds || []), n]; else u.questions.push(n); saveUnit(c.main, c.team, u); }
+  if (u) { if (flags.hold) u.holds = [...(u.holds || []), n]; else u.questions.push(n); if (assumed) u.assumed = [...(u.assumed || []), { q: n, text: assumed }]; saveUnit(c.main, c.team, u); }
   for (const s of forSlugs) {
     const needs = [...new Set([...items.find((i) => i.slug === s).needs, `Q${n}`])];
     bl = setNeeds(bl, s, needs); syncUnitNeeds(c, s, needs);
   }
   if (forSlugs.length) fs.writeFileSync(backlogPath(c), bl);
-  out(`Q${n} queued — ${forSlugs.length ? `needs에 연결: ${forSlugs.join(',')} (답이 올 때까지 WAIT)` : slug === 'intake' ? `needs: Q${n}으로 기대는 unit은 답이 올 때까지 WAIT` : flags.hold ? `${slug}은 답이 올 때까지 세워 둔다(다른 unit은 seed가 연다) — 답이 와도 re-spec 없음, 답의 길은 그 FAIL의 안내` : `${slug}은 답이 올 때까지 이 질문 밖에서만 진행`}`);
+  out(`Q${n} queued — ${forSlugs.length ? `needs에 연결: ${forSlugs.join(',')} (답이 올 때까지 WAIT)` : slug === 'intake' ? `needs: Q${n}으로 기대는 unit은 답이 올 때까지 WAIT` : flags.hold ? `${slug}은 답이 올 때까지 세워 둔다(다른 unit은 seed가 연다) — 답이 와도 re-spec 없음, 답의 길은 그 FAIL의 안내` : assumed ? `${slug}은 답이 올 때까지 이 질문 밖에서만 진행 — 「예」면 가정 그대로(RESPEC 없음), 다른 답이면 spec 재spawn` : `${slug}은 답이 올 때까지 이 질문 밖에서만 진행`}`);
 }
 // seed된 unit의 needs 사본도 맞춘다 — 팩의 결정 스코프(scopedDecisions)가 unit.needs를 읽는다
 function syncUnitNeeds(c, slug, needs) {
@@ -303,6 +313,8 @@ function decide(c, n, answer) {
   const units = listUnits(c.main, c.team);
   for (const slug of respecTargets({ units, ledger: readLedger(c.main, c.team), n: Number(n) })) {
     const u = units.find((x) => x.slug === slug);
+    const kept = keepsAssumption(u, Number(n), answer);
+    if (kept) { appendLedger(c.main, c.team, { kind: 'kept', slug, q: Number(n), assumed: kept }); out(`KEPT ${slug} — Q${n} 「예」는 가정 그대로(${kept}): spec 재spawn 없음, build·attack·ship은 그대로 열려 있다`); continue; }
     u.respec = [...(u.respec || []), { q: Number(n), at: new Date().toISOString() }]; saveUnit(c.main, c.team, u);
     appendLedger(c.main, c.team, { kind: 'respec', slug, q: Number(n) });
     out(`RESPEC ${slug} — Q${n}의 답이 진행 중에 왔다: spec이 답을 red 수용 테스트로 박는다 → node .garagiste/scripts/brief.mjs spec ${slug} (build·attack·ship은 그 뒤에 열린다)`);
@@ -472,7 +484,7 @@ function spawned(c, slug, pack, flags) {
 const BOOL_FLAGS = new Set(['forget', 'replace', 'hold']);
 // 사고 49(홀드아웃 — Go CLI): 원문·질문은 무엇으로든 시작한다 — `--min-size 1M처럼…`이 플래그로 먹혀 원문이 「M1」, 마일스톤이 M?가 됐다.
 // 명령마다 아는 플래그만 플래그, 한 낱말 플래그 꼴(--milestne)은 오타라 FAIL로(원문은 문장이다), 나머지는 원문.
-export const FLAGS = { add: ['milestone', 'needs', 'accept', 'kind', 'replace'], new: ['milestone', 'needs', 'accept', 'kind', 'from'], ask: ['for', 'hold'], drop: ['forget'], spawned: ['tokens', 'minutes', 'model', 'note'] };
+export const FLAGS = { add: ['milestone', 'needs', 'accept', 'kind', 'replace'], new: ['milestone', 'needs', 'accept', 'kind', 'from'], ask: ['for', 'hold', 'assumed'], drop: ['forget'], spawned: ['tokens', 'minutes', 'model', 'note'] };
 export function parseArgs(raw, cmd) {
   const flags = {}; const pos = []; const unknown = [];
   const known = FLAGS[cmd] || [];
@@ -519,5 +531,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();
