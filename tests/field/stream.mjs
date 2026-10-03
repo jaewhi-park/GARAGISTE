@@ -27,11 +27,14 @@ export function trigger(item, L, sent, since = '') {
 
 // 말 고르기 — text(고정) · texts{slug: 말}(그 줄의 slug로 · 세션을 띄울 때 BACKLOG에 없던 slug — 낮에 생긴 unit — 는 texts['*new'] ·
 // 없으면 text — 다 없으면 null: HOLD로 대리가 손으로) · choices[{slug, text}](아직 시작하지 않은 unit의 첫 것 — unit 파일이 없거나 dropped)
+// 방향전환의 대상(5판) — choices에서 고른 slug는 말과 함께 target으로 기록된다: 객체(그 slug가 빠진 scope 줄 · 그 slug의 drop)의 기준
+export function choice(item, units = []) {
+  if (!item.choices) return null;
+  const started = new Set(units.filter((u) => u.state !== 'dropped').map((u) => u.slug));
+  return item.choices.find((c) => !started.has(c.slug)) || null;
+}
 export function pick(item, line, units = [], known = null) {
-  if (item.choices) {
-    const started = new Set(units.filter((u) => u.state !== 'dropped').map((u) => u.slug));
-    return item.choices.find((c) => !started.has(c.slug))?.text ?? null;
-  }
+  if (item.choices) return choice(item, units)?.text ?? null;
   if (item.texts) return item.texts[line?.slug] ?? (known && line?.slug && !known.includes(line.slug) ? item.texts['*new'] : undefined) ?? item.text ?? null;
   return item.text ?? null;
 }
@@ -43,19 +46,26 @@ export function due(plan, L, sent, units = [], since = '', known = null) {
     if (sent[item.id]) continue;
     const line = trigger(item, L, sent, since);
     if (!line) continue;
-    out.push({ item, line, text: pick(item, line, units, known) });
+    out.push({ item, line, text: pick(item, line, units, known), target: choice(item, units)?.slug });
   }
   return out;
 }
 
-// 그 말의 객체 원장 줄 — object: { kind: [...], slug?(정규식), pack?, slugOf?(id), fresh?(넣을 때 BACKLOG에 없던 slug) }
+// 그 말의 객체 원장 줄 — object: { kind: [...], slug?(정규식), pack?, slugOf?(id), fresh?(넣을 때 BACKLOG에 없던 slug),
+//   target?(true — 말의 대상 slug(choices로 고른 것 · say --target)로 가른다: scope 줄이면 그 slug가 요청·선행에서 빠진 줄, 그 밖(drop…)은 slug 일치 — 5판 방향전환) }
 export function objectLine(msg, L, msgs) {
   const o = msg.object;
   if (!o) return null;
   const sl = re(o.slug);
   const of = o.slugOf ? msgs.find((m) => m.id === o.slugOf)?.line?.slug : null;
+  const tgt = (e) => {
+    if (!o.target) return true;
+    if (!msg.target) return false; // 대상을 모르면 객체를 고를 수 없다 — 손 입력은 say --target
+    if (e.kind === 'scope') return ![...(e.requested || []), ...(e.required || [])].includes(msg.target);
+    return e.slug === msg.target;
+  };
   return L.find((e) => e.ts > msg.ts && o.kind.includes(e.kind) && (!sl || sl.test(e.slug || '')) && (!o.pack || e.pack === o.pack)
-    && (!o.slugOf || e.slug === of) && (!o.fresh || !(msg.backlog || []).includes(e.slug))) || null;
+    && (!o.slugOf || e.slug === of) && (!o.fresh || !(msg.backlog || []).includes(e.slug)) && tgt(e)) || null;
 }
 
 // 스트림의 도구 호출 — assistant 이벤트의 tool_use 블록(받은 시각 t)
@@ -72,7 +82,7 @@ export function compile(msgs, L, events) {
     const cr = re(m.call);
     const first = cr ? calls.find((c) => c.t > m.ts && cr.test(c.cmd)) || null : null;
     return {
-      id: m.id, ts: m.ts, obj, minutes: obj ? mins(m.ts, obj.ts) : null,
+      id: m.id, ts: m.ts, target: m.target, obj, minutes: obj ? mins(m.ts, obj.ts) : null,
       calls: obj ? calls.filter((c) => c.t > m.ts && c.t <= obj.ts).length : null,
       first, firstCalls: first ? calls.filter((c) => c.t > m.ts && c.t <= first.t).length : null,
     };
@@ -145,15 +155,15 @@ function run(dir, tag, planPath) {
         if (m.end) { open = false; child.stdin.end(); console.log('CLOSED 입력을 닫았다 — 지금 턴이 끝나면 나간다'); continue; }
         const item = plan.find((p) => p.id === m.id);
         const line = sent[m.id]?.held ? sent[m.id].line : undefined; // HOLD된 말을 손으로 넣으면 그 시점의 줄(slugOf가 읽는다)을 잇는다
-        send(m.id || 'say', m.text, item ? { line, object: item.object, call: item.call, backlog: backlogSlugs(dir), manual: true } : {});
+        send(m.id || 'say', m.text, item ? { line, object: item.object, call: item.call, backlog: backlogSlugs(dir), manual: true, target: m.target } : {});
       }
     }
     const L = ledgerOf(dir);
     for (const e of L.slice(ledN)) if (e.kind === 'ship') console.log(`SHIP ${e.slug} ${e.ts}`);
     ledN = L.length;
     for (const d of due(plan, L, sent, unitsOf(dir), since, known)) {
-      if (d.text === null) { if (!sent[d.item.id]?.held) { sent[d.item.id] = { held: true, line: d.line }; console.log(`HOLD ${d.item.id} ${d.line.slug ?? ''} — plan에 그 slug의 말이 없다: say --id ${d.item.id} "<말>"`); } continue; }
-      send(d.item.id, d.text, { line: d.line, object: d.item.object, call: d.item.call, backlog: backlogSlugs(dir) });
+      if (d.text === null) { if (!sent[d.item.id]?.held) { sent[d.item.id] = { held: true, line: d.line }; console.log(`HOLD ${d.item.id} ${d.line.slug ?? ''} — plan에 그 slug의 말이 없다: say --id ${d.item.id} "<말>"${d.item.choices ? ' --target <빼는 slug>' : ''}`); } continue; }
+      send(d.item.id, d.text, { line: d.line, object: d.item.object, call: d.item.call, backlog: backlogSlugs(dir), target: d.target });
     }
   };
   const timer = setInterval(tick, 1000);
@@ -166,7 +176,7 @@ function report(dir, tag) {
   const o = [`## ${tag} — 넣은 말 ${msgs.length} · 도구 호출 ${toolCalls(events).length} · 턴 끝 ${events.filter((x) => x.e?.type === 'result').length}`, '',
     '| 말 | 넣은 시각 | 객체 원장 줄 | 도구 호출 | 분 | 첫 명령(참고) |', '|---|---|---|---|---|---|'];
   for (const c of compile(msgs, L, events)) {
-    const obj = c.obj ? `${c.obj.kind} ${c.obj.pack ?? ''} ${c.obj.slug ?? ''} ${c.obj.ts}`.replace(/\s+/g, ' ') : '없음';
+    const obj = c.obj ? `${c.obj.kind} ${c.obj.pack ?? ''} ${c.obj.slug ?? (c.obj.kind === 'scope' ? `(${c.target} 빠짐)` : '')} ${c.obj.ts}`.replace(/\s+/g, ' ') : `없음${c.target ? ` — 대상 ${c.target}` : ''}`;
     o.push(`| ${c.id} | ${c.ts} | ${obj} | ${c.calls ?? '—'} | ${c.minutes === null ? '—' : c.minutes.toFixed(1)} | ${c.first ? `${c.firstCalls}번째 \`${one(c.first.cmd, 80)}\`` : '—'} |`);
   }
   o.push('', '무관 unit(넣을 때 진행 중 → 말 뒤 첫 원장 줄):');
@@ -178,11 +188,11 @@ function main() {
   const [cmd, dir, tag, ...rest] = process.argv.slice(2);
   const opt = (k) => { const i = rest.indexOf(k); return i < 0 ? undefined : rest[i + 1]; };
   if (!['run', 'say', 'end', 'report'].includes(cmd) || !dir || !tag || !fs.existsSync(dir)) {
-    console.log('사용법: node tests/field/stream.mjs run|say|end|report <프로젝트 폴더> <tag> [--plan <plan.json>] ["<말>" --id <id>]'); process.exit(1);
+    console.log('사용법: node tests/field/stream.mjs run|say|end|report <프로젝트 폴더> <tag> [--plan <plan.json>] ["<말>" --id <id> [--target <slug>]]'); process.exit(1);
   }
   const F = files(dir, tag);
   if (cmd === 'run') return run(path.resolve(dir), tag, opt('--plan'));
-  if (cmd === 'say') { const text = rest.find((x, i) => !x.startsWith('--') && rest[i - 1] !== '--id'); if (!text) { console.log('FAIL say 말이 없다'); process.exit(1); } fs.appendFileSync(F.in, JSON.stringify({ id: opt('--id'), text }) + '\n'); return console.log(`QUEUED ${opt('--id') || 'say'} — ${one(text)}`); }
+  if (cmd === 'say') { const text = rest.find((x, i) => !x.startsWith('--') && !['--id', '--target'].includes(rest[i - 1])); if (!text) { console.log('FAIL say 말이 없다'); process.exit(1); } fs.appendFileSync(F.in, JSON.stringify({ id: opt('--id'), text, target: opt('--target') }) + '\n'); return console.log(`QUEUED ${opt('--id') || 'say'}${opt('--target') ? ` → ${opt('--target')}` : ''} — ${one(text)}`); }
   if (cmd === 'end') { fs.appendFileSync(F.in, JSON.stringify({ end: true }) + '\n'); return console.log('QUEUED end'); }
   return report(path.resolve(dir), tag);
 }

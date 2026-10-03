@@ -1,5 +1,7 @@
 // 필드 도구: 하루 표(tests/field/day.mjs)가 L2-day-conductor 「저녁」의 정의대로 세는가 — 합성 원장으로.
 // Q6 스트림 세션(tests/field/stream.mjs)이 등록문(L2-TRIAL-3 4일)의 원장 시점에 네 말을 넣고 컴파일을 세는가.
+// 5판(L2-TRIAL-5): day.mjs의 5판 칸(미검수 사람 셈 · fail/guard · kept · 이음새 공격·보고) · stream의 방향전환 대상 · 시계 검사 도구(clock.mjs)가 자식 node의 시계·시간대를 옮기고 full을 한 줄씩 내는가.
+// CEO-분 기계 셈(L2-TRIAL-5 「CEO-분」): 출처 셋(턴 기록 · 스트림 · 전사)에서 말과 턴 끝을 읽어 창의 벽시계 · 대기 · 카드 시간(try → tried) · 원장만의 하한을 내는가.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -7,8 +9,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { answerWaits, bounds, dayTable, render, stopsBySlug } from './field/day.mjs';
-import { bystanders, childEnv, compile, due, pick } from './field/stream.mjs';
+import { answerWaits, bounds, ceoMinutes, ceoSources, cwdSlug, dayTable, parseTranscript, render, stopsBySlug } from './field/day.mjs';
+import { bystanders, childEnv, choice, compile, due, objectLine, pick } from './field/stream.mjs';
+import { PRELOAD, childEnv as clockEnv, configs } from './field/clock.mjs';
 
 const T = (hms, d = '2026-10-02') => `${d}T${hms.length === 5 ? `${hms}:00` : hms}.000Z`;
 const D2 = '2026-10-03';
@@ -62,7 +65,7 @@ test('day 1일차 표 머리: 무인 분 · 낮 경과(세 번째 ship) · 낮 �
   assert.match(out, /- 낮 접점 1\(목표 0\):\n {2}- BRIEF `## 2026-10-02 10:30`/);
   // 절 시각은 분 단위 — 아침 창 끝(10:01:00)과 같은 분인 절은 낮인지 가를 수 없어 세지 않고 따로 보인다(홀드아웃 3일차 08:25 절)
   assert.match(out, /경계 분[^\n]*BRIEF `## 2026-10-02 10:01`/);
-  assert.match(out, /낮의 마지막 원장 줄 2026-10-02T10:40:00\.000Z \(ship edit\) · 그때 미검수 3\/3 · 무인 출하 1\/5/); // BRIEF 10:30이 접점이라 무인 출하는 edit 하나
+  assert.match(out, /낮의 마지막 원장 줄 2026-10-02T10:40:00\.000Z \(ship edit\) · 그때 미검수 2\/3\(사람 센서 — 안 써본 출하 3, 기계 증명 1은 세지 않는다\) · 무인 출하 1\/5/); // boot는 scaffold라 세지 않는다(5판 — state.mjs humanNeeded와 같은 셈) · BRIEF 10:30이 접점이라 무인 출하는 edit 하나
   assert.match(out, /- 카드: 3 · ok 2 · fail 1/);
   assert.match(out, /- 팀이 정한 것 1:\n {2}- edit: 빈 목록이면 안내 문구/);
   assert.match(out, /DAY f · 무인 59\.0분 · 낮 접점 1 · 낮 ship 3 · 연장 0 · 미출하 1 · 토큰 195K · 카드 ok 2\/fail 1/);
@@ -147,7 +150,7 @@ const Q6 = [
   { id: 'bug', when: { kind: 'ship', nth: 1 }, text: '순위표에서 … → …, 원문은 …', object: { kind: ['unit', 'scope_fix'], slug: '-fix$' }, call: 'work\\.mjs (new|add) \\S+-fix' },
   { id: 'add', when: { kind: 'ship', nth: 2 }, text: '팀 화면에 그 팀의 최근 5경기 결과(날짜·상대·점수)를 보여 줘.', object: { kind: ['unit'], fresh: true }, call: 'work\\.mjs (add|new) ' },
   { id: 'modify', when: { kind: 'pack', pack: 'build', after: 'add', exclude: '-fix$' }, texts: { standings: '이기면 2점으로 바꾸자', 'team-register': '팀 이름은 20자까지' }, object: { kind: ['pack'], pack: 'spec', slugOf: 'modify' } },
-  { id: 'pivot', when: { kind: 'pack', pack: 'spec', after: 'modify', slugOf: 'modify' }, choices: [{ slug: 'csv-export', text: 'CSV 내려받기는 이번엔 빼자' }, { slug: 'match-move', text: '날짜 옮기기는 이번엔 빼자' }], object: { kind: ['drop'] } },
+  { id: 'pivot', when: { kind: 'pack', pack: 'spec', after: 'modify', slugOf: 'modify' }, choices: [{ slug: 'csv-export', text: 'CSV 내려받기는 이번엔 빼자' }, { slug: 'match-move', text: '날짜 옮기기는 이번엔 빼자' }], object: { kind: ['scope', 'drop'], target: true } },
 ];
 const Lq = [
   e(T('09:00'), 'ship', { slug: 'old' }), // 세션 전(since 앞) — 세지 않는다
@@ -162,7 +165,7 @@ const play = (L, units = []) => {
   const sent = {}; const msgs = [];
   for (const x of L) {
     for (const d of due(Q6, L.filter((y) => y.ts <= x.ts), sent, units, T('09:30'))) {
-      const m = { ts: d.line.ts.replace('.000Z', '.500Z'), id: d.item.id, text: d.text, line: d.line, object: d.item.object, call: d.item.call, backlog: ['a', 'b', 'standings', 'csv-export'] };
+      const m = { ts: d.line.ts.replace('.000Z', '.500Z'), id: d.item.id, text: d.text, line: d.line, object: d.item.object, call: d.item.call, backlog: ['a', 'b', 'standings', 'csv-export'], target: d.target };
       sent[m.id] = m; msgs.push(m);
     }
   }
@@ -208,4 +211,184 @@ test('stream 자식 환경: 부모 세션의 CLAUDE* 변수는 걷고 인증에 
   const env = childEnv({ CLAUDECODE: '1', CLAUDE_CODE_SESSION_ID: 'p', CLAUDE_CODE_ACCOUNT_UUID: 'u', CLAUDE_SESSION_INGRESS_TOKEN_FILE: '/t', PATH: '/bin' });
   assert.deepEqual(Object.keys(env).filter((k) => k.startsWith('CLAUDE')).sort(), ['CLAUDE_CODE_ACCOUNT_UUID', 'CLAUDE_SESSION_INGRESS_TOKEN_FILE']);
   assert.equal(env.PATH, '/bin'); assert.equal(env.GIT_AUTHOR_NAME, 'ceo');
+});
+
+// 5판(L2-TRIAL-5) — 7건 뒤의 정본을 재는 칸
+test('day 5판 칸: 미검수는 사람 센서 unit만(공격 선발견 0 · @sensor human — scaffold·system은 세지 않는다) · 원장 fail/guard 줄과 되풀이 · decide/kept/RESPEC · 이음새 공격·출하 보고', () => {
+  const extra = [
+    e(T('10:21'), 'attack', { slug: 'add', red: 2, total: 2, files: ['tests/adversary/add-1.test.mjs'] }), // 선발견 2 — 기계 증명
+    e(T('10:38'), 'attack', { slug: 'edit', red: 0, total: 1, files: [] }), // 선발견 0 — 사람 센서
+    e(T('10:41'), 'fail', { script: 'ship.mjs', line: 'FAIL ship edit — 원장에 이 tree의 quick PASS가 없다' }),
+    e(T('10:42'), 'fail', { script: 'ship.mjs', line: 'FAIL ship edit — 원장에 이 tree의 quick PASS가 없다' }),
+    e(T('10:43'), 'guard', { tool: 'Bash', target: 'docs/STATUS.md', reason: 'conductor는 쓰지 않는다' }),
+    e(T('10:44'), 'unit', { slug: 'system-1', state: 'attack' }), e(T('10:44'), 'system', { slug: 'system-1', units: ['add', 'edit'] }),
+    e(T('10:45'), 'attack', { slug: 'system-1', red: 1, total: 1, files: ['tests/adversary/system-1-1.test.mjs'] }),
+    e(T('10:47'), 'ship', { slug: 'system-1' }), e(T('10:48'), 'report', { path: 'docs/REPORT.md', order: ['add', 'edit'] }),
+    e(T('11:03:02'), 'kept', { slug: 'list', q: 3, assumed: 'todo.json 한 파일' }),
+  ];
+  const L5 = [...L.filter((x) => x.ts < T('09:00', D2)), ...extra].sort((a, b) => a.ts.localeCompare(b.ts));
+  const units5 = [...units, { slug: 'system-1', kind: 'system' }];
+  const t = dayTable({ L: L5, units: units5, ledgerMd, brief, until: T('09:00', D2), budgets });
+  const out = render(t, { name: 'f' });
+  // 멈춘 때(낮의 마지막 줄 — 출하 보고) 안 써본 출하 넷(boot·add·edit·system-1) 중 사람 센서가 필요한 것은 edit 하나
+  assert.match(out, /낮의 마지막 원장 줄 2026-10-02T10:48:00\.000Z \(report\) · 그때 미검수 1\/3\(사람 센서 — 안 써본 출하 4, 기계 증명 3은 세지 않는다\) · 무인 출하/);
+  assert.match(out, /- 원장 FAIL 줄 2 · 가드 거부 1 · 되풀이\(같은 줄 2회 이상\) 1: ship\.mjs ×2 — 라운드 전체\(저녁 창 포함\)/);
+  assert.match(out, /- 결정: decide 1 · 「예」 가정 그대로\(kept\) 1 · RESPEC 1/);
+  assert.match(out, /- 범위 끝: 이음새 공격 system-1\(unit 2\) 발견 1 → ship · 출하 보고 docs\/REPORT\.md 2026-10-02T10:48:00\.000Z/);
+  assert.match(out, /\| 무인 \| system-1 \| system \| 1 \| 3\.0 \|/);
+  assert.match(out, /^DAY f · .* · FAIL줄 2 · 가드 1 · kept 1$/m);
+  // 옛 규칙(budgets.unseen_machine_exempt: false)이면 전부 센다
+  assert.equal(dayTable({ L: L5, units: units5, ledgerMd, brief, until: T('09:00', D2), budgets: { ...budgets, unseen_machine_exempt: false } }).unseen, 4);
+});
+
+test('stream 방향전환 객체(5판): choices로 고른 slug가 말과 함께 target으로 남고, 객체는 그 slug가 요청·선행에서 빠진 scope 줄 또는 그 slug의 drop — 그 slug가 아직 든 scope 줄은 객체가 아니다', () => {
+  const msgs = play(Lq);
+  const pivot = msgs.find((m) => m.id === 'pivot');
+  assert.equal(pivot.target, 'csv-export');
+  assert.deepEqual(choice(Q6[3], [{ slug: 'csv-export', state: 'spec' }]), { slug: 'match-move', text: '날짜 옮기기는 이번엔 빼자' });
+  const base = Lq.filter((x) => x.kind !== 'drop');
+  assert.equal(objectLine(pivot, [...base, e(T('10:36'), 'scope', { requested: ['a', 'b', 'standings', 'csv-export'], required: [] })], msgs), null);
+  assert.equal(objectLine(pivot, [...base, e(T('10:36'), 'scope', { requested: ['a', 'b', 'standings'], required: [] })], msgs)?.kind, 'scope');
+  assert.equal(objectLine(pivot, [...base, e(T('10:36'), 'drop', { slug: 'match-move' })], msgs), null); // 다른 slug의 drop은 아니다
+  assert.equal(objectLine({ ...pivot, target: undefined }, Lq, msgs), null); // --target 없는 손 입력은 객체를 못 찾는다(HOLD 안내가 --target을 요구한다)
+});
+
+test('clock 설정 넷: C1 UTC+14 · C2 UTC−11 오늘 · C3 서울 +40일 · C4 서울 그해 12월 31일 23:59:50(+09:00) — 오프셋은 지금 기준', () => {
+  const now = new Date('2026-10-03T12:00:00Z');
+  const c = Object.fromEntries(configs(now).map((x) => [x.id, x]));
+  assert.deepEqual([c.C1.tz, c.C1.offsetMs, c.C2.tz, c.C2.offsetMs, c.C3.tz, c.C3.offsetMs], ['Pacific/Kiritimati', 0, 'Pacific/Pago_Pago', 0, 'Asia/Seoul', 40 * 86400000]);
+  assert.equal(new Date(now.getTime() + c.C4.offsetMs).toISOString(), '2026-12-31T14:59:50.000Z');
+  assert.equal(configs(new Date('2026-12-31T15:30:00Z')).find((x) => x.id === 'C4').label, '2027-12-31T23:59:50+09:00'); // 서울은 이미 1월 1일
+});
+
+test('clock preload: NODE_OPTIONS --require로 자식 node의 Date.now·new Date()·Date()가 오프셋만큼 옮겨지고 인자가 있는 Date·parse·instanceof·하위 클래스는 그대로 · TZ도 닿는다', () => {
+  const env = clockEnv({ PATH: process.env.PATH, NODE_OPTIONS: '--no-warnings' }, { id: 'T', tz: 'Pacific/Kiritimati', offsetMs: 40 * 86400000 });
+  assert.equal(env.NODE_OPTIONS, `--no-warnings --require "${PRELOAD}"`);
+  const code = 'console.log(JSON.stringify({ now: Date.now(), d: new Date().getTime(), sub: new (class D extends Date {})().getTime(), fixed: new Date(0).toISOString(), p: Date.parse("2026-01-01T00:00:00Z"), inst: new Date() instanceof Date, str: typeof Date(), tz: new Date(2026, 0, 1).getTimezoneOffset(), id: process.env.GARAGISTE_CLOCK_ID }))';
+  const r = spawnSync(process.execPath, ['-e', code], { encoding: 'utf8', env });
+  assert.equal(r.status, 0, r.stderr);
+  const o = JSON.parse(r.stdout); const real = Date.now(); const near = (x) => Math.abs(x - 40 * 86400000 - real) < 60000;
+  assert.ok(near(o.now) && near(o.d) && near(o.sub), JSON.stringify(o));
+  assert.deepEqual([o.fixed, o.p, o.inst, o.str, o.id], ['1970-01-01T00:00:00.000Z', Date.UTC(2026, 0, 1), true, 'string', 'T']);
+  if (process.platform !== 'win32') assert.equal(o.tz, -840);
+});
+
+test('clock 실행: 프로젝트의 full을 설정마다 그 시계로 돌려 한 줄씩 — 자식이 본 시각·시간대가 남고, 빨간 설정은 FAIL과 로그 · --only', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-clock-'));
+  const logs = ['C1', 'C2', 'C3', 'C4'].map((id) => `${dir}-clock-${id}.log`);
+  try {
+    fs.mkdirSync(path.join(dir, '.garagiste'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'seen.mjs'), "import fs from 'node:fs';\nfs.writeFileSync(`seen-${process.env.GARAGISTE_CLOCK_ID}.json`, JSON.stringify({ now: Date.now(), tz: new Date(2026, 0, 1).getTimezoneOffset() }));\nprocess.exit(process.env.GARAGISTE_CLOCK_ID === 'C2' ? 1 : 0);\n");
+    fs.writeFileSync(path.join(dir, '.garagiste', 'team.json'), JSON.stringify({ commands: { full: 'node seen.mjs' } }));
+    const cli = fileURLToPath(new URL('./field/clock.mjs', import.meta.url));
+    const r = spawnSync(process.execPath, [cli, dir], { encoding: 'utf8' });
+    assert.equal(r.status, 1, r.stdout + r.stderr); // C2가 빨강
+    const lines = r.stdout.trim().split('\n');
+    assert.match(lines[0], /^CLOCK C1 TZ=Pacific\/Kiritimati UTC\+14 · 오늘 exit 0 PASS$/);
+    assert.match(lines[1], /^CLOCK C2 TZ=Pacific\/Pago_Pago UTC-11 · 오늘 exit 1 FAIL — 로그 .*-clock-C2\.log$/);
+    assert.match(lines[2], /^CLOCK C3 TZ=Asia\/Seoul \+40일 exit 0 PASS$/);
+    assert.match(lines[4], /^CLOCK FAIL 1\/4 — C2 /);
+    const seen = (id) => JSON.parse(fs.readFileSync(path.join(dir, `seen-${id}.json`), 'utf8'));
+    const real = Date.now();
+    assert.ok(Math.abs(seen('C1').now - real) < 120000 && Math.abs(seen('C3').now - 40 * 86400000 - real) < 120000);
+    const c4 = new Date(seen('C4').now); assert.deepEqual([c4.getUTCMonth(), c4.getUTCDate()], [11, 31]);
+    if (process.platform !== 'win32') assert.deepEqual([seen('C1').tz, seen('C2').tz, seen('C3').tz], [-840, 660, -540]);
+    assert.match(fs.readFileSync(logs[1], 'utf8'), /^\$ node seen\.mjs\nTZ=Pacific\/Pago_Pago GARAGISTE_CLOCK_OFFSET_MS=0 \(UTC-11 · 오늘\)\nexit 1\n/);
+    const only = spawnSync(process.execPath, [cli, dir, '--only', 'C1'], { encoding: 'utf8' });
+    assert.equal(only.status, 0, only.stdout); assert.match(only.stdout, /CLOCK PASS 1\/1$/m);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); for (const l of logs) fs.rmSync(l, { force: true }); }
+});
+
+// CEO-분 기계 셈 — 출처 셋 · 창 배정 · 벽시계 · 대기 · 카드 시간 · 원장 하한
+const L6 = [...L.filter((x) => x.ts < T('09:00', D2)), e(T('10:59:30'), 'try', { slug: 'boot' }), e(T('11:00:30'), 'try', { slug: 'add' }), e(T('11:01:30'), 'try', { slug: 'edit' })].sort((a, b) => a.ts.localeCompare(b.ts));
+const SRC = {
+  sources: ['턴 기록', '스트림'], slug: '-tmp-f',
+  msgs: [{ ts: T('09:58'), text: '오늘은 L2 무인 하루다 …' }, { ts: T('10:00:30'), text: '범위는 M1 전부 — 가' }, { ts: T('10:59'), text: '저녁' }, { ts: T('11:00:20'), text: 'boot ok' }, { ts: T('11:01:20'), text: 'add fail — 빈 제목이 저장된다' }, { ts: T('11:02:20'), text: 'edit ok' }, { ts: T('11:03:20'), text: 'Q2 아니오' }],
+  ends: [T('09:59'), T('10:01:30'), T('10:59:40'), T('11:00:50'), T('11:01:50'), T('11:02:50'), T('11:04')],
+};
+test('CEO-분 창 배정과 셈: 첫 ship 전의 말 = 아침 창(첫 말 → 「가」) · 「저녁」부터 = 저녁 창(→ 마지막 말의 턴 끝) · 대기 = 말 → 그 턴의 끝 · 카드 시간 = 원장 try → tried · unit당 · 원장만의 하한', () => {
+  const t = dayTable({ L: L6, units, ledgerMd, brief, until: T('09:00', D2), budgets });
+  assert.equal(t.b.eveningStart, T('10:59:30'), '저녁 창 시작 = 첫 try(사본 열기) — tried보다 앞');
+  const c = ceoMinutes({ L: L6, t, src: SRC, until: T('09:00', D2) });
+  assert.deepEqual([c.morning.n, c.morning.minutes, c.morning.wait, c.morning.from, c.morning.to], [2, 2.5, 2, T('09:58'), T('10:00:30')]);
+  assert.deepEqual([c.evening.n, c.evening.minutes, c.evening.from, c.evening.to, c.evening.cards, c.evening.decisions], [5, 5, T('10:59'), T('11:04'), 3, 1]);
+  assert.equal(c.evening.wait.toFixed(2), '2.83'); // 0.67 + 0.5 + 0.5 + 0.5 + 0.67
+  assert.deepEqual([c.day.n, c.cards.minutes, c.cards.n, c.cards.of, c.ledger.morning, c.ledger.evening, c.perUnit], [0, 1.5, 3, 3, 1, 3.5, 2.5]);
+  const out = render(t, { name: 'f', ceo: c });
+  assert.match(out, /- CEO-분\(기계 셈 — 출처: 턴 기록·스트림\): 아침 창 2\.5분\(말 2 · 09:58:00 → 10:00:30 · conductor 대기 2\.0\) · 저녁 창 5\.0분\(말 5 · 10:59:00 → 11:04:00 · 카드 3 · 결정 1 · 대기 2\.8\) · 낮의 말 0 · 카드 시간 합 1\.5분\(try → tried 3\/3\) · unit당 2\.5분\(낮 ship 3\)/);
+  assert.match(out, /- CEO-분\(원장만 — 결정 구간, 하한\): 아침 1\.0분\(첫 접점 줄 → 아침 창 끝\) · 저녁 3\.5분\(저녁 창 시작 → 마지막 접점 줄\) · 카드 시간 합 1\.5분/);
+  assert.match(out, /^DAY f · .* · CEO-분 2\.5\/5\.0$/m);
+  // 출처가 없으면 하한만 — 「(CEO 기입)」은 없다
+  const none = ceoMinutes({ L: L6, t, src: { sources: [], msgs: [], ends: [], slug: '-tmp-f' }, until: T('09:00', D2) });
+  assert.deepEqual([none.morning.minutes, none.evening.minutes, none.perUnit, none.ledger.morning, none.ledger.evening, none.cards.minutes], [null, null, null, 1, 3.5, 1.5]);
+  const out2 = render(t, { name: 'f', ceo: none });
+  assert.match(out2, /- CEO-분\(기계 셈\): 출처 없음 — .*~\/\.claude\/projects\/-tmp-f\/\*\.jsonl/); assert.doesNotMatch(out2, /CEO 기입/);
+  // 「저녁」 말이 없으면 첫 try·tried 전의 마지막 말이 저녁 창의 시작
+  const quiet = ceoMinutes({ L: L6, t, src: { ...SRC, msgs: SRC.msgs.map((m) => (m.text === '저녁' ? { ...m, text: '돌아왔다' } : m)) }, until: T('09:00', D2) });
+  assert.equal(quiet.evening.from, T('10:59'));
+  // 2일차(since)엔 그날의 말만 — 전날 말은 세지 않는다
+  const d2 = dayTable({ L, units, ledgerMd, brief, since: T('09:00', D2), budgets });
+  const c2 = ceoMinutes({ L, t: d2, src: { ...SRC, msgs: [...SRC.msgs, { ts: T('09:01', D2), text: '상태 보여줘' }, { ts: T('09:03', D2), text: '가' }], ends: [...SRC.ends, T('09:02', D2), T('09:04', D2)] }, since: T('09:00', D2) });
+  assert.deepEqual([c2.morning.n, c2.morning.minutes, c2.morning.wait, c2.evening.n], [2, 2, 2, 0]);
+});
+
+test('CEO-분 출처 셋: 턴 기록(<폴더>-turn<n>.msg의 mtime = 말 · .json = 턴 끝) · 스트림(.msgs.jsonl · .stream.jsonl의 result) · 전사(~/.claude/projects/<cwd 슬러그>/*.jsonl — cwd가 맞는 user 글만) — 시각순으로 합친다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-ceo-'));
+  const dir = path.join(root, 'bed'); fs.mkdirSync(dir);
+  const home = path.join(root, 'home');
+  try {
+    const at = (p, ts) => { const d = new Date(ts); fs.utimesSync(p, d, d); };
+    fs.writeFileSync(`${dir}-turn1.msg`, '오늘은 L2 무인 하루다\n'); at(`${dir}-turn1.msg`, T('09:58'));
+    fs.writeFileSync(`${dir}-turn1.json`, '{}'); at(`${dir}-turn1.json`, T('09:59'));
+    fs.writeFileSync(`${dir}-turn2.msg`, '범위는 M1 전부 — 가\n'); at(`${dir}-turn2.msg`, T('10:00:30'));
+    fs.writeFileSync(`${dir}-day4.msgs.jsonl`, [{ ts: T('10:59'), id: 'say', text: '저녁' }, { ts: T('11:00:20'), id: 'say', text: 'boot ok' }].map((x) => JSON.stringify(x)).join('\n') + '\n');
+    fs.writeFileSync(`${dir}-day4.stream.jsonl`, [{ t: T('10:59:10'), e: { type: 'assistant' } }, { t: T('10:59:40'), e: { type: 'result', subtype: 'success' } }].map((x) => JSON.stringify(x)).join('\n') + '\n');
+    fs.writeFileSync(`${dir}-day4.in`, ''); // 이웃의 다른 파일은 무시
+    const slug = cwdSlug(path.resolve(dir));
+    fs.mkdirSync(path.join(home, '.claude', 'projects', slug), { recursive: true });
+    fs.writeFileSync(path.join(home, '.claude', 'projects', slug, 's1.jsonl'), [
+      { type: 'queue-operation', timestamp: T('11:01') },
+      { type: 'user', timestamp: T('11:01:20'), cwd: path.resolve(dir), message: { role: 'user', content: 'add fail — 빈 제목' } },
+      { type: 'assistant', timestamp: T('11:01:50'), cwd: path.resolve(dir), message: { role: 'assistant', content: [{ type: 'text', text: 'PASS tried' }] } },
+      { type: 'user', timestamp: T('11:02'), cwd: path.resolve(dir), message: { role: 'user', content: [{ type: 'tool_result', content: 'x' }] } },
+      { type: 'user', timestamp: T('11:02:20'), cwd: path.resolve(dir), message: { role: 'user', content: [{ type: 'text', text: 'edit ok' }] } },
+      { type: 'user', timestamp: T('11:02:30'), cwd: path.resolve(dir), isSidechain: true, message: { role: 'user', content: '곁가지(서브에이전트)' } },
+      { type: 'user', timestamp: T('11:02:40'), cwd: '/somewhere/else', message: { role: 'user', content: '다른 프로젝트' } },
+      { type: 'user', timestamp: T('11:02:50'), cwd: path.resolve(dir), message: { role: 'user', content: '<local-command-caveat>…</local-command-caveat>' } },
+    ].map((x) => JSON.stringify(x)).join('\n') + '\n{깨진 줄\n');
+    const src = ceoSources(dir, { home });
+    assert.deepEqual(src.sources, ['턴 기록', '스트림', '전사']);
+    assert.deepEqual(src.msgs.map((m) => [m.ts, m.text, m.src]), [
+      [T('09:58'), '오늘은 L2 무인 하루다', 'turn'], [T('10:00:30'), '범위는 M1 전부 — 가', 'turn'], [T('10:59'), '저녁', 'stream'], [T('11:00:20'), 'boot ok', 'stream'],
+      [T('11:01:20'), 'add fail — 빈 제목', 'transcript'], [T('11:02:20'), 'edit ok', 'transcript'],
+    ]);
+    assert.deepEqual(src.ends, [T('09:59'), T('10:59:40'), T('11:01:50')]);
+    assert.equal(src.slug, slug);
+    // 전사를 직접 주면 그 파일만 · 홈에 아무것도 없으면 전사 출처 없음
+    assert.deepEqual(ceoSources(dir, { home: path.join(root, 'nohome'), transcript: path.join(home, '.claude', 'projects', slug, 's1.jsonl') }).sources, ['턴 기록', '스트림', '전사']);
+    assert.deepEqual(ceoSources(dir, { home: path.join(root, 'nohome') }).sources, ['턴 기록', '스트림']);
+    // parseTranscript 단독: cwd 없는 줄은 받는다(옛 전사), 빈 글은 아니다
+    const r = parseTranscript([{ type: 'user', timestamp: T('12:00'), message: { content: '  ' } }, { type: 'user', timestamp: T('12:01'), message: { content: '가' } }], path.resolve(dir));
+    assert.deepEqual(r.msgs.map((m) => m.text), ['가']);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test('CEO-분 CLI: 폴더 옆의 턴 기록을 스스로 찾아 표에 낸다 · --transcript', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-ceocli-'));
+  const dir = path.join(root, 'bed');
+  try {
+    fs.mkdirSync(path.join(dir, '.garagiste', 'ledger'), { recursive: true });
+    fs.writeFileSync(path.join(dir, '.garagiste', 'ledger', 'evidence.jsonl'), L6.map((x) => JSON.stringify(x)).join('\n') + '\n');
+    fs.writeFileSync(path.join(dir, '.garagiste', 'team.json'), JSON.stringify({ budgets }));
+    const at = (p, ts) => { const d = new Date(ts); fs.utimesSync(p, d, d); };
+    fs.writeFileSync(`${dir}-turn1.msg`, '오늘은 L2 무인 하루다\n'); at(`${dir}-turn1.msg`, T('09:58'));
+    fs.writeFileSync(`${dir}-turn1.json`, '{}'); at(`${dir}-turn1.json`, T('09:59'));
+    fs.writeFileSync(`${dir}-turn2.msg`, '가\n'); at(`${dir}-turn2.msg`, T('10:00:30'));
+    fs.writeFileSync(path.join(root, 't.jsonl'), [{ type: 'user', timestamp: T('10:59'), cwd: path.resolve(dir), message: { content: '저녁' } }, { type: 'assistant', timestamp: T('11:05'), cwd: path.resolve(dir), message: { content: [{ type: 'text', text: '표' }] } }].map((x) => JSON.stringify(x)).join('\n') + '\n');
+    const cli = fileURLToPath(new URL('./field/day.mjs', import.meta.url));
+    const r = spawnSync(process.execPath, [cli, dir, '--since', T('09:00'), '--until', T('09:00', D2), '--transcript', path.join(root, 't.jsonl')], { encoding: 'utf8', env: { ...process.env, HOME: path.join(root, 'nohome') } });
+    assert.equal(r.status, 0, r.stderr);
+    assert.match(r.stdout, /- CEO-분\(기계 셈 — 출처: 턴 기록·전사\): 아침 창 2\.5분\(말 2 · 09:58:00 → 10:00:30 · conductor 대기 1\.0\) · 저녁 창 6\.0분\(말 1 · 10:59:00 → 11:05:00 · 카드 3 · 결정 1 · 대기 6\.0\)/);
+    assert.match(r.stdout, /DAY bed · .* · CEO-분 2\.5\/6\.0$/m);
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });

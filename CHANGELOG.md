@@ -1,6 +1,6 @@
 # Changelog
 
-Releases are dated; each hook and plugin carries the date as `GARAGISTE_VERSION`, and `session-start.mjs` names it in the injected context. A running project keeps the release it was installed with until its CEO decides to upgrade — the "Breaking for running projects" list of a release is the migration checklist; re-run `install.sh <flavor> -Project <repo>` afterwards.
+v2엔 릴리스 태그도 버전 기록도 아직 없다. 설치본의 정체는 설치한 GARAGISTE 커밋의 `team/` 사본이고, 프로젝트 쪽 기준선은 규칙집 tree — `git rev-parse HEAD:.garagiste`(시험 등록·반영 블록이 이 값으로 대조한다)다. `install.sh <flavor> -Project <repo>`를 다시 돌리면 scripts·packs·훅·agents·pre-commit은 덮고, team.json(편성·commands)·HAZARDS(제품 오버레이)·규칙 파일(CLAUDE.md/AGENTS.md)·settings는 남긴다 — 그 뒤 doctor·selftest가 PASS여야 설치다. 설치본에 버전을 적고 업그레이드를 diff가 보이는 unit으로 하는 것은 백로그 L3 Q11이다. 아래 절은 최근 것부터 — 수리는 사고 번호로, 채용은 CEO의 말로.
 
 ## v2 — 2026-09-29 · 증거 팀 (unreleased)
 
@@ -19,6 +19,29 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - conductor 가드: `.worktrees/` 밖 Edit/Write 거부(GARAGISTE_ADMIN=1 예외). 팩 다섯(intake 추가), -Budget에 intake 모델.
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
+
+### Changed — 2026-10-03 낡은 문장 둘 정정 (정비 채널 리뷰 — 코드에 없는 장치를 말하던 문장)
+- 이 파일의 머리말: v1의 문장이었다 — 「훅·플러그인이 `GARAGISTE_VERSION`을 지니고 session-start가 그 값을 주입한다 · Breaking 목록이 이행 체크리스트」는 v2 코드 어디에도 없다(`docs/changelog/v1.md`에만 Breaking 절이 있다). v2의 사실로 바꿨다: 버전 기록 없음 · 설치본의 정체 = 설치 커밋의 `team/` 사본 · 기준선 = `HEAD:.garagiste` · 재설치가 덮는 것(scripts·packs·훅·agents·pre-commit)과 남기는 것(team.json·HAZARDS·규칙 파일·settings) · 버전 기록은 L3 Q11.
+- 백로그 L2 게이트 「1주간 green 후 결함 0」 → 세 라운드 누적(CEO 「날짜는 측정 단위가 아니다」) — 5판 등록 커밋에서 이미 고쳤다(116396a).
+- 그 밖의 버전·업그레이드·재설치 문장(install.sh·install.ps1의 「재설치의 -Budget이 기존 편성을 지우지 않는다」)은 코드와 맞아 그대로다.
+
+### Added — 2026-10-03 CEO-분 기계 셈 — 「시간은 공짜, 주의는 비싸다」의 주의를 처음 잰다 (L1 1차부터 비어 있던 「(CEO 기입)」 · 정비 채널 제안 → CEO 「진행」)
+- 정의(`docs/measurements/L2-TRIAL-5.md` 「CEO-분」): 창의 벽시계(아침 창 = CEO의 첫 말 → 마지막 말 「가」 · 저녁 창 = 「저녁」 → 마지막 말의 턴 끝(표)) · 말 수 · conductor 대기(말 → 그 턴의 끝) · 낮의 말 · 카드 시간(원장 `try` → 그 slug의 `tried`) · unit당(두 창의 합 ÷ 낮 ship) · 원장만일 때의 하한(결정 구간). 판단 없음 — 「저녁」은 프로토콜의 고정 말. 대리 CEO의 수치는 「절차가 요구하는 최소 주의」, 윈도우 라운드가 사람의 수치.
+- 출처 셋(`tests/field/day.mjs` `ceoSources` — 자동 발견 · `--transcript <파일>`): 턴 기록(`<폴더>-turn<n>.msg/.json`) · 스트림(`<폴더>-<tag>.msgs.jsonl` + `.stream.jsonl`의 result) · claude 세션 전사(`~/.claude/projects/<cwd 슬러그>/*.jsonl` — user 줄의 글이 말, tool_result 줄·곁가지·`<`로 시작하는 하네스 줄은 아니다, assistant 줄이 턴 끝). 없으면 원장 하한만 — 「(CEO 기입)」은 지시서·표에서 지웠다.
+- `work.mjs try`가 원장 `try` 줄(slug·head)을 남긴다 — 카드 시간의 시작점(측정 빈틈 — 규칙집 경로라 HAZARDS 줄 없음). 저녁 창 시작의 정의는 「첫 try 또는 tried」(지시서 「저녁」 2 · day.mjs bounds). 5판 동결에 든 7건 밖의 유일한 변경 — 등록문 머리에 적었다.
+- 백로그 L3 게이트 문장: 「unit당 CEO 분이 L1 대비 비악화」 → 기계 셈 기준, 기준선은 L2 5판의 첫 수치. HANDOFF CEO 대기 결정에서 뺐다. 5판 예측 9(CEO-분 첫 수치의 범위 · 윈도우 출처는 전사).
+- 검사: field(창 배정·벽시계·대기·카드 시간·하한 · 출처 셋과 전사 줄 가르기 · CLI의 자동 발견과 --transcript) · e2e(try 사본 → 원장 try 줄).
+
+### Added — 2026-10-03 홀드아웃 후보 셋 — 다음 범용성 원문은 지금까지 없던 자리에서 (서명 대기 · CEO 「새 홀드아웃 원문 후보」)
+- `tests/field/briefs/candidates/`: `notes.md`(메모 색인 CLI — Rust 표준 라이브러리만: 컴파일 언어·`target/`·cargo 테스트 레이아웃·rename 원자성·오늘 날짜가 처음) · `snap.md`(폴더 스냅샷 백업 — Python 백그라운드 데몬: 프로세스 수명·7일/30일/1년 보관 규칙·잠긴 파일·원자적 쓰기·로그 돌리기가 처음) · `parcel-desk.md`(택배 보관 대장 — Node 기존 코드에 기능 넷: brownfield, L3 Q13 「boot 없이 첫 unit 출하」의 자리 — seed 요건·`setup-seed.sh` 필요는 README에). 홀드아웃 여섯이 전부 소진된 뒤의 첫 후보 — 지금까지의 자리(Node·Python·Go의 CLI·웹, 빈 폴더 시작) 밖에서 골랐다. 브라우저만 쓰는 앱(L4)과 Java·PHP·Ruby는 미룬 이유와 함께 README에.
+- 서명 = CEO가 하나를 `holdout-<이름>.md`로 옮기는 머지(FIELD-BENCH 「홀드아웃」 후보 줄 · HANDOFF). 서명 전까지 측정·수리에 쓰지 않는다 — 원문이 훈련 데이터가 되면 점수가 아니다.
+
+### Added — 2026-10-03 L2 5판 등록 — 7건 뒤의 정본을 처음부터 다시 잰다 (라운드 기준 · 7건마다 예측 · 시계 검사 도구) (CEO 「L2는 처음부터 다시」)
+- `docs/measurements/L2-TRIAL-5.md`(시험 전에 커밋 — 머지가 CEO 서명·동결): 4판 초안의 설계(라운드 단위 · Q6 두 길 · Q7 막힌 세션의 압력 · 시계 검사 · 윈도우 지시)를 이어받고, 3판 Q5 라운드는 옮겨 세지 않는다(정본이 다르다). 7건이 한 묶음으로 들어갔으므로 변화마다 보는 곳·예측·틀리면 뜻하는 것을 따로 둔다 — 채점이 변화를 가른다. 리눅스 Q5 세 라운드(todo 회귀 — 미검수 셈이 바뀌어 라운드가 무인 출하 5 또는 SCOPE DONE에서 멈출 것으로 예측) · Q6 · Q7 · 저녁마다 시계 검사 · 윈도우 Q5 세 라운드(futsal — 소진된 홀드아웃이라 회귀, 윈도우에서만 나는 문제를 본다). 4판 초안은 `docs/measurements/archive/L2-TRIAL-4.md`.
+- 도구(`tests/field/` — 프레임워크가 아니다): `clock.mjs`(+`clock-preload.cjs`) — TZ와 `Date` 오프셋을 NODE_OPTIONS preload로 모든 node 자식에 넣어 프로젝트 full을 시계 넷(UTC+14 · UTC−11 · 서울 +40일 · 서울 12월 31일 23:59:50)으로 돌리고 설정마다 한 줄 · `stream.mjs`가 방향전환의 대상 slug를 말과 함께 기록하고(`say --target`) 객체를 「그 slug가 빠진 scope 줄 또는 그 slug의 drop」으로 센다 · `day.mjs`가 5판 칸을 더 낸다 — 미검수는 사람 센서 unit만(state.mjs humanNeeded와 같은 셈) · 원장 fail/guard 줄과 되풀이 · decide/kept/RESPEC · 이음새 공격·출하 보고.
+- `L2-day-conductor.md` 「5판의 차이」 + 아침·저녁 절의 그 줄(next 한 줄 · 미검수 사람 셈 · 범위 끝 system → report → SCOPE DONE · 반복 FAIL은 「막힌 것」 · KEPT · 기계 증명 카드도 친다 · REPORT를 저녁에 보인다) — 지시서는 그 회의 sha로 읽힌다.
+- 백로그 L2 게이트 문장 「1주간」 → 세 라운드 누적(CEO 「날짜는 측정 단위가 아니다」 — 정의는 등록문) · HANDOFF 시작 절차·스냅샷(CEO 대기 결정에 「CEO-분의 기계 셈」 — 표의 「(CEO 기입)」은 L1 1차부터 한 번도 채워지지 않았다) · FIELD-BENCH 시계 검사 포인터.
+- 검사: `tests/field.test.mjs`(clock 설정 넷 · preload가 자식 node의 시계·시간대를 옮긴다 · 실행 한 줄씩·`--only` · stream target 객체 · day 5판 칸 — 1일차 표의 미검수 기대값도 사람 센서 셈으로).
 
 ### Changed — 2026-10-03 HAZARDS에서 팩에 닿지 않는 7줄을 더 걷어 냈다 (산문 예산 36.9KB → 34.3KB) · 낡은 문서 정정 (CEO 「정리」)
 - 재개 비용(CEO 「이미 완료되거나 필요 없는 문장은 컨텍스트에 올리지 않는다」): CHANGELOG는 최근 절만(102KB → 14KB) — 2026-09-29~10-02의 수리 기록은 `docs/changelog/2026-09-29-to-10-02.md`, v1 절은 `docs/changelog/v1.md` · 끝난 시험 기록 여섯(L1-TRIAL · L1-4-conductor · L2-TRIAL 1·2·3판 · FIELD-TRIAL)은 `docs/measurements/archive/` · 백로그의 L0·L1 완료 기록(상태 표 · P0~P2 · Q1~Q4 · 부록 B)은 `docs/changelog/backlog-L0-L1-2026-09-29.md` · FIELD-BENCH는 규칙(`FIELD-BENCH.md`)과 결과 원장(`FIELD-BENCH-LOG.md`)으로 · HANDOFF는 절 단위 포인터와 「파일을 통째로 읽지 않는다」 · CLAUDE.md에 정비 세션 한 줄(HANDOFF 시작 절차대로 — 자동으로 읽히는 유일한 파일). 재개에 읽는 양 ≈300KB → ≈60KB. 지운 기록은 없다 — 옮겼다.

@@ -518,6 +518,8 @@ test('try 사본(L2 1일차 eoren.sqlite · 필드 벤치 웹 data/memos.json ×
   assert.match(script('work', ['try', 'delete'], repo).out, /^FAIL delete 아직 출하 전/);
   const tr = script('work', ['try', 'save'], repo);
   assert.match(tr.out, /^TRY save → \.worktrees\/try-save \(main [0-9a-f]{7}\)[\s\S]*work\.mjs tried save ok\|fail/, tr.out);
+  const lastLedger = () => JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8').trim().split('\n').at(-1));
+  assert.deepEqual([lastLedger().kind, lastLedger().slug, /^[0-9a-f]{7}$/.test(lastLedger().head)], ['try', 'save', true], '사본 열기는 원장 try 줄 — CEO-분 카드 시간(try → tried)의 시작점(L2-TRIAL-5 「CEO-분」)');
   const copy = path.join(repo, '.worktrees', 'try-save');
   assert.ok(fs.existsSync(path.join(copy, 'package.json')) && fs.existsSync(path.join(copy, 'node_modules', 'dep')), '사본은 main 현재 커밋 + main의 의존성 링크');
   write(copy, 'data/memos.json', '[{"text":"장보기"}]'); // CEO가 카드대로 npm start → 저장
