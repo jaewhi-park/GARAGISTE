@@ -60,7 +60,7 @@ Agents receive one pack file and never talk to each other. Build has never met a
 | script | does |
 |---|---|
 | `next` | the loop's next step, one line: run · spawn · ceo · wait · done — the conductor follows this line only (seed → spec → redproof → build → attack → ship; re-spec, late spike, conflict, one unit at a time) |
-| `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · new · ask (`--assumed`) · decide · default · tried · list · models (one place) · spawned (ledger) |
+| `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · system (seam attack at the end of a scope) · new · ask (`--assumed`) · decide · default · tried · list · models (one place) · spawned (ledger) |
 | `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
 | `redproof` | proves acceptance tests are red on base and green on head |

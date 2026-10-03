@@ -36,7 +36,7 @@ export function render(c) {
   parts.push('## 써볼 것 (≤3)');
   for (const u of shippedUnseen.slice(0, 3)) {
     const tryMd = readText(path.join(c.main, c.team.paths.units_docs, u.slug, 'try.md')).trim();
-    const fallback = u.kind === 'scaffold' ? `  실행: \`${c.team.commands.run || c.team.commands.quick}\`` : '  (try.md 없음)'; // scaffold(boot)엔 try.md가 없다
+    const fallback = u.kind === 'scaffold' ? `  실행: \`${c.team.commands.run || c.team.commands.quick}\`` : u.kind === 'system' ? `  이음새 공격이 고친 흐름: tests/adversary/${u.slug}-* 가 가리키는 대로` : '  (try.md 없음)'; // scaffold(boot)·system(이음새 공격)엔 try.md가 없다
     parts.push(`- **${u.slug}** — "${u.origin}"`, ...(tryMd ? tryMd.split('\n').slice(0, 6).map((l) => `  ${l}`) : [fallback]), `  → \`node .garagiste/scripts/work.mjs try ${u.slug}\`(main을 더럽히지 않는 사본 — 카드는 거기서) → \`node .garagiste/scripts/work.mjs tried ${u.slug} ok|fail "<말>"\``);
   }
   if (!shippedUnseen.length) parts.push('- 없음');

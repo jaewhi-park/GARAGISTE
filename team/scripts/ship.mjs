@@ -50,9 +50,11 @@ export function evaluateShip(x) {
   c.push({ id: 'full', ok: !!full, why: full ? '' : `이 tree(${short(x.tree)})의 verify full PASS 없음 — worktree에서 node .garagiste/scripts/verify.mjs full (마지막 커밋 뒤)` });
   // 사고 57(벤치 070f185 파이썬): scaffold의 redproof 자리는 러너 자신의 red 증명이다 — 인수·공격 자리의 slug 꼴(하이픈) 이름에 깨진 탐침을 두고 test_file이 exit≠0이어야 한다
   const blindRunner = scaffold ? (x.runnerBlind || []) : [];
-  const rpAny = scaffold ? !blindRunner.length : [...x.ledger].reverse().find((e) => e.kind === 'redproof' && e.slug === x.slug && e.base_red && e.head_green === true);
-  const rp = scaffold ? rpAny : (rpAny && rpAny.tree === x.tree ? rpAny : null);
-  c.push({ id: 'redproof', ok: !!rp, why: rp ? '' : scaffold ? `test_file이 인수·공격 자리의 하이픈 이름 파일을 돌리지 않는다 — 깨진 탐침도 exit 0: ${blindRunner.join(' ')} (0건 실행 — 예: 파일 이름을 모듈 이름으로 찾는 discover). slug에는 하이픈이 든다: test_file은 받은 경로의 파일을 그대로 돌려야 한다 → node .garagiste/scripts/brief.mjs boot ${x.slug} 재spawn(팩이 이 목록을 받는다) → ship 다시` : rpAny ? `redproof가 이전 tree의 것 — 마지막 커밋 뒤 다시: node .garagiste/scripts/redproof.mjs ${x.slug}` : `base red · head green 증명 없음 — node .garagiste/scripts/redproof.mjs ${x.slug}` });
+  // system-attack(채용 2026-10-03): 이음새 공격 unit의 red 증명은 「공격이 결함을 찾았다」 — 이 생애에서 한 번이라도 red였던 공격 파일 ≥ 1(found). 발견 0이면 초록 테스트뿐이라 출하물이 아니다(drop).
+  const system = x.unit?.kind === 'system';
+  const rpAny = scaffold ? !blindRunner.length : system ? (x.found || 0) >= 1 : [...x.ledger].reverse().find((e) => e.kind === 'redproof' && e.slug === x.slug && e.base_red && e.head_green === true);
+  const rp = scaffold || system ? rpAny : (rpAny && rpAny.tree === x.tree ? rpAny : null);
+  c.push({ id: 'redproof', ok: !!rp, why: rp ? '' : scaffold ? `test_file이 인수·공격 자리의 하이픈 이름 파일을 돌리지 않는다 — 깨진 탐침도 exit 0: ${blindRunner.join(' ')} (0건 실행 — 예: 파일 이름을 모듈 이름으로 찾는 discover). slug에는 하이픈이 든다: test_file은 받은 경로의 파일을 그대로 돌려야 한다 → node .garagiste/scripts/brief.mjs boot ${x.slug} 재spawn(팩이 이 목록을 받는다) → ship 다시` : system ? `시스템 공격이 결함을 찾지 못했다(red였던 공격 파일 0) — 초록 테스트는 산출물이 아니다: node .garagiste/scripts/work.mjs drop ${x.slug} "system-attack 발견 0" --forget (탐색은 원장 attack 줄에 남는다)` : rpAny ? `redproof가 이전 tree의 것 — 마지막 커밋 뒤 다시: node .garagiste/scripts/redproof.mjs ${x.slug}` : `base red · head green 증명 없음 — node .garagiste/scripts/redproof.mjs ${x.slug}` });
   const atAny = [...x.ledger].reverse().find((e) => e.kind === 'attack' && e.slug === x.slug);
   const at = atAny && atAny.tree === x.tree ? atAny : null;
   const atOk = scaffold || !x.requireAttack || (!!at && at.red === 0 && at.total >= 1);
@@ -195,9 +197,10 @@ function main() {
     if (promoted) git(['commit', '--amend', '-q', '-m', promoted], wt, { GARAGISTE_WIP: '1' });
   }
   const runnerBlind = unit.kind === 'scaffold' && exists ? runnerProbe(c, wt) : [];
+  const found = unit.kind === 'system' ? new Set(ledger.filter((e) => e.kind === 'attack' && e.slug === slug && (e.ts || '') >= (unit.created || '') && e.red > 0).flatMap((e) => e.files || [])).size : 0; // 시스템 공격의 발견
   if (runnerBlind.length) appendLedger(c.main, c.team, { kind: 'runner_blind', slug, files: runnerBlind }); // boot 팩이 이 목록을 받는다
   const conds = evaluateShip({
-    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, runnerBlind,
+    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, runnerBlind, found,
     boundaryHit: !!unit.boundary?.hit || diffHit.hit, boundaryWhy: unit.boundary?.hit ? '원문' : diffHit.reasons.join(', '),
     requireAttack: c.team.require_attack !== false, spikeText: readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`)), measurements: c.team.paths.measurements,
     lastSubject: exists ? git(['log', '-1', '--format=%s'], wt).stdout : '', stops: b.stops, proseKb: proseKb(c.main), proseMax: c.team.budgets.prose_kb_max,
@@ -288,7 +291,8 @@ function main() {
   if (!fs.existsSync(ledgerDoc)) fs.writeFileSync(ledgerDoc, '# LEDGER — 증명 커밋. 한 줄 = 출하 하나 = 기계가 확인한 사실의 목록.\n\n| 날짜 | unit | head | tree | full | redproof | attack 선발견→red/총 | sensor |\n|---|---|---|---|---|---|---|---|\n');
   // Q4 계측: attack 선발견 — CEO의 tried fail(후발견)과 대조하는 열. 정의는 attackCell 하나(사고 23)
   const atCell = unit.kind === 'scaffold' ? '—' : attackCell({ ledger, slug, since: unit.created });
-  row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'} | ${atCell} | ${unit.sensor} |\n`;
+  const rpCol = unit.kind === 'scaffold' ? 'scaffold' : unit.kind === 'system' ? 'system' : 'base_red head_green';
+  row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${rpCol} | ${atCell} | ${unit.sensor} |\n`;
   fs.appendFileSync(ledgerDoc, row);
   if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `));
   fs.writeFileSync(path.join(c.main, c.team.paths.status), render(c).text);
@@ -300,7 +304,7 @@ function main() {
   // 사고 38(필드 벤치 두 곳): main에서 돈 setup·quick의 산출물(package-lock.json · *.egg-info · __pycache__)이 남아 문서 커밋이 게이트(인덱스 ≠ 작업 트리)에 막혔다 —
   // 머지·shipped·ship 줄만 남은 반쪽 출하였고(재ship은 「이미 출하」), 남은 것은 다음 ship을 「CEO가 치운다」로 막았다. 무시할지 커밋할지는 unit의 일이다.
   if (strayPaths(c.main, DOC_OK(c.team)).length) fail(strayFail({ slug, pk, ran: ranSetup ? 'setup·quick' : 'quick', ...undo('main stray') }));
-  const msg = `ship(${slug}): ${unit.origin.replace(/\n/g, ' ').slice(0, 60)}\n\nUnit: ${slug}\nKind: ${unit.kind}\nHead: ${short(head)}\nFull: ${short(newTree)}\nRedproof: ${unit.kind === 'scaffold' ? 'scaffold' : 'base_red head_green'}\nAttack: ${atCell}\nSensor: ${unit.sensor}`;
+  const msg = `ship(${slug}): ${unit.origin.replace(/\n/g, ' ').slice(0, 60)}\n\nUnit: ${slug}\nKind: ${unit.kind}\nHead: ${short(head)}\nFull: ${short(newTree)}\nRedproof: ${rpCol}\nAttack: ${atCell}\nSensor: ${unit.sensor}`;
   const cm = git(['commit', '-q', '-m', msg], c.main, { GARAGISTE_SHIP: '1' });
   if (cm.status) fail(`FAIL ship: 문서 커밋 실패 — ${undo('docs commit FAIL').back}\n${(cm.stderr || cm.stdout).trim()}`);
   appendLedger(c.main, c.team, { kind: 'ship', slug, head, tree: newTree, sensor: unit.sensor }); // 문서 커밋 뒤에만 — 유령 출하 줄이 무인 카운터에 잡히지 않게
@@ -312,6 +316,7 @@ function main() {
   // scaffold(boot)엔 try.md가 없다 — 써보기는 실행·검증 명령이다 (2차 실기: 빈 파일을 가리켜 conductor가 즉석 안내를 지어냈다)
   out(unit.kind === 'scaffold'
     ? `TRY: 실행 \`${c.team.commands.run || c.team.commands.quick}\` → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`
-    : `TRY: docs/units/${slug}/try.md → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`);
+    : unit.kind === 'system' ? `TRY: 이음새 공격이 고친 흐름 — tests/adversary/${slug}-* 가 가리키는 대로 → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`
+      : `TRY: docs/units/${slug}/try.md → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`);
 }
 if (isMain(import.meta.url)) main();

@@ -60,7 +60,7 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 | 스크립트 | 하는 일 |
 |---|---|
 | `next` | 루프의 다음 한 걸음을 한 줄로: run · spawn · ceo · wait · done — conductor는 이 줄만 따른다(seed → spec → redproof → build → attack → ship, re-spec·늦은 spike·충돌·한 번에 하나) |
-| `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · new · ask(`--assumed`) · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
+| `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · system(범위 끝의 이음새 공격) · new · ask(`--assumed`) · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
 | `brief` | 팩 조립 ≤8 KB(intake는 32 KB) — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |
 | `redproof` | 인수 테스트가 base에서 red · head에서 green임을 증명 |

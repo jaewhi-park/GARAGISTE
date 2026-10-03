@@ -14,8 +14,9 @@ const since = (e, ts) => (e.ts || '') >= (ts || '');
 
 // 팩의 생애는 셋으로 센다: 조립(원장 pack) → 띄움(conductor의 spawned 또는 훅의 spawn_stop — 둘 중 먼저 온 것) → 증거(redproof·attack 줄이 팩 뒤에 있는가).
 // 증거는 팩 조립 시각 뒤면 된다 — 팩 안의 에이전트가 스스로 남긴 redproof·verify attack을 다시 돌리지 않는다.
-export function nextStep({ units, ledger, decisionsText = '', scope = null, backlog = [], stops = [], wtOf = () => ({}), packPath = () => '<PACK 경로>' }) {
+export function nextStep({ units, ledger, decisionsText = '', scope = null, backlog = [], stops = [], systemAttack = false, wtOf = () => ({}), packPath = () => '<PACK 경로>' }) {
   const open = new Set([...String(decisionsText).matchAll(/^- \[ \] Q(\d+)/gm)].map((m) => Number(m[1])));
+  const run = (cmd, why) => ({ kind: 'run', cmd: `${S}/${cmd}`, why });
   const parked = (u) => [...(u.questions || []), ...(u.holds || [])].some((n) => open.has(Number(n))) || (u.needs || []).some((n) => /^Q\d+$/.test(n) && open.has(Number(n.slice(1))));
   const live = units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped');
   const working = live.filter((u) => !parked(u)).sort((a, b) => (a.created || '').localeCompare(b.created || '')); // 한 번에 하나 — 먼저 연 unit부터(L2 1일차: 병렬 seed가 사고 26의 토양)
@@ -26,8 +27,13 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     if (!backlog.length) return { kind: 'ceo', text: `BACKLOG 없음 — Flow 1·2: work.mjs brief → brief.mjs intake${note}` };
     if (!scope) return { kind: 'ceo', text: `범위 없음 — Flow 3: CEO와 범위를 정한다(work.mjs scope --milestone M1 | <slug…>)${note}` };
     const r = pickReady({ order: scope.order || [], items: backlog, units, decisionsText });
-    if (r.kind === 'done') return { kind: 'done', text: `SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위는 CEO가(work.mjs scope)${note}` };
-    if (r.kind === 'ready') return { kind: 'run', cmd: `${S}/work.mjs seed`, why: `다음 unit ${r.slug}를 연다${note}` };
+    if (r.kind === 'done') {
+      // system-attack(채용 2026-10-03): 출하된 unit이 둘 이상인 범위의 끝은 이음새 공격 한 바퀴(한 범위에 한 번 — scope.json system)
+      const shippedN = (scope.order || []).filter((s) => units.some((x) => x.slug === s && x.state === 'shipped')).length;
+      if (systemAttack && !scope.system && shippedN >= 2) return run('work.mjs system', `범위가 끝났다 — 출하된 unit ${shippedN}개의 이음새 공격 한 바퀴(발견은 red 테스트, 발견 0이면 drop)`);
+      return { kind: 'done', text: `SCOPE DONE — 범위의 unit이 전부 출하됐다. 다음 범위는 CEO가(work.mjs scope)${note}` };
+    }
+    if (r.kind === 'ready') return run('work.mjs seed', `다음 unit ${r.slug}를 연다${note}`);
     if (r.kind === 'wait') return { kind: 'wait', text: `${r.slug} needs ${r.unmet.join(',')} — ${r.unmet.some((n) => /^Q\d+$/.test(n)) ? 'CEO 결정이 먼저(work.mjs decide)' : '선행 unit이 먼저'}${note}` };
     return { kind: 'wait', text: `${(r.slugs || []).join(', ')} — 질문에 걸린 unit의 답이 와야 다음이 열린다${note}` };
   }
@@ -36,7 +42,6 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   const mine = ledger.filter((e) => e.slug === slug && since(e, u.created)); // 이 생애(drop 전은 세지 않는다)
   const packOf = (p) => last(mine, (e) => e.kind === 'pack' && e.pack === p);
   const doneAfter = (p, ts) => last(ledger, (e) => since(e, ts) && ((e.kind === 'spawn' && e.slug === slug && e.pack === p) || (e.kind === 'spawn_stop' && e.pack === p)));
-  const run = (cmd, why) => ({ kind: 'run', cmd: `${S}/${cmd}`, why });
   const brief = (p, why) => run(`brief.mjs ${p} ${slug}`, why);
   const spawn = (p, why) => ({ kind: 'spawn', pack: p, slug, path: packPath(slug, p), why });
   if ((u.respec || []).length) return brief('spec', `Q${u.respec.map((r) => r.q).join('·Q')}의 답이 진행 중에 왔다 — spec이 먼저 받는다(사고 17)`);
@@ -66,14 +71,20 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     return brief('build', 'RED — red를 green으로');
   }
   const A = last(mine, (e) => e.kind === 'attack' && since(e, P.ts)); // 이 팩 뒤의 공격 결과(팩 안의 에이전트가 남긴 것도)
+  // system-attack: 발견(한 번이라도 red였던 공격)이 없으면 초록 테스트뿐 — 산출물이 아니라 drop(탐색은 원장 attack 줄에 남는다)
+  const finish = () => {
+    if (A.red > 0) return brief('build', `공격 red ${A.red} — build 다시`);
+    if (u.kind === 'system' && !mine.some((e) => e.kind === 'attack' && e.red > 0)) return run(`work.mjs drop ${slug} "system-attack 발견 0 — 공격 파일 ${A.total}" --forget`, '발견 0 — 초록 테스트는 산출물이 아니다(탐색은 원장에 남는다)');
+    return run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
+  };
   if (st === 'build') {
     if (!attackRoundUsed(ledger, slug, u.created)) return brief('attack', 'build가 끝났다 — spec 뒤 한 바퀴의 공격');
     if (!A) return run(`verify.mjs attack ${slug}`, 'build가 고쳤다 — 기존 공격 테스트만 다시(attack 팩은 spec 뒤 한 바퀴)');
-    return A.red > 0 ? brief('build', `공격 red ${A.red} — build 다시`) : run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
+    return finish();
   }
   if (st === 'attack') {
     if (!A) return run(`verify.mjs attack ${slug}`, 'attack이 끝났다 — red를 센다');
-    return A.red > 0 ? brief('build', `공격 red ${A.red} — build 다시`) : run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
+    return finish();
   }
   return { kind: 'ceo', text: `${slug}의 상태 ${st}를 모른다 — node .garagiste/scripts/doctor.mjs` };
 }
@@ -96,7 +107,7 @@ function main() {
   const wtOf = (u) => { const d = worktreeDir(c.main, c.team, u.slug); const exists = fs.existsSync(d); const rebase = exists && rebaseInProgress(d); return { exists, rebase, unmerged: rebase ? unmergedFiles(d) : [] }; };
   out(render(nextStep({
     units, ledger, decisionsText: readText(path.join(c.main, c.team.paths.decisions)), scope: readJson(path.join(c.main, '.garagiste', 'scope.json'), null),
-    backlog: parseBacklog(readText(path.join(c.main, c.team.paths.backlog))), stops: budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) }).stops, wtOf, packPath,
+    backlog: parseBacklog(readText(path.join(c.main, c.team.paths.backlog))), stops: budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) }).stops, systemAttack: c.team.system_attack !== false, wtOf, packPath,
   })));
 }
 if (isMain(import.meta.url)) main();

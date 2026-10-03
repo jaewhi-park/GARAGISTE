@@ -917,3 +917,28 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   assert.match(step([u({ slug: 'boot', kind: 'scaffold', state: 'boot' })], [{ ts: T(1), kind: 'pack', slug: 'boot', pack: 'boot' }, { ts: T(2), kind: 'spawn', slug: 'boot', pack: 'boot' }]).cmd, /ship\.mjs boot$/, 'scaffold는 boot 팩 하나로 출하');
   assert.match(step([u({ slug: 'late', created: T(9) }), u({ state: 'build' })], L).cmd, /ship\.mjs add$/, '한 번에 하나 — 먼저 연 unit부터');
 });
+
+test('system-attack(채용 2026-10-03): 범위가 끝나면 이음새 공격 한 바퀴 — 발견은 red 테스트, 발견 0이면 drop(초록 테스트는 산출물이 아니다)', () => {
+  const T = (m) => `2026-10-03T11:${String(m).padStart(2, '0')}:00.000Z`;
+  const shipped = (slug) => ({ slug, kind: 'feature', state: 'shipped', created: T(0), questions: [], needs: [] });
+  const backlog = [{ slug: 'a', milestone: 'M1', needs: [], done: false }, { slug: 'b', milestone: 'M1', needs: [], done: false }];
+  const scope = { order: ['a', 'b'], requested: ['a', 'b'], required: [], missing: [] };
+  const base = { decisionsText: '', backlog, stops: [], systemAttack: true, wtOf: () => ({ exists: true, rebase: false, unmerged: [] }), packPath: (s, p) => `${s}-${p}.md` };
+  assert.match(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope }).cmd, /work\.mjs system$/, '둘 이상 출하된 범위의 끝은 이음새 공격');
+  assert.equal(nextStep({ ...base, units: [shipped('a')], ledger: [], scope: { ...scope, order: ['a'] }, backlog: backlog.slice(0, 1) }).kind, 'done', '한 unit의 결함은 그 unit의 attack이 봤다');
+  assert.equal(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope: { ...scope, system: 'system-1' } }).kind, 'done', '한 바퀴 돈 범위는 done');
+  assert.equal(nextStep({ ...base, units: [shipped('a'), shipped('b')], ledger: [], scope, systemAttack: false }).kind, 'done', 'team.json system_attack: false면 두지 않는다');
+  const sys = (over) => ({ slug: 'system-1', kind: 'system', state: 'attack', created: T(1), questions: [], needs: [], respec: [], ...over });
+  const L = [{ ts: T(2), kind: 'pack', slug: 'system-1', pack: 'attack' }, { ts: T(3), kind: 'spawn', slug: 'system-1', pack: 'attack' }];
+  const all = (ledger, s = sys()) => nextStep({ ...base, units: [shipped('a'), shipped('b'), s], ledger, scope });
+  assert.match(all(L).cmd, /verify\.mjs attack system-1$/);
+  assert.match(all([...L, { ts: T(4), kind: 'attack', slug: 'system-1', total: 3, red: 0 }]).cmd, /work\.mjs drop system-1 "system-attack 발견 0 — 공격 파일 3" --forget$/, '발견 0이면 drop');
+  const found = [...L, { ts: T(4), kind: 'attack', slug: 'system-1', total: 3, red: 2, files: ['tests/adversary/system-1-1.test.mjs', 'tests/adversary/system-1-2.test.mjs'] }];
+  assert.match(all(found).cmd, /brief\.mjs build system-1$/, '발견은 build가 고친다');
+  const fixed = [...found, { ts: T(5), kind: 'pack', slug: 'system-1', pack: 'build' }, { ts: T(6), kind: 'spawn', slug: 'system-1', pack: 'build' }, { ts: T(7), kind: 'attack', slug: 'system-1', total: 3, red: 0 }];
+  assert.match(all(fixed, sys({ state: 'build' })).cmd, /ship\.mjs system-1$/, '고친 뒤 red 0이면 ship');
+  // ship: 시스템 공격의 red 증명은 「한 번이라도 red였던 공격 파일 ≥ 1」
+  const x = { unit: sys({ state: 'build' }), slug: 'system-1', worktreeExists: true, clean: true, tree: 't', ledger: [{ kind: 'verify', mode: 'full', exit: 0, tree: 't' }, { kind: 'attack', slug: 'system-1', tree: 't', total: 3, red: 0 }], changed: [], runnerBlind: [], requireAttack: true, spikeText: '', lastSubject: 'fix(seam): x', stops: [], proseKb: 1, proseMax: 40, openQuestions: [] };
+  assert.match(evaluateShip({ ...x, found: 0 }).find((k) => k.id === 'redproof').why, /결함을 찾지 못했다[\s\S]*drop system-1/);
+  assert.ok(evaluateShip({ ...x, found: 2 }).every((k) => k.ok), evaluateShip({ ...x, found: 2 }).filter((k) => !k.ok).map((k) => `${k.id}: ${k.why}`).join());
+});

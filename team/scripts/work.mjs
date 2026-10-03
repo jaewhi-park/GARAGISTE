@@ -183,10 +183,11 @@ function createUnit(c, slug, origin, opts = {}) {
   linkDeps(c.main, wt);
   const boundary = checkBoundary(c.team, { text: origin });
   const kind = opts.kind || 'feature';
-  fs.writeFileSync(path.join(wt, '.garagiste-pack'), kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec');
+  const state0 = kind === 'scaffold' ? 'boot' : kind === 'system' ? 'attack' : boundary.hit ? 'spike' : 'spec'; // system(이음새 공격): spec·spike 없이 attack부터
+  fs.writeFileSync(path.join(wt, '.garagiste-pack'), state0);
   const unit = {
     slug, kind, origin, origin_kind: from, milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
-    created: new Date().toISOString(), state: kind === 'scaffold' ? 'boot' : boundary.hit ? 'spike' : 'spec', branch, worktree: path.relative(c.main, wt).replace(/\\/g, '/'), boundary, // 저장 경로는 /로 — listFiles와 같은 법(사고 18)
+    created: new Date().toISOString(), state: state0, branch, worktree: path.relative(c.main, wt).replace(/\\/g, '/'), boundary: kind === 'system' ? { hit: false, reasons: [] } : boundary, // 저장 경로는 /로 — listFiles와 같은 법(사고 18)
     defaults: [], questions: [], tried: null, shipped: null, sensor: null,
   };
   saveUnit(c.main, c.team, unit);
@@ -195,7 +196,23 @@ function createUnit(c, slug, origin, opts = {}) {
   appendLedger(c.main, c.team, { kind: 'unit', slug, state: unit.state, origin_kind: unit.origin_kind, milestone: unit.milestone });
   out(`UNIT ${slug} ${unit.state} ${unit.worktree}`);
   if (kind === 'scaffold') out('SCAFFOLD — boot 팩 하나로 끝난다(스택·명령·스모크·규칙 파일), spec·attack 없음');
-  else if (boundary.hit) out(`HIT ${boundary.reasons.join(', ')} — spike 팩부터`);
+  else if (kind !== 'system' && boundary.hit) out(`HIT ${boundary.reasons.join(', ')} — spike 팩부터`);
+}
+// system-attack(백로그 「system-attack 팩」 · 채용 2026-10-03 — 방아쇠: green 후 CEO 발견 결함이 벤치 파이썬 날짜 ×2 · todo 4일차 · 홀드아웃 library loan-limit로 0이 아니었다):
+// 공격이 unit 안에서만 돌아 이음새가 새어 나갔다. 범위가 끝나면(next가 낸다) 출하된 unit 전체를 한 제품으로 공격 한 바퀴 — 입력은 diff가 아니라 표면·try·실행 명령.
+function system(c) {
+  if (c.root !== c.main) fail('FAIL system은 메인 저장소에서만 — 이음새 공격을 여는 것은 conductor의 일이다');
+  const sc = readJson(scopePath(c), null);
+  if (!sc) fail('FAIL scope 없음 — 이음새 공격은 범위가 끝난 뒤(work.mjs scope → … → SCOPE DONE)');
+  const units = listUnits(c.main, c.team);
+  const shipped = units.filter((u) => u.state === 'shipped' && u.kind !== 'system').sort((a, b) => (a.shipped || '').localeCompare(b.shipped || ''));
+  if (shipped.length < 2) fail(`FAIL 출하된 unit ${shipped.length} — 이음새는 둘부터(한 unit의 결함은 그 unit의 attack이 본다)`);
+  const slug = `system-${units.filter((u) => u.kind === 'system').length + 1}`;
+  const origin = `이음새 공격 — 출하된 unit ${shipped.length}개(${shipped.map((u) => u.slug).join(', ')})의 표면·try·실행 명령을 한 제품으로 공격한다`;
+  createUnit(c, slug, origin, { kind: 'system', from: 'seed', milestone: shipped[shipped.length - 1].milestone });
+  writeJson(scopePath(c), { ...sc, system: slug });
+  appendLedger(c.main, c.team, { kind: 'system', slug, units: shipped.map((u) => u.slug) });
+  out(`SYSTEM ${slug} — 출하된 unit ${shipped.length}개의 이음새: node .garagiste/scripts/brief.mjs attack ${slug} (발견은 red 테스트 → build가 고친다 · 발견 0이면 drop)`);
 }
 const scopePath = (c) => path.join(c.main, '.garagiste', 'scope.json');
 function scope(c, args) {
@@ -516,6 +533,7 @@ function main() {
   if (cmd === 'add') return add(c, pos[0], pos[1], flags);
   if (cmd === 'scope') return scope(c, raw);
   if (cmd === 'seed') return seed(c);
+  if (cmd === 'system') return system(c);
   if (cmd === 'new') return createUnit(c, pos[0], pos[1], flags);
   if (cmd === 'ask') return ask(c, pos[0], pos[1], flags);
   if (cmd === 'needs') return needsCmd(c, pos[0], pos[1]);
@@ -531,5 +549,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();

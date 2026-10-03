@@ -1,7 +1,7 @@
 // brief — 팩 조립. 에이전트가 받는 유일한 입력. ≤ pack_kb_max, 외부 텍스트는 데이터 펜스, 이어받기 절 포함.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, fail, git, holdAsk, isMain, listFiles, loadUnit, mergeBase, out, readLedger, readText, rebaseAdvice, rebaseInProgress, saveUnit, stamp, unmergedFiles, worktreeDir } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, fail, git, holdAsk, isMain, listFiles, listUnits, loadUnit, mergeBase, out, readLedger, readText, rebaseAdvice, rebaseInProgress, saveUnit, stamp, unmergedFiles, worktreeDir } from './lib.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { backlogLine, parseBacklog } from './work.mjs';
 
@@ -152,6 +152,8 @@ function main() {
   if (revise && !returns.length) fail('FAIL --revise는 spec 반려가 CEO에게 간 unit에만 — 기존 공격 테스트를 고치는 것은 CEO 결정이다(테스트 약화의 길): 반려가 두 번째면 그 FAIL의 두 줄을 CEO에게');
   if (pack === 'boot' && unit.kind !== 'scaffold') fail(`FAIL boot 팩은 kind scaffold unit에만 — ${slug}은 ${unit.kind}`);
   if (pack !== 'boot' && unit.kind === 'scaffold') fail(`FAIL scaffold unit(${slug})은 boot 팩 하나로 끝난다 — spec·build·attack 없음`);
+  const system = unit.kind === 'system'; // 이음새 공격(work.mjs system): spec·spike 없이 attack → (red면 build) → ship
+  if (system && !['attack', 'build'].includes(pack)) fail(`FAIL 시스템 공격 unit은 attack·build 팩만 — ${slug}은 spec·spike 없이 공격부터(발견이 곧 red 주장)`);
   // 사고 17(2차 실기): 진행 중에 닫힌 질문의 답은 spec이 먼저 받는다 — 닫힘은 반영이 아니다(Q11이 build 뒤 닫혀 미구현 출하)
   const respec = unit.respec || [];
   if (respec.length && (pack === 'build' || pack === 'attack')) fail(`FAIL ${pack} 팩: ${respec.map((r) => `Q${r.q}`).join('·')}의 답이 진행 중에 왔다 — spec이 먼저(답을 red 수용 테스트로): node .garagiste/scripts/brief.mjs spec ${slug}`);
@@ -169,6 +171,16 @@ function main() {
   // 사고 56(홀드아웃 Go): 인수·공격은 파일 하나씩 증명된다(redproof·attack·full의 판정) — Go는 한 디렉터리가 한 패키지라 sort-waste의 인수 파일이 find-dups_test.go의 도우미를 써 혼자 컴파일되지 않았다
   const fileNote = pack === 'spec' || pack === 'attack' ? ' — 증명은 파일 하나씩(이 명령에 그 파일 하나): 네가 쓰는 테스트 파일은 혼자 돈다, 다른 테스트 파일의 도우미에 기대지 않는다(필요한 도우미는 그 파일 안에)' : '';
   sec('commands', '명령', Object.entries(c.team.commands).filter(([, v]) => v).map(([k, v]) => `- ${k}: \`${v}\`${k === 'test_file' ? fileNote : ''}`).join('\n'));
+  if (system && pack === 'attack') sec('system', '시스템 공격 — 입력은 diff가 아니라 출하된 제품 전체', [
+    '이 unit은 출하된 unit들의 **이음새**를 공격한다(한 unit 안의 결함은 그 unit의 attack이 이미 봤다): 두 unit이 함께 만드는 흐름 · 한 unit의 산출물이 다른 unit의 입력일 때 · 같은 파일·상태를 두 unit이 다르게 가정하는 곳 · try 카드대로 실제로 돌렸을 때(실행은 「명령」의 run).',
+    `쓸 수 있는 곳: tests/adversary/${slug}-<n>.* · fixtures/hostile/**. 아래 「출하된 unit」 절의 surface·try가 표면이다 — 제품 소스는 읽어도 되나 고치지 않는다.`,
+    '발견은 실패하는 테스트로(결정론 — 고정 fixture, 타이밍·네트워크 없음). 「spec:」 반려는 없다 — 원문과 어긋난 것도 테스트로, 테스트로 못 쓰는 것만 한 줄(security:·platform:·taste:). 발견 0이면 그대로 끝낸다 — 초록 테스트를 만들어 두지 않는다(초록은 산출물이 아니다).',
+    `끝내기 전에 node .garagiste/scripts/verify.mjs attack ${slug} → ATTACK ${slug} red <n>/<total>.`,
+  ].join('\n'));
+  if (system) {
+    const shipped = listUnits(c.main, c.team).filter((x) => x.state === 'shipped' && x.kind !== 'system').sort((a, b) => (a.shipped || '').localeCompare(b.shipped || ''));
+    sec('units', `출하된 unit ${shipped.length}개 — 표면(surface.md)과 try 카드`, shipped.map((x) => { const d = path.join(c.main, c.team.paths.units_docs, x.slug); return `### ${x.slug} — "${x.origin.replace(/\n/g, ' ')}"\n${fence(`${x.slug} surface.md`, readText(path.join(d, 'surface.md')) || '(없음)')}\n${fence(`${x.slug} try.md`, readText(path.join(d, 'try.md')) || '(없음)')}`; }).join('\n'));
+  }
   // 사고 26(L2 1일차): ship이 멈춰 둔 rebase — 충돌 표시를 푸는 것은 파일 편집이다(팩의 경계 안), 잇는 것은 ship이다
   const conflicted = rebaseInProgress(wt) ? unmergedFiles(wt) : [];
   if (conflicted.length) sec('conflict', `${c.team.protected_branch}과의 충돌 — ship이 rebase를 멈춘 자리`, [
@@ -228,7 +240,7 @@ function main() {
   if (pack !== 'spec' && pack !== 'boot') {
     const acc = acceptanceFiles(wt, c.team, slug);
     // spike는 spec보다 먼저 돈다(boundary HIT unit의 첫 팩) — 측정은 인수 테스트를 기다리지 않는다
-    if (!acc.length && pack !== 'spike') fail(`FAIL ${pack} 팩: 인수 테스트 없음 — spec 팩이 먼저다`);
+    if (!acc.length && pack !== 'spike' && !system) fail(`FAIL ${pack} 팩: 인수 테스트 없음 — spec 팩이 먼저다`);
     if (acc.length) sec('acceptance', '인수 테스트 (red → green이 네 일)', acc.map((f) => `### ${f}\n\`\`\`\n${readText(path.join(wt, f)).trim()}\n\`\`\``).join('\n'));
     // 사고 32(필드 시험 1): build가 받은 것은 인수 테스트뿐이었다 — full이 공격 파일을 안 집는 러너(파이썬 discover는 test*.py)면 build는 green만 보고 빈손으로 끝났다
     const at = pack === 'build' ? [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'attack' && e.slug === slug) : null;
@@ -243,7 +255,8 @@ function main() {
   if (pack === 'boot') sec('accept', '인수 한 줄 (intake가 적은 것)', unit.accept || '-');
   // 40줄 컷 금지 — 부록(스택·구조)이 잘려 boot가 기본값을 깔았다(첫 실기 사고). 넘치면 fit이 '파일에서 직접 읽어라'로 바꾼다.
   if (briefMd && pack !== 'build') sec('brief', `BRIEF — ${c.team.paths.brief}`, fence(`${c.team.paths.brief} 전문 (부록 포함)`, briefMd));
-  const hz = matchHazards(readText(path.join(c.main, '.garagiste', 'HAZARDS.md')), [...changed, ...(unit.boundary?.reasons || []).filter((r) => r.startsWith('file ')).map((r) => r.slice(5))]);
+  const hzFiles = system ? git(['ls-files'], c.main).stdout.split('\n').filter((f) => f && !/^(\.garagiste|\.claude|\.opencode|\.githooks|docs)\//.test(f)) : [...changed, ...(unit.boundary?.reasons || []).filter((r) => r.startsWith('file ')).map((r) => r.slice(5))]; // 시스템 공격: 이 제품의 파일 전부가 경로다
+  const hz = matchHazards(readText(path.join(c.main, '.garagiste', 'HAZARDS.md')), hzFiles);
   if (hz.length) sec('hazards', 'HAZARDS — 이 경로에서 난 사고', hz.join('\n'));
   const last = [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'verify' && e.where === unit.worktree);
   if (last) sec('verify', '직전 verify', `${last.mode} exit=${last.exit} tree=${(last.tree || '').slice(0, 7)} 로그: ${last.log || '-'}`);
@@ -251,7 +264,7 @@ function main() {
     const log = git(['log', '--oneline', `${base}..HEAD`], wt).stdout;
     if (log) sec('resume', '이어받기 — 이 브랜치에 이미 있는 것', `커밋:\n${log}\n\n변경 파일:\n${git(['diff', '--stat', `${base}..HEAD`], wt).stdout}${/^\w+ wip:/m.test(log) ? '\n\nHEAD는 wip 체크포인트다. 첫 명령: `git reset --soft HEAD~1` 뒤 계속.' : ''}`);
   }
-  if (pack === 'attack' && base) sec('diff', 'diff (base..HEAD)', `\`\`\`diff\n${git(['diff', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`], wt).stdout}\n\`\`\``);
+  if (pack === 'attack' && base && !system) sec('diff', 'diff (base..HEAD)', `\`\`\`diff\n${git(['diff', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`], wt).stdout}\n\`\`\``);
   const capKb = c.team.budgets.pack_kb_max * (pack === 'boot' ? 4 : 1); // boot는 intake처럼 BRIEF 전문을 진다
   const r = fit(sections, capKb * 1024);
   const lane = packLane(r.bytes, capKb, large);

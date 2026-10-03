@@ -86,5 +86,6 @@
   "sensors": {
     "human_os": []
   },
-  "require_attack": true
+  "require_attack": true,
+  "system_attack": true
 }
