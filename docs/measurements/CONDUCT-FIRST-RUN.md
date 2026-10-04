@@ -1,4 +1,4 @@
-# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python · 14라운드 중간 크기 레거시 + conductor 턴)
+# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python · 14라운드 중간 크기 레거시 + conductor 턴 · 15라운드 대규모 레거시 138파일 + 비용 상한 실발동)
 
 ## 왜
 1~11라운드의 드라이버(`conduct.mjs`)·헤드리스 spawner(`claude -p <팩> --agent <팩> …`)는 가짜 팩(`tests/fakes/pack.mjs`)과 `--help` 텍스트로만 검증됐다 — 9라운드(`--max-turns` 없음)·11라운드(Windows 셸 심)의 벽은 둘 다 **읽어서** 찾은 것이고, 실제 CLI가 실제로 어떻게 끝나는지(JSON 꼴 · 권한 · 모델 선택 · 훅)는 한 번도 보지 않았다. 12라운드는 그 자리를 **측정**으로 채운다: 정비 자리(리눅스 컨테이너)에 설치된 claude 2.1.289로 기존 코드가 있는 저장소에 설치 → intake → conduct 끝까지. 테스트는 그대로 모델 0 · 네트워크 0 — 이 문서는 측정 기록이다(HANDOFF 「장치는 사고·측정에서만」).
@@ -134,19 +134,49 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 
 질문 둘: (a) adopt 팩 하나가 파일 138·표면 20(라우트 10·명령 10)을 어디까지 특성화하는가 — 토큰·시간·팩 상한·unit 토큰 상한(1M)에 닿는가 (b) `--max-usd 1`의 비용 상한 정지가 실제로 서는가(지금까지 탐침·e2e만).
 
-(채운다)
+### 입구 — 설치 → trust → check → brief → `conduct intake` → 대리 CEO decide → scope
+| 사실 | 값 |
+|---|---|
+| 설치·점검 | `install.sh claude`(selftest PASS 21/21) → `conduct trust` → `conduct check` PASS(doctor OK · VERSION 4c126a4 · claude 2.1.289 · 깃발 ok · agents 7 · 신뢰 ok) — 12·13라운드의 길 그대로, 사람 손 0 |
+| intake | 팩 4.3KB · opus · 33K 토큰 · 18초 · **$0.112** · 6턴 → BACKLOG unit 4(adopt · order-status-http · order-status-cli · **no-network `--kind pin`** — 13라운드 intake 규칙 4가 셋째 run에 이어 다시 섰다) · 질문 0 · `scope --milestone M1` 요청 4 · 선행 0 |
+| 질문 둘의 답 | (a) 아래 adopt 행 — 특성화 88 · 421K · 2.3분 · 팩 10.2KB(상한 32의 1/3) · unit 토큰 상한(1M)의 42% (b) 아래 `STOP cap` 행 — 선다, 걸음 사이에서 |
 
-## 비용 합계 (세 run)
+### 루프 — `conduct --max-usd 1`(비용 상한 실발동) → `conduct --max-usd 10`(끝까지)
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 10:07:41 | seed adopt → spawn | adopt · sonnet | 421K · 2.3 | 0.313 | **특성화 88**(CLI 10 도메인 + HTTP + export-all · 30턴) · 소스 불변 · 빨간 기존 테스트 2(legacy.port · legacy.year)는 quick·full에서 빼고 **Q1** · **진짜 결함(add마다 id 0 → 같은 id 여럿, get/rm 1 실패)을 Q2로** · 명령 넷 등록(첫 `work.mjs commands`는 중괄호 글롭·이스케이프 따옴표 꼴로 **승인 거부**, 둘째 통과) → `STOP wait`(exit 3 — 질문 2가 adopt를 세웠다) |
+| 10:10:49 | 대리 CEO `decide 1·2` | — | — | — | Q1 「그대로 제외」 · Q2 「예 — 지금은 그대로 굳힌다(id 0은 다음 범위의 unit)」 → ACCEPT 줄이 adopt를 안다(14라운드 수리 확인) → SHIPPED adopt 2eda7a9 |
+| 10:10:57 | order-status-http spec → build → **`spec:` 반려** → re-spec → attack | opus · sonnet · opus · opus | 165K·1.0 / 139K·0.6 / 127K·0.5 / 202K·1.3 | 0.313 / 0.128 / 0.210 / 0.417 | RED 1/1 → build가 반려(인수 3번 「필터 결과의 각 주문은 GET /orders/:id와 같은 모양」은 주문마다 id가 달라야 하는데 Q2는 id 0을 그대로 두라 했다 — **CEO의 답과 어긋나는 인수를 반려로 잡았다**, 사고 33의 장치 첫 실전) → re-spec(기존 코드가 새 주장을 이미 만족 → build 없이 attack) → 공격 14건 **red 0** → **`STOP cap 2026-10-04T10:14:24 — 비용 상한 $1 — 이 실행 $1.067`(exit 5)** |
+| 10:14:24 | `conduct --max-usd 10` | — | — | — | 그 자리에서 이어진다(원장·worktree 그대로): redproof → full → **SHIPPED b4a15a9** — 상한은 걸음 사이에서 선다, 넘긴 팩(attack $0.417)은 끝까지 돌고 비용은 든다 |
+| 10:14:43 | order-status-cli spec → build → attack → build | opus · sonnet · opus · sonnet | 121K·0.9 / 130K·0.6 / 159K·0.9 / 265K·0.9 | 0.310 / 0.100 / 0.308 / 0.161 | RED → `feat` → 공격 6건 **red 3**(값 없는 `--status`·`--status --json`·`--status=paid`에 필터가 조용히 꺼져 6건 전체 — HTTP는 빈 목록) → 수리 → SHIPPED c4e87a7 |
+| 10:18:25 | **no-network(kind pin)** spec → attack | opus · opus | 236K·2.3 / 204K·1.8 | 0.444 / 0.500 | **PIN 1/1(base에서도 초록)** → 공격 5건(절대 URL · CONNECT · 외부 Host · URL이 든 본문·데이터 · 깨진 데이터 — HTTP·CLI·export) **red 0** → redproof·full → SHIPPED 8f26e60 · spec의 `cd && node -e "<인라인 코드>"` 1건 **승인 거부**(둘러보기는 Read·Glob로 — agents 줄 밖) |
+| 10:23:32 | system-1 attack | opus | 202K · 1.4 | 0.461 | 이음새 3건(파일 1) **red 1/1** — 1·2번은 **앞 unit들의 try 카드 기대를 그대로 단언**(cli 카드는 기본 data의 paid 75까지 세 줄 · http 카드는 「paid 하나·전체 3건」 — 기본 data와 어긋나는 카드) · 3번은 진짜 이음새(같은 상태를 두 번 주면 CLI는 마지막 값 · HTTP는 첫 값) |
+| 10:24:59 → 10:35:37 | **system-1 build × 30** | sonnet | 2,005K · 9.7 | **2.867** | build가 `spec:` 반려(「공격 1·2번이 서로 어긋난다 — try 카드의 기대를 하나로 정해야」, 커밋 0)를 27번 남기고 → conduct가 `brief.mjs spec system-1 --return` → **`FAIL 시스템 공격 unit은 attack·build 팩만`** → 반려는 「정당한 빈손」이라 안 세어지고 next는 「공격 red 1 — build 다시」 → … 3번은 `spec:` 줄 없이 빈손으로 끝나 그 둘로 `STOP framework build 팩이 system-1에서 두 번 돌았는데 worktree가 그대로다(HEAD 937c798)`(exit 4). 승인 거부 4(`… unwip; git -C . status …` — `;`·파이프 묶음) · **unit 토큰 2.21M ≥ 상한 1M인데 서지 않았다** |
+
+합계: 팩 43 · 토큰 4.41M · **$6.644**(되풀이 $2.87 · 그 밖 $3.78) · 팩 시간 24.5분 · 기계 벽시계 ≈28분(10:07 → 10:35) · 출하 4(adopt · http · cli · **pin**) · 공격이 찾은 결함 4(cli 3 · 이음새 1) + 카드 모순 1 · 프레임워크 FAIL 1(사고 71 — 27회) · 사람 접점 2(Q1·Q2) + 정지 2(비용 상한 · framework) · 승인 거부 7(adopt 2 · spec 1 · build 4).
+
+### 관찰 (15라운드)
+17. **사고 71 — system unit의 반려가 갈 곳이 없었다**(위 표의 마지막 행). spec이 없는 unit의 `spec:` 반려를 brief는 「attack·build 팩만」으로 거절했고, conduct는 반려를 정당한 빈손으로 보아(진전 없음도 되풀이도 세지 않음) 같은 build를 30번 띄웠다 — $2.87. → 수리 둘: brief가 `spec <slug> --return`을 system unit에선 **attack 팩으로 돌린다**(카드를 쓴 팩이 받는다 — PACK 줄 「반려 → attack」, 팩 절 「서로·기본 data와 어긋나는 카드의 기대를 바로잡는다, 결함을 잡는 단언은 그대로」, 둘째 반려는 spec과 같이 CEO hold) · conduct는 **반려 전달의 FAIL을 run 걸음의 FAIL과 같은 열쇠로 센다**(`handOffKey`, 되풀이 2 → `STOP framework 반려를 받을 길이 없다`). 가짜 팩 e2e: attack,build,attack,build → Q1 hold → SCOPE DONE.
+18. **사고 72 — unit 토큰 상한이 진동 안에서 보이지 않았다**: system-1 spawn 토큰 2.21M(상한 1M)인데 next는 seed와 ship 직전(red 0)에만 stops를 봤다 — 「공격 red → build 다시」 길은 상한을 지나지 않았다(장치가 겨눈 바로 그 진동). → `budgetStatus.tokenStops`(unit별) + next가 **걸음마다 그 unit의 상한**을 본다(팩을 띄우는 길은 전부 지난다). e2e 갱신: 세 팩 3600 ≥ 3000에서 공격 red 1인데 build를 띄우지 않고 선다.
+19. **비용 상한(`--max-usd 1`) 첫 실발동**: 걸음 사이에서 선다 — 넘긴 팩은 끝까지 돌고 그 비용은 합계에 든다($1.067) · 다시 `conduct`는 그 자리에서 이어진다. 설계대로 — 장치 없음. (사고 72의 토큰 상한이 섰다면 되풀이는 1M 근처 ≈ $1.3에서 섰을 것 — 두 상한은 다른 것을 센다: 비용은 run, 토큰은 unit.)
+20. **승인 거부 7의 꼴**: `;`·`|`로 이어 붙인 명령 5(adopt 탐색 묶음 1 · build의 `unwip; git -C . status | head` 4 — 14라운드 unwip은 쳤지만 뒤에 git을 붙였다) → **agents 7 「한 줄에 명령 하나」**(측정 → 한 줄, 둘째 근거). 관찰(둘째 근거 대기): `work.mjs commands …{cli,…}…`(중괄호 글롭 + 이스케이프 따옴표 — 허용 접두인데 승인 요청, 둘째 시도 통과) · `cd && node -e "<인라인 코드>"`(12라운드 「`cd && node`는 통과」의 예외 — 인라인 코드).
+21. **intake가 진짜 결함(id 0)을 unit이 아니라 adopt의 질문으로 올렸다** — CEO 「그대로」 뒤 spec이 그 결함과 어긋나는 인수를 썼고 build의 반려 1회로 풀렸다(사고 33의 장치가 처음 실전에서 섰다). 관찰: BACKLOG에 결함 unit 후보가 남지 않았다(Q2의 답 안에만) — 14라운드 관찰 14(공격의 diff 밖 결함에 집이 없다)와 같은 자리, 둘째 근거.
+22. **adopt 팩 하나가 파일 138·표면 20을 특성화 88로**: 10.2KB 팩 · 421K 토큰 · 2.3분 · $0.31 — 파일 19(293K · 20)의 1.4배 토큰에 특성화 4.4배. 토큰은 파일 수가 아니라 **표면 수**(라우트 10 + 명령 10 + export)에 비례한다 — Q13 「대규모」 조각은 이 크기까지 측정됨. unit 토큰 상한(1M)엔 멀다.
+23. **이음새 공격이 출하물(try 카드)의 모순을 결함으로 찍었다** — 카드는 CEO 접점의 문서(`docs/units/<slug>/try.md`)라 build가 고칠 수 없었다(반려의 진짜 이유). 반려가 attack에게 가면 attack은 **자기 단언**(tests/adversary)을 바로잡고 진짜 이음새(3번)만 남긴다 — 카드 자체를 고치는 것은 여전히 CEO(`--revise`). 수리 뒤의 실전 모양은 다음 run.
+
+## 비용 합계 (네 run)
 | 무엇 | $ |
 |---|---|
 | 12라운드 탐침 13 + run(Node, 팩 8) | 2.30 |
 | 13라운드 run(Python, 팩 10) + SIGTERM 탐침 | 1.83 |
 | 14라운드 conductor 턴 + run(Node 중간 레거시, 팩 13) | 3.88 |
-| **합계** | **8.01** — unit 하나(spec·build·attack·수리) ≈ $0.6~1.1 · pin unit ≈ $1.1(공격·수리 포함) · 이음새 공격 한 바퀴 ≈ $0.3~0.6 · adopt ≈ $0.14~0.27(파일 3 → 19) |
+| 15라운드 run(Node 대규모 레거시 파일 138, 팩 43 — 되풀이 30 포함) | 6.64 |
+| **합계** | **14.65** — unit 하나(spec·build·attack·수리) ≈ $0.6~1.1 · pin unit ≈ $0.9~1.1 · 이음새 공격 한 바퀴 ≈ $0.3~0.6(되풀이 제외) · adopt ≈ $0.14~0.31(파일 3 → 138 — 표면 수에 비례) · 사고 71의 되풀이 $2.87(수리됨 — 다음부턴 되풀이 2에서 선다, 사고 72의 토큰 상한이 먼저 서면 ≈ $1.3) |
 
-## 판정 (14라운드 갱신)
-- **① 신규·기계 검증 가능(CLI·웹·데몬·API) + 리눅스 + `conduct.mjs`: 투입 가능(실측 3/3)** — 세 run이 설치부터 끝(SCOPE DONE 둘 · 무인 출하 상한 하나)까지 프레임워크 FAIL 0, 사람 접점 run당 1~2(hold·질문·출하 상한 — 전부 설계된 멈춤), 공격이 unit마다 결함을 찾아 수리까지(세 run 합계 결함 14). 조건은 12라운드와 같다 + 팩은 `cd && node …`만(agents) + 끊긴 팩의 비용은 원장 밖.
-- **③ 레거시 입구(adopt)**: 세 생태계·크기(Node 3파일 · Python 3파일 · Node 19파일 두 표면)에서 선다 — 특성화 8·10·20, 빨간 기존 테스트는 빼고 묻는다, 깨진 `npm test`는 고친 명령으로, 탐침이 눈먼 full·노옵 setup을 등록 때 막는다. **대규모(수백 파일·여러 패키지)와 「관심 영역 지도」는 미측정** — adopt 팩 하나가 전부를 특성화하는 모양은 파일 19에서도 293K 토큰·1.5분이었다(선형이면 파일 200에서 팩 상한·시간 상한에 닿는다 — Q13의 다음 조각).
+## 판정 (15라운드 갱신)
+- **① 신규·기계 검증 가능(CLI·웹·데몬·API) + 리눅스 + `conduct.mjs`: 투입 가능(실측 4/4)** — 네 run이 설치부터 범위 끝(SCOPE DONE 둘 · 무인 출하 상한 하나 · 이음새 공격 직전까지 하나)까지, 공격이 unit마다 결함을 찾아 수리까지(합계 결함 18). 프레임워크 FAIL은 넷째 run의 사고 71 하나(system unit의 반려 — 수리됨: 되풀이 2에서 선다, 반려는 attack에게)와 그 뒤의 사고 72(토큰 상한이 진동 안에서 안 보임 — 수리됨). 사람 접점 run당 1~2(hold·질문·출하 상한·비용 상한 — 전부 설계된 멈춤). 조건은 12라운드와 같다 + 팩은 `cd && node …` 한 줄에 명령 하나(agents) + 끊긴 팩의 비용은 원장 밖 + `--max-usd`는 걸음 사이에서 선다(넘긴 팩 하나의 비용은 든다).
+- **③ 레거시 입구(adopt)**: 네 크기(Node 3파일 · Python 3파일 · Node 19파일 두 표면 · **Node 138파일 표면 20**)에서 선다 — 특성화 8·10·20·**88**, 빨간 기존 테스트는 빼고 묻는다, 진짜 결함은 질문으로 올린다(unit 후보로는 아직 — 관찰 21), 탐침이 눈먼 full·노옵 setup을 등록 때 막는다. adopt 비용은 파일 수가 아니라 **표면 수에 비례**(421K · $0.31 · 2.3분 — 팩 10.2KB/32 · unit 토큰 1M의 42%). **여러 패키지(모노레포)·「관심 영역 지도」는 미측정.**
 - **대화형 conductor(CLAUDE.md Flow)**: Flow 2 한 턴이 배선(Agent 서브에이전트 · SubagentStop 훅 · spawned)을 전부 지났다. 단 서브에이전트가 허용된 명령을 `\`+줄바꿈으로 시작해 거부되자 conductor가 팩의 일을 대신했다 — 무인 세션에선 사람이 모르는 채 결과만 옳다. agents 한 줄이 꼴을 막지만, 「conductor가 팩의 일을 대신한다」는 둘째 근거가 오면 장치.
+- **상한 둘(15라운드 실측)**: 비용 상한(run)은 설계대로 선다 · 토큰 상한(unit)은 진동 안에서 안 섰다 → 걸음마다(사고 72). 둘이 다 선 뒤의 무인 운전 비용 꼴: unit당 $0.6~1.1 · 이음새 한 바퀴 ≤ 1M 토큰(≈ $1.3) 뒤 CEO.
 - **② UI 중심·DB·마이그레이션·멀티서비스**: 변화 없음 — 아직. **Windows**: CEO PC 대기.
-- 세 run이 못 본 것: 충돌 rebase(두 unit이 같은 파일 — 순차 운전에선 docs 차선 외엔 main이 안 움직인다) · 비용 상한 정지 실발동 · 대규모 레거시 · 사람 센서 unit · opencode 레인 · 이틀 이상의 운영 · REPORT 뒤의 다음 범위(M2).
+- 네 run이 못 본 것: 충돌 rebase(두 unit이 같은 파일 — 순차 운전에선 docs 차선 외엔 main이 안 움직인다) · **system unit의 반려 → attack 재공격의 실전 모양**(가짜 팩만) · 모노레포 · 사람 센서 unit · opencode 레인 · 이틀 이상의 운영 · REPORT 뒤의 다음 범위(M2).
