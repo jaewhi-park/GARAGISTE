@@ -14,7 +14,7 @@ const since = (e, ts) => (e.ts || '') >= (ts || '');
 
 // 팩의 생애는 셋으로 센다: 조립(원장 pack) → 띄움(conductor의 spawned 또는 훅의 spawn_stop — 둘 중 먼저 온 것) → 증거(redproof·attack 줄이 팩 뒤에 있는가).
 // 증거는 팩 조립 시각 뒤면 된다 — 팩 안의 에이전트가 스스로 남긴 redproof·verify attack을 다시 돌리지 않는다.
-export function nextStep({ units, ledger, decisionsText = '', scope = null, backlog = [], stops = [], systemAttack = false, wtOf = () => ({}), packPath = () => '<PACK 경로>' }) {
+export function nextStep({ units, ledger, decisionsText = '', scope = null, backlog = [], stops = [], tokenStops = [], systemAttack = false, wtOf = () => ({}), packPath = () => '<PACK 경로>' }) {
   const open = new Set([...String(decisionsText).matchAll(/^- \[ \] Q(\d+)/gm)].map((m) => Number(m[1])));
   const run = (cmd, why) => ({ kind: 'run', cmd: `${S}/${cmd}`, why });
   const parked = (u) => [...(u.questions || []), ...(u.holds || [])].some((n) => open.has(Number(n))) || (u.needs || []).some((n) => /^Q\d+$/.test(n) && open.has(Number(n.slice(1))));
@@ -47,6 +47,9 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   const doneAfter = (p, ts) => last(ledger, (e) => since(e, ts) && ((e.kind === 'spawn' && e.slug === slug && e.pack === p) || (e.kind === 'spawn_stop' && e.pack === p)));
   const brief = (p, why) => run(`brief.mjs ${p} ${slug}`, why);
   const spawn = (p, why) => ({ kind: 'spawn', pack: p, slug, path: packPath(slug, p), why });
+  // 사고 72(15라운드 넷째 run · erp-lite): unit 토큰 상한(1M)은 seed와 ship 직전(red 0)에만 보였다 — system-1이 attack↔build 진동으로 2.2M을 쓰는 동안 한 번도 서지 않았다(장치가 겨눈 바로 그 진동 — 선 것은 되풀이 규칙이었다). 걸음마다 그 unit의 상한을 본다: 팩을 띄우는 길은 전부 여기를 지난다.
+  const over = tokenStops.find((t) => t.slug === slug);
+  if (over) return { kind: 'ceo', text: `STOP ${over.text} — 예산 정지: ${slug}는 ${u.state} 뒤에 서 있다(상한은 걸음마다 — 진동 안에서도, 사고 72) — CEO에게 docs/STATUS.md 「정해 주세요」` };
   if ((u.respec || []).length) return brief('spec', `Q${u.respec.map((r) => r.q).join('·Q')}의 답이 진행 중에 왔다 — spec이 먼저 받는다(사고 17)`);
   const wt = wtOf(u) || {};
   // 사고 26·58: ship이 멈춰 둔 rebase — 표시가 남았으면 build가 풀고(git add까지), 다 풀렸으면 ship이 잇는다
@@ -120,9 +123,10 @@ export function computeNext(c) {
     return f ? path.relative(c.main, path.join(packsDir, f)).replace(/\\/g, '/') : `(팩 파일 없음 — ${S}/brief.mjs ${pack} ${slug})`;
   };
   const wtOf = (u) => { const d = worktreeDir(c.main, c.team, u.slug); const exists = fs.existsSync(d); const rebase = exists && rebaseInProgress(d); return { exists, rebase, unmerged: rebase ? unmergedFiles(d) : [], tree: exists && !rebase ? workTree(d) : null }; };
+  const budget = budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) });
   return nextStep({
     units, ledger, decisionsText: readText(path.join(c.main, c.team.paths.decisions)), scope: readJson(path.join(c.main, '.garagiste', 'scope.json'), null),
-    backlog: parseBacklog(readText(path.join(c.main, c.team.paths.backlog))), stops: budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) }).stops, systemAttack: c.team.system_attack !== false, wtOf, packPath,
+    backlog: parseBacklog(readText(path.join(c.main, c.team.paths.backlog))), stops: budget.stops, tokenStops: budget.tokenStops, systemAttack: c.team.system_attack !== false, wtOf, packPath,
   });
 }
 // 설치가 병들었으면 한 걸음도 내지 않는다 — conduct도 같은 검사를 먼저 한다
