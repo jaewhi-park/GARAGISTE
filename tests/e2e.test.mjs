@@ -1152,6 +1152,14 @@ test('conduct + 예산: unit 토큰 상한(L2 2판 윈도우 진동 16배의 장
   const L = ledgerOf(repo);
   assert.deepEqual(L.filter((e) => e.kind === 'budget').map((e) => [e.slug, e.tokens_max, e.prev]), [['hello', 10000, 3000]]);
   assert.match(script('work', ['budget', 'hello', '20K'], repo).out, /^FAIL hello은 shipped/);
+  // 사고 78(19라운드 다섯째 날): CEO가 team.json의 기본 상한을 손으로 고쳐 커밋하자 게이트가 「보호 브랜치 직접 커밋」으로 막았고 더러운 team.json은 ship을 막는다 — budget이 팀 기본값도 받아 생성물 차선으로 커밋한다
+  assert.match(script('work', ['budget', 'budgets.unit_tokens_max', '20K'], repo).out, /^PASS budget budgets\.unit_tokens_max 3000 → 20000 · scaffold\(team\) 커밋/);
+  assert.equal(JSON.parse(fs.readFileSync(teamPath, 'utf8')).budgets.unit_tokens_max, 20000);
+  assert.equal(git(['log', '-1', '--format=%s'], repo).out.trim(), 'scaffold(team): budgets.unit_tokens_max 3000 → 20000');
+  assert.equal(git(['status', '--porcelain', '--', '.garagiste/team.json'], repo).out.trim(), '', 'team.json은 커밋됐다 — ship이 main dirt로 막히지 않는다');
+  assert.match(script('work', ['budget', 'budgets.nope', '1'], repo).out, /^FAIL budgets\.nope — team\.json budgets에 없는 키\. 있는 것: unseen_max /);
+  assert.match(script('work', ['budget', 'budgets.unseen_max', '2.5'], repo).out, /^FAIL budgets\.unseen_max 값 2\.5 — 정수/);
+  assert.deepEqual(ledgerOf(repo).filter((e) => e.kind === 'budget' && e.team).map((e) => [e.team, e.value, e.prev]), [['budgets.unit_tokens_max', 20000, 3000]]);
 });
 
 // 사고 70(brownfield 테스트 베드를 만들며 발견 — R&D 2026-10-04): 기존 저장소(HEAD 있음)에 설치하면 팀 파일이 미커밋으로 남아 첫 ship이 「메인 worktree에 미커밋 변경」으로 막혔다.

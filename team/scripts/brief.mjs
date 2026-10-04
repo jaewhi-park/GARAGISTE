@@ -56,7 +56,7 @@ export function overflowAdvice({ bytes, capKb, slug, mult = 1 }) {
   const need = Math.ceil(bytes / 1024 / mult);
   return [
     `- 부대물(diff·hazards·brief·이어받기·try·surface)은 이미 포인터로 줄였다 — 넘는 것은 법(인수·규칙·결정·원문)이다. 결정은 CEO의 것이다: 이 줄을 CEO에게.`,
-    `- CEO 결정 ①: .garagiste/team.json budgets.pack_kb_max를 ${need} 이상으로(지금 ${capKb / mult}, CEO 커밋) — 인수가 이미 build 위에 있으면 이쪽이 싸다`,
+    `- CEO 결정 ①: node .garagiste/scripts/work.mjs budget budgets.pack_kb_max ${need} (지금 ${capKb / mult} — team.json 손 편집·커밋은 게이트가 막는다, 사고 78) — 인수가 이미 build 위에 있으면 이쪽이 싸다`,
     `- CEO 결정 ②: unit을 나눈다 — 방향전환: work.mjs drop ${slug} "<사유>" 뒤 work.mjs add로 쪼갠 줄, scope 다시`,
     `- ${holdAsk(slug, `팩 상한 초과 — ① pack_kb_max ${need} 이상 · ② unit 나누기`)}`,
   ].join('\n');

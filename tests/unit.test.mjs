@@ -27,7 +27,7 @@ import { killPlan, missingFlags, orphanOf, runChild, spawnOpts, spawnerGap, trus
 import { conductBusyLine, conductRunning, readLedger } from '../team/scripts/lib.mjs';
 import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
-import { FLAGS, KINDS, setupNoop } from '../team/scripts/work.mjs';
+import { FLAGS, KINDS, setupNoop, parseBudgetValue, TEAM_BUDGET } from '../team/scripts/work.mjs';
 import { PIN_NOTE, REFACTOR_NOTE } from '../team/scripts/brief.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
@@ -576,10 +576,10 @@ test('brief: 팩 상한 FAIL은 법만으로 넘을 때 난다 — 안내는 CEO
   assert.match(a, /그 unit만 세우고 다음 seed로[\s\S]*work\.mjs ask time-model "[^"]*pack_kb_max 18 이상[^"]*" --hold/, 'conductor 몫: 그 unit만 세운다(--hold — 예산 답은 re-spec이 아니다)');
   assert.doesNotMatch(a, /conductor가 할 일은 없다/);
   assert.match(a, /넘는 것은 법\(인수·규칙·결정·원문\)/, 'fit이 부대물을 다 줄인 뒤에만 FAIL이 난다');
-  assert.match(a, /pack_kb_max를 18 이상으로/, '필요한 상한을 숫자로 — 실측');
+  assert.match(a, /budget budgets\.pack_kb_max 18 /, '필요한 상한을 숫자로 — 실측');
   assert.match(a, /work\.mjs drop time-model/, 'unit 나누기는 명령이 있는 방향전환(CEO)으로');
   assert.doesNotMatch(a, /부대물이면/, '옛 둘째 갈래는 FAIL 시점에 참일 수 없었다');
-  assert.match(overflowAdvice({ bytes: 70 * 1024, capKb: 64, slug: 'boot', mult: 4 }), /pack_kb_max를 18 이상으로/, 'boot는 4× — 필요한 상한은 배수로 나눠 센다');
+  assert.match(overflowAdvice({ bytes: 70 * 1024, capKb: 64, slug: 'boot', mult: 4 }), /budget budgets\.pack_kb_max 18 /, 'boot는 4× — 필요한 상한은 배수로 나눠 센다');
   assert.ok(team.budgets.pack_kb_max >= 21, '기본 상한은 실측 이상 — 4차 time-model build 팩 전문 21KB(법만 17KB), 사고 8 선례대로 실측으로 올린다');
   assert.ok(team.budgets.pack_kb_max >= 31, '벤치 실측: build 팩 28KB(070f185 웹·Go 둘 다 CEO 결정 ①) · 31KB(cfbcf3a 웹 사슬 24→25→29→31) — 같은 결정이 벤치마다 CEO에게 갔다');
 });
@@ -1515,4 +1515,17 @@ test('work(11라운드, Q10): models <프로파일 이름> — team.json profile
   assert.deepEqual(resolveModels(TIERS.medium, ['home'], profiles), TIERS.high);
   assert.deepEqual(resolveModels(TIERS.medium, ['low'], profiles), TIERS.low, 'tier는 그대로');
   assert.throws(() => resolveModels(TIERS.medium, ['office'], profiles), /low\|medium\|high\|company\|home/);
+});
+
+test('work(19라운드, 사고 78): budget budgets.<키> — 팀 기본값의 값 파싱: 토큰·KB·개수는 정수(K 허용), *_usd_*는 0 이상의 수 — 그 밖은 null(FAIL)', () => {
+  assert.equal(TEAM_BUDGET, 'budgets.');
+  assert.equal(parseBudgetValue('unit_tokens_max', '1500K'), 1500000);
+  assert.equal(parseBudgetValue('unit_tokens_max', '1,500,000'), 1500000);
+  assert.equal(parseBudgetValue('pack_kb_max', '40'), 40);
+  assert.equal(parseBudgetValue('run_usd_max', '2.5'), 2.5);
+  assert.equal(parseBudgetValue('pack_usd_max', '0'), 0);
+  assert.equal(parseBudgetValue('unseen_max', '2.5'), null, '개수는 정수');
+  assert.equal(parseBudgetValue('unit_tokens_max', 'x'), null);
+  assert.equal(parseBudgetValue('unit_tokens_max', ''), null);
+  assert.equal(parseBudgetValue('run_usd_max', '-1'), null);
 });
