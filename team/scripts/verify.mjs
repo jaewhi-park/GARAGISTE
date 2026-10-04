@@ -96,6 +96,14 @@ export function blindFiles(tpl, files, dir) {
     try { return shell(fileCmd(tpl, [f]), { cwd: dir }).status === 0; } finally { if (had) fs.writeFileSync(p, had); else fs.rmSync(p, { force: true }); }
   });
 }
+// 12라운드(실전 첫 run 측정 2026-10-04 — docs/measurements/CONDUCT-FIRST-RUN.md): adopt 팩이 quick·full을 파일 목록으로 적었다 — 인수·공격 파일이 full에 안 들어 출하 뒤 회귀를 지키지 못한다(파이썬 관찰 2026-10-01과 같은 뿌리 — 둘의 규칙).
+// 명령 하나를 탐침과 함께 돈다: 깨진 파일을 인수·공격 자리에 두기 전(before)과 둔 뒤(after)의 exit. full은 after가 red여야 하고(그 자리를 본다), quick은 after도 green이어야 한다(그 자리는 red로 커밋되는 자리 — 게이트의 quick이 막히지 않게). before가 red면 판단하지 않는다(verify가 말한다).
+export function probeCommand(cmd, files, dir) {
+  const before = shell(cmd, { cwd: dir }).status;
+  if (before !== 0) return { before, after: null };
+  const saved = files.map((f) => { const p = path.join(dir, f); const had = fs.existsSync(p) ? fs.readFileSync(p) : null; fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, PROBE_TEXT); return { p, had }; });
+  try { return { before, after: shell(cmd, { cwd: dir }).status }; } finally { for (const { p, had } of saved) { if (had) fs.writeFileSync(p, had); else fs.rmSync(p, { force: true }); } }
+}
 // scaffold의 탐침 이름: boot의 tests/unit 파일(boot 팩 3의 스모크) 이름에 slug 꼴(하이픈) 머리 — 생태계의 접미사(test_*.py · _test.go · .test.mjs)를 빌린다
 export function probeNames(paths, unitFiles) {
   const pick = unitFiles.find((f) => /test|spec|smoke/i.test(path.posix.basename(f))) || unitFiles[0];

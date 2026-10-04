@@ -58,7 +58,7 @@ if (refactor && pack === 'spec') {
   // 기존 코드(bin/greet.js)의 현재 동작을 특성화 테스트로 — 소스는 건드리지 않는다
   write('tests/unit/adopt-greet.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('특성화: greet Ada → hi Ada', () => { const r = spawnSync(process.execPath, ['bin/greet.js', 'Ada'], { encoding: 'utf8' }); assert.equal(r.status, 0); assert.equal(r.stdout.trim(), 'hi Ada'); });\n");
   write('.gitattributes', '* text=auto eol=lf\n');
-  lines.push(script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test tests/unit/*.test.mjs test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install']).stdout.trim());
+  lines.push(script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test "tests/**/*.test.mjs" test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install']).stdout.trim());
   lines.push(script('work', ['rules', 'project=greet', 'one_line=인사 CLI']).stdout.trim());
   lines.push(commit(`adopt(${slug}): node:test — 특성화 1\n\nUnit: ${slug}\nStep: 1`), script('verify', ['full']).stdout.trim().split('\n')[0], '특성화 테스트 1 · 명령 넷 · 질문 0');
 } else if (pack === 'boot') {

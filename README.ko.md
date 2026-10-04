@@ -61,7 +61,7 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 | 스크립트 | 하는 일 |
 |---|---|
 | `next` | 루프의 다음 한 걸음을 한 줄로: run · spawn · ceo · wait · done — conductor는 이 줄만 따른다(seed → spec → redproof → build → attack → ship, re-spec·늦은 spike·충돌·한 번에 하나) |
-| `conduct` | Flow 4를 스크립트가 돈다 — next의 한 줄을 그대로 실행(run은 그 명령, spawn은 팩을 헤드리스 `claude -p --agent <팩>` 세션으로), 팩마다 spawned(실측 토큰·분·비용)·spawn_stop·체크포인트, `spec:` 반려 전달, CEO 결정만 요구하는 FAIL은 `ask --hold`로 그 unit만 세움. 멈춤이 종료 코드(0 done · 2 ceo · 3 wait · 4 프레임워크 FAIL · 5 상한) · 안전벨트(팩 시간 상한 · 비용 상한 · 잠금/heartbeat) · `check`(실전 전 preflight) · `intake` · 다른 하네스는 `--spawner` |
+| `conduct` | Flow 4를 스크립트가 돈다 — next의 한 줄을 그대로 실행(run은 그 명령, spawn은 팩을 헤드리스 `claude -p --agent <팩>` 세션으로), 팩마다 spawned(실측 토큰·분·비용)·spawn_stop·체크포인트, `spec:` 반려 전달, CEO 결정만 요구하는 FAIL은 `ask --hold`로 그 unit만 세움. 멈춤이 종료 코드(0 done · 2 ceo · 3 wait · 4 프레임워크 FAIL · 5 상한) · 안전벨트(팩 시간 상한 · 비용 상한 · 잠금/heartbeat) · `check`(실전 전 preflight) · `trust`(헤드리스 팩의 작업 공간 신뢰 — 측정: 신뢰 없는 폴더는 allow 목록을 버린다) · `intake` · 다른 하네스는 `--spawner`. 실전 첫 run 측정 2026-10-04(리눅스 · 진짜 claude 2.1.289: 설치 → intake → unit 2 출하 → 이음새 공격 → REPORT, $1.66 — `docs/measurements/CONDUCT-FIRST-RUN.md`) |
 | `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · system(범위 끝의 이음새 공격) · new · ask(`--assumed`) · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
 | `brief` | 팩 조립 ≤8 KB(intake는 32 KB) — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |

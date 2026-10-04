@@ -27,11 +27,12 @@ export const TODO = {
 };
 
 export function parseArgs(argv) {
-  const o = { ...DEFAULTS, once: false, intake: false, check: false };
+  const o = { ...DEFAULTS, once: false, intake: false, check: false, trust: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === 'intake') o.intake = true;
     else if (a === 'check') o.check = true;
+    else if (a === 'trust') o.trust = true;
     else if (a === '--once') o.once = true;
     else if (a === '--max-steps') o.maxSteps = Number(argv[++i]);
     else if (a === '--max-minutes') o.maxMinutes = Number(argv[++i]);
@@ -76,11 +77,18 @@ export function parseResult(stdout) {
   const raw = String(stdout || '');
   let j = null;
   try { j = JSON.parse(raw); } catch { const m = raw.lastIndexOf('\n{'); if (m >= 0) { try { j = JSON.parse(raw.slice(m + 1)); } catch { j = null; } } }
-  if (!j || typeof j !== 'object' || Array.isArray(j)) return { json: null, text: raw.trim(), tokens: null, minutes: null, cost: null, turns: null, isError: false };
+  if (!j || typeof j !== 'object' || Array.isArray(j)) return { json: null, text: raw.trim(), tokens: null, minutes: null, cost: null, turns: null, isError: false, model: null, reason: null };
   const u = j.usage || {};
-  const tokens = ['input_tokens', 'output_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens'].reduce((a, k) => a + (Number(u[k]) || 0), 0) || null;
+  // 측정(12라운드 2026-10-04, claude 2.1.289): 예산 초과(error_max_budget_usd)로 끝난 결과는 usage가 전부 0이고 modelUsage에만 실측이 있다 — usage가 0이면 modelUsage 합으로
+  const mu = j.modelUsage && typeof j.modelUsage === 'object' ? Object.values(j.modelUsage) : [];
+  const fromUsage = ['input_tokens', 'output_tokens', 'cache_creation_input_tokens', 'cache_read_input_tokens'].reduce((a, k) => a + (Number(u[k]) || 0), 0);
+  const fromModels = mu.reduce((a, m) => a + ['inputTokens', 'outputTokens', 'cacheCreationInputTokens', 'cacheReadInputTokens'].reduce((b, k) => b + (Number(m?.[k]) || 0), 0), 0);
+  const tokens = fromUsage || fromModels || null;
   const minutes = Number(j.duration_ms) > 0 ? Math.round(j.duration_ms / 6000) / 10 : null;
-  return { json: j, text: String(j.result ?? ''), tokens, minutes, cost: j.total_cost_usd ?? null, turns: j.num_turns ?? null, isError: !!j.is_error || (!!j.subtype && j.subtype !== 'success') };
+  const model = j.modelUsage && typeof j.modelUsage === 'object' ? Object.keys(j.modelUsage).join('+') || null : null; // 실측 모델 — 편성(team.json)이 실제로 적용됐는지가 원장에 남는다
+  const isError = !!j.is_error || (!!j.subtype && j.subtype !== 'success');
+  const reason = [isError && j.subtype && j.subtype !== 'success' ? j.subtype : '', ...(Array.isArray(j.errors) ? j.errors.map(String) : [])].filter(Boolean).join(': ') || null;
+  return { json: j, text: String(j.result ?? ''), tokens, minutes, cost: j.total_cost_usd ?? null, turns: j.num_turns ?? null, isError, model, reason };
 }
 // build·attack의 반려 — 마지막 줄들의 `spec: <한 줄>`(팩 규칙). Flow 4: brief.mjs spec <slug> --return "<그 줄>"
 export function specReturn(text) {
@@ -111,6 +119,27 @@ export function holdCommand(text) {
 export function lockAlive(lock, { isAlive = pidAlive } = {}) { return !!(lock && lock.pid && isAlive(lock.pid)); }
 function writeLock(main, started, data = {}) { writeJson(path.join(main, CONDUCT_LOCK), { pid: process.pid, started, at: new Date().toISOString(), ...data }); }
 function clearLock(main) { try { fs.rmSync(path.join(main, CONDUCT_LOCK), { force: true }); } catch { /* 없음 */ } }
+// 작업 공간 신뢰(12라운드 2026-10-04, 측정 — claude 2.1.289 `-p --agent build`, 신뢰 없는 폴더): stderr 「Ignoring 66 permissions.allow entries from .claude/settings.json: this workspace has not been trusted」 +
+// Bash 한 번이 permission_denials로 거부 — 팩은 스크립트 하나도 못 돈다(-p는 신뢰 대화를 건너뛰지만 allow 목록도 버린다). CLI가 권하는 수리가 바로 그 키다 — 손으로 JSON을 고치게 하지 않고 명령 하나로.
+const realOf = (p) => { try { return fs.realpathSync.native(p); } catch { return p; } };
+export function trustedIn(cj, root) {
+  const keys = cj && cj.projects ? Object.keys(cj.projects) : [];
+  const real = realOf(root);
+  return keys.some((k) => { try { return (k === root || k === real || fs.realpathSync.native(k) === real) && cj.projects[k]?.hasTrustDialogAccepted === true; } catch { return false; } });
+}
+export function trustWorkspace(root, { home = os.homedir() } = {}) {
+  const file = path.join(home, '.claude.json');
+  if (!fs.existsSync(file)) return { error: `${file} 없음 — Claude Code에 로그인한 기계에서만(대화형 claude를 한 번 열면 생긴다)` };
+  const cj = readJson(file, null);
+  if (!cj || typeof cj !== 'object' || Array.isArray(cj)) return { error: `${file}을 읽지 못했다(JSON 아님) — 손대지 않는다` };
+  if (trustedIn(cj, root)) return { ok: true, already: true, file, keys: [root] };
+  cj.projects = cj.projects && typeof cj.projects === 'object' && !Array.isArray(cj.projects) ? cj.projects : {};
+  const keys = [...new Set([root, realOf(root)])]; // claude는 cwd 그대로를 키로 쓴다 — 심볼릭 링크면 둘 다
+  for (const k of keys) cj.projects[k] = { ...(cj.projects[k] || {}), hasTrustDialogAccepted: true };
+  const tmp = `${file}.garagiste-${process.pid}`;
+  fs.writeFileSync(tmp, JSON.stringify(cj, null, 2)); fs.renameSync(tmp, file); // 원자적 — 다른 키는 그대로. 대화형 claude가 떠 있으면 그쪽이 덮을 수 있다(안내)
+  return { ok: true, already: false, file, keys };
+}
 // 실전 전 preflight(4라운드 2026-10-04): 헤드리스 spawner의 전제를 한 줄씩 — 모델 없이 확인할 수 있는 것은 전부 여기서. 실패는 fail-closed(exit 1), 고칠 길과 함께.
 export function preflight(root, { env = process.env, home = os.homedir(), spawn = spawnSync, team = null, customSpawner = false } = {}) {
   const probs = []; const ok = [];
@@ -139,12 +168,8 @@ export function preflight(root, { env = process.env, home = os.homedir(), spawn 
   if (agents.length) probs.push(`.claude/agents 없음: ${agents.join(', ')} — install.sh claude 다시(--agent <팩>이 읽는 파일)`); else ok.push('agents 7');
   const settings = readJson(path.join(root, '.claude', 'settings.json'), null);
   if (!settings || !(settings.permissions?.allow || []).some((x) => /^Bash\(node/.test(x))) probs.push('.claude/settings.json allow에 Bash(node…) 없음 — 헤드리스엔 승인 대화가 없어 팩의 스크립트 호출이 전부 막힌다: team/claude/settings.json으로'); else ok.push('allow node');
-  // 신뢰 안 된 작업 공간은 프로젝트 허용 목록을 무시한다(하네스 메모 — tests/field/setup.sh가 같은 이유로 켠다)
-  const cj = readJson(path.join(home, '.claude.json'), null);
-  const keys = cj && cj.projects ? Object.keys(cj.projects) : [];
-  const real = (() => { try { return fs.realpathSync.native(root); } catch { return root; } })();
-  const trusted = keys.some((k) => { try { return (k === root || k === real || fs.realpathSync.native(k) === real) && cj.projects[k]?.hasTrustDialogAccepted === true; } catch { return false; } });
-  if (!trusted) probs.push(`작업 공간 신뢰 없음(${path.join(home, '.claude.json')} projects[${root}].hasTrustDialogAccepted) — 그 폴더에서 대화형 claude를 한 번 열어 신뢰하라(헤드리스엔 신뢰 대화가 없다)`); else ok.push('신뢰 ok');
+  // 신뢰 안 된 작업 공간은 프로젝트 허용 목록을 무시한다 — 12라운드 측정(trustWorkspace 주석): -p는 신뢰 대화를 건너뛰지만 allow도 버려 팩의 Bash가 전부 거부된다
+  if (!trustedIn(readJson(path.join(home, '.claude.json'), null), root)) probs.push(`작업 공간 신뢰 없음(${path.join(home, '.claude.json')} projects[${root}].hasTrustDialogAccepted) — 신뢰 없는 폴더의 claude -p는 .claude/settings.json의 allow 목록을 무시해 --permission-prompts none 아래 팩의 Bash가 전부 거부된다(측정 2026-10-04): node .garagiste/scripts/conduct.mjs trust(그 키를 쓴다 — 대화형 claude가 떠 있지 않을 때) 또는 그 폴더에서 대화형 claude를 한 번`); else ok.push('신뢰 ok');
   return { probs, ok };
 }
 // 5라운드(2026-10-04, Q9 스폰 방법): 기본 spawner는 claude -p --agent <팩> — .claude/agents가 없는 설치본(opencode만)에선 서지 않는다. 템플릿 없이 돌리면 팩 spawn이 전부 비정상 종료로 세어 프레임워크 FAIL(exit 4)로 끝났을 것 — 그 전에 한 줄로 선다.
@@ -231,14 +256,14 @@ export async function spawnPack(c, { pack, slug, path: packPath }, o, { spawner 
   const status = r.status ?? 1;
   const log = logSpawn(c, slug, pack, { cmd: cmd.argv || cmd.shell, pid: r.pid, status, signal: r.signal, timed_out: timedOut, error: r.error ? String(r.error) : null, stdout: r.stdout || '', stderr: r.stderr || '' });
   spawnStop(c.main, { agent_type: pack }); // 헤드리스엔 SubagentStop 훅이 없다 — 더러운 worktree는 wip로, 원장엔 spawn_stop
-  const flags = [p.tokens ? `--tokens ${p.tokens}` : '', `--minutes ${p.minutes ?? wall}`, model ? `--model ${model}` : '', `--note ${q(`conduct${p.cost != null ? ` $${p.cost}` : ''}${p.turns != null ? ` turns ${p.turns}` : ''} exit ${status}${log ? ` log ${log}` : ''}`)}`].filter(Boolean).join(' ');
+  const flags = [p.tokens ? `--tokens ${p.tokens}` : '', `--minutes ${p.minutes ?? wall}`, (p.model || model) ? `--model ${p.model || model}` : '', `--note ${q(`conduct${p.cost != null ? ` $${p.cost}` : ''}${p.turns != null ? ` turns ${p.turns}` : ''} exit ${status}${p.reason ? ` ${p.reason}` : ''}${log ? ` log ${log}` : ''}`)}`].filter(Boolean).join(' ');
   runCmd(c, `${S}/work.mjs spawned ${slug} ${pack} ${flags}`);
   const tail = p.text.trim().split('\n').slice(-3).map((l) => `  │ ${l}`).join('\n');
   if (tail.trim()) out(tail);
   const ok = status === 0 && !p.isError && !r.error;
   const returned = ok && (pack === 'build' || pack === 'attack') ? specReturn(p.text) : null; // 반려는 정당한 「빈손」 — 진전 없음으로 세지 않는다
   let held = false;
-  if (!ok) out(timedOut ? `  팩 시간 상한 ${o.packMinutes}분 — 끊었다(SIGTERM)${log ? ` · ${log}` : ''}` : `  팩 종료 비정상 — exit ${status}${p.isError ? ' · is_error' : ''}${r.error ? ` · ${r.error}` : ''}${log ? ` · ${log}` : ''}`);
+  if (!ok) out(timedOut ? `  팩 시간 상한 ${o.packMinutes}분 — 끊었다(SIGTERM)${log ? ` · ${log}` : ''}` : `  팩 종료 비정상 — exit ${status}${p.reason ? ` · ${p.reason}` : p.isError ? ' · is_error' : ''}${r.error ? ` · ${r.error}` : ''}${log ? ` · ${log}` : ''}`);
   else if (returned) held = runCmd(c, `${S}/brief.mjs spec ${slug} --return ${q(returned)}`).held;
   return { ok, text: p.text, tokens: p.tokens, minutes: p.minutes ?? wall, cost: Number(p.cost) || 0, status, log, returned: !!returned, held, timedOut };
 }
@@ -264,13 +289,18 @@ async function intake(c, o) {
 }
 async function main() {
   const o = parseArgs(process.argv.slice(2));
-  if (o.error) fail(`FAIL conduct: ${o.error} — 사용법: conduct.mjs [check|intake] [--once] [--max-steps N] [--max-minutes M] [--max-usd D] [--pack-usd D] [--pack-minutes P] [--turns T] [--spawner "<템플릿 {path} {pack} {slug} {model} {turns}>"]`);
+  if (o.error) fail(`FAIL conduct: ${o.error} — 사용법: conduct.mjs [check|trust|intake] [--once] [--max-steps N] [--max-minutes M] [--max-usd D] [--pack-usd D] [--pack-minutes P] [--turns T] [--spawner "<템플릿 {path} {pack} {slug} {model} {turns}>"]`);
   let c = ctx();
   if (c.root !== c.main) fail('FAIL conduct는 메인 저장소에서만 — worktree 안에서 돌리지 않는다');
   if (o.check) {
     const r = preflight(c.main, { customSpawner: !!o.spawner, team: c.team });
     if (r.probs.length) fail(`FAIL conduct check ${r.probs.length}\n${r.probs.map((x) => `- ${x}`).join('\n')}${r.ok.length ? `\n(ok: ${r.ok.join(' · ')})` : ''}`);
     return out(`PASS conduct check — ${r.ok.join(' · ')}`);
+  }
+  if (o.trust) { // 신뢰 키 하나 — 대화형 claude를 열 수 없는 자리(서버·WSL·cron)에서 preflight의 「신뢰 없음」을 닫는다
+    const r = trustWorkspace(c.main);
+    if (r.error) fail(`FAIL conduct trust: ${r.error}`);
+    return out(r.already ? `PASS conduct trust — 이미 신뢰됨(${r.file} projects[${c.main}])` : `PASS conduct trust — ${r.file} projects[${r.keys.join(' · ')}].hasTrustDialogAccepted=true — claude -p가 이 폴더의 .claude/settings.json allow를 읽는다(대화형 claude가 떠 있었다면 그쪽이 덮을 수 있다 — conduct.mjs check로 확인)`);
   }
   doctorGate(c);
   const gap = spawnerGap(c.main, !!o.spawner);
