@@ -320,5 +320,13 @@ function lawFromMain(metaUrl) {
 // conduct의 잠금·heartbeat — 한 저장소에 드라이버 하나(unit은 한 번에 하나). state.mjs가 「진행 중」에 읽는다.
 export const CONDUCT_LOCK = '.garagiste/session/conduct.json';
 export function pidAlive(pid) { try { process.kill(Number(pid), 0); return true; } catch (e) { return e && e.code === 'EPERM'; } }
+// 11라운드(2026-10-04): 대화형 conductor와 conduct는 한 저장소에 함께 돌지 않는다 — GUIDE의 약속을 코드로(L2 1일차: 병렬 seed가 사고 26의 토양). 잠금은 conduct 둘만 막았다.
+// conduct는 자식(스크립트·팩)에 GARAGISTE_CONDUCT=pid를 물린다 — 그 pid의 잠금이면 자식이다. 다른 세션이면 brief·ship·seed가 한 줄로 선다.
+export function conductRunning(main) {
+  const l = readJson(path.join(main, CONDUCT_LOCK), null);
+  if (!l || !l.pid || !pidAlive(l.pid)) return null;
+  return String(l.pid) === String(process.env.GARAGISTE_CONDUCT || '') ? null : l;
+}
+export function conductBusyLine(l) { return `FAIL conduct가 돌고 있다(pid ${l.pid} · ${[l.step, l.slug, l.pack].filter(Boolean).join(' ')} · ${l.at}) — 대화형 conductor는 그동안 쉰다(한 저장소에 드라이버 하나: 둘이면 같은 unit을 두 번 띄우거나 ship이 겹친다). 끝나길 기다리거나 conduct를 끊는다(Ctrl-C — 팩에도 전달되고 잠금이 정리된다)`; }
 export function short(sha) { return (sha || '').slice(0, 7); }
 export function stamp() { return new Date().toISOString().replace(/[:.]/g, '-'); }

@@ -39,7 +39,7 @@ const INLINE_PATHS = /\.garagiste[\\/](?:ledger|units|team\.json|scripts|packs|H
 const INLINE_WRITE = /writeFile|appendFile|truncate|unlink|rmSync|rm\(|renameSync|rename\(|copyFile|mkdirSync|createWriteStream|open\([^)]*['"][wax]|os\.remove|os\.rename|shutil\.|Path\([^)]*\)\.(?:write|unlink|rename)|write_text|\btee\b|\bsed\s+-i|\brm\b|\bmv\b|\bcp\b|>>?\s*["']?\S*\.(?:garagiste|claude|opencode|githooks)/;
 export function inlineCodeWrite(command) { const c = String(command || ''); return INLINE_CODE.test(c) && INLINE_PATHS.test(c) && INLINE_WRITE.test(c); }
 // 게이트 우회 접두 — SHIP·WIP·ADMIN은 스크립트 내부(ship·checkpoint)와 CEO 세션만 쓴다. LARGE_STEP은 게이트가 받는 정상 경로라 막지 않는다.
-const ENV_BYPASS = /(^|[\s;&|])(env\s+)?GARAGISTE_(SHIP|WIP|ADMIN)=/;
+const ENV_BYPASS = /(^|[\s;&|])(env\s+)?GARAGISTE_(SHIP|WIP|ADMIN|CONDUCT)=/; // CONDUCT(11라운드): conduct의 자식 표식 — 밖에서 꾸며 상호배제를 넘지 않는다
 // conductor 전용 명령 — tried·decide는 CEO 접점(팩이 부르면 상한 자가 리셋), drop은 방향전환(팩이 자기를 버리지 않는다), needs는 선행 재배선(팩이 자기 WAIT를 풀지 않는다 — 사고 23)
 const CEO_CMDS = /\bwork\.mjs\s+(tried|decide|drop|needs|budget)\b/;
 

@@ -1,7 +1,7 @@
 // ship — 8조건 fail-closed. 통과하면 ff 머지 + LEDGER + STATUS. 이 스크립트만 보호 브랜치에 닿는다.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, quarantineStray, readJson, readLedger, readText, rebaseInProgress, saveUnit, sh, shell, short, stamp, strayPaths, unmergedFiles, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles, repoFiles, withScratch, systemFound } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, currentBranch, dirtyFiles, fail, git, headSha, headTree, isClean, isMain, loadTeam, loadUnit, out, quarantineStray, readJson, readLedger, readText, rebaseInProgress, saveUnit, sh, shell, short, stamp, strayPaths, unmergedFiles, workTree, worktreeDir, writeJson, ceoTouch, listUnits, listFiles, repoFiles, withScratch, systemFound, conductBusyLine, conductRunning } from './lib.mjs';
 import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
@@ -154,6 +154,7 @@ function main() {
   const slug = process.argv[2];
   if (!slug) fail('사용법: ship.mjs <slug>');
   const c = ctx();
+  { const busy = conductRunning(c.main); if (busy) fail(conductBusyLine(busy)); } // 11라운드: conduct가 도는 동안 밖의 ship은 선다(ship이 겹치지 않게)
   const probs = blocking(diagnose(c.main));
   if (probs.length) fail(`FAIL doctor ${probs.length} — 설치가 병든 채로 ship하지 않는다\n${probs.map((x) => `- ${x}`).join('\n')}`);
   const unit = loadUnit(c.main, c.team, slug);

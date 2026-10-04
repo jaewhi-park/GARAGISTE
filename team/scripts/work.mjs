@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
-import { appendLedger, ceoTouch, ctx, fail, git, hasFileSlot, isMain, linkDeps, unlinkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson } from './lib.mjs';
+import { appendLedger, ceoTouch, ctx, fail, git, hasFileSlot, isMain, linkDeps, unlinkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson, conductBusyLine, conductRunning } from './lib.mjs';
 import { budgetStatus } from './state.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
@@ -15,12 +15,14 @@ export const TIERS = {
   high: { intake: 'opus', spec: 'opus', build: 'opus', attack: 'opus', spike: 'sonnet', boot: 'sonnet', adopt: 'sonnet' },
 };
 // 편성 한 곳: team.json.models가 정본, 하네스의 에이전트 파일 앞머리 `model:`은 거기서 재생성
-export function resolveModels(current, args) {
+export function resolveModels(current, args, profiles = {}) {
+  // Q10 provider-per-pack(11라운드): team.json profiles의 이름은 tier와 같은 자리에 선다 — 집/회사 전환이 한 줄(값은 하네스가 받는 모델 이름 · opencode는 provider/model)
+  if (args.length === 1 && profiles[args[0]] && typeof profiles[args[0]] === 'object') return { ...current, ...Object.fromEntries(Object.entries(profiles[args[0]]).filter(([k]) => PACKS.includes(k))) };
   if (args.length === 1 && TIERS[args[0]]) return { ...current, ...TIERS[args[0]] };
   const next = { ...current };
   for (const a of args) {
     const m = /^([a-z]+)=([a-z0-9._/-]+)$/i.exec(a);
-    if (!m || !PACKS.includes(m[1])) throw new Error(`형식: <low|medium|high> 또는 <팩>=<모델> (팩: ${PACKS.join('·')}) — 받은 값: ${a}`);
+    if (!m || !PACKS.includes(m[1])) throw new Error(`형식: <low|medium|high${Object.keys(profiles).length ? '|' + Object.keys(profiles).join('|') : ''}> 또는 <팩>=<모델> (팩: ${PACKS.join('·')}) — 받은 값: ${a}`);
     next[m[1]] = m[2];
   }
   return next;
@@ -277,6 +279,7 @@ function scope(c, args) {
   out('받으려면 work.mjs seed. 선행을 빼려면 --no-needs (CEO 결정, 원장에 남는다).');
 }
 function seed(c) {
+  { const busy = conductRunning(c.main); if (busy) fail(conductBusyLine(busy)); } // 11라운드: conduct가 도는 동안 밖의 seed는 선다(병렬 seed = 사고 26의 토양)
   // 병든 설치(훅 침묵·게이트 꺼짐)에서 unit을 만들지 않는다 — tacit을 죽인 조용한 죽음의 백신. fresh 항목(alive·빈 commands)은 통과.
   const probs = blocking(diagnose(c.main));
   if (probs.length) fail(`FAIL doctor ${probs.length} — 설치가 병든 채로 seed하지 않는다\n${probs.map((x) => `- ${x}`).join('\n')}`);
@@ -533,7 +536,7 @@ function models(c, args) {
   const teamPath = path.join(c.main, '.garagiste', 'team.json');
   const t = readJson(teamPath, null);
   if (!args.length) return out(`MODELS ${Object.entries(t.models).map(([k, v]) => `${k}=${v}`).join(' ')}`);
-  let next; try { next = resolveModels(t.models, args); } catch (e) { fail(`FAIL models: ${e.message}`); }
+  let next; try { next = resolveModels(t.models, args, t.profiles || {}); } catch (e) { fail(`FAIL models: ${e.message}`); }
   t.models = next; writeJson(teamPath, t);
   const touched = [];
   for (const [pack, model] of Object.entries(next)) {
