@@ -25,10 +25,10 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 
 ## L3 — 다중·회사(on-prem + opencode). 약한 모델일수록 하네스가 번다.
 
-- **Q8. 3층 이식성 명문화 — 법은 Layer 0.** **→ 검사 절반 2026-10-04(R&D 4라운드)**: 훅 0 환경(e2e)에서 속임수 셋 — 약화·원장 없는 커밋은 L0가 막고, 원장 위조는 ship 재검증(통합 tree에서 스스로)이 막는다(e2e). opencode 환경에서의 재현은 남았다.
+- **Q8. 3층 이식성 명문화 — 법은 Layer 0.** **→ 검사 완료 2026-10-04(R&D 4·5라운드)**: 훅 0 환경(e2e)에서 속임수 셋 — 약화·원장 없는 커밋은 L0가 막고, 원장 위조는 ship 재검증(통합 tree에서 스스로)이 막는다(e2e). 5라운드: 같은 셋을 opencode 설치본에서 재현 — 같은 결과(e2e), 가드 플러그인은 실행 패리티 e2e(결정 = decide()).
   Layer 0(git 훅 + node 스크립트 + 원장): 어느 하네스·모델·인간에게도 동작, 신뢰는 전부 여기서 성립. Layer 1(Claude 훅·opencode 플러그인): fail-loud 최적화일 뿐, 전멸해도 신뢰 유지. Layer 2(팩 markdown): 보편. redproof의 성질 — 약화된 테스트는 old code에서도 통과해 base_red가 깨진다 — 을 negative test로 기계화.
   검사: 훅 0 환경에서 속임수 3종이 게이트 FAIL(L0 게이트의 재확인을 opencode에서).
-- **Q9. opencode 어댑터 — 스폰 방법 + guard 플러그인 + agents 6파일만.**
+- **Q9. opencode 어댑터 — 스폰 방법 + guard 플러그인 + agents 6파일만.** **→ 부분 채용 2026-10-04(R&D 5라운드)**: guard 플러그인 실행 패리티(e2e 13 케이스 · task→spawn_stop 팩 이름) · conductor task 허용 = 팩 전부(adopt 누락 수리 — 패리티병의 재발을 unit이 막는다) · conduct는 .claude/agents 없는 설치본에서 --spawner 없이 서지 않는다(한 줄) · selftest가 두 하네스의 L1 거부 1건을 돈다. 남은 것: 실제 opencode CLI로 spawner 템플릿 검증(모델 0 환경 밖).
   guard-rules는 이미 하네스 중립(`guard-rules.mjs:1`), models도 .opencode 경로 인지(`work.mjs:255`). 금지 조항: 커맨드·스킬 트리 복제 없음 — v1 패리티병(두 flavor 손 동기화, parity-check가 그 증상)의 재발 금지. AX의 가짜 끝점·replay 인프라를 하네스 테스트에 재사용(네트워크 0, 비용 0).
   검사: opencode 환경에서 selftest + L0 속임수 시나리오 재현.
 - **Q10. provider-per-pack.** models 개념을 provider까지 확장 — 집: spec/attack=최강 모델, 회사: spec=온프렘+CEO 서명 강화(약한 모델은 「잘 고정된 스펙의 실행자」, 판단은 사람이 더 잡는다). 검사: team.json 프로파일 한 줄로 두 환경 전환.
@@ -40,7 +40,7 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
   v1에서 살아남을 자격이 있는 것(assess·parity — 대상이 사람 마음이 아니라 코드): 현행 동작의 characterization 테스트 = 수용 기준, redproof 그대로 작동. incremental intake(오프셋 재개)는 있음 — LACUNA 레거시 intake 팩 151KB가 반례 근거.
   검사: 기존 코드베이스 1개에서 boot 없이 첫 unit 출하.
 
-**L3 게이트: unit당 CEO-분(기계 셈 — `docs/measurements/L2-TRIAL-5.md` 「CEO-분」; 기준선은 L2 5판의 첫 수치 — L1 표의 CEO-분 칸은 한 번도 채워지지 않았다) 비악화 + opencode 환경에서 L0 게이트 전부 재현.**
+**L3 게이트: unit당 CEO-분(기계 셈 — `docs/measurements/L2-TRIAL-5.md` 「CEO-분」; 기준선은 L2 5판의 첫 수치 — L1 표의 CEO-분 칸은 한 번도 채워지지 않았다) 비악화 + opencode 환경에서 L0 게이트 전부 재현.** **→ 후반 충족 2026-10-04(R&D 5라운드)**: opencode 설치본에서 L0 속임수 셋 재현(e2e) — 전반(CEO-분 비악화)은 L2 5판 수치 뒤.
 
 ---
 
@@ -109,3 +109,4 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **채용(R&D 2라운드 2026-10-04)**: (d) conduct를 selftest에 → 채용(20단계) · 무인 안전벨트 셋(팩 시간 상한 · 비용 상한 · 잠금/heartbeat — DEVICES 4.6 「무인 폭주는 예산으로」의 자리) · Q11 부분(VERSION). 남은 종이 후보: (a) 샌드박스 (b) PR ship (c) 병렬 seed (e) 벤치 구성 ③ · Q11의 unit화.
 - **채용(R&D 3라운드 2026-10-04)**: Q13의 입구 — adopt 팩. 투입 판정(HANDOFF 「2026-10-04 R&D 3라운드」): 신규(기계 검증 가능)만 가능, 레거시는 입구가 생겼을 뿐 — 첫 측정 전.
 - **채용(R&D 4라운드 2026-10-04)**: ship 재검증(`ship_reverify` 기본 true) · 가드 인라인 코드 쓰기 거부 · `conduct.mjs check`. Q8 검사의 리눅스 몫.
+- **채용(R&D 5라운드 2026-10-04)**: opencode 레인 패리티 — 가드 플러그인 실행 테스트 · task spawn_stop 팩 이름 · conductor task 허용 adopt · 팩 목록 하나(unit) · conduct spawnerGap · selftest L1 거부 1건. Q8 검사 완료, L3 게이트 후반.
