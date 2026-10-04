@@ -25,7 +25,7 @@ cd ~/work/f1 && claude
 ```
 session-start 훅이 첫 줄에 `GARAGISTE 증거 팀 — 이 세션은 conductor다…`와 doctor 한 줄, STATUS 첫 줄을 넣는다. 안 보이면 훅이 죽은 것이다: `node .garagiste/scripts/doctor.mjs`가 무엇을 치라고 말한다(대개 settings.json 경로 또는 node PATH).
 
-이 세션은 코드를 쓰지 않는다. 훅이 `.worktrees/` 밖 편집을 거부한다. 평범하게 파일을 고치고 싶은 세션은 `GARAGISTE_ADMIN=1 claude`로 연다.
+이 세션은 코드를 쓰지 않는다. 훅이 `.worktrees/` 밖 편집을 거부한다. (측정 2026-10-04 14라운드: 「개발해」 한 턴이 Flow 2의 배선 — Agent 서브에이전트 · SubagentStop 훅 · spawned — 을 전부 지났다. 서브에이전트가 허용된 명령을 `\`+줄바꿈으로 시작하면 승인 요청이 된다 — agents 파일이 「한 줄 명령」을 말한다.) 평범하게 파일을 고치고 싶은 세션은 `GARAGISTE_ADMIN=1 claude`로 연다.
 
 ## 4. 시험 진행 — CEO가 하는 말과 보는 것
 1. **구상.** 자유롭게 말한다. 끝나면 "이 내용으로 brief 축적해" — conductor가 `work.mjs brief`로 원문을 docs/BRIEF.md에 쌓는다. feasibility 1의 brief는 이 한 문단으로 충분하다:

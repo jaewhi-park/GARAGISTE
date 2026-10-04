@@ -1,4 +1,4 @@
-# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python)
+# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python · 14라운드 중간 크기 레거시 + conductor 턴)
 
 ## 왜
 1~11라운드의 드라이버(`conduct.mjs`)·헤드리스 spawner(`claude -p <팩> --agent <팩> …`)는 가짜 팩(`tests/fakes/pack.mjs`)과 `--help` 텍스트로만 검증됐다 — 9라운드(`--max-turns` 없음)·11라운드(Windows 셸 심)의 벽은 둘 다 **읽어서** 찾은 것이고, 실제 CLI가 실제로 어떻게 끝나는지(JSON 꼴 · 권한 · 모델 선택 · 훅)는 한 번도 보지 않았다. 12라운드는 그 자리를 **측정**으로 채운다: 정비 자리(리눅스 컨테이너)에 설치된 claude 2.1.289로 기존 코드가 있는 저장소에 설치 → intake → conduct 끝까지. 테스트는 그대로 모델 0 · 네트워크 0 — 이 문서는 측정 기록이다(HANDOFF 「장치는 사고·측정에서만」).
@@ -93,15 +93,53 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 ### 시간 상한 탐침 — SIGTERM (13라운드)
 `claude -p "sleep 90 …" --agent build …`에 8초 뒤 SIGTERM: **1.9초 뒤 종료 · exit 143 · stdout 0바이트(JSON 없음) · stderr 없음**. 뜻: `--pack-minutes`의 SIGTERM은 든다(고아 없음) — 그러나 끊긴 팩의 비용·토큰은 원장에 남지 않는다(spawned 줄은 분만) → `--max-usd` 합계가 끊긴 팩의 지출을 못 본다(상한은 그만큼 느슨하다). SIGTERM을 무시하는 팩은 보지 못했지만 드라이버는 이제 5초 뒤 SIGKILL(runChild killAfterMs — installSignals와 같은 꼴).
 
-## 비용 합계 (두 run)
+## 셋째 run — 중간 크기 레거시(Node, 14라운드 2026-10-04) · 입구는 대화형 conductor 한 턴
+테스트 베드 `biglegacy`(scratchpad): `inventory-svc 1.4.2` — 파일 19 · 소스 137줄(`src/` 7 모듈: config·store·validate·format·report·handlers·server · `bin/inv.js` CLI · `lib/legacy-utils.js`(죽은 코드 포함) · `scripts/migrate.js`) · 두 표면(HTTP API 5 라우트 + CSV · CLI 4 명령) · 기존 테스트 6(**빨간 것 1** — `test/date.test.js`가 2025년을 박았다) · `npm test`가 `node --test test/`(node 22에서 디렉터리 인자는 실패 — 실제 레거시의 흔한 꼴) · 원격 bare. 설치(동결 19 75826e5 · SELFTEST 21/21) → trust → check PASS. 원문: 「지금 있는 inventory 서비스(HTTP API … CLI …)는 그대로 둔다. 더할 것 하나: tag로 거르기 — GET /items?tag=<t> … CLI list --tag <t> … 없는 태그면 빈 목록 … 외부 네트워크는 쓰지 않는다」.
+
+### 입구 — 대화형 conductor 턴(CLAUDE.md Flow 2, 헤드리스 `claude -p "개발해" --model sonnet`, R&D 뒤 첫 실제 모델)
+| 사실 | 값 |
+|---|---|
+| 턴 · 모델 · 비용 · 시간 | 5턴 · conductor sonnet + 서브에이전트 opus · $0.20 · 50초 |
+| 배선 | `brief.mjs intake` → **Agent(subagent_type: intake, prompt: 팩 경로)** → SubagentStop 훅 → 원장 `spawn_stop`(intake) → conductor가 `work.mjs spawned intake intake`(11,302 토큰 · 1분) — 훅·원장 줄 전부 들었다 |
+| **서브에이전트의 거부** | intake 서브에이전트의 `work.mjs add` 네 개가 **전부 승인 거부**됐다 — 명령 텍스트가 `\`+줄바꿈으로 시작(`"\\\nnode .garagiste/scripts/work.mjs add adopt …"` — 긴 명령을 잇는 모델의 버릇). allow는 접두(`Bash(node .garagiste/scripts/work.mjs:*)`)로 맞춰 `\`로 시작하면 허용된 명령도 승인 요청 → `--permission-prompts none`이 거부. 서브에이전트는 「거부당해 unit을 하나도 못 넣었다」로 끝났다 |
+| **conductor의 대리 실행** | conductor도 첫 시도는 같은 `\` 꼴로 거부 → 둘째 시도(`node …` 한 줄)는 통과 → **intake의 네 `add`를 conductor가 직접 쳤다**(원문과 대조해 그대로 — adopt · tag-filter-api · tag-filter-cli · **no-network(--kind pin — 13라운드의 intake 규칙 4 「제약형은 pin」을 썼다)**). 결과는 옳았지만 길은 Flow 밖(팩의 일을 conductor가) — L2 역사의 「빈칸은 모델이 메운다」 꼴. 질문 0 · 「M1로 진행할까요?」로 턴이 끝났다(Flow 2의 끝 — 옳다) |
+| 가드 | 원장 guard 줄 0(거부는 Claude Code의 승인) |
+
+→ 장치: `.claude/agents/<팩>.md` 7에 한 줄 — 「명령은 `node …`로 시작하는 한 줄로, 줄머리 `\`·빈 줄·줄 끝 `\` 잇기 없음」(측정). conductor의 대리 실행은 관찰로 남긴다(둘째 근거가 오면 장치 — 예: `brief.mjs intake` 뒤 다음 `work.mjs add`가 팩 밖(GARAGISTE_PACK 없음)에서 오면 한 줄 경고).
+
+### 루프 — `work.mjs scope --milestone M1`(adopt → tag-filter-api → tag-filter-cli → no-network) → `conduct --max-usd 8 --pack-usd 3 --pack-minutes 20`
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 09:27:24 | seed adopt → spawn | adopt · sonnet | 293K · 1.5 | 0.268 | **특성화 20(CLI 12 · HTTP 8)** · 소스 불변 · `?tag` 무시 동작은 다음 unit과 충돌해 굳히지 않았다 · **`setup=true` 거부**(13라운드 setupNoop — 09:28:36) → `npm install`로 재등록 · **빨간 기존 테스트(date.test.js)를 quick·full에서 빼고 Q1** · Q2(tag 필터는 다음 unit에서? — BACKLOG가 이미 답인 군질문) · 거부 0 → unit은 질문에 걸려 `STOP wait`(exit 3) |
+| 09:29:47 | 대리 CEO `decide 1·2` | — | — | — | Q1 「그대로 제외」 · Q2 「예」 → ACCEPT 줄이 「spec이 red 수용 테스트로」(adopt엔 spec이 없다 — 관찰 → 수리) |
+| 09:29:48 | ship adopt | — | — | — | SHIPPED d5974c8 |
+| 09:29:50 | tag-filter-api spec → build → attack | opus · sonnet · opus | 103K·1.3 / 130K·0.5 / 269K·1.5 | 0.251 / 0.113 / 0.431 | RED 1/1 → `feat(items)` → 공격 9건 **red 0**(결함은 「이 diff 밖」 — tags가 문자열이면 /export.csv가 응답 도중 예외로 죽는다 — 테스트 안 함, 글로만: 관찰) → next의 tree redproof·full → SHIPPED 1d8522c |
+| 09:33:27 | tag-filter-cli spec → build → attack → build | opus · sonnet · opus · sonnet | 102K·0.7 / 161K·0.6 / 181K·1.1 / 175K·0.6 | 0.282 / 0.116 / 0.410 / 0.136 | RED → `feat(cli)` → 공격 13건 **red 5**(값 없는 `--tag`·반복·`--tag=값`이 전체 목록으로 샌다 — API는 `[]`) → 수리 → red 0 → SHIPPED 6d919b6 |
+| 09:36:38 | **no-network(kind pin)** spec → attack → build | opus · opus · sonnet | 179K·1.4 / 202K·1.6 / **429K**·1.0 | 0.396 / 0.483 / 0.233 | **PIN no-network 1/1(main에서도 통과)** — 핀: 서버 전 경로·CLI 전 명령이 바깥에 연결하지 않음을 감시자로 → build 없이 attack → 공격 7건 **red 1**(`listen(PORT)`가 0.0.0.0에 연다 — surface는 127.0.0.1만) + `platform:` 한 줄(Windows UNC 경로) → build가 127.0.0.1로 → **첫 실제 pin 출하** SHIPPED 23f2103 · LEDGER `pin_base=green head_green (pin)` |
+| 09:40:49 | system-1 attack → build | opus · sonnet | 188K·1.1 / 203K·0.8 | 0.400 / 0.163 | 이음새 3건 **red 3/3**(`?tag=a&tag=b`는 API 첫 값·CLI 교집합 · `""`·`--beta` 태그를 API는 찾고 CLI는 빈 결과) → 수리 → SHIPPED 8750ee9 |
+| 09:42:53 | next → `STOP ceo` | — | — | — | **「CEO 접점 없이 출하 5 ≥ 5 — 예산 정지」**(exit 2) — 무인 출하 상한이 처음 실발동했다(설계대로: REPORT 전에 사람이 써봐야 한다) · STATUS 「안 본 것 1/3」 |
+
+합계: conductor 턴 $0.20 + 팩 13(conduct) $3.68 = **$3.88** · 토큰 2.6M · 팩 시간 14.7분 · 기계 벽시계 ≈15분 · 출하 5(adopt · api · cli · **pin** · system) · 공격이 찾은 결함 9건(cli 5 · pin 1 · 이음새 3) 전부 수리 · 프레임워크 FAIL 0 · 사람 접점 2(Q1·Q2) + 정지 1(출하 상한).
+
+### 관찰 (14라운드)
+11. **conductor 턴의 서브에이전트 거부와 대리 실행**(위 「입구」) → agents 7에 「한 줄 명령」. 대리 실행은 관찰(둘째 근거 대기).
+12. **`cd … && git reset --soft HEAD~1 && …` 거부 6(build 팩 5개 중 5)** — 13라운드에 allow에 `git reset --soft`를 더했지만 `cd &&` 묶음은 그대로 거부된다(12라운드 규칙: `cd && node`만 통과). 세 run 합계 10건, 전부 같은 일(wip 체크포인트 커밋을 풀어 정식 커밋으로 — ship의 head 조건이 요구하는 일) → 장치: **`checkpoint.mjs unwip`**(스크립트가 푼다 — `cd && node …`는 통과) + brief가 HEAD가 wip인 build 팩에 그 명령을 적는다.
+13. decide의 ACCEPT 줄이 adopt에 「spec이 red 수용 테스트로」 → kind를 알게(수리).
+14. 공격이 **diff 밖 결함**을 글로만 남겼다(tag-filter-api: `/export.csv`가 문자열 tags에 죽는다) — 공격 규칙(「이 diff」)대로다. 이음새 공격이 뒤에 그 자리를 보지 않았다(태그 거르기만 봤다). 집은 없다 — 후보: 공격의 「diff 밖 결함」 줄을 BACKLOG 후보로 받는 길(판단이 들어 CEO 결정).
+15. adopt의 **군질문**(Q2 — BACKLOG가 이미 답) — 질문 하나가 unit을 세운다(STOP wait). 관찰.
+16. pin unit의 build 팩이 429K 토큰(가장 큼) — 감시자 기반 핀 테스트의 경합(기동 로그 vs listen 관측)을 고치느라. 공격 팩 7건이 네트워크 감시자를 만들었다 — pin의 공격은 「주장이 깨지는 입력」이라 제약형엔 환경(인터페이스·경로)으로 간다.
+
+## 비용 합계 (세 run)
 | 무엇 | $ |
 |---|---|
 | 12라운드 탐침 13 + run(Node, 팩 8) | 2.30 |
 | 13라운드 run(Python, 팩 10) + SIGTERM 탐침 | 1.83 |
-| **합계** | **4.13** — unit 하나(spec·build·attack·수리 포함) ≈ $0.6~0.9 · 이음새 공격 한 바퀴 ≈ $0.3~0.4 |
+| 14라운드 conductor 턴 + run(Node 중간 레거시, 팩 13) | 3.88 |
+| **합계** | **8.01** — unit 하나(spec·build·attack·수리) ≈ $0.6~1.1 · pin unit ≈ $1.1(공격·수리 포함) · 이음새 공격 한 바퀴 ≈ $0.3~0.6 · adopt ≈ $0.14~0.27(파일 3 → 19) |
 
-## 판정 (13라운드 갱신)
-- **① 신규·기계 검증 가능(CLI·웹·데몬·API) + 리눅스 + `conduct.mjs`: 투입 가능(실측 2/2)** — 두 생태계(Node · Python)에서 설치부터 SCOPE DONE까지, 프레임워크 FAIL 0, 사람 접점 run당 1(hold 또는 질문), 공격이 unit마다 결함을 찾아 수리까지(선발견 1·2·2). 조건은 12라운드와 같다(check PASS · trust · 팩 상한은 바닥값의 몇 배 · 멈춤은 `decide` 뒤 FAIL 안내대로).
-- **③ 레거시 입구(adopt)**: 둘째 생태계 통과 — Python에서 12라운드 탐침이 하네스를 강제했다(사고 44·57의 자리가 등록 때 닫힌다). 대규모 레거시(특성화 대량·관심 영역 지도)는 그대로 미측정.
-- **② UI·DB·멀티서비스**: 변화 없음. **Windows**: CEO PC 대기.
-- 이 둘이 못 본 것: 긴 팩의 시간 상한 실발동(탐침만) · 비용 상한 정지 · 충돌 rebase(두 unit이 같은 파일) · 사람 센서 unit · opencode 레인 · 이틀 이상의 운영.
+## 판정 (14라운드 갱신)
+- **① 신규·기계 검증 가능(CLI·웹·데몬·API) + 리눅스 + `conduct.mjs`: 투입 가능(실측 3/3)** — 세 run이 설치부터 끝(SCOPE DONE 둘 · 무인 출하 상한 하나)까지 프레임워크 FAIL 0, 사람 접점 run당 1~2(hold·질문·출하 상한 — 전부 설계된 멈춤), 공격이 unit마다 결함을 찾아 수리까지(세 run 합계 결함 14). 조건은 12라운드와 같다 + 팩은 `cd && node …`만(agents) + 끊긴 팩의 비용은 원장 밖.
+- **③ 레거시 입구(adopt)**: 세 생태계·크기(Node 3파일 · Python 3파일 · Node 19파일 두 표면)에서 선다 — 특성화 8·10·20, 빨간 기존 테스트는 빼고 묻는다, 깨진 `npm test`는 고친 명령으로, 탐침이 눈먼 full·노옵 setup을 등록 때 막는다. **대규모(수백 파일·여러 패키지)와 「관심 영역 지도」는 미측정** — adopt 팩 하나가 전부를 특성화하는 모양은 파일 19에서도 293K 토큰·1.5분이었다(선형이면 파일 200에서 팩 상한·시간 상한에 닿는다 — Q13의 다음 조각).
+- **대화형 conductor(CLAUDE.md Flow)**: Flow 2 한 턴이 배선(Agent 서브에이전트 · SubagentStop 훅 · spawned)을 전부 지났다. 단 서브에이전트가 허용된 명령을 `\`+줄바꿈으로 시작해 거부되자 conductor가 팩의 일을 대신했다 — 무인 세션에선 사람이 모르는 채 결과만 옳다. agents 한 줄이 꼴을 막지만, 「conductor가 팩의 일을 대신한다」는 둘째 근거가 오면 장치.
+- **② UI 중심·DB·마이그레이션·멀티서비스**: 변화 없음 — 아직. **Windows**: CEO PC 대기.
+- 세 run이 못 본 것: 충돌 rebase(두 unit이 같은 파일 — 순차 운전에선 docs 차선 외엔 main이 안 움직인다) · 비용 상한 정지 실발동 · 대규모 레거시 · 사람 센서 unit · opencode 레인 · 이틀 이상의 운영 · REPORT 뒤의 다음 범위(M2).

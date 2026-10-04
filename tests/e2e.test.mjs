@@ -1523,6 +1523,32 @@ test('kind pin: (1) redproof base green → hold → decide → work.mjs pin →
   assert.match(script('work', ['pin', 'greet-keeps'], repo).out, /^FAIL greet-keeps은 shipped — pin은 진행 중 unit에만/);
   assert.match(script('work', ['pin', 'nope'], repo).out, /^FAIL/);
 });
+// 14라운드(2026-10-04, 세 run의 승인 거부 10건 전부 `cd <worktree> && git reset --soft HEAD~1 && …`): build가 wip 체크포인트를 풀어 정식 커밋으로 얹는 일은 스크립트가 — `cd && node …`만 무인 세션을 지난다.
+test('checkpoint.mjs unwip: worktree의 wip HEAD를 풀어 변경을 인덱스에(정식 커밋은 팩이) · wip 아니면 PASS 한 줄 · 메인에서는 FAIL · brief의 이어받기 절이 그 명령을 가리킨다', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  assert.match(script('work', ['new', 'wipcase', '이어받기 시험'], repo).out, /^UNIT wipcase spec/);
+  const wt = path.join(repo, '.worktrees', 'wipcase');
+  assert.match(script('checkpoint', ['unwip'], wt).out, /^PASS unwip — HEAD는 wip가 아니다/);
+  write(wt, 'note.txt', 'x\n'); git(['add', '-A'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'wip: wipcase checkpoint'], wt, { GARAGISTE_WIP: '1' }).status, 0);
+  const before = git(['rev-parse', 'HEAD~1'], wt).out.trim();
+  const r = script('checkpoint', ['unwip'], wt);
+  assert.equal(r.status, 0, r.out); assert.match(r.out, /^UNWIP wip: wipcase checkpoint — wip 커밋을 풀었다\(HEAD [0-9a-f]{7} · 인덱스에 1개\) → 이어서 일하고 정식 커밋을 만들라/);
+  assert.equal(git(['rev-parse', 'HEAD'], wt).out.trim(), before, 'HEAD가 한 칸 뒤로');
+  assert.equal(git(['diff', '--cached', '--name-only'], wt).out.trim(), 'note.txt', '변경은 인덱스에 남는다');
+  assert.ok(fs.existsSync(path.join(wt, 'note.txt')), '작업 트리는 그대로');
+  const main = script('checkpoint', ['unwip'], repo);
+  assert.equal(main.status, 1); assert.match(main.out, /^FAIL unwip: 메인에서는 풀지 않는다/);
+  assert.match(script('checkpoint', [], wt).out, /^사용법: checkpoint\.mjs unwip/);
+  // brief의 「이어받기」 절(wip HEAD)이 그 명령을 가리킨다 — 팩은 git reset을 직접 치지 않는다(build 팩은 인수 테스트가 있어야 조립된다)
+  write(wt, 'tests/acceptance/wipcase.test.mjs', "// @claim 이어받기\n// @milestone M1\n// @sensor machine@linux\nimport test from 'node:test'; test('claim', () => { throw new Error('red'); });\n");
+  git(['add', '-A'], wt); assert.equal(git(['commit', '-q', '-m', 'wip: wipcase checkpoint'], wt, { GARAGISTE_WIP: '1' }).status, 0);
+  const bp = script('brief', ['build', 'wipcase'], repo);
+  assert.match(bp.out, /^PACK /, bp.out);
+  const packText = fs.readFileSync(path.join(repo, bp.out.split(' ')[1]), 'utf8');
+  assert.match(packText, /HEAD는 wip 체크포인트다\. 첫 명령: `node \.garagiste\/scripts\/checkpoint\.mjs unwip`/, '이어받기 절');
+  assert.doesNotMatch(packText, /첫 명령: `git reset --soft/, '팩이 칠 git reset은 없다');
+});
 // Q14 사람-증거 레인 첫 조각(R&D 8라운드 2026-10-04 — 윈도우 M1 관찰 「사람 확인 집계 1/9」): CEO가 본 것(스크린샷·녹화·빌드)이 파일로 원장의 증거가 된다.
 test('tried --evidence: 파일을 docs/units/<slug>/evidence/로 복사하고 docs 차선으로 커밋(main은 깨끗) · 원장 tried.evidence · STATUS 「사람 증거」 · 없는 파일은 FAIL', { timeout: 120000 }, (t) => {
   const repo = conductRepo(t); if (!repo) return;
