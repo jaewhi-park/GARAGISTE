@@ -86,7 +86,7 @@
     "pack_kb_max": 32,
     "step_logic_lines_max": 300,
     "spike_minutes": 30,
-    "unit_tokens_max": 1000000,
+    "unit_tokens_max": 1500000,
     "pack_minutes_max": 60,
     "run_usd_max": 0,
     "pack_usd_max": 0

@@ -41,7 +41,7 @@ export function budgetStatus({ units, ledger, team, ceoTouchTs }) {
   for (let i = shipped.length - 1; i >= 0 && shipped[i].origin_kind === 'team'; i--) trailing++;
   if (trailing >= team.budgets.no_ceo_units_max) stops.push(`팀이 스스로 뜬 unit 연속 ${trailing} ≥ ${team.budgets.no_ceo_units_max}`);
   // unit 토큰 상한(L2 2판 윈도우 1일차: attack↔build 진동이 같은 몫에 토큰 16배 · 6판 unit당 ≈140K): 진행 중 unit의 spawn 토큰 합이 상한이면 멈춘다 — 무인 폭주는 예산으로.
-  // 상한은 unit의 것(work.mjs budget — CEO 접점)이 team.json(unit_tokens_max)보다 먼저, 0이면 끈다. 토큰은 원장 spawn 줄(conduct의 실측 또는 conductor의 spawned 보고)만 센다.
+  // 상한은 unit의 것(work.mjs budget — CEO 접점)이 team.json(unit_tokens_max)보다 먼저, 0이면 끈다. 기본 1.5M(18라운드 — 실전: 재spec 하나 + 큰 공격의 정상 unit이 1.01~1.02M로 1M 상한에 두 번 섰다 · 진동은 2.2M). 토큰은 원장 spawn 줄(conduct의 실측 또는 conductor의 spawned 보고)만 센다.
   const tokenStops = []; // 사고 72(15라운드 넷째 run): unit별 토큰 정지 — next가 걸음마다 그 unit의 것만 본다(다른 정지는 seed·ship의 문)
   for (const u of units) {
     if (u.state === 'shipped' || u.state === 'dropped') continue;
@@ -51,6 +51,18 @@ export function budgetStatus({ units, ledger, team, ceoTouchTs }) {
     if (used >= cap) { const text = `unit ${u.slug} 토큰 ${Math.round(used / 1000)}K ≥ 상한 ${Math.round(cap / 1000)}K — CEO 결정: node .garagiste/scripts/work.mjs budget ${u.slug} <새 상한> 또는 work.mjs drop ${u.slug} "<사유>"`; stops.push(text); tokenStops.push({ slug: u.slug, used, cap, text }); }
   }
   return { stops, tokenStops, unseen: unseen.length, untried: untried.length, unattended };
+}
+// 17라운드(16라운드 결함의 집의 CEO 면): 팩이 찍은 후보(work.mjs found → BACKLOG `<slug>-f<n>`)가 BACKLOG·list에만 있어 둘째 날 CEO가 알아서 찾아야 했다 — STATUS·REPORT에 한 절. 후보는 범위에 넣기 전엔 unit이 아니다: 열린 unit이 있으면 「진행 중」이지 후보가 아니다.
+export function candidateLines({ ledger, backlogText, units }) {
+  const found = new Map(); for (const e of ledger) if (e.kind === 'found' && e.candidate) found.set(e.candidate, e.slug);
+  const live = new Set(units.filter((u) => u.state !== 'dropped').map((u) => u.slug));
+  const out = [];
+  for (const line of String(backlogText || '').split('\n')) {
+    const m = /^- \[ \] ([a-z0-9][a-z0-9-]*) · \S+ · needs: (\S+) · "(.*)" · 인수: /.exec(line);
+    if (!m || !found.has(m[1]) || live.has(m[1])) continue;
+    out.push(`- ${m[1]} ← ${found.get(m[1])}: "${m[3]}" → node .garagiste/scripts/work.mjs scope ${m[1]} · 아니면 work.mjs drop ${m[1]} "<사유>" --forget`);
+  }
+  return out;
 }
 export function openQuestions(decisionsText) { return [...decisionsText.matchAll(/^- \[ \] Q\d+.*$/gm)].map((m) => m[0]); }
 export function render(c) {
@@ -77,6 +89,8 @@ export function render(c) {
   const evidenced = units.filter((u) => u.tried?.evidence?.length); // Q14(8라운드): CEO가 본 것이 파일로 남았다 — 말이 아니라 증거
   parts.push('', '## 사람 증거', ...(evidenced.length ? evidenced.map((u) => `- ${u.slug}: ${u.tried.evidence.length} — ${u.tried.evidence.join(' ')}`) : ['- 없음 — work.mjs tried <slug> ok|fail "<메모>" --evidence <파일,…>(스크린샷·녹화·빌드)로 남긴다']));
   parts.push('', '## 정해 주세요', ...(questions.length ? questions : ['- 없음']));
+  const cands = candidateLines({ ledger, backlogText: readText(path.join(c.main, c.team.paths.backlog)), units });
+  parts.push('', '## 후보 — 팩이 찍은 이 diff 밖 결함 (범위에 넣기 전엔 unit이 아니다)', ...(cands.length ? cands : ['- 없음']));
   parts.push('', '## 팀이 정한 것 (뒤집으려면 한 마디)');
   const defaults = units.flatMap((u) => u.defaults.map((d) => `- ${u.slug}: ${d.text}`)).slice(-10);
   parts.push(...(defaults.length ? defaults : ['- 없음']));
@@ -97,7 +111,7 @@ export function render(c) {
 }
 // 출하 보고(채용 2026-10-03 — CEO 「결과물 가져오는 그림」): 범위가 끝나도 CEO가 받는 것은 STATUS 첫 줄과 카드 셋뿐이었다(L2 3판 복귀 창: 원장·LEDGER·DECISIONS를 따로 읽었다).
 // 한 장 — 만든 것(원문 그대로) · 기계가 증명한 것(LEDGER 행) · 팀이 정한 것 · 못 본 것 · 써볼 것(마일스톤 끝의 try) · 이음새 공격. 생성물이라 손편집 없음.
-export function reportText({ team, scope, units, ledger, ledgerMd = '', claims = [], decisionsText = '', now = new Date().toISOString() }) {
+export function reportText({ team, scope, units, ledger, ledgerMd = '', claims = [], decisionsText = '', backlogText = '', now = new Date().toISOString() }) {
   const order = scope?.order || [];
   const inScope = order.map((s) => units.find((u) => u.slug === s)).filter(Boolean);
   const shipped = inScope.filter((u) => u.state === 'shipped');
@@ -116,6 +130,8 @@ export function reportText({ team, scope, units, ledger, ledgerMd = '', claims =
   L.push('', '## 팀이 정한 것 (뒤집으려면 한 마디)', ...(defaults.length ? defaults : ['- 없음']));
   const unseen = [...unsensed.map((x) => `- 사람 센서 대기: ${x.file}${x.claim ? ' — ' + x.claim : ''}`), ...open.map((q) => `- 결정 대기: ${q.replace(/^- \[ \] /, '')}`)];
   L.push('', '## 못 본 것', ...(unseen.length ? unseen : ['- 없음 — 기계가 다 봤다']));
+  const cands = candidateLines({ ledger, backlogText, units });
+  if (cands.length) L.push('', '## 후보 — 팩이 찍은 이 diff 밖 결함 (다음 범위의 재료)', ...cands);
   L.push('', '## 써볼 것 — 마일스톤 끝의 try', `- 실행: \`${run}\``);
   for (const u of untried) L.push(`- ${u.slug}: ${u.kind === 'scaffold' ? '실행이 뜨는가' : u.kind === 'adopt' ? '쓰던 명령이 그대로 도는가(특성화)' : u.kind === 'system' ? `이음새 공격이 고친 흐름(tests/adversary/${u.slug}-*)` : `docs/units/${u.slug}/try.md`} → \`node .garagiste/scripts/work.mjs try ${u.slug}\` → \`tried ${u.slug} ok|fail "<말>"\``);
   if (!untried.length) L.push('- 없음 — 전부 써봤다');
@@ -129,7 +145,7 @@ function report(c) {
   if (!sc) fail('FAIL report: scope 없음 — 출하 보고는 범위가 끝난 뒤(work.mjs scope → … → SCOPE DONE)');
   const units = listUnits(c.main, c.team); const ledger = readLedger(c.main, c.team);
   const rel = c.team.paths.report || 'docs/REPORT.md';
-  const text = reportText({ team: c.team, scope: sc, units, ledger, ledgerMd: readText(path.join(c.main, c.team.paths.ledger_doc)), claims: collect(c), decisionsText: readText(path.join(c.main, c.team.paths.decisions)) });
+  const text = reportText({ team: c.team, scope: sc, units, ledger, ledgerMd: readText(path.join(c.main, c.team.paths.ledger_doc)), claims: collect(c), decisionsText: readText(path.join(c.main, c.team.paths.decisions)), backlogText: readText(path.join(c.main, c.team.paths.backlog)) });
   const p = path.join(c.main, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, text);
   const order = sc.order || [];
   writeJson(sp, { ...sc, report_for: order.join(',') }); // 이 범위에 한 장 — -fix로 범위가 자라면 next가 다시 낸다

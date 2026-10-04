@@ -12,10 +12,10 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, gateDecision, gateFailLine, logicLines, probeCommand, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
-import { againCmd, attackRoundUsed, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
-import { firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
+import { againCmd, attackRoundUsed, reviseDecided, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
+import { candidateLines, firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
-import { acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
+import { candidateSlug, acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { nextStep, render } from '../team/scripts/next.mjs';
 import { DEFAULTS as CONDUCT_DEFAULTS, defectLines, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
@@ -1269,7 +1269,7 @@ test('budget: 진행 중 unit의 spawn 토큰 합이 상한이면 멈춤 — uni
   assert.equal(budgetStatus({ units: [{ ...units[0], tokens_max: 10000 }, units[1]], ledger: [spawn('add', 5000)], team: cap, ceoTouchTs: null }).stops.length, 0, 'unit의 상한(budget)이 team.json보다 먼저');
   assert.equal(budgetStatus({ units, ledger: [spawn('add', 5000000)], team: { ...team, budgets: { ...team.budgets, unit_tokens_max: 0 } }, ceoTouchTs: null }).stops.length, 0, '0이면 끈다');
   assert.equal(budgetStatus({ units, ledger: [spawn('add', 5000000)], team: { ...team, budgets: { ...team.budgets, unit_tokens_max: undefined } }, ceoTouchTs: null }).stops.length, 0, '옛 team.json(키 없음)도 끈 것');
-  assert.equal(team.budgets.unit_tokens_max, 1000000, '기본 1M — 6판 unit 최대 185K의 5배, 2판 진동(≈1.6M)은 잡힌다');
+  assert.equal(team.budgets.unit_tokens_max, 1500000, '기본 1.5M(18라운드 — 실전 여섯 run: 재spec 하나 + 큰 공격의 정상 unit이 1.01~1.02M(둘째·넷째 날), 진동(system-1)은 2.2M — 둘의 규칙으로 1M → 1.5M; 1M은 둘째 날 L2 6판 unit 최대 185K의 5배였다)');
   assert.match(decide(bash('node .garagiste/scripts/work.mjs budget add 2000000', `${root}/.worktrees/add`), gctx('build')), /budget\(토큰 상한\)/, '팩은 자기 상한을 올리지 못한다');
 });
 // doctor — 끊긴 worktree(2026-10-01 관찰: 폴더를 옮기면 verify가 FAIL 줄 대신 스택을 냈다)
@@ -1340,7 +1340,7 @@ test('팩 목록 하나: work·brief·checkpoint PACKS 동일 · 두 하네스 a
   const TEAM = fileURLToPath(new URL('../team/', import.meta.url));
   for (const p of P) for (const f of [`claude/agents/${p}.md`, `opencode/agents/${p}.md`, `packs/${p}.md`]) assert.ok(fs.existsSync(path.join(TEAM, f)), `${f} 없음`);
   // 측정이 넣은 agents 한 줄들(12·14라운드 — 무인 세션의 승인 거부 꼴): 셸은 cd && node만(worktree 팩 6) · 명령은 node로 시작하는 한 줄(7) — 산문 편집이 지우지 않게 잠근다
-  for (const p of P) { const t = fs.readFileSync(path.join(TEAM, `claude/agents/${p}.md`), 'utf8'); assert.match(t, /명령은 `node …`로 시작하는 \*\*한 줄\*\*로/, `${p}: 한 줄 명령(14라운드)`); assert.match(t, /한 줄에 명령 하나 — `;`·`\|`로 다른 명령을 잇지 않는다/, `${p}: 명령 하나(15라운드 — unwip; git … | head 거부 5건)`); if (p !== 'intake') assert.match(t, /`cd <작업 디렉터리> && node …` 꼴만/, `${p}: cd && node(12라운드)`); }
+  for (const p of P) { const t = fs.readFileSync(path.join(TEAM, `claude/agents/${p}.md`), 'utf8'); assert.match(t, /명령은 `node …`로 시작하는 \*\*한 줄\*\*로/, `${p}: 한 줄 명령(14라운드)`); assert.match(t, /한 줄에 명령 하나 — `;`·`\|`로 다른 명령을 잇지 않는다/, `${p}: 명령 하나(15라운드 — unwip; git … | head 거부 5건)`); assert.match(t, /`node -e`의 인라인 코드도 한 줄에 — 따옴표 안의 줄바꿈도 승인 요청이 된다/, `${p}: node -e 한 줄(18라운드 — 둘째·여섯째 run 각 1건)`); if (p !== 'intake') assert.match(t, /`cd <작업 디렉터리> && node …` 꼴만/, `${p}: cd && node(12라운드)`); }
   const conductor = fs.readFileSync(path.join(TEAM, 'opencode/agents/conductor.md'), 'utf8');
   const allow = [...conductor.matchAll(/^\s+"([a-z]+)":\s*allow\s*$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(allow, P, 'opencode conductor가 task로 띄울 수 있는 팩 = 팩 전부');
@@ -1423,6 +1423,31 @@ test('install.sh ↔ install.ps1 정적 패리티: VERSION · 기존 저장소 �
   for (const [a, b] of pairs) { assert.ok(sh.includes(a), `install.sh: ${a}`); assert.ok(ps.includes(b), `install.ps1: ${b}`); }
   for (const m of ['BOOT', 'ADOPT', 'INTAKE', 'SPEC', 'BUILD', 'ATTACK', 'SPIKE']) { assert.ok(sh.includes(`{{MODEL_${m}}}`), `sh ${m}`); assert.ok(ps.includes(`{{MODEL_${m}}}`), `ps1 ${m}`); }
   assert.ok(/-SkipSelftest/.test(sh) && /\[switch\]\$SkipSelftest/.test(ps));
+});
+// 17라운드: 결함의 집의 CEO 면 — 후보는 STATUS·REPORT에 한 절(열린 unit이 되면 후보가 아니다)
+test('state(17라운드): candidateLines — found 원장 줄 ∩ 열린 BACKLOG 줄, 열린 unit은 빼고 · reportText에 「후보」 절', () => {
+  const backlog = '# BACKLOG\n- [ ] add-f1 · M? · needs: add · "빈 이름을 add하면 500" · 인수: -\n- [ ] add-f2 · M? · needs: add · "id가 문자열이면 get이 못 찾는다" · 인수: -\n- [x] add-f3 · M? · needs: add · "닫힘" · 인수: -\n- [ ] list · M1 · needs: - · "CEO의 unit" · 인수: -\n';
+  const ledger = [{ kind: 'found', slug: 'add', candidate: 'add-f1' }, { kind: 'found', slug: 'add', candidate: 'add-f2' }, { kind: 'found', slug: 'add', candidate: 'add-f3' }];
+  const units = [{ slug: 'add', state: 'shipped' }, { slug: 'add-f2', state: 'spec' }];
+  assert.deepEqual(candidateLines({ ledger, backlogText: backlog, units }), ['- add-f1 ← add: "빈 이름을 add하면 500" → node .garagiste/scripts/work.mjs scope add-f1 · 아니면 work.mjs drop add-f1 "<사유>" --forget'], 'f2는 열린 unit(진행 중), f3은 닫힘, list는 후보가 아니다');
+  assert.deepEqual(candidateLines({ ledger: [], backlogText: backlog, units }), [], 'found 줄이 없으면 BACKLOG 줄은 후보가 아니다');
+  const rt = reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['add'] }, units, ledger, backlogText: backlog });
+  assert.match(rt, /## 후보 — 팩이 찍은 이 diff 밖 결함 \(다음 범위의 재료\)\n- add-f1 ← add:/);
+  assert.doesNotMatch(reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['add'] }, units, ledger: [] }), /## 후보/, '후보가 없으면 절도 없다');
+});
+// 사고 77(18라운드): spec이 질문으로 올린 충돌에 CEO가 답하면 --revise의 근거다
+test('brief(18라운드): reviseDecided — 그 unit의 질문·hold에 CEO가 답한 닫힌 줄만(열린 Q·다른 unit의 Q는 아니다)', () => {
+  const d = '# DECISIONS\n\n## 정해 주세요\n- [ ] Q8 (x): 아직\n- [x] Q7 (order-rm-json): 기존 기대를 JSON으로 고쳐도 되나 → 예\n- [x] Q6 (other): 다른 unit\n- [x] Q5 (order-rm-json): hold 질문 → 거부한다\n';
+  assert.deepEqual(reviseDecided({ questions: [7, 8], holds: [5] }, d), ['- [x] Q7 (order-rm-json): 기존 기대를 JSON으로 고쳐도 되나 → 예', '- [x] Q5 (order-rm-json): hold 질문 → 거부한다']);
+  assert.deepEqual(reviseDecided({ questions: [8] }, d), [], '열린 질문은 근거가 아니다');
+  assert.deepEqual(reviseDecided({}, d), []);
+});
+test('work(17라운드): candidateSlug — 후보 이름은 뿌리 unit에 붙는다(후보에서 자란 unit의 후보도 <뿌리>-f<n>)', () => {
+  const items = [{ slug: 'order-id-f1' }, { slug: 'order-id-monotonic' }, { slug: 'order-id-monotonic-f1' }];
+  assert.equal(candidateSlug(items, 'order-id'), 'order-id-f2');
+  assert.equal(candidateSlug(items, 'order-id-f1'), 'order-id-f2', '셋째 날의 order-id-f1-f1 대신');
+  assert.equal(candidateSlug(items, 'order-id-monotonic'), 'order-id-monotonic-f2');
+  assert.equal(candidateSlug([], 'hello'), 'hello-f1');
 });
 test('state(8라운드): tried의 증거가 REPORT 줄에 「증거 n」으로 · FLAGS.tried에 evidence', () => {
   const text = reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['a'] }, units: [{ slug: 'a', state: 'shipped', milestone: 'M1', origin: 'o', kind: 'feature', shipped: '2026-10-04T00:00:00Z', tried: { result: 'ok', note: '', evidence: ['docs/units/a/evidence/s.png'] }, defaults: [] }], ledger: [] });
