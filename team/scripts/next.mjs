@@ -65,6 +65,7 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   if (!D) return spawn(st, `${st} 팩이 조립됐다 — 띄운다`);
   const specPack = packOf('spec');
   if (st === 'boot') return run(`ship.mjs ${slug}`, 'boot이 끝났다 — scaffold는 boot 팩 하나로 출하');
+  if (st === 'adopt') return run(`ship.mjs ${slug}`, 'adopt가 끝났다 — 기존 코드의 첫 unit은 adopt 팩 하나로 출하(특성화 테스트의 quick·full)');
   if (st === 'spike') return specPack ? run(`ship.mjs ${slug}`, '늦은 spike(출하 때 diff-HIT)가 끝났다 — ship 다시') : brief('spec', 'spike 측정이 끝났다 — 다음은 spec');
   if (st === 'spec') {
     const rp = last(mine, (e) => e.kind === 'redproof' && since(e, P.ts));

@@ -32,7 +32,7 @@ export function checkpoint(root) {
   }
   return done;
 }
-export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot'];
+export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt'];
 // spawn 센서 — pass line의 「unit당 spawn」은 conductor의 산문 보고(work.mjs spawned)가 아니라 훅이 기계적으로 센다.
 // v1 교훈(무명 stop 1,024건 대 실제 spawn 100건): agent_type이 팩일 때만 pack을 적고, 팩도 체크포인트도 없으면 줄 자체를 만들지 않는다.
 export function spawnStop(root, input = {}) {

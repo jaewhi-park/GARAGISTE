@@ -1217,3 +1217,14 @@ test('doctor --version: VERSION이 있으면 판 한 줄, 없으면 재설치 �
   assert.ok(decide(write('.garagiste/VERSION'), gctx(null)), '판 파일은 규칙집 — 설치기만 쓴다');
   assert.ok(decide(bash('echo x > .garagiste/VERSION'), gctx(null)));
 });
+
+// adopt(R&D 3라운드 2026-10-04): 기존 코드의 첫 unit — 이름은 쓰기 경계다
+test('guard: adopt 팩의 경계 — 특성화 테스트·하네스·위생 파일·규칙 파일 자리·docs/units만, 소스·기존 테스트·매니페스트는 거부', () => {
+  const wt = `${root}/.worktrees/adopt`;
+  for (const f of ['tests/unit/chars.test.mjs', 'tests/harness/run.py', '.gitattributes', '.gitignore', 'CLAUDE.md', 'AGENTS.md', 'docs/units/adopt/try.md']) assert.equal(decide(write(`${wt}/${f}`, wt), gctx('adopt')), null, f);
+  for (const f of ['src/a.js', 'lib/greet.js', 'bin/greet.js', 'test/greet.test.js', 'package.json', 'pyproject.toml', 'tests/acceptance/x.test.mjs', 'README.md']) assert.match(decide(write(`${wt}/${f}`, wt), gctx('adopt')) || '', /adopt 팩의 쓰기 경계 밖/, f);
+  assert.match(decide(bash('cat > lib/greet.js <<EOF\nx\nEOF', wt), gctx('adopt')) || '', /adopt 팩의 쓰기 경계 밖/, 'Bash 쓰기도 같다');
+  assert.equal(decide(bash('node .garagiste/scripts/work.mjs commands quick="node --test tests/unit/*.test.mjs"', wt), gctx('adopt')), null, '명령 등록은 스크립트로');
+  assert.deepEqual([TIERS.low.adopt, TIERS.medium.adopt, TIERS.high.adopt], ['haiku', 'sonnet', 'sonnet'], 'adopt의 모델은 boot과 같다(판단보다 실행)');
+  assert.equal(team.models.adopt, 'sonnet');
+});

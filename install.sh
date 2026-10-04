@@ -24,9 +24,9 @@ if git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then PRE_HEAD=1; [
 [ -f "$ROOT/.garagiste/team.json" ] && PRE_INSTALLED=1
 run() { if [ "$DRY" = 1 ]; then echo "  [dry] $*"; else "$@"; fi; }
 case "$BUDGET" in
-  low)    M_INTAKE=sonnet; M_SPEC=sonnet; M_BUILD=haiku;  M_ATTACK=sonnet; M_SPIKE=haiku;  M_BOOT=haiku ;;
-  high)   M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=opus;   M_ATTACK=opus;   M_SPIKE=sonnet; M_BOOT=sonnet ;;
-  *)      M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=sonnet; M_ATTACK=opus;   M_SPIKE=sonnet; M_BOOT=sonnet; BUDGET=medium ;;
+  low)    M_INTAKE=sonnet; M_SPEC=sonnet; M_BUILD=haiku;  M_ATTACK=sonnet; M_SPIKE=haiku;  M_BOOT=haiku;  M_ADOPT=haiku ;;
+  high)   M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=opus;   M_ATTACK=opus;   M_SPIKE=sonnet; M_BOOT=sonnet; M_ADOPT=sonnet ;;
+  *)      M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=sonnet; M_ATTACK=opus;   M_SPIKE=sonnet; M_BOOT=sonnet; M_ADOPT=sonnet; BUDGET=medium ;;
 esac
 echo "GARAGISTE 증거 팀 [$FLAVOR] → $ROOT (budget: $BUDGET)"
 # 1. 팀 정본 — 하네스 중립
@@ -45,16 +45,16 @@ GSHA="$(git -C "$HERE" rev-parse HEAD 2>/dev/null || echo unknown)"; GTREE="$(gi
 if [ ! -f "$ROOT/.garagiste/team.json" ]; then
   run cp "$HERE/team/team.json" "$ROOT/.garagiste/team.json"
   [ "$DRY" = 0 ] && node -e '
-    const fs=require("fs"); const [p,i,s,b,a,k,o]=process.argv.slice(1); const t=JSON.parse(fs.readFileSync(p,"utf8"));
-    t.models={intake:i,spec:s,build:b,attack:a,spike:k,boot:o}; fs.writeFileSync(p, JSON.stringify(t,null,2)+"\n");' "$ROOT/.garagiste/team.json" "$M_INTAKE" "$M_SPEC" "$M_BUILD" "$M_ATTACK" "$M_SPIKE" "$M_BOOT"
+    const fs=require("fs"); const [p,i,s,b,a,k,o,d]=process.argv.slice(1); const t=JSON.parse(fs.readFileSync(p,"utf8"));
+    t.models={intake:i,spec:s,build:b,attack:a,spike:k,boot:o,adopt:d}; fs.writeFileSync(p, JSON.stringify(t,null,2)+"\n");' "$ROOT/.garagiste/team.json" "$M_INTAKE" "$M_SPEC" "$M_BUILD" "$M_ATTACK" "$M_SPIKE" "$M_BOOT" "$M_ADOPT"
 fi
 # 편성의 정본은 프로젝트의 team.json — 재설치의 -Budget이 기존 편성을 지우지 않는다(v1 재적용병의 백신). 에이전트 model:도 여기서 나온다.
 if [ "$DRY" = 0 ] && [ -f "$ROOT/.garagiste/team.json" ]; then
-  MODELS_LINE="$(node -e 'const fs=require("fs");const t=JSON.parse(fs.readFileSync(process.argv[1],"utf8").replace(/^﻿/,""));const m=t.models||{};process.stdout.write([m.intake,m.spec,m.build,m.attack,m.spike,m.boot].join(" "))' "$ROOT/.garagiste/team.json" 2>/dev/null || true)"
-  if [ "$(printf %s "$MODELS_LINE" | wc -w)" = 6 ]; then read -r M_INTAKE M_SPEC M_BUILD M_ATTACK M_SPIKE M_BOOT <<<"$MODELS_LINE"; fi
+  MODELS_LINE="$(node -e 'const fs=require("fs");const t=JSON.parse(fs.readFileSync(process.argv[1],"utf8").replace(/^﻿/,""));const m=t.models||{};process.stdout.write([m.intake,m.spec,m.build,m.attack,m.spike,m.boot,m.adopt||m.boot].join(" "))' "$ROOT/.garagiste/team.json" 2>/dev/null || true)"
+  if [ "$(printf %s "$MODELS_LINE" | wc -w)" = 7 ]; then read -r M_INTAKE M_SPEC M_BUILD M_ATTACK M_SPIKE M_BOOT M_ADOPT <<<"$MODELS_LINE"; fi # adopt(2026-10-04)이 없는 옛 team.json은 boot의 모델로
 fi
 # 2. 하네스 배선
-sub() { sed -e "s/{{MODEL_BOOT}}/$M_BOOT/; s/{{MODEL_INTAKE}}/$M_INTAKE/; s/{{MODEL_SPEC}}/$M_SPEC/; s/{{MODEL_BUILD}}/$M_BUILD/; s/{{MODEL_ATTACK}}/$M_ATTACK/; s/{{MODEL_SPIKE}}/$M_SPIKE/" "$1" > "$2"; }
+sub() { sed -e "s/{{MODEL_BOOT}}/$M_BOOT/; s/{{MODEL_ADOPT}}/$M_ADOPT/; s/{{MODEL_INTAKE}}/$M_INTAKE/; s/{{MODEL_SPEC}}/$M_SPEC/; s/{{MODEL_BUILD}}/$M_BUILD/; s/{{MODEL_ATTACK}}/$M_ATTACK/; s/{{MODEL_SPIKE}}/$M_SPIKE/" "$1" > "$2"; }
 if [ "$FLAVOR" = claude ]; then
   run mkdir -p "$ROOT/.claude/hooks" "$ROOT/.claude/agents"
   run cp "$HERE"/team/claude/hooks/*.mjs "$ROOT/.claude/hooks/"

@@ -30,6 +30,8 @@ export const PACK_RULES = {
   build: { deny: [/^tests\/acceptance\//, /^tests\/adversary\//, /^fixtures\/hostile\//, /^probes\//, /^docs\/measurements\/spike-/] },
   attack: { allow: [/^tests\/adversary\//, /^fixtures\/hostile\//] },
   spike: { allow: [/^docs\/measurements\/spike-[^/]+\.md$/] },
+  // adopt(기존 코드의 첫 unit): 특성화 테스트·하네스·저장소 위생·규칙 파일 자리 — 소스·기존 테스트·매니페스트는 쓰지 않는다(증명은 「현재 동작 그대로」)
+  adopt: { allow: [/^(\.gitignore|\.gitattributes|CLAUDE\.md|AGENTS\.md)$/, /^tests\/unit\//, /^tests\/harness\//, /^docs\/units\/[^/]+\//] },
   // boot(kind scaffold): 스택·진입점·스모크·규칙 파일. 테스트 폴더는 unit 하나·프로브 없음
   boot: { allow: [/^(package\.json|pnpm-workspace\.yaml|pnpm-lock\.yaml|package-lock\.json|pyproject\.toml|uv\.lock|requirements[^/]*\.txt|Cargo\.toml|go\.mod|\.node-version|\.python-version|\.nvmrc|\.tool-versions|\.gitignore|\.gitattributes|README(\.[a-z]{2})?\.md|CLAUDE\.md|AGENTS\.md|tsconfig[^/]*\.json|[^/]*\.config\.[a-z]+)$/, /^src\//, /^tests\/unit\//, /^tests\/harness\//, /^docs\/units\/[^/]+\//] },
 };

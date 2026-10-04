@@ -7,11 +7,11 @@ import { appendLedger, ceoTouch, ctx, fail, git, hasFileSlot, isMain, linkDeps, 
 import { budgetStatus } from './state.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
-export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot'];
+export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt'];
 export const TIERS = {
-  low: { intake: 'sonnet', spec: 'sonnet', build: 'haiku', attack: 'sonnet', spike: 'haiku', boot: 'haiku' },
-  medium: { intake: 'opus', spec: 'opus', build: 'sonnet', attack: 'opus', spike: 'sonnet', boot: 'sonnet' },
-  high: { intake: 'opus', spec: 'opus', build: 'opus', attack: 'opus', spike: 'sonnet', boot: 'sonnet' },
+  low: { intake: 'sonnet', spec: 'sonnet', build: 'haiku', attack: 'sonnet', spike: 'haiku', boot: 'haiku', adopt: 'haiku' },
+  medium: { intake: 'opus', spec: 'opus', build: 'sonnet', attack: 'opus', spike: 'sonnet', boot: 'sonnet', adopt: 'sonnet' },
+  high: { intake: 'opus', spec: 'opus', build: 'opus', attack: 'opus', spike: 'sonnet', boot: 'sonnet', adopt: 'sonnet' },
 };
 // 편성 한 곳: team.json.models가 정본, 하네스의 에이전트 파일 앞머리 `model:`은 거기서 재생성
 export function resolveModels(current, args) {
@@ -126,7 +126,7 @@ export function unknownQuestions(needs, decisionsText) {
 // 사고 17(2차 실기): 닫힘은 반영이 아니다 — Q<n>에 기대는 진행 중 unit 중 이번 생애(created 이후)에 spec이 답 없이 이미 돈 것.
 // 첫 spec 전이면 그 팩이 답을 담으므로 대상이 아니다. 출하·dropped는 끝났고, scaffold(boot)엔 spec이 없다.
 export function respecTargets({ units, ledger, n }) {
-  return units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped' && u.kind !== 'scaffold'
+  return units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped' && u.kind !== 'scaffold' && u.kind !== 'adopt'
     && ((u.questions || []).includes(n) || (u.needs || []).includes(`Q${n}`))
     && ledger.some((e) => e.kind === 'pack' && e.pack === 'spec' && e.slug === u.slug && (e.ts || '') >= (u.created || '')))
     .map((u) => u.slug);
@@ -213,7 +213,7 @@ function createUnit(c, slug, origin, opts = {}) {
   linkDeps(c.main, wt);
   const boundary = checkBoundary(c.team, { text: origin });
   const kind = opts.kind || 'feature';
-  const state0 = kind === 'scaffold' ? 'boot' : kind === 'system' ? 'attack' : boundary.hit ? 'spike' : 'spec'; // system(이음새 공격): spec·spike 없이 attack부터
+  const state0 = kind === 'scaffold' ? 'boot' : kind === 'adopt' ? 'adopt' : kind === 'system' ? 'attack' : boundary.hit ? 'spike' : 'spec'; // system(이음새 공격): spec·spike 없이 attack부터 · adopt(기존 코드): adopt 팩 하나
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), state0);
   const unit = {
     slug, kind, origin, origin_kind: from, milestone: opts.milestone || 'M?', needs: opts.needs || [], accept: opts.accept || '-',
@@ -226,6 +226,7 @@ function createUnit(c, slug, origin, opts = {}) {
   appendLedger(c.main, c.team, { kind: 'unit', slug, state: unit.state, origin_kind: unit.origin_kind, milestone: unit.milestone });
   out(`UNIT ${slug} ${unit.state} ${unit.worktree}`);
   if (kind === 'scaffold') out('SCAFFOLD — boot 팩 하나로 끝난다(스택·명령·스모크·규칙 파일), spec·attack 없음');
+  else if (kind === 'adopt') out('ADOPT — adopt 팩 하나로 끝난다(특성화 테스트·검증 명령·규칙 파일 — 제품 코드는 바꾸지 않는다), spec·attack 없음');
   else if (kind !== 'system' && boundary.hit) out(`HIT ${boundary.reasons.join(', ')} — spike 팩부터`);
 }
 // system-attack(백로그 「system-attack 팩」 · 채용 2026-10-03 — 방아쇠: green 후 CEO 발견 결함이 벤치 파이썬 날짜 ×2 · todo 4일차 · 홀드아웃 library loan-limit로 0이 아니었다):
@@ -478,7 +479,7 @@ function commands(c, args) {
     const wtPrefix = c.team.paths.worktrees.replace(/^\.?\//, '') + '/';
     const slug = rel.startsWith(wtPrefix) ? rel.slice(wtPrefix.length).split('/')[0] : null;
     const u = slug ? readJson(unitFile(c.main, c.team, slug), null) : null;
-    if (!u || u.kind !== 'scaffold') fail('FAIL commands는 boot(scaffold) unit의 worktree 또는 GARAGISTE_ADMIN=1(CEO)에서만 — 검증 명령의 변경은 CEO 결정이다');
+    if (!u || (u.kind !== 'scaffold' && u.kind !== 'adopt')) fail('FAIL commands는 boot(scaffold)·adopt unit의 worktree 또는 GARAGISTE_ADMIN=1(CEO)에서만 — 검증 명령의 변경은 CEO 결정이다');
   }
   for (const a of args) {
     const m = /^(quick|full|test_file|run|setup)=([\s\S]*)$/.exec(a); // setup: 의존성 설치(사고 21 — ship이 의존성 출하의 머지 직후 main에서 돌린다)
@@ -602,5 +603,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();

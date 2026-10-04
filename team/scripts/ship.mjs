@@ -42,7 +42,7 @@ export function evidenceCommitMessage(files, paths, slug) {
 }
 export function evaluateShip(x) {
   const c = [];
-  const scaffold = x.unit?.kind === 'scaffold';
+  const scaffold = x.unit?.kind === 'scaffold' || x.unit?.kind === 'adopt'; // adopt(기존 코드의 첫 unit)도 팩 하나로 끝난다 — 증명은 특성화 테스트의 quick·full
   const teamChanged = !scaffold && (x.changed || []).includes('.garagiste/team.json'); // 검증 명령·예산의 재작성은 boot의 일이지 어느 팩의 일도 아니다 (HAZARDS 8형)
   c.push({ id: 'unit', ok: !!x.unit && x.unit.state !== 'shipped' && x.worktreeExists && x.clean && !teamChanged, why: !x.unit ? 'unit 없음' : x.unit.state === 'shipped' ? '이미 출하' : !x.worktreeExists ? 'worktree 없음' : !x.clean ? '작업 트리가 깨끗하지 않다' : teamChanged ? 'team.json 변경은 boot(scaffold) unit만 — 검증 명령·예산은 CEO 결정' : '' });
   // platform은 원장에 기록만 한다 — 어디서 돌았든 이 tree의 full PASS가 증거다. 대상-OS 보증은 @sensor 태그·target-OS 미관측 카운트의 일(HAZARDS 14; 옛 machine_os 필터는 그 일을 못 하면서 win32의 정당한 증거를 거부했다 — 첫 Windows 실기 사고).
@@ -64,7 +64,7 @@ export function evaluateShip(x) {
   // 사고 39(필드 벤치 1): build가 산출물 무시 줄(.gitignore)을 더한 diff-HIT에서 이 줄엔 다음 할 일이 없었다 — conductor는 Flow 5(출력 밖 추측 금지)대로 멈췄다
   c.push({ id: 'spike', ok: sp, why: sp ? '' : `boundary HIT(${x.boundaryWhy || '원문'})인데 spike 필수 행(${SPIKE_ROWS.join('·')}) 미완 → node .garagiste/scripts/brief.mjs spike ${x.slug} → 팩 spawn(${x.measurements || 'docs/measurements'}/spike-${x.slug}.md를 채운다) → node .garagiste/scripts/ship.mjs ${x.slug} 다시 — 측정 파일은 ship이 커밋한다, 측정이 허용 밖이면 그때 CEO에게` });
   const head = !/^wip:/.test(x.lastSubject || '');
-  c.push({ id: 'head', ok: head, why: head ? '' : `HEAD가 wip 체크포인트 — ${scaffold ? 'boot' : 'build'}를 다시 띄워 끝내라` }); // 필드 시험: scaffold(boot)에 build를 가리켰다(사고 7의 rebase 문구와 같은 결함)
+  c.push({ id: 'head', ok: head, why: head ? '' : `HEAD가 wip 체크포인트 — ${scaffold ? (x.unit?.kind === 'adopt' ? 'adopt' : 'boot') : 'build'}를 다시 띄워 끝내라` }); // 필드 시험: scaffold(boot)에 build를 가리켰다(사고 7의 rebase 문구와 같은 결함)
   const qs = x.openQuestions || []; // 이 unit이 올린 질문에 답이 없으면 출하하지 않는다 — 비가역 결정을 기본값이 대신하지 못하게
   const rs = (x.unit?.respec || []).map((r) => `Q${r.q}`); // 사고 17: 닫혔지만 spec이 아직 받지 않은 답 — 닫힘은 반영이 아니다
   c.push({ id: 'questions', ok: !qs.length && !rs.length, why: [
@@ -158,7 +158,7 @@ function main() {
   const unit = loadUnit(c.main, c.team, slug);
   const wt = worktreeDir(c.main, c.team, slug);
   const exists = fs.existsSync(wt);
-  const pk = unit.kind === 'scaffold' ? 'boot' : 'build';
+  const pk = unit.kind === 'scaffold' ? 'boot' : unit.kind === 'adopt' ? 'adopt' : 'build';
   // 사고 26: 멈춰 둔 rebase를 잇는다. 증거는 멈추기 전 unit의 tree(원장 ship_conflict)로 보고, 통합 tree는 아래 사고 22 경로가 다시 검증한다.
   let resumed = null;
   if (exists && rebaseInProgress(wt)) {
@@ -196,7 +196,7 @@ function main() {
     const promoted = evidenceCommitMessage(headFiles, c.team.paths, slug);
     if (promoted) git(['commit', '--amend', '-q', '-m', promoted], wt, { GARAGISTE_WIP: '1' });
   }
-  const runnerBlind = unit.kind === 'scaffold' && exists ? runnerProbe(c, wt) : [];
+  const runnerBlind = (unit.kind === 'scaffold' || unit.kind === 'adopt') && exists ? runnerProbe(c, wt) : [];
   const found = unit.kind === 'system' ? systemFound(ledger, slug, unit).length : 0; // 시스템 공격의 발견 — redproof.mjs의 system 분기와 같은 셈(사고 63)
   if (runnerBlind.length) appendLedger(c.main, c.team, { kind: 'runner_blind', slug, files: runnerBlind }); // boot 팩이 이 목록을 받는다
   const conds = evaluateShip({
@@ -215,7 +215,7 @@ function main() {
   if (dirty.length) fail(`FAIL ship: 메인 worktree에 미커밋 변경 — ${dirty.join(' ')} — 팀의 것이 아니다(팩·conductor는 main을 쓰지 않는다): CEO가 치운다(try 산출물이면 지우거나 옮기거나 .gitignore — CEO 결정) → ship 다시 · 다음 try는 node .garagiste/scripts/work.mjs try <slug>의 사본에서(main에 남지 않는다)`);
   // 통합: unit을 main 위로 올리고, tree가 바뀌었으면 full을 다시 돌린다
   // boot은 설치 명령을 자기 worktree의 team.json에 쓴다(머지 전 main엔 없다 — 사고 7의 통합 full과 같은 자리)
-  const setupNow = unit.kind === 'scaffold' ? readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.setup : c.team.commands.setup;
+  const setupNow = unit.kind === 'scaffold' || unit.kind === 'adopt' ? readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.setup : c.team.commands.setup;
   const gap = setupGap({ depChanged: changed.some((f) => DEP_MANIFEST.test(f.replace(/\\/g, '/'))), setup: setupNow });
   if (gap) fail(gap);
   if (!resumed) squashUnit(wt, base);
@@ -239,7 +239,7 @@ function main() {
     if (r.status) fail(`FAIL ship: 통합 tree에서 full FAIL — main이 움직였다, build 재spawn\n${r.tail}`);
     // 사고 22(3차 실기): full만 재기록하면 롤백 뒤 재-ship이 「redproof·attack이 이전 tree」 핑퐁에 빠지고,
     // 새 base 위 공격 회귀는 머지 전 검사를 빠져나간다 — 세 증거 전부를 새 tree에 다시 묶는다(순수 기계 일).
-    if (unit.kind !== 'scaffold') {
+    if (unit.kind !== 'scaffold' && unit.kind !== 'adopt') {
       const rp = sh(process.execPath, [path.join(c.main, '.garagiste', 'scripts', 'redproof.mjs'), slug], { cwd: c.main });
       // 사고 24: redproof는 re-spec(정체 spec)의 head red를 RED(exit 0)로 낸다 — 통합 tree는 exit가 아니라 PASS 줄로만 통과한다
       if (rp.status || !/^PASS redproof/.test(rp.stdout || '')) fail(`FAIL ship: 통합 tree redproof FAIL\n${(rp.stdout || rp.stderr).trim()}`);
@@ -290,8 +290,8 @@ function main() {
   unit.state = 'shipped'; unit.shipped = new Date().toISOString(); unit.head = head; saveUnit(c.main, c.team, unit);
   if (!fs.existsSync(ledgerDoc)) fs.writeFileSync(ledgerDoc, '# LEDGER — 증명 커밋. 한 줄 = 출하 하나 = 기계가 확인한 사실의 목록.\n\n| 날짜 | unit | head | tree | full | redproof | attack 선발견→red/총 | sensor |\n|---|---|---|---|---|---|---|---|\n');
   // Q4 계측: attack 선발견 — CEO의 tried fail(후발견)과 대조하는 열. 정의는 attackCell 하나(사고 23)
-  const atCell = unit.kind === 'scaffold' ? '—' : attackCell({ ledger, slug, since: unit.created });
-  const rpCol = unit.kind === 'scaffold' ? 'scaffold' : unit.kind === 'system' ? 'system' : 'base_red head_green';
+  const atCell = unit.kind === 'scaffold' || unit.kind === 'adopt' ? '—' : attackCell({ ledger, slug, since: unit.created });
+  const rpCol = unit.kind === 'scaffold' ? 'scaffold' : unit.kind === 'adopt' ? 'adopt' : unit.kind === 'system' ? 'system' : 'base_red head_green';
   row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${rpCol} | ${atCell} | ${unit.sensor} |\n`;
   fs.appendFileSync(ledgerDoc, row);
   if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `));
@@ -314,7 +314,7 @@ function main() {
   if (depChanged)
     out(`NOTE: 의존성 파일이 바뀐 출하 — ${c.team.commands.setup ? 'commands.setup을 main에서 이미 돌렸다' : '메인 루트에서 설치를 한 번 돌리고 commands.setup 등록을 권한다(npm ci·uv sync 등)'}. 다음 unit의 worktree가 물려받는다.`);
   // scaffold(boot)엔 try.md가 없다 — 써보기는 실행·검증 명령이다 (2차 실기: 빈 파일을 가리켜 conductor가 즉석 안내를 지어냈다)
-  out(unit.kind === 'scaffold'
+  out(unit.kind === 'scaffold' || unit.kind === 'adopt'
     ? `TRY: 실행 \`${c.team.commands.run || c.team.commands.quick}\` → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`
     : unit.kind === 'system' ? `TRY: 이음새 공격이 고친 흐름 — tests/adversary/${slug}-* 가 가리키는 대로 → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`
       : `TRY: docs/units/${slug}/try.md → node .garagiste/scripts/work.mjs tried ${slug} ok|fail`);
