@@ -1,0 +1,10 @@
+{
+  "name": "parcel-desk",
+  "version": "0.3.1",
+  "private": true,
+  "description": "경비실 택배 보관 대장 — 접수·수령·목록·찾기",
+  "bin": { "parcel": "bin/parcel.js" },
+  "scripts": {
+    "test": "node --test test/"
+  }
+}

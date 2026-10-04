@@ -416,3 +416,25 @@ test('stream plan 다시 읽기(5판 4라운드): plan 파일이 바뀌면 세�
     assert.deepEqual(loadPlan(''), { plan: [], mtime: 0, changed: false }, 'plan 없음');
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
+
+// brownfield 테스트 베드(L3 Q13 — R&D 2026-10-04): setup-seed.sh가 기존 코드·테스트·데이터·사람 이름의 커밋 위에 설치하고, 설치가 팀 파일을 커밋해 main이 깨끗한가(사고 70). 모델 0.
+test('setup-seed: parcel-desk seed → 사람 커밋 여섯 + 설치 커밋 = 7, 흠(CRLF · 날짜 박힌 테스트 · skip · node --test test/ · .gitignore 없음)은 그대로, 설치 뒤 main 깨끗', { timeout: 180000 }, () => {
+  const dir = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-seed-')), 'parcel');
+  const env = { ...process.env, GARAGISTE_NO_TRUST: '1' }; delete env.CLAUDE_PROJECT_DIR; delete env.NODE_OPTIONS; delete env.NODE_TEST_CONTEXT;
+  const FIELD = path.join(path.dirname(fileURLToPath(import.meta.url)), 'field');
+  const r = spawnSync('bash', [path.join(FIELD, 'setup-seed.sh'), path.join(FIELD, 'briefs', 'candidates', 'parcel-desk.md'), dir, 'medium', '-SkipSelftest'], { encoding: 'utf8', env });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /^SETUP-SEED .* · budget medium · commits 7 ·/m, r.stdout);
+  const git = (args) => spawnSync('git', args, { cwd: dir, encoding: 'utf8' }).stdout;
+  assert.deepEqual([...new Set(git(['log', '--format=%an']).trim().split('\n'))].sort(), ['ceo', '김반장', '박경비'], '사람 둘의 커밋 위에 설치 커밋(ceo)');
+  assert.match(git(['log', '-1', '--format=%s']), /^scaffold\(team\): GARAGISTE 증거 팀 설치 \[claude, budget medium\]/);
+  assert.equal(git(['status', '--porcelain']).trim(), '', '사고 70: 설치 뒤 main이 깨끗하다 — 첫 ship이 「미커밋 변경」으로 막히지 않는다');
+  assert.ok(fs.readFileSync(path.join(dir, 'lib/store.js'), 'utf8').includes('\r\n'), 'CRLF 파일 하나');
+  assert.match(fs.readFileSync(path.join(dir, 'test/store.test.js'), 'utf8'), /startsWith\('2026-10-04'\)[\s\S]*test\.skip\(/, '오늘 날짜를 박은 테스트 · skip 1');
+  assert.match(fs.readFileSync(path.join(dir, 'package.json'), 'utf8'), /"test": "node --test test\/"/, 'node 22에서 디렉터리 인자는 실패하는 흠');
+  assert.doesNotMatch(fs.readFileSync(path.join(dir, '.gitignore'), 'utf8'), /node_modules/, 'seed엔 .gitignore가 없었다 — 설치가 팀 줄만 더했다');
+  assert.ok(fs.existsSync(path.join(dir, 'docs/BRIEF-draft.md')) && fs.existsSync(path.join(dir, '.garagiste/team.json')) && fs.existsSync(path.join(dir, 'parcels.json')));
+  assert.equal(JSON.parse(fs.readFileSync(path.join(dir, '.garagiste/team.json'), 'utf8')).commands.quick, '', '기존 명령은 conductor가 work.mjs commands로 적는다 — 그것이 첫 관측이다');
+  assert.equal(spawnSync(process.execPath, ['--test', 'test/commands.test.js'], { cwd: dir, env }).status, 0, 'seed의 테스트(날짜 없는 것)는 돈다');
+  assert.equal(spawnSync(process.execPath, ['bin/parcel.js', 'list'], { cwd: dir, encoding: 'utf8' }).stdout.trim().split('\n').length, 13, '보관 중 13건');
+});

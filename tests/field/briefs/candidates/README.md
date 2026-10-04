@@ -8,9 +8,9 @@
 | ~~`snap.md`~~ → **서명 2026-10-03 → `../holdout-snap.md`(L2 6판 — `docs/measurements/L2-TRIAL-6.md`)** 폴더 스냅샷 백업 | **Python** · **백그라운드 데몬**(터미널을 닫아도 돈다) | 프로세스 수명(start/stop/pid · 윈도우 분리 실행) · 폴링 감시 · 시간 보관 규칙(7일·30일·1년 — 시계 검사 C3·C4가 닿는다) · 잠긴 파일·사라진 백업 폴더 · 원자적 쓰기(임시 이름 → 바꾸기) · 로그 돌리기. build가 남긴 백그라운드 명령(L2 2판 관찰)이 제품 자체인 모양 | L2 범용성 |
 | `parcel-desk.md` 택배 보관 대장 | **Node** · **기존 코드가 있는 저장소에 기능 넷**(brownfield) | boot 없는 시작(기존 명령·테스트를 그대로 쓴다) · characterization(「지금 동작은 그대로」가 인수) · 데이터 파일 형식 바꾸기와 원본 보존 · 기존 테스트가 전부 통과 | **L3 Q13**(「기존 코드베이스 1개에서 boot 없이 첫 unit 출하」) — 지금 정본은 빈 폴더만 안다. 첫 측정은 멈춘 자리가 점수다 |
 
-## parcel-desk의 seed 요건 — 서명되면 정비 채널이 만든다(원문이 아니라 테스트 베드의 일부)
+## parcel-desk의 seed 요건 — 만들었다(2026-10-04: `tests/field/seeds/parcel-desk` + `tests/field/setup-seed.sh`; 원문이 아니라 테스트 베드의 일부 — 서명 전엔 측정·수리에 쓰지 않는다)
 - `tests/field/seeds/parcel-desk/`: Node CommonJS 약 300줄 — `bin/parcel.js` · `lib/store.js` · `lib/commands.js` · `test/*.test.js`(node:test · skip 1개 · 오늘 날짜를 박은 테스트 1개) · `package.json`(`scripts.test`가 `node --test test/` — node 22에서 디렉터리는 실패하는, 실제 세상의 흠) · `README.md`(명령 넷) · `parcels.json` 샘플 30건(한글 택배사 · 글자가 든 호수 포함) · `.gitignore` 없음 · 한 파일은 CRLF.
-- 테스트 베드 설치: `tests/field/setup.sh`는 빈 폴더만 받는다 — seed를 복사해 `git init`·사람 이름의 커밋 다섯을 만든 뒤 BRIEF-draft를 두고 `install.sh`를 거는 `setup-seed.sh`가 필요하다(install.sh는 기존 git 저장소를 받는다 — e2e system-attack 시험이 그 길).
+- 테스트 베드 설치: `tests/field/setup.sh`는 빈 폴더만 받는다 — `tests/field/setup-seed.sh <brief> <폴더> [budget]`이 seed를 복사해 `git init`·사람 이름의 커밋 다섯·CEO의 BRIEF-draft 커밋을 만든 뒤 `install.sh`를 건다(기존 저장소가 깨끗하면 설치가 팀 파일을 커밋한다 — 사고 70). 검사: `tests/field.test.mjs`의 setup-seed 테스트.
 - 첫 말은 FIELD-BENCH 「L2 모드」 고정 말 그대로 — 「빈 폴더」를 말하지 않는다. 지금 정본의 첫 unit boot(kind scaffold)가 기존 코드 위에서 무엇을 하는지가 첫 관측이다.
 
 ## 미루는 모양 — 후보가 아니다
