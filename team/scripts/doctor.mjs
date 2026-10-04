@@ -37,6 +37,8 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
       if (!fs.existsSync(path.join(root, '.claude', 'hooks', h))) p.push(`.claude/hooks/${h} 없음 → install.sh claude 다시`);
     }
     if (cmds.includes('hooks/') && !cmds.includes('${CLAUDE_PROJECT_DIR}')) p.push('hooks 경로가 상대 경로 → ${CLAUDE_PROJECT_DIR} 절대 경로로(Windows에서 조용히 죽는다)');
+    // 9라운드(2026-10-04): 모델 치환이 실패한 agents 파일({{MODEL_…}} 잔재)은 --agent <팩>이 서지 않는다 — 설치 때 잡는다
+    for (const a of ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt']) { const t = readText(path.join(root, '.claude', 'agents', `${a}.md`)); if (/\{\{MODEL_/.test(t)) p.push(`.claude/agents/${a}.md에 {{MODEL_…}} 자리표시자가 남았다(모델 치환 실패 — --agent ${a}가 서지 않는다) → install.sh claude 다시`); else if (t && !/^model:\s*\S+/m.test(t)) p.push(`.claude/agents/${a}.md에 model: 줄 없음 → install.sh claude 다시`); }
     for (const a of ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt']) if (!fs.existsSync(path.join(root, '.claude', 'agents', `${a}.md`))) p.push(`.claude/agents/${a}.md 없음 → install.sh claude 다시`);
     const alive = readJson(path.join(root, '.garagiste', 'session', 'alive'), null);
     if (!alive) p.push('session-start alive 마커 없음 → 훅이 한 번도 돌지 않았다: settings.json 경로·node PATH 확인(첫 세션이면 정상)');

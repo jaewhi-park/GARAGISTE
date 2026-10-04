@@ -23,7 +23,8 @@ import { versionLine } from '../team/scripts/doctor.mjs';
 import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
 import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
 import { PACKS as CP_PACKS } from '../team/scripts/checkpoint.mjs';
-import { orphanOf, runChild, spawnerGap } from '../team/scripts/conduct.mjs';
+import { missingFlags, orphanOf, runChild, spawnerGap } from '../team/scripts/conduct.mjs';
+import { readLedger } from '../team/scripts/lib.mjs';
 import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
 import { FLAGS, KINDS } from '../team/scripts/work.mjs';
@@ -1112,7 +1113,8 @@ test('work: 사고 66(L2 6판 결함 1 — Q1 「예」의 래퍼 둘이 어느 
 test('conduct: 인자 — 기본값·상한·spawner 템플릿·intake·모르는 인자는 FAIL 사유', () => {
   assert.deepEqual(conductArgs([]), { ...CONDUCT_DEFAULTS, once: false, intake: false, check: false });
   const o = conductArgs(['intake', '--once', '--max-steps', '3', '--max-minutes', '90', '--turns', '50', '--spawner', 'node fake.mjs', '--pack-minutes', '45', '--max-usd', '12.5']);
-  assert.deepEqual(o, { maxSteps: 3, maxMinutes: 90, turns: 50, spawner: 'node fake.mjs', packMinutes: 45, maxUsd: 12.5, once: true, intake: true, check: false });
+  assert.deepEqual(o, { maxSteps: 3, maxMinutes: 90, turns: 50, spawner: 'node fake.mjs', packMinutes: 45, maxUsd: 12.5, packUsd: null, once: true, intake: true, check: false });
+  assert.equal(conductArgs(['--pack-usd', '2.5']).packUsd, 2.5, '팩 하나의 비용 상한(claude --max-budget-usd)');
   assert.equal(conductArgs(['check', '--spawner', 'x']).check, true, 'check — 실전 전 preflight');
   assert.deepEqual([conductArgs([]).packMinutes, conductArgs([]).maxUsd], [null, null], 'null이면 team.json budgets(pack_minutes_max · run_usd_max)에서');
   assert.match(conductArgs(['--max-usd', '-1']).error, /maxUsd/);
@@ -1122,7 +1124,8 @@ test('conduct: 인자 — 기본값·상한·spawner 템플릿·intake·모르�
 });
 test('conduct: spawner — 기본은 claude -p <팩 경로> --agent <팩>(agents 파일이 모델·도구·정체), 템플릿은 자리표시자를 채워 셸로', () => {
   const d = spawnerCommand({ pack: 'build', slug: 'hello', packPath: '.garagiste/session/packs/hello-build-1.md', model: 'sonnet', turns: 200 });
-  assert.deepEqual(d.argv, ['claude', '-p', '.garagiste/session/packs/hello-build-1.md', '--agent', 'build', '--output-format', 'json', '--permission-mode', 'acceptEdits', '--max-turns', '200']);
+  assert.deepEqual(d.argv, ['claude', '-p', '.garagiste/session/packs/hello-build-1.md', '--agent', 'build', '--output-format', 'json', '--permission-mode', 'acceptEdits'], '--max-turns는 claude 2.1.289에 없다(9라운드 측정) — 기본 argv에 없다');
+  assert.deepEqual(spawnerCommand({ pack: 'build', slug: 'hello', packPath: 'p.md', model: '', turns: 200, packUsd: 2 }).argv.slice(-2), ['--max-budget-usd', '2'], '팩 비용 상한은 CLI의 것으로');
   const t = spawnerCommand({ template: 'node fake.mjs {pack} {slug} {path} {model} {turns}', pack: 'spec', slug: 'x', packPath: 'p.md', model: 'opus', turns: 7 });
   assert.deepEqual(t.argv, ['node', 'fake.mjs', 'spec', 'x', 'p.md', 'opus', '7'], '셸 메타문자가 없는 템플릿은 argv로 — 시간 상한의 kill이 그 프로세스에 닿는다');
   assert.equal(spawnerCommand({ template: 'opencode run --agent {pack} "$(cat {path})" | tee log', pack: 'build', slug: 'x', packPath: 'p.md', model: '', turns: 1 }).shell, 'opencode run --agent build "$(cat p.md)" | tee log', '메타문자가 있으면 셸');
@@ -1346,4 +1349,32 @@ test('state(8라운드): tried의 증거가 REPORT 줄에 「증거 n」으로 �
   const text = reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['a'] }, units: [{ slug: 'a', state: 'shipped', milestone: 'M1', origin: 'o', kind: 'feature', shipped: '2026-10-04T00:00:00Z', tried: { result: 'ok', note: '', evidence: ['docs/units/a/evidence/s.png'] }, defaults: [] }], ledger: [] });
   assert.match(text, /써봤다 ok · 증거 1/);
   assert.deepEqual(FLAGS.tried, ['evidence']);
+});
+
+// 9라운드(2026-10-04) — 실전 첫 run의 마지막 벽: 설치된 claude 2.1.289의 --help엔 --max-turns가 없다. 가짜 spawner e2e는 못 본다 — 깃발은 help 텍스트로 찍어 본다.
+test('conduct(9라운드): missingFlags — 기본 argv의 깃발이 claude --help에 없으면 그 이름, -p는 -p,|--print로, 있으면 빈 배열', () => {
+  const help = ['  --agent <agent>                       Agent for the current session.', '  --max-budget-usd <amount>             Maximum dollar amount', '  --output-format <format>              Output format (only works with --print):', '  --permission-mode <mode>              Permission mode (choices: "acceptEdits", "plan")', '  -p, --print                           Print response and exit'].join('\n');
+  const old = ['claude', '-p', 'x.md', '--agent', 'build', '--output-format', 'json', '--permission-mode', 'acceptEdits', '--max-turns', '200'];
+  assert.deepEqual(missingFlags(help, old), ['--max-turns'], '2.1.289 재현 — 옛 기본 argv는 첫 spawn마다 unknown option이었다');
+  assert.deepEqual(missingFlags(help, spawnerCommand({ pack: 'build', slug: 'x', packPath: 'p.md', model: '', turns: 0, packUsd: 1 }).argv), [], '새 기본 argv는 전부 있다(--max-budget-usd 포함)');
+  assert.deepEqual(missingFlags(help.split('-p, --print').join('--quiet').split('--print').join('--quiet'), ['claude', '-p', 'x']), ['-p'], '-p는 「-p,」나 「--print」 어느 쪽도 없을 때만 없다');
+  assert.deepEqual(missingFlags('', ['--agent']), ['--agent']);
+});
+test('doctor(9라운드): agents 파일에 {{MODEL_…}} 자리표시자가 남았거나 model: 줄이 없으면 한 줄씩 — --agent <팩>이 서지 않는다', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-agents-'));
+  fs.mkdirSync(path.join(tmp, '.claude', 'agents'), { recursive: true }); fs.writeFileSync(path.join(tmp, '.claude', 'settings.json'), '{}');
+  fs.writeFileSync(path.join(tmp, '.claude', 'agents', 'build.md'), '---\nname: build\nmodel: {{MODEL_BUILD}}\n---\n');
+  fs.writeFileSync(path.join(tmp, '.claude', 'agents', 'spec.md'), '---\nname: spec\n---\n');
+  fs.writeFileSync(path.join(tmp, '.claude', 'agents', 'attack.md'), '---\nname: attack\nmodel: opus\n---\n');
+  const probs = diagnose(tmp);
+  assert.ok(probs.some((x) => x.startsWith('.claude/agents/build.md에 {{MODEL_…}} 자리표시자가 남았다')), probs.join('\n'));
+  assert.ok(probs.some((x) => x.startsWith('.claude/agents/spec.md에 model: 줄 없음')));
+  assert.ok(!probs.some((x) => x.startsWith('.claude/agents/attack.md에')), '멀쩡한 파일은 조용');
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+test('lib(9라운드): 원장의 깨진 줄(SIGKILL이 자른 마지막 줄)은 건너뛴다 — 한 줄이 모든 스크립트를 죽이지 않는다(측정으로 잠근다)', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-ledger-'));
+  fs.writeFileSync(path.join(tmp, 'evidence.jsonl'), '{"ts":"1","kind":"verify","exit":0}\n{"ts":"2","kind":"ver');
+  assert.deepEqual(readLedger(tmp, { paths: { ledger: 'evidence.jsonl' } }).map((e) => e.ts), ['1']);
+  fs.rmSync(tmp, { recursive: true, force: true });
 });

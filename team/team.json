@@ -87,7 +87,8 @@
     "spike_minutes": 30,
     "unit_tokens_max": 1000000,
     "pack_minutes_max": 60,
-    "run_usd_max": 0
+    "run_usd_max": 0,
+    "pack_usd_max": 0
   },
   "sensors": {
     "human_os": []

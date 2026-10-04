@@ -1296,14 +1296,21 @@ test('conduct check: 실전 전 preflight — claude CLI·작업 공간 신뢰·
   const bare = script('conduct', ['check'], repo, env);
   assert.equal(bare.status, 1, bare.out);
   assert.match(bare.out, /^FAIL conduct check 2\n- claude CLI 없음\(PATH\)[^\n]*\n- 작업 공간 신뢰 없음\([^\n]*\.claude\.json projects\[[^\n]*hasTrustDialogAccepted\)[^\n]*\n\(ok: doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · agents 7 · allow node\)/, bare.out);
-  fs.writeFileSync(path.join(bin, 'claude'), '#!/bin/sh\necho "2.1.289 (Claude Code)"\n'); fs.chmodSync(path.join(bin, 'claude'), 0o755);
+  const fakeClaude = (flags) => fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh\ncase "$1" in --version) echo "2.1.289 (Claude Code)";; --help) printf '%s\\n' ${flags.map((f) => `'  ${f}'`).join(' ')};; esac\n`);
+  const HELP = ['--agent <agent>  Agent for the current session', '--output-format <format>  (choices: "text", "json")', '--permission-mode <mode>  (choices: "acceptEdits", "plan")', '--max-budget-usd <amount>  Maximum dollar amount', '-p, --print  Print response and exit'];
+  fakeClaude(HELP); fs.chmodSync(path.join(bin, 'claude'), 0o755);
   fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ projects: { [repo]: { hasTrustDialogAccepted: false } } }));
   const untrusted = script('conduct', ['check'], repo, env);
   assert.equal(untrusted.status, 1); assert.match(untrusted.out, /^FAIL conduct check 1\n- 작업 공간 신뢰 없음/);
   fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ projects: { [fs.realpathSync(repo)]: { hasTrustDialogAccepted: true } } }));
   const pass = script('conduct', ['check'], repo, env);
   assert.equal(pass.status, 0, pass.out);
-  assert.match(pass.out, /^PASS conduct check — doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · claude 2\.1\.289 · agents 7 · allow node · 신뢰 ok$/m);
+  assert.match(pass.out, /^PASS conduct check — doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · claude 2\.1\.289 · 깃발 ok · agents 7 · allow node · 신뢰 ok$/m);
+  // 9라운드 측정의 재현: 설치된 CLI에 깃발이 없으면(2.1.289의 --max-turns처럼) 첫 spawn 전에 선다
+  fakeClaude(HELP.filter((f) => !f.startsWith('--agent')));
+  const noAgent = script('conduct', ['check'], repo, env);
+  assert.equal(noAgent.status, 1); assert.match(noAgent.out, /^FAIL conduct check 1\n- claude에 없는 깃발: --agent — 기본 spawner\(-p --agent --output-format --permission-mode\)가 서지 않는다: GARAGISTE 갱신/);
+  fakeClaude(HELP);
   const custom = script('conduct', ['check', '--spawner', 'node x.mjs'], repo, { HOME: home });
   assert.match(custom.out, /^PASS conduct check — doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · spawner 사용자 지정/, custom.out);
   fs.mkdirSync(path.join(repo, '.garagiste/session'), { recursive: true });

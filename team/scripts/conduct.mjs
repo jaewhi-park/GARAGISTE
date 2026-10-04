@@ -17,7 +17,7 @@ const S = 'node .garagiste/scripts';
 const q = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`;
 export const EXIT = { done: 0, fail: 1, ceo: 2, wait: 3, framework: 4, cap: 5 };
 // packMinutes·maxUsd가 null이면 team.json budgets(pack_minutes_max 60 · run_usd_max 0=끔)에서 — 무인 안전벨트: 멈춘 팩(L2 6판 2라운드의 끊긴 세션 · 2판 윈도우의 시간 제한에 끝난 배경 명령)과 비용 초과(6판 2라운드 예측 초과)
-export const DEFAULTS = { maxSteps: 200, maxMinutes: 0, turns: 200, spawner: '', packMinutes: null, maxUsd: null };
+export const DEFAULTS = { maxSteps: 200, maxMinutes: 0, turns: 200, spawner: '', packMinutes: null, maxUsd: null, packUsd: null }; // packUsd: 팩 하나의 비용 상한(claude --max-budget-usd) — null이면 team.json budgets.pack_usd_max(0=끔)
 export const TODO = {
   done: '다음 범위는 CEO가 — work.mjs scope <slug…>|--milestone M<n> 뒤 다시 conduct',
   ceo: 'docs/STATUS.md 「써볼 것」(work.mjs try → tried) · 「정해 주세요」(work.mjs decide) · 「멈춘 이유」 — 접점 하나면 다시 conduct',
@@ -39,9 +39,10 @@ export function parseArgs(argv) {
     else if (a === '--spawner') o.spawner = argv[++i] || '';
     else if (a === '--pack-minutes') o.packMinutes = Number(argv[++i]);
     else if (a === '--max-usd') o.maxUsd = Number(argv[++i]);
+    else if (a === '--pack-usd') o.packUsd = Number(argv[++i]);
     else return { error: `알 수 없는 인자 ${a}` };
   }
-  for (const k of ['maxSteps', 'maxMinutes', 'turns', 'packMinutes', 'maxUsd']) if (o[k] !== null && (!Number.isFinite(o[k]) || o[k] < 0)) return { error: `${k}는 0 이상의 수 — 받은 값 ${o[k]}` };
+  for (const k of ['maxSteps', 'maxMinutes', 'turns', 'packMinutes', 'maxUsd', 'packUsd']) if (o[k] !== null && (!Number.isFinite(o[k]) || o[k] < 0)) return { error: `${k}는 0 이상의 수 — 받은 값 ${o[k]}` };
   return o;
 }
 // 중첩 세션의 환경 누수(tests/field/turn.sh와 같다): 부모 Claude 세션의 CLAUDE* 변수가 새면 세션 id가 합쳐지고 권한이 부모로 보류된다 — 인증에 필요한 것만 남긴다
@@ -53,14 +54,23 @@ export function headlessEnv(env, extra = {}) {
 }
 // 팩 하나 = 헤드리스 세션 하나. 기본은 Claude Code(`claude -p <팩 경로> --agent <팩>` — .claude/agents/<팩>.md가 모델·도구·정체를 정하고, 훅이 경계를 지킨다).
 // --spawner "<템플릿>"은 다른 하네스·시험용({path} {pack} {slug} {model} {turns}) — 셸로 돈다. 결과는 stdout의 JSON(claude -p --output-format json 꼴)이면 토큰·분·비용을 읽고, 아니면 글만.
-export function spawnerCommand({ template, pack, slug, packPath, model, turns }) {
+// 깃발 호환(9라운드 2026-10-04, 측정): claude 2.1.289엔 --max-turns가 없다 — 기본 spawner가 첫 spawn마다 unknown option으로 죽고 드라이버는 「두 번 비정상 종료」로 멈췄을 것.
+// 가짜 spawner로 돈 e2e는 이걸 못 본다. --help의 텍스트에서 기본 argv의 깃발을 찍어 본다(모델 0·네트워크 0).
+export function missingFlags(helpText, argv) {
+  const help = String(helpText || '');
+  const miss = argv.filter((a) => /^--[a-z]/.test(a)).filter((f) => !new RegExp(`(^|[\\s,])${f.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&')}(?=[\\s,<=]|$)`, 'm').test(help));
+  if (argv.includes('-p') && !/(^|\s)-p,|--print\b/.test(help)) miss.unshift('-p');
+  return miss;
+}
+export function spawnerCommand({ template, pack, slug, packPath, model, turns, packUsd = 0 }) {
   if (template) {
     const vars = { path: packPath, pack, slug, model: model || '', turns: String(turns) };
     const cmd = template.replace(/\{(path|pack|slug|model|turns)\}/g, (_, k) => vars[k]);
     // 셸 메타문자가 없는 템플릿은 argv로 직접 띄운다 — 시간 상한의 kill이 셸이 아니라 그 프로세스에 닿는다
     return /[|&;<>$`"'\\*?(){}[\]]/.test(cmd) ? { shell: cmd } : { argv: cmd.trim().split(/\s+/) };
   }
-  return { argv: ['claude', '-p', packPath, '--agent', pack, '--output-format', 'json', '--permission-mode', 'acceptEdits', '--max-turns', String(turns)] };
+  // --max-turns는 claude 2.1.289에 없다(9라운드 측정) — 팩의 상한은 시간(--pack-minutes)과 비용(--max-budget-usd, team budgets.pack_usd_max)으로. {turns}는 템플릿용으로 남긴다.
+  return { argv: ['claude', '-p', packPath, '--agent', pack, '--output-format', 'json', '--permission-mode', 'acceptEdits', ...(packUsd > 0 ? ['--max-budget-usd', String(packUsd)] : [])] };
 }
 export function parseResult(stdout) {
   const raw = String(stdout || '');
@@ -116,6 +126,15 @@ export function preflight(root, { env = process.env, home = os.homedir(), spawn 
   const v = spawn('claude', ['--version'], { encoding: 'utf8', env });
   if (v.error || v.status !== 0) probs.push('claude CLI 없음(PATH) — 기본 spawner는 `claude -p --agent`다: Claude Code를 설치하거나 --spawner "<명령 템플릿>"');
   else ok.push(`claude ${(v.stdout || '').trim().split(/\s+/)[0] || '?'}`);
+  if (!v.error && v.status === 0) {
+    const h = spawn('claude', ['--help'], { encoding: 'utf8', env });
+    const help = `${h.stdout || ''}${h.stderr || ''}`;
+    const argv = spawnerCommand({ pack: 'build', slug: 'x', packPath: 'p.md', model: '', turns: 0, packUsd: Number(team?.budgets?.pack_usd_max ?? 0) }).argv; // 기본 spawner의 깃발 그대로
+    const miss = missingFlags(help, argv);
+    if (miss.length) probs.push(`claude에 없는 깃발: ${miss.join(' ')} — 기본 spawner(${argv.filter((a) => /^-/.test(a)).join(' ')})가 서지 않는다: GARAGISTE 갱신(install.sh 다시) 또는 --spawner "<명령 템플릿>"`);
+    else if (!/acceptEdits/.test(help)) probs.push('claude --permission-mode에 acceptEdits가 없다 — 헤드리스 팩의 파일 쓰기마다 승인이 막힌다: Claude Code 판을 확인');
+    else ok.push('깃발 ok');
+  }
   const agents = ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt'].filter((a) => !fs.existsSync(path.join(root, '.claude', 'agents', `${a}.md`)));
   if (agents.length) probs.push(`.claude/agents 없음: ${agents.join(', ')} — install.sh claude 다시(--agent <팩>이 읽는 파일)`); else ok.push('agents 7');
   const settings = readJson(path.join(root, '.claude', 'settings.json'), null);
@@ -194,7 +213,7 @@ function installSignals(c) {
 export async function spawnPack(c, { pack, slug, path: packPath }, o, { spawner = spawn, onSpawn = null } = {}) {
   const wt = slug === 'intake' ? c.main : worktreeDir(c.main, c.team, slug);
   const model = c.team.models[pack] || '';
-  const cmd = spawnerCommand({ template: o.spawner, pack, slug, packPath, model, turns: o.turns });
+  const cmd = spawnerCommand({ template: o.spawner, pack, slug, packPath, model, turns: o.turns, packUsd: o.packUsd || 0 });
   const env = headlessEnv(process.env, { GARAGISTE_PACK: pack, GARAGISTE_SLUG: slug, GARAGISTE_PACK_PATH: packPath, GARAGISTE_WORKTREE: wt, GARAGISTE_MODEL: model });
   const t0 = Date.now();
   const r = await runChild(cmd, { cwd: c.main, env, timeoutMs: o.packMinutes > 0 ? Math.round(o.packMinutes * 60000) : 0, onSpawn, spawner });
@@ -237,11 +256,11 @@ async function intake(c, o) {
 }
 async function main() {
   const o = parseArgs(process.argv.slice(2));
-  if (o.error) fail(`FAIL conduct: ${o.error} — 사용법: conduct.mjs [check|intake] [--once] [--max-steps N] [--max-minutes M] [--max-usd D] [--pack-minutes P] [--turns T] [--spawner "<템플릿 {path} {pack} {slug} {model} {turns}>"]`);
+  if (o.error) fail(`FAIL conduct: ${o.error} — 사용법: conduct.mjs [check|intake] [--once] [--max-steps N] [--max-minutes M] [--max-usd D] [--pack-usd D] [--pack-minutes P] [--turns T] [--spawner "<템플릿 {path} {pack} {slug} {model} {turns}>"]`);
   let c = ctx();
   if (c.root !== c.main) fail('FAIL conduct는 메인 저장소에서만 — worktree 안에서 돌리지 않는다');
   if (o.check) {
-    const r = preflight(c.main, { customSpawner: !!o.spawner });
+    const r = preflight(c.main, { customSpawner: !!o.spawner, team: c.team });
     if (r.probs.length) fail(`FAIL conduct check ${r.probs.length}\n${r.probs.map((x) => `- ${x}`).join('\n')}${r.ok.length ? `\n(ok: ${r.ok.join(' · ')})` : ''}`);
     return out(`PASS conduct check — ${r.ok.join(' · ')}`);
   }
@@ -250,6 +269,7 @@ async function main() {
   if (gap) fail(`FAIL conduct: ${gap}`);
   o.packMinutes ??= Number(c.team.budgets.pack_minutes_max ?? 60);
   o.maxUsd ??= Number(c.team.budgets.run_usd_max ?? 0);
+  o.packUsd ??= Number(c.team.budgets.pack_usd_max ?? 0);
   const lock = readJson(path.join(c.main, CONDUCT_LOCK), null);
   const orphan = orphanOf(lock);
   if (orphan) fail(`FAIL conduct: ${orphan}`);
@@ -257,7 +277,7 @@ async function main() {
   const startedAt = new Date().toISOString(); o.startedAt = startedAt;
   writeLock(c.main, startedAt, { step: 'start' });
   installSignals(c);
-  appendLedger(c.main, c.team, { kind: 'conduct', event: 'start', spawner: o.spawner ? 'custom' : 'claude', max_steps: o.maxSteps, max_minutes: o.maxMinutes, pack_minutes: o.packMinutes, max_usd: o.maxUsd });
+  appendLedger(c.main, c.team, { kind: 'conduct', event: 'start', spawner: o.spawner ? 'custom' : 'claude', max_steps: o.maxSteps, max_minutes: o.maxMinutes, pack_minutes: o.packMinutes, max_usd: o.maxUsd, pack_usd: o.packUsd });
   if (o.intake) { writeLock(c.main, startedAt, { step: 'intake' }); return await intake(c, o); }
   const started = Date.now();
   const fails = new Map(); const history = new Map();
