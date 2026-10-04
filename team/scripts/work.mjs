@@ -639,6 +639,12 @@ export function listLines({ units, items }) {
 }
 // 16라운드(둘의 규칙 — 14라운드 관찰 14 · 15라운드 관찰 21): 공격·adopt가 찾은 「이 diff 밖의 결함」의 집 — BACKLOG 후보 줄(<slug>-f<n> · M? · needs <slug>). CEO가 범위에 넣거나(scope) 지운다(drop --forget).
 // 후보는 CEO가 scope에 넣어야 열린다(그 scope가 CEO 접점 — seed 경유라 origin_kind seed). conductor는 팩의 `defect:` 줄을 이 명령으로 적는다 — 팩은 BACKLOG를 쓰지 않는다.
+// 후보 이름은 뿌리 unit에 붙인다(17라운드 셋째 날: 후보에서 자란 unit의 후보가 `order-id-f1-f1`이 됐다) — `<뿌리>-f<n>`, n은 그 뿌리의 후보 수 + 1
+export function candidateSlug(items, slug) {
+  const root = slug.replace(/-f\d+$/, '');
+  const n = items.filter((i) => new RegExp(`^${root}-f\\d+$`).test(i.slug)).length + 1;
+  return `${root}-f${n}`;
+}
 function found(c, slug, text) {
   if (c.root !== c.main) fail('FAIL found는 메인 저장소에서만 — 팩은 마지막 출력에 `defect: <재현 한 줄>`을 남기고 conductor가 적는다');
   loadUnit(c.main, c.team, slug);
@@ -646,8 +652,7 @@ function found(c, slug, text) {
   const items = parseBacklog(readBacklog(c));
   const dup = items.find((i) => !i.done && i.origin === text.trim());
   if (dup) return out(`FOUND 이미 있음 ${dup.slug} — 같은 결함 줄이 BACKLOG에 있다`);
-  const n = items.filter((i) => new RegExp(`^${slug}-f\\d+$`).test(i.slug)).length + 1;
-  const cand = `${slug}-f${n}`;
+  const cand = candidateSlug(items, slug);
   appendBacklog(c, backlogLine({ slug: cand, milestone: 'M?', needs: [slug], origin: text.trim(), accept: '-' }));
   appendLedger(c.main, c.team, { kind: 'found', slug, candidate: cand, text: text.trim() });
   out(`FOUND ${cand} — BACKLOG 후보(M? · needs ${slug}): 범위에 넣으면 node .garagiste/scripts/work.mjs scope ${cand} · 아니면 work.mjs drop ${cand} "<사유>" --forget`);

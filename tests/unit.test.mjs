@@ -15,7 +15,7 @@ import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGa
 import { againCmd, attackRoundUsed, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { candidateLines, firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
-import { acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
+import { candidateSlug, acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { nextStep, render } from '../team/scripts/next.mjs';
 import { DEFAULTS as CONDUCT_DEFAULTS, defectLines, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
@@ -1434,6 +1434,13 @@ test('state(17라운드): candidateLines — found 원장 줄 ∩ 열린 BACKLOG
   const rt = reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['add'] }, units, ledger, backlogText: backlog });
   assert.match(rt, /## 후보 — 팩이 찍은 이 diff 밖 결함 \(다음 범위의 재료\)\n- add-f1 ← add:/);
   assert.doesNotMatch(reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['add'] }, units, ledger: [] }), /## 후보/, '후보가 없으면 절도 없다');
+});
+test('work(17라운드): candidateSlug — 후보 이름은 뿌리 unit에 붙는다(후보에서 자란 unit의 후보도 <뿌리>-f<n>)', () => {
+  const items = [{ slug: 'order-id-f1' }, { slug: 'order-id-monotonic' }, { slug: 'order-id-monotonic-f1' }];
+  assert.equal(candidateSlug(items, 'order-id'), 'order-id-f2');
+  assert.equal(candidateSlug(items, 'order-id-f1'), 'order-id-f2', '셋째 날의 order-id-f1-f1 대신');
+  assert.equal(candidateSlug(items, 'order-id-monotonic'), 'order-id-monotonic-f2');
+  assert.equal(candidateSlug([], 'hello'), 'hello-f1');
 });
 test('state(8라운드): tried의 증거가 REPORT 줄에 「증거 n」으로 · FLAGS.tried에 evidence', () => {
   const text = reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['a'] }, units: [{ slug: 'a', state: 'shipped', milestone: 'M1', origin: 'o', kind: 'feature', shipped: '2026-10-04T00:00:00Z', tried: { result: 'ok', note: '', evidence: ['docs/units/a/evidence/s.png'] }, defaults: [] }], ledger: [] });
