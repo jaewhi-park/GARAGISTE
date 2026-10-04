@@ -33,6 +33,57 @@ export function outcome({ base_red, head_green, state }) {
   if (head_green === false) return state === 'spec' ? 'RED' : 'FAIL';
   return head_green ? 'PASS' : 'RED';
 }
+// kind refactor(R&D 7라운드 2026-10-04, 백로그 Q13 「동작 보존 증명」): 새 동작이 없다 — 인수 테스트는 현재 동작의 핀이라 red 증명이 뒤집힌다.
+// 핀은 base(main)에서도 head에서도 초록이어야 한다(pin_base=green · head_green). base에서 빨간 핀은 현재 동작이 아니다(새 주장 → feature unit),
+// head에서 빨간 핀은 동작이 바뀐 것(refactor가 아니다 → build가 되돌린다). 눈먼 test_file(사고 57)은 핀에서 더 위험하다 — 초록이 기본값이라 — 같은 탐침으로 본다.
+export function pinVerdict(baseRes, headRes) {
+  const pin_base = baseRes.length > 0 && baseRes.every((r) => r.exit === 0) ? 'green' : 'red';
+  const head_green = headRes === null ? null : headRes.length > 0 && headRes.every((r) => r.exit === 0);
+  return { pin_base, head_green, ok: pin_base === 'green' && head_green !== false };
+}
+export function pinRedAdvice(slug, red) {
+  return `FAIL redproof ${slug}: 핀이 base에서 red — ${red.join(' ')} — 현재 동작이 아니다(refactor의 핀은 base에서도 초록이어야 한다). 새 동작을 원하면 이 unit은 refactor가 아니라 feature다. 둘 중 하나: 핀을 현재 동작대로 고친다(spec 재spawn: node .garagiste/scripts/brief.mjs spec ${slug}) · CEO가 unit을 feature로 다시 연다(work.mjs drop ${slug} "<사유>" --forget → work.mjs add ${slug} "<원문>" — --kind 없이)\n- ${holdAsk(slug, `핀이 base에서 red(${red.join(' ')}) — refactor가 아니다: 핀을 현재 동작대로 고칠까(예) · feature unit으로 다시 열까(아니오)`)}`;
+}
+function refactorProof(c, slug) {
+  const files = acceptanceFiles(c.root, c.team, slug);
+  if (!files.length) fail(`FAIL redproof ${slug}: 핀 없음 — ${c.team.paths.acceptance}/${slug}*에 현재 동작을 고정하는 테스트(base에서도 초록)를 쓴다(kind refactor)`);
+  const base = mergeBase(c.root, c.team.protected_branch);
+  if (!base) fail(`FAIL redproof ${slug}: base(${c.team.protected_branch}) 없음 — refactor는 기존 코드 위에서만`);
+  const codeChanged = git(['diff', '--name-only', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`, ':!docs'], c.root).stdout.trim() !== '';
+  const tree = workTree(c.root);
+  const head = headSha(c.root);
+  const unit = readJson(unitFile(c.main, c.team, slug), null) || {};
+  const record = (extra) => appendLedger(c.main, c.team, { kind: 'redproof', slug, tree, head, base, refactor: true, files: files.length, ...extra });
+  const redOf = (res) => res.filter((r) => r.exit !== 0).map((r) => r.file);
+  const greenOf = (res) => res.filter((r) => r.exit === 0).map((r) => r.file);
+  if (!codeChanged) {
+    // 아직 구조를 바꾸지 않았다(spec 뒤): 지금 자리의 코드 = base의 코드 — 여기서 초록이면 base에서 초록이다
+    const res = runFiles(c, files);
+    const blind = greenOf(res).length ? withScratch(c.root, 'HEAD', (d) => blindFiles(c.team.commands.test_file, greenOf(res), d)) : [];
+    const v = pinVerdict(res, null);
+    record({ pin_base: blind.length ? null : v.pin_base, head_green: null, ...(blind.length ? { blind } : {}) });
+    if (blind.length) fail(blindAdvice(slug, blind, unit));
+    if (v.pin_base !== 'green') fail(pinRedAdvice(slug, redOf(res)));
+    return out(`PIN ${slug} ${files.length}/${files.length} — 현재 동작이 고정됐다(base에서 초록): 다음은 build → node .garagiste/scripts/brief.mjs build ${slug}`);
+  }
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-redproof-'));
+  let baseRes; let blind = [];
+  try {
+    const add = git(['worktree', 'add', '--detach', '-q', tmp, base], c.root);
+    if (add.status) fail(`FAIL redproof: base worktree 생성 실패 — ${add.stderr}`);
+    for (const f of files) { fs.mkdirSync(path.dirname(path.join(tmp, f)), { recursive: true }); fs.copyFileSync(path.join(c.root, f), path.join(tmp, f)); }
+    linkDeps(c.root, tmp);
+    baseRes = runFiles({ ...c, root: tmp }, files);
+    if (greenOf(baseRes).length) blind = blindFiles(c.team.commands.test_file, greenOf(baseRes), tmp);
+  } finally { git(['worktree', 'remove', '--force', tmp], c.root); }
+  if (blind.length) { record({ pin_base: null, head_green: null, blind }); fail(blindAdvice(slug, blind, unit)); }
+  const headRes = runFiles(c, files);
+  const v = pinVerdict(baseRes, headRes);
+  record({ pin_base: v.pin_base, head_green: v.head_green });
+  if (v.pin_base !== 'green') fail(pinRedAdvice(slug, redOf(baseRes)));
+  if (!v.head_green) fail(`FAIL redproof ${slug}: 동작이 바뀌었다 — 핀이 head에서 red: ${redOf(headRes).join(' ')} (base에서는 초록). refactor는 동작을 바꾸지 않는다 → build가 되돌린다: node .garagiste/scripts/brief.mjs build ${slug} 뒤 재spawn. 바꿔야 하는 동작이면 refactor가 아니다 — build가 \`spec: …\` 줄로 반려하고 CEO가 feature unit으로 연다`);
+  return out(`PASS redproof ${slug} pin_base=green head_green — 동작 보존(핀 ${files.length})`);
+}
 function main() {
   const slug = process.argv[2];
   if (!slug) fail('사용법: redproof.mjs <slug>');
@@ -47,6 +98,7 @@ function main() {
     if (!found.length) fail(`FAIL redproof ${slug}: 시스템 공격 발견 0(red였던 공격 파일 없음) — 초록 테스트는 산출물이 아니다: node .garagiste/scripts/work.mjs drop ${slug} "system-attack 발견 0" --forget`);
     return out(`PASS redproof ${slug}: system — 발견 ${found.length}(red였던 공격 파일 ${found.join(' ')}) — 인수 테스트 없음, 증명은 공격 파일의 red→green(ship 조건 redproof = 발견 ≥1)`);
   }
+  if (unit?.kind === 'refactor') return refactorProof(c, slug); // 동작 보존: 핀은 base·head 모두 초록(red 증명이 뒤집힌다)
   const files = acceptanceFiles(c.root, c.team, slug);
   if (!files.length) fail(`FAIL redproof ${slug}: ${c.team.paths.acceptance}/${slug}* 없음`);
   const base = mergeBase(c.root, c.team.protected_branch);

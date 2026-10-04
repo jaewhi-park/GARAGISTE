@@ -25,6 +25,9 @@ import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
 import { PACKS as CP_PACKS } from '../team/scripts/checkpoint.mjs';
 import { orphanOf, runChild, spawnerGap } from '../team/scripts/conduct.mjs';
 import { secretTargets } from '../team/scripts/guard-rules.mjs';
+import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
+import { KINDS } from '../team/scripts/work.mjs';
+import { REFACTOR_NOTE } from '../team/scripts/brief.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
@@ -1307,4 +1310,27 @@ test('guard(6라운드): 비밀 파일은 읽기도 경계 — Bash의 cat·grep
   assert.deepEqual(secretTargets('cat .env && grep x secrets/credentials.json'), ['.env', 'secrets/credentials.json']);
   assert.match(fs.readFileSync(new URL('../team/claude/settings.json', import.meta.url), 'utf8'), /"matcher": "Bash\|PowerShell\|Edit\|Write\|MultiEdit\|NotebookEdit\|Read"/, 'Claude 훅 매처에 Read — 없으면 Read 분기는 죽은 코드다');
   assert.match(fs.readFileSync(new URL('../team/opencode/plugins/guard.ts', import.meta.url), 'utf8'), /read: "Read"/, 'opencode 플러그인 read 매핑');
+});
+// 7라운드(2026-10-04) — kind refactor: red 증명이 뒤집힌다. 핀은 base·head 모두 초록.
+test('redproof(7라운드): pinVerdict — refactor의 핀은 base·head 모두 초록이어야 한다 · base red는 현재 동작이 아님 · head red는 동작이 바뀜 · 핀 0은 증명 아님 · pinRedAdvice는 hold 안내', () => {
+  assert.deepEqual(pinVerdict([{ file: 'a', exit: 0 }], null), { pin_base: 'green', head_green: null, ok: true });
+  assert.deepEqual(pinVerdict([{ file: 'a', exit: 0 }], [{ file: 'a', exit: 0 }]), { pin_base: 'green', head_green: true, ok: true });
+  assert.deepEqual(pinVerdict([{ file: 'a', exit: 1 }], [{ file: 'a', exit: 0 }]), { pin_base: 'red', head_green: true, ok: false });
+  assert.deepEqual(pinVerdict([{ file: 'a', exit: 0 }], [{ file: 'a', exit: 1 }]), { pin_base: 'green', head_green: false, ok: false });
+  assert.equal(pinVerdict([], null).pin_base, 'red');
+  assert.match(pinRedAdvice('x', ['tests/acceptance/x.test.mjs']), /^FAIL redproof x: 핀이 base에서 red — tests\/acceptance\/x\.test\.mjs[\s\S]*work\.mjs ask x "[^"]*" --hold/);
+});
+test('ship(7라운드): kind refactor의 redproof 조건은 refactor 줄의 pin_base=green·head_green — base_red 꼴은 받지 않고, 같은 tree여야 하고, head red는 증명이 아니다 · KINDS · 팩 refactor 절', () => {
+  const unit = { kind: 'refactor', state: 'attack', boundary: { hit: false } };
+  const base = { unit, slug: 'r', worktreeExists: true, clean: true, tree: 'T', requireAttack: true, spikeText: '', lastSubject: 'refactor(r): x', stops: [], proseKb: 10, proseMax: 40,
+    ledger: [{ kind: 'verify', mode: 'full', exit: 0, tree: 'T' }, { kind: 'attack', slug: 'r', tree: 'T', red: 0, total: 1 }, { kind: 'redproof', slug: 'r', tree: 'T', refactor: true, pin_base: 'green', head_green: true }] };
+  assert.equal(evaluateShip(base).filter((k) => !k.ok).length, 0, JSON.stringify(evaluateShip(base).filter((k) => !k.ok)));
+  const stale = evaluateShip({ ...base, ledger: [...base.ledger.slice(0, 2), { ...base.ledger[2], tree: 'OLD' }] }).find((k) => k.id === 'redproof');
+  assert.match(stale.why, /redproof\(핀\)가 이전 tree의 것/);
+  const feature = evaluateShip({ ...base, ledger: [...base.ledger.slice(0, 2), { kind: 'redproof', slug: 'r', tree: 'T', base_red: true, head_green: true }] }).find((k) => k.id === 'redproof');
+  assert.match(feature.why, /동작 보존 증명 없음\(핀 base·head 초록 — kind refactor\)/, 'feature 꼴의 red 증명은 refactor의 증명이 아니다');
+  assert.ok(!evaluateShip({ ...base, ledger: [...base.ledger.slice(0, 2), { ...base.ledger[2], head_green: false }] }).find((k) => k.id === 'redproof').ok, '동작이 바뀐 핀(head red)은 증명이 아니다');
+  assert.deepEqual(KINDS, ['feature', 'scaffold', 'adopt', 'refactor', 'system']);
+  for (const p of ['spec', 'build', 'attack']) assert.match(REFACTOR_NOTE[p]({ slug: 'r', acceptance: 'tests/acceptance', main: 'main' }), /refactor/);
+  assert.match(REFACTOR_NOTE.spec({ slug: 'r', acceptance: 'tests/acceptance', main: 'main' }), /base\(main\)에서도 초록[\s\S]*tests\/acceptance\/r\*/);
 });

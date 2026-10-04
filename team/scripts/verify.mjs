@@ -138,11 +138,11 @@ function gate(c) {
 function main() {
   const [mode, arg] = process.argv.slice(2);
   const c = ctx();
-  if (mode === 'quick' || mode === 'full') return runMode(mode, c);
+  if (mode === 'quick' || mode === 'full') return runMode(mode, arg ? { ...c, root: slugRoot(c, arg) } : c); // <slug>를 주면 그 unit의 worktree에서(7라운드: next가 attack 뒤 tree의 full을 메인에서 시킨다)
   // 사고 9: slug 작업은 어디서 불러도 그 unit의 worktree가 뿌리 — 메인에서 0/0 거짓 초록을 만들지 않는다
   if (mode === 'red' && arg) return red(arg, { ...c, root: slugRoot(c, arg) });
   if (mode === 'attack' && arg) return attack(arg, { ...c, root: slugRoot(c, arg) });
   if (mode === 'gate') return gate(c);
-  fail('사용법: verify.mjs quick | full | red <slug> | attack <slug> | gate');
+  fail('사용법: verify.mjs quick [<slug>] | full [<slug>] | red <slug> | attack <slug> | gate');
 }
 if (isMain(import.meta.url)) main();
