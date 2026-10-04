@@ -774,14 +774,17 @@ test('사고 26(L2 1일차): 두 unit이 같은 파일을 고치면 ship은 reba
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"ship_conflict","slug":"beta"/);
 });
 
-test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents·guard 플러그인이 깔리고 doctor가 OK', (t) => {
+test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents·guard 플러그인이 깔리고 selftest(플러그인 거부 1건까지)·doctor가 OK', { timeout: 120000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-oc-'));
   git(['init', '-q', '-b', 'main'], repo);
   write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
   git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
-  const inst = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'opencode', '-Project', repo, '-SkipSelftest'], repo);
+  const inst = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'opencode', '-Project', repo], repo);
   assert.equal(inst.status, 0, inst.out);
+  assert.match(inst.out, /SELFTEST PASS/, 'opencode 환경에서 selftest(Q9)');
+  const [maj, min] = process.versions.node.split('.').map(Number);
+  assert.match(inst.out, maj > 22 || (maj === 22 && min >= 6) ? /PASS guard 플러그인\(opencode\)이 원장 쓰기를 거부/ : /SKIP guard 플러그인\(opencode\)/, 'L1 배선이 산다 — 설치 때 거부 1건');
   for (const f of ['opencode.json', 'AGENTS.md', '.opencode/plugins/guard.ts', '.opencode/agents/conductor.md', '.opencode/agents/build.md', '.garagiste/scripts/guard-rules.mjs', '.garagiste/team.json', '.githooks/pre-commit']) assert.ok(fs.existsSync(path.join(repo, f)), f);
   assert.ok(!fs.existsSync(path.join(repo, '.claude')), 'Claude 배선은 깔리지 않는다');
   const cfg = JSON.parse(fs.readFileSync(path.join(repo, 'opencode.json'), 'utf8'));
@@ -1004,20 +1007,20 @@ test('system-attack(채용 2026-10-03): 범위 끝의 이음새 공격 — 출�
 
 // conduct — Flow 4의 conductor를 모델 밖으로(R&D 2026-10-04). 가짜 팩(tests/fakes/pack.mjs)이 팩의 일을 그대로 하고 claude -p의 JSON 꼴로 끝난다 — 모델 0 · 네트워크 0.
 const FAKE = path.join(GARAGISTE, 'tests', 'fakes', 'pack.mjs');
-function conductRepo(t) {
+function conductRepo(t, flavor = 'claude') {
   if (!BASH) { t.skip(NO_BASH); return null; }
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-conduct-'));
   assert.equal(git(['init', '-q', '-b', 'main'], repo).status, 0);
   write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
   write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
   git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'init'], repo).status, 0);
-  const inst = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo);
+  const inst = run(BASH, [path.join(GARAGISTE, 'install.sh'), flavor, '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo);
   assert.equal(inst.status, 0, inst.out);
   const teamPath = path.join(repo, '.garagiste', 'team.json');
   const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
   team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/**/*.test.mjs"', test_file: 'node --test {files}', run: 'node src/cli.mjs', setup: 'npm install' };
   fs.writeFileSync(teamPath, JSON.stringify(team, null, 2) + '\n');
-  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  if (flavor === 'claude') fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
   git(['add', '-A'], repo); assert.match(script('verify', ['quick'], repo).out, /^PASS verify:quick/);
   assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
   assert.match(script('work', ['new', 'hello', '이름을 주면 그 이름으로 인사한다'], repo).out, /^UNIT hello spec/);
@@ -1231,8 +1234,8 @@ test('adopt + conduct: 가짜 팩 adopt로 기존 코드의 첫 unit이 끝까�
 
 // 4라운드(2026-10-04) — L0 속임수 셋(Q8 검사): 훅이 없는 환경(이 e2e가 그것이다)에서 테스트 약화 · 원장 없는 커밋 · 원장 위조 중 무엇이 막히는가.
 // 둘은 L0(게이트·redproof)가 막는다. 셋째(위조한 PASS 줄)는 게이트와 8조건을 지나간다 — ship의 재검증(통합 tree에서 full·redproof·attack을 스스로)이 막는다.
-test('L0 속임수 셋: 테스트 약화는 redproof가, 원장 없는 커밋은 게이트가, 원장 위조는 ship의 재검증이 막는다(team.json ship_reverify=false면 뚫린다 — 기록)', { timeout: 180000 }, (t) => {
-  const repo = conductRepo(t); if (!repo) return;
+function l0Cheats(t, flavor) {
+  const repo = conductRepo(t, flavor); if (!repo) return;
   const stop = conduct(repo, ['--max-steps', '8']); // 가짜 팩으로 spec → build → attack → build(red 0)까지 여덟 걸음 — ship(아홉째) 직전에 선다
   assert.equal(stop.status, 5, stop.out);
   assert.match(stop.out, /ATTACK hello red 0\/1[\s\S]*STOP cap [^\n]*걸음 상한 8/, 'ship 직전에 섰다');
@@ -1281,7 +1284,10 @@ test('L0 속임수 셋: 테스트 약화는 redproof가, 원장 없는 커밋은
   assert.match(pierced.out, /^SHIPPED hello [0-9a-f]{7}/, '재검증을 끄면 위조 줄이 main에 닿는다(기록): ' + pierced.out);
   assert.match(fs.readFileSync(path.join(repo, 'src/cli.mjs'), 'utf8'), /!/, '빨간 코드가 main에 있다');
   assert.notEqual(run(process.execPath, ['--test', 'tests/acceptance/hello.test.mjs'], repo).status, 0, 'main의 인수 테스트가 빨갛다 — ship_reverify=false의 값');
-});
+}
+test('L0 속임수 셋(claude 설치본): 테스트 약화는 redproof가, 원장 없는 커밋은 게이트가, 원장 위조는 ship의 재검증이 막는다(team.json ship_reverify=false면 뚫린다 — 기록)', { timeout: 180000 }, (t) => l0Cheats(t, 'claude'));
+// 5라운드(2026-10-04): L3 게이트 「opencode 환경에서 L0 게이트 전부 재현」 — L0(git 훅 + 스크립트 + 원장)는 하네스를 모른다. 같은 셋, 같은 결과.
+test('L0 속임수 셋(opencode 설치본): 같은 L0, 같은 결과 — 훅·플러그인 없이도 게이트·redproof·ship 재검증이 선다', { timeout: 180000 }, (t) => l0Cheats(t, 'opencode'));
 test('conduct check: 실전 전 preflight — claude CLI·작업 공간 신뢰·agents·allow·doctor·VERSION·잠금을 한 줄씩, 사용자 spawner면 CLI·신뢰는 생략', { timeout: 120000 }, (t) => {
   const repo = conductRepo(t); if (!repo) return;
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-home-'));
@@ -1303,4 +1309,76 @@ test('conduct check: 실전 전 preflight — claude CLI·작업 공간 신뢰·
   fs.mkdirSync(path.join(repo, '.garagiste/session'), { recursive: true });
   fs.writeFileSync(path.join(repo, '.garagiste/session/conduct.json'), JSON.stringify({ pid: process.pid, step: 'run', at: 'now' }));
   assert.match(script('conduct', ['check'], repo, env).out, /^FAIL conduct check 1\n- 이미 돌고 있다 — pid \d+/);
+});
+// 5라운드(2026-10-04, Q9 스폰 방법): opencode 설치본엔 .claude/agents가 없어 기본 spawner(claude -p --agent)가 서지 않는다 — 템플릿 없이 돌리면 팩마다 비정상 종료 → 프레임워크 FAIL로 끝났을 길을 한 줄로 앞당긴다.
+test('conduct(opencode 설치본): --spawner 없이는 check도 본 실행도 한 줄로 선다(잠금 전에), --spawner가 있으면 check PASS', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t, 'opencode'); if (!repo) return;
+  const chk = script('conduct', ['check'], repo);
+  assert.equal(chk.status, 1, chk.out);
+  assert.match(chk.out, /^FAIL conduct check 1\n- opencode 설치본 — 기본 spawner\(claude -p … --agent <팩>\)는 \.claude\/agents 없이 서지 않는다: --spawner [^\n]*opencode run --agent \{pack\}/);
+  const bare = script('conduct', ['--max-steps', '1'], repo);
+  assert.equal(bare.status, 1, bare.out); assert.match(bare.out, /^FAIL conduct: opencode 설치본 — 기본 spawner/);
+  assert.ok(!fs.existsSync(path.join(repo, '.garagiste/session/conduct.json')), '잠금을 잡기 전에 선다');
+  assert.match(script('conduct', ['check', '--spawner', `node ${FAKE}`], repo).out, /^PASS conduct check — doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · spawner 사용자 지정\(opencode\)/);
+});
+// 5라운드(2026-10-04, Q8 후반·Q9): opencode 가드 플러그인을 실제로 띄운다 — .ts를 node의 type stripping으로(실전에선 opencode의 bun이 돈다).
+// 플러그인의 결정 = 같은 입력의 decide()(Claude 훅도 그 위의 껍질) — 패리티는 이 테스트가 묶고, 손 동기화(v1 패리티병)는 없다.
+const DRIVER = [
+  "import fs from 'node:fs'; import path from 'node:path'; import { pathToFileURL } from 'node:url';",
+  'const [repo, casesPath] = process.argv.slice(2);',
+  "const { Guard } = await import(pathToFileURL(path.join(repo, '.opencode/plugins/guard.ts')).href);",
+  "const { decide, makeCtx } = await import(pathToFileURL(path.join(repo, '.garagiste/scripts/guard-rules.mjs')).href);",
+  'const hooks = await Guard({ directory: repo });',
+  "const MAP = { bash: 'Bash', edit: 'Edit', write: 'Write', patch: 'Edit', multiedit: 'MultiEdit' };",
+  'const out = []; let n = 0;',
+  "for (const c of JSON.parse(fs.readFileSync(casesPath, 'utf8'))) {",
+  "  const callID = 'c' + (++n); let plugin = null;",
+  "  try { await hooks['tool.execute.before']({ tool: c.tool, sessionID: 's', callID }, { args: c.args }); } catch (e) { plugin = e.message; }",
+  "  if (c.tool === 'task') await hooks['tool.execute.after']({ tool: 'task', sessionID: 's', callID }, { title: '', output: '', metadata: {} });",
+  '  const tool = MAP[c.tool]; const cwd = c.args.workdir ? path.resolve(repo, c.args.workdir) : repo;',
+  "  const ti = tool === 'Bash' ? { command: c.args.command } : { file_path: c.args.filePath ?? c.args.path ?? '' };",
+  '  const r = tool ? decide({ tool_name: tool, tool_input: ti, cwd }, makeCtx(repo, { cwd, env: process.env, fs })) : null;',
+  "  out.push({ name: c.name, plugin, rules: r ? '[guard] ' + r : null });",
+  '}',
+  'process.stdout.write(JSON.stringify(out));',
+].join('\n');
+test('opencode 가드 플러그인(실행): 원장·규칙집·배선 쓰기 · 인라인 코드 · 파괴적 git · worktree push · 팩 경계는 거부, 읽기·src·임시 폴더·read는 통과, 결정은 decide()와 같고, 거부마다 원장 guard 줄 + task 뒤 spawn_stop에 팩 이름', { timeout: 120000 }, (t) => {
+  const [maj, min] = process.versions.node.split('.').map(Number);
+  if (maj < 22 || (maj === 22 && min < 6)) return t.skip('node < 22.6 — .ts type stripping 없음(플러그인은 opencode의 bun이 돈다)');
+  const repo = conductRepo(t, 'opencode'); if (!repo) return;
+  const unitPath = path.join(repo, '.garagiste/units/hello.json');
+  fs.writeFileSync(unitPath, JSON.stringify({ ...JSON.parse(fs.readFileSync(unitPath, 'utf8')), state: 'build' })); // 팩 정체의 정본 = unit 상태
+  fs.mkdirSync(path.join(repo, '.worktrees/hello/src'), { recursive: true });
+  const other = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-other-'));
+  const ledger = path.join(repo, '.garagiste/ledger/evidence.jsonl');
+  const cases = [
+    { name: 'write ledger', deny: true, tool: 'write', args: { filePath: ledger, content: '{}' } },
+    { name: 'write team.json', deny: true, tool: 'write', args: { filePath: path.join(repo, '.garagiste/team.json'), content: '{}' } },
+    { name: 'write wiring', deny: true, tool: 'write', args: { filePath: path.join(repo, '.opencode/plugins/guard.ts'), content: '' } },
+    { name: 'bash redirect ledger', deny: true, tool: 'bash', args: { command: 'echo x >> .garagiste/ledger/evidence.jsonl' } },
+    { name: 'bash inline node', deny: true, tool: 'bash', args: { command: "node -e \"require('fs').appendFileSync('.garagiste/ledger/evidence.jsonl','x')\"" } },
+    { name: 'bash destructive git', deny: true, tool: 'bash', args: { command: 'git rebase main' } },
+    { name: 'bash worktree push', deny: true, tool: 'bash', args: { command: 'git push -u origin unit/hello', workdir: '.worktrees/hello' } },
+    { name: 'edit acceptance from build', deny: true, tool: 'edit', args: { filePath: path.join(repo, '.worktrees/hello/tests/acceptance/hello.test.mjs'), oldString: 'a', newString: 'b' } },
+    { name: 'edit src from build', deny: false, tool: 'edit', args: { filePath: path.join(repo, '.worktrees/hello/src/cli.mjs'), oldString: 'a', newString: 'b' } },
+    { name: 'bash read ledger', deny: false, tool: 'bash', args: { command: 'grep -c ship .garagiste/ledger/evidence.jsonl' } },
+    { name: 'write temp outside', deny: false, tool: 'write', args: { filePath: path.join(other, 'fixture.json'), content: '{}' } },
+    { name: 'read tool', deny: false, tool: 'read', args: { filePath: ledger } },
+    { name: 'task build', deny: false, tool: 'task', args: { description: 'build', prompt: '.garagiste/session/packs/x.md', subagent_type: 'build' } },
+  ];
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-driver-'));
+  fs.writeFileSync(path.join(dir, 'package.json'), '{ "type": "module" }');
+  fs.writeFileSync(path.join(dir, 'drive.mjs'), DRIVER);
+  fs.writeFileSync(path.join(dir, 'cases.json'), JSON.stringify(cases));
+  const r = run(process.execPath, ['--experimental-strip-types', path.join(dir, 'drive.mjs'), repo, path.join(dir, 'cases.json')], repo);
+  assert.equal(r.status, 0, r.out);
+  const results = JSON.parse(r.out.slice(r.out.indexOf('[{'), r.out.lastIndexOf('}]') + 2)); // stderr의 ExperimentalWarning은 밖
+  for (const c of cases) {
+    const got = results.find((x) => x.name === c.name);
+    assert.equal(got.plugin, got.rules, `패리티 ${c.name}: plugin=${got.plugin} rules=${got.rules}`);
+    assert.equal(!!got.plugin, c.deny, `${c.name}: ${got.plugin}`);
+  }
+  const L = ledgerOf(repo);
+  assert.equal(L.filter((e) => e.kind === 'guard').length, cases.filter((c) => c.deny).length, '거부마다 원장 guard 줄');
+  assert.ok(L.some((e) => e.kind === 'spawn_stop' && e.pack === 'build'), 'task가 끝나면 spawn_stop에 팩 이름 — Claude SubagentStop(agent_type)과 같은 꼴');
 });

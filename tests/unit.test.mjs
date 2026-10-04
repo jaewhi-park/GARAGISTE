@@ -20,6 +20,10 @@ import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { nextStep, render } from '../team/scripts/next.mjs';
 import { DEFAULTS as CONDUCT_DEFAULTS, EXIT, failKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
 import { versionLine } from '../team/scripts/doctor.mjs';
+import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
+import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
+import { PACKS as CP_PACKS } from '../team/scripts/checkpoint.mjs';
+import { spawnerGap } from '../team/scripts/conduct.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
@@ -1245,4 +1249,30 @@ test('guard: 인라인 코드(node -e·python -c·sh -c)가 규칙집·원장 �
   assert.equal(decide(bash("node .garagiste/scripts/work.mjs decide 1 '예'"), gctx(null)), null, '스크립트 호출은 인라인 코드가 아니다');
   assert.equal(decide(bash("node -e \"require('fs').writeFileSync('.garagiste/team.json','{}')\""), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null, 'CEO(ADMIN)는 자유');
   assert.ok(inlineCodeWrite("python -c \"import shutil; shutil.copy('x', '.garagiste/packs/build.md')\"") && !inlineCodeWrite("python -c \"print(open('.garagiste/team.json').read())\""));
+});
+// 5라운드(2026-10-04, Q9 「패리티병 금지」): 팩 목록은 하나다 — 손으로 맞추는 사본(두 하네스의 agents · opencode conductor의 task 허용 · doctor)은 이 테스트가 묶는다.
+// 3라운드의 adopt가 opencode conductor의 task 허용에서 빠져 있었다 — opencode 설치본에선 레거시 인수가 시작도 못 했다(5라운드 수리).
+test('팩 목록 하나: work·brief·checkpoint PACKS 동일 · 두 하네스 agents·packs 파일 · opencode conductor task 허용 = 팩 전부 · doctor가 같은 목록으로 빈 agents를 짚는다', () => {
+  const P = [...WORK_PACKS].sort();
+  assert.deepEqual([...BRIEF_PACKS].sort(), P); assert.deepEqual([...CP_PACKS].sort(), P);
+  const TEAM = fileURLToPath(new URL('../team/', import.meta.url));
+  for (const p of P) for (const f of [`claude/agents/${p}.md`, `opencode/agents/${p}.md`, `packs/${p}.md`]) assert.ok(fs.existsSync(path.join(TEAM, f)), `${f} 없음`);
+  const conductor = fs.readFileSync(path.join(TEAM, 'opencode/agents/conductor.md'), 'utf8');
+  const allow = [...conductor.matchAll(/^\s+"([a-z]+)":\s*allow\s*$/gm)].map((m) => m[1]).sort();
+  assert.deepEqual(allow, P, 'opencode conductor가 task로 띄울 수 있는 팩 = 팩 전부');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-packs-'));
+  fs.mkdirSync(path.join(tmp, '.claude'), { recursive: true }); fs.writeFileSync(path.join(tmp, '.claude', 'settings.json'), '{}'); fs.writeFileSync(path.join(tmp, 'opencode.json'), '{}');
+  const probs = diagnose(tmp);
+  for (const p of P) { assert.ok(probs.some((x) => x.startsWith(`.claude/agents/${p}.md 없음`)), `doctor claude ${p}`); assert.ok(probs.some((x) => x.startsWith(`.opencode/agents/${p}.md 없음`)), `doctor opencode ${p}`); }
+  fs.rmSync(tmp, { recursive: true, force: true });
+});
+test('conduct: spawner 틈 — claude 배선이 없으면(opencode만 · 배선 없음) 기본 spawner가 서지 않는다는 한 줄, 사용자 spawner나 claude 배선이 있으면 없음', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-gap-'));
+  assert.match(spawnerGap(tmp, false), /^하네스 배선 없음 — 기본 spawner/);
+  fs.writeFileSync(path.join(tmp, 'opencode.json'), '{}');
+  assert.match(spawnerGap(tmp, false), /^opencode 설치본 — 기본 spawner\(claude -p … --agent <팩>\)는 \.claude\/agents 없이 서지 않는다: --spawner "<[^"]+>" \(opencode 예: opencode run --agent \{pack\} "\$\(cat \{path\}\)"/);
+  assert.equal(spawnerGap(tmp, true), null, '사용자 spawner면 틈이 아니다');
+  fs.mkdirSync(path.join(tmp, '.claude')); fs.writeFileSync(path.join(tmp, '.claude', 'settings.json'), '{}');
+  assert.equal(spawnerGap(tmp, false), null, 'claude 배선이 있으면 기본 spawner');
+  fs.rmSync(tmp, { recursive: true, force: true });
 });

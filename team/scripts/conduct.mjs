@@ -8,7 +8,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { appendLedger, CONDUCT_LOCK, ctx, fail, headSha, isMain, out, pidAlive, readJson, shell, stamp, worktreeDir, writeJson } from './lib.mjs';
 import { computeNext, doctorGate, render } from './next.mjs';
-import { blocking, diagnose, versionLine } from './doctor.mjs';
+import { blocking, diagnose, harnesses, versionLine } from './doctor.mjs';
 import { spawnStop } from './checkpoint.mjs';
 
 const S = 'node .garagiste/scripts';
@@ -109,7 +109,9 @@ export function preflight(root, { env = process.env, home = os.homedir(), spawn 
   ok.push(versionLine(root).startsWith('VERSION garagiste') ? versionLine(root).replace(/^VERSION garagiste (\S{7})\S* .*$/, 'VERSION $1') : 'VERSION 없음(옛 설치본 — install.sh 다시)');
   const lock = readJson(path.join(root, CONDUCT_LOCK), null);
   if (lock && lock.pid && pidAlive(lock.pid)) probs.push(`이미 돌고 있다 — pid ${lock.pid} · ${[lock.step, lock.slug, lock.pack].filter(Boolean).join(' ')} · ${lock.at} (한 저장소에 드라이버 하나)`); else ok.push('잠금 없음');
-  if (customSpawner) { ok.push('spawner 사용자 지정 — claude CLI·신뢰 검사 생략'); return { probs, ok }; }
+  const gap = spawnerGap(root, customSpawner);
+  if (gap) { probs.push(gap); return { probs, ok }; }
+  if (customSpawner) { ok.push(`spawner 사용자 지정(${harnesses(root).join('+') || '배선 없음'}) — claude CLI·신뢰 검사 생략`); return { probs, ok }; }
   const v = spawn('claude', ['--version'], { encoding: 'utf8', env });
   if (v.error || v.status !== 0) probs.push('claude CLI 없음(PATH) — 기본 spawner는 `claude -p --agent`다: Claude Code를 설치하거나 --spawner "<명령 템플릿>"');
   else ok.push(`claude ${(v.stdout || '').trim().split(/\s+/)[0] || '?'}`);
@@ -124,6 +126,13 @@ export function preflight(root, { env = process.env, home = os.homedir(), spawn 
   const trusted = keys.some((k) => { try { return (k === root || k === real || fs.realpathSync.native(k) === real) && cj.projects[k]?.hasTrustDialogAccepted === true; } catch { return false; } });
   if (!trusted) probs.push(`작업 공간 신뢰 없음(${path.join(home, '.claude.json')} projects[${root}].hasTrustDialogAccepted) — 그 폴더에서 대화형 claude를 한 번 열어 신뢰하라(헤드리스엔 신뢰 대화가 없다)`); else ok.push('신뢰 ok');
   return { probs, ok };
+}
+// 5라운드(2026-10-04, Q9 스폰 방법): 기본 spawner는 claude -p --agent <팩> — .claude/agents가 없는 설치본(opencode만)에선 서지 않는다. 템플릿 없이 돌리면 팩 spawn이 전부 비정상 종료로 세어 프레임워크 FAIL(exit 4)로 끝났을 것 — 그 전에 한 줄로 선다.
+export function spawnerGap(root, customSpawner) {
+  if (customSpawner) return null;
+  const hs = harnesses(root);
+  if (hs.includes('claude')) return null;
+  return (hs.includes('opencode') ? 'opencode 설치본' : '하네스 배선 없음') + ' — 기본 spawner(claude -p … --agent <팩>)는 .claude/agents 없이 서지 않는다: --spawner "<팩을 띄우는 명령 템플릿 {path} {pack} {slug} {model} {turns}>" (opencode 예: opencode run --agent {pack} "$(cat {path})" — 설치된 opencode 판에 맞춰 조정, JSON이 아닌 출력은 토큰·비용 0으로 기록된다)';
 }
 export function stopLine(kind, text, at = new Date().toISOString()) { return `STOP ${kind} ${at} — ${String(text).split('\n')[0]}\nCEO: ${TODO[kind]}`; }
 
@@ -203,6 +212,8 @@ function main() {
     return out(`PASS conduct check — ${r.ok.join(' · ')}`);
   }
   doctorGate(c);
+  const gap = spawnerGap(c.main, !!o.spawner);
+  if (gap) fail(`FAIL conduct: ${gap}`);
   o.packMinutes ??= Number(c.team.budgets.pack_minutes_max ?? 60);
   o.maxUsd ??= Number(c.team.budgets.run_usd_max ?? 0);
   const lock = readJson(path.join(c.main, CONDUCT_LOCK), null);

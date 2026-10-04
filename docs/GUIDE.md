@@ -85,6 +85,7 @@ node .garagiste/scripts/conduct.mjs --max-usd 15 --pack-minutes 45   # 이 실�
 - CEO 결정만 요구하는 FAIL(두 번째 spec 반려 · 팩 상한 2배 · 이미 충족)은 안내 끝의 `work.mjs ask … --hold`를 드라이버가 그대로 실행해 그 unit만 세운다 — 답은 저녁에 `decide`.
 - 멈춘 팩은 `--pack-minutes`(기본 60)에 SIGTERM으로 끊긴다 — 비정상 종료 둘이면 프레임워크 FAIL로 멈춘다(밤새 걸리지 않는다). 돌아와서 STATUS 「진행 중」을 보면 살아 있는 conduct의 걸음·slug·팩·비용이 한 줄로 있다.
 - 대화형 conductor와 같은 저장소에서 동시에 돌리지 않는다 — unit은 한 번에 하나다(잠금이 막는다). 다른 하네스·시험은 `--spawner "<명령 템플릿 {path} {pack} {slug} {model} {turns}>"`(모델 0 가짜 팩은 `tests/fakes/pack.mjs`).
+- **opencode 설치본**: `.claude/agents`가 없어 기본 spawner가 서지 않는다 — `conduct.mjs check`와 본 실행이 잠금 전에 한 줄로 선다. `--spawner 'opencode run --agent {pack} "$(cat {path})"'` 꼴의 템플릿을 설치된 opencode 판에 맞춰 적는다(이 예는 모델 0 환경에서 검증되지 않았다 — 첫 실전 run이 검증이다). JSON이 아닌 출력은 토큰·비용 0으로 기록되니 예산 정지는 걸음·시간 상한으로 건다. 가드 플러그인·L0는 같은 법이다 — e2e가 같은 속임수 셋과 13 케이스 패리티로 묶는다(CHANGELOG 「R&D 5라운드」).
 
 ## 9. 누가 무엇을 보장하나 (2026-10-04 4라운드 측정)
 | 층 | 보장 | 한계 |
