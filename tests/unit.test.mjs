@@ -12,7 +12,7 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, gateDecision, gateFailLine, logicLines, probeCommand, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
-import { againCmd, attackRoundUsed, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
+import { againCmd, attackRoundUsed, reviseDecided, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { candidateLines, firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { candidateSlug, acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
@@ -1434,6 +1434,13 @@ test('state(17라운드): candidateLines — found 원장 줄 ∩ 열린 BACKLOG
   const rt = reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['add'] }, units, ledger, backlogText: backlog });
   assert.match(rt, /## 후보 — 팩이 찍은 이 diff 밖 결함 \(다음 범위의 재료\)\n- add-f1 ← add:/);
   assert.doesNotMatch(reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['add'] }, units, ledger: [] }), /## 후보/, '후보가 없으면 절도 없다');
+});
+// 사고 77(18라운드): spec이 질문으로 올린 충돌에 CEO가 답하면 --revise의 근거다
+test('brief(18라운드): reviseDecided — 그 unit의 질문·hold에 CEO가 답한 닫힌 줄만(열린 Q·다른 unit의 Q는 아니다)', () => {
+  const d = '# DECISIONS\n\n## 정해 주세요\n- [ ] Q8 (x): 아직\n- [x] Q7 (order-rm-json): 기존 기대를 JSON으로 고쳐도 되나 → 예\n- [x] Q6 (other): 다른 unit\n- [x] Q5 (order-rm-json): hold 질문 → 거부한다\n';
+  assert.deepEqual(reviseDecided({ questions: [7, 8], holds: [5] }, d), ['- [x] Q7 (order-rm-json): 기존 기대를 JSON으로 고쳐도 되나 → 예', '- [x] Q5 (order-rm-json): hold 질문 → 거부한다']);
+  assert.deepEqual(reviseDecided({ questions: [8] }, d), [], '열린 질문은 근거가 아니다');
+  assert.deepEqual(reviseDecided({}, d), []);
 });
 test('work(17라운드): candidateSlug — 후보 이름은 뿌리 unit에 붙는다(후보에서 자란 unit의 후보도 <뿌리>-f<n>)', () => {
   const items = [{ slug: 'order-id-f1' }, { slug: 'order-id-monotonic' }, { slug: 'order-id-monotonic-f1' }];
