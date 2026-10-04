@@ -61,13 +61,13 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 | 스크립트 | 하는 일 |
 |---|---|
 | `next` | 루프의 다음 한 걸음을 한 줄로: run · spawn · ceo · wait · done — conductor는 이 줄만 따른다(seed → spec → redproof → build → attack → ship, re-spec·늦은 spike·충돌·한 번에 하나) |
-| `conduct` | Flow 4를 스크립트가 돈다 — next의 한 줄을 그대로 실행(run은 그 명령, spawn은 팩을 헤드리스 `claude -p --agent <팩>` 세션으로), 팩마다 spawned(실측 토큰·분·비용)·spawn_stop·체크포인트, `spec:` 반려 전달, CEO 결정만 요구하는 FAIL은 `ask --hold`로 그 unit만 세움. 멈춤이 종료 코드(0 done · 2 ceo · 3 wait · 4 프레임워크 FAIL · 5 상한) · 안전벨트(팩 시간 상한 · 비용 상한 · 잠금/heartbeat) · `intake` · 다른 하네스는 `--spawner` |
+| `conduct` | Flow 4를 스크립트가 돈다 — next의 한 줄을 그대로 실행(run은 그 명령, spawn은 팩을 헤드리스 `claude -p --agent <팩>` 세션으로), 팩마다 spawned(실측 토큰·분·비용)·spawn_stop·체크포인트, `spec:` 반려 전달, CEO 결정만 요구하는 FAIL은 `ask --hold`로 그 unit만 세움. 멈춤이 종료 코드(0 done · 2 ceo · 3 wait · 4 프레임워크 FAIL · 5 상한) · 안전벨트(팩 시간 상한 · 비용 상한 · 잠금/heartbeat) · `check`(실전 전 preflight) · `intake` · 다른 하네스는 `--spawner` |
 | `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · system(범위 끝의 이음새 공격) · new · ask(`--assumed`) · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
 | `brief` | 팩 조립 ≤8 KB(intake는 32 KB) — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |
 | `redproof` | 인수 테스트가 base에서 red · head에서 green임을 증명 |
 | `boundary` | 의존성·워크플로·IPC·권한·유출 키워드 → spike 필수 |
-| `ship` | 8조건 fail-closed → ff 머지 · docs/LEDGER.md · STATUS(quick FAIL이면 머지 롤백) |
+| `ship` | 8조건 fail-closed → 통합 tree에서 full·redproof·attack을 스스로 다시 돈 뒤 ff 머지 · docs/LEDGER.md · STATUS(quick FAIL이면 머지 롤백) |
 | `claims` | 주장 그래프: 참·거짓·미검수·불명, 센서 커버리지, 다음 거짓 |
 | `state` | docs/STATUS.md 생성(첫 줄 = 전부) · 무인 정지 예산 · `report`: SCOPE DONE의 출하 보고 한 장(만든 것·증명·정한 것·못 본 것·써볼 것) |
 | `doctor` | 감별 진단 — 하네스를 감지해 무엇이 죽었고 무엇을 치면 되는지 한 줄씩 |

@@ -67,6 +67,7 @@ opencode는 기본 provider/model을 상속한다. 팩별로 바꾸려면 같은
 Flow 4(루프)는 모델이 아니라 스크립트가 돌 수 있다. conductor 세션이 `next.mjs`의 한 줄을 읽고 실행하던 자리를 `conduct.mjs`가 대신한다 — 팩은 헤드리스 세션(`claude -p <팩 경로> --agent <팩>`)으로 뜨고 `.claude/agents/<팩>.md`가 모델·도구·정체를, 훅이 경계를, 게이트가 증거를 그대로 지킨다. Flow 1~3·7(구상·답·범위·끼어들기)은 대화다.
 ```bash
 cd ~/work/f1
+node .garagiste/scripts/conduct.mjs check             # 실전 전 preflight: claude CLI · 작업 공간 신뢰 · agents · allow · doctor · VERSION · 잠금 — FAIL이면 고칠 길이 줄마다
 node .garagiste/scripts/conduct.mjs intake          # Flow 2: brief.mjs intake → intake 팩 → work.mjs list (질문은 CEO가 work.mjs decide)
 node .garagiste/scripts/work.mjs scope --milestone M1
 node .garagiste/scripts/conduct.mjs                 # Flow 4: 멈출 때까지 — 「아침」 절의 멈춤과 같고 종료 코드가 멈춤이다
@@ -80,7 +81,14 @@ node .garagiste/scripts/conduct.mjs --max-usd 15 --pack-minutes 45   # 이 실�
 | 4 | 프레임워크 FAIL — 같은 FAIL 되풀이 · 팩 비정상 종료 2회 · worktree가 그대로인 팩 재spawn 2회 | 그 줄 전문을 정비 채널로(우회·스크립트 편집 없음), STATUS 「막힌 것」에 남는다 |
 | 5 | 상한 — `--max-steps`(기본 200) · `--max-minutes` · `--max-usd` · `--once` | 다시 돌리면 이어서 |
 | 1 | 이미 돌고 있다(잠금 `.garagiste/session/conduct.json`의 pid가 살아 있음) 또는 인자·doctor FAIL | 한 저장소에 드라이버 하나 — 기다리거나, 정말 죽었으면 잠금 파일을 지운다 |
-- 전제: 그 폴더에서 대화형 `claude`를 한 번 열어 작업 공간을 신뢰했을 것(헤드리스엔 신뢰 대화가 없다). 팩마다 `.garagiste/session/logs/conduct-<slug>-<팩>-<시각>.json`에 stdout·stderr가 남고, 원장 spawn 줄에 실측 토큰·분·비용이 적힌다(`work.mjs spawned`와 같은 줄).
+- 전제: 그 폴더에서 대화형 `claude`를 한 번 열어 작업 공간을 신뢰했을 것(헤드리스엔 신뢰 대화가 없다 — `conduct.mjs check`가 본다). 팩마다 `.garagiste/session/logs/conduct-<slug>-<팩>-<시각>.json`에 stdout·stderr가 남고, 원장 spawn 줄에 실측 토큰·분·비용이 적힌다(`work.mjs spawned`와 같은 줄).
 - CEO 결정만 요구하는 FAIL(두 번째 spec 반려 · 팩 상한 2배 · 이미 충족)은 안내 끝의 `work.mjs ask … --hold`를 드라이버가 그대로 실행해 그 unit만 세운다 — 답은 저녁에 `decide`.
 - 멈춘 팩은 `--pack-minutes`(기본 60)에 SIGTERM으로 끊긴다 — 비정상 종료 둘이면 프레임워크 FAIL로 멈춘다(밤새 걸리지 않는다). 돌아와서 STATUS 「진행 중」을 보면 살아 있는 conduct의 걸음·slug·팩·비용이 한 줄로 있다.
 - 대화형 conductor와 같은 저장소에서 동시에 돌리지 않는다 — unit은 한 번에 하나다(잠금이 막는다). 다른 하네스·시험은 `--spawner "<명령 템플릿 {path} {pack} {slug} {model} {turns}>"`(모델 0 가짜 팩은 `tests/fakes/pack.mjs`).
+
+## 9. 누가 무엇을 보장하나 (2026-10-04 4라운드 측정)
+| 층 | 보장 | 한계 |
+|---|---|---|
+| L0 — git 훅 + 스크립트 + 원장 | 원장 없는 커밋은 게이트가, 약화된 테스트는 redproof가, 출하는 8조건이 막는다. **ship은 머지 직전 통합 tree에서 full·redproof·attack을 스스로 다시 돈다**(team.json `ship_reverify`, 기본 켬) | 위조한 PASS 줄은 게이트를 지나간다 — 원장은 증거이지 증명이 아니다. main에 닿는 길은 ship뿐이라 재검증이 마지막 벽 |
+| L1 — guard 훅·플러그인 | 규칙집·원장·배선 쓰기 거부(파일 도구·셸 리다이렉트·in-place verb·인라인 코드), 팩의 쓰기 경계, 파괴적 git, 게이트 우회 접두 | 정규식 — 최선 노력. 읽기는 막지 않는다(의도). OS 샌드박스는 백로그 후보 |
+| L2 — 팩 산문 | 할 일·하지 않는 것 | 조언 — 모델이 따를 때만 |
