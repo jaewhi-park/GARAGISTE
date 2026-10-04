@@ -987,6 +987,9 @@ test('system-attack(채용 2026-10-03): 범위가 끝나면 이음새 공격 한
   assert.match(all(found).cmd, /brief\.mjs build system-1$/, '발견은 build가 고친다');
   const fixed = [...found, { ts: T(5), kind: 'pack', slug: 'system-1', pack: 'build' }, { ts: T(6), kind: 'spawn', slug: 'system-1', pack: 'build' }, { ts: T(7), kind: 'attack', slug: 'system-1', total: 3, red: 0 }];
   assert.match(all(fixed, sys({ state: 'build' })).cmd, /ship\.mjs system-1$/, '고친 뒤 red 0이면 ship');
+  // 사고 80(19라운드 다섯째 날): build의 반려로 attack에게 돌아간 공격이 자기 테스트를 철회했다(파일 0) — red였던 적이 있어도 마지막 공격이 파일을 안 남겼으면 발견 0: drop(ship은 「adversary 테스트 0개」로 설 뿐이었다)
+  const retracted = [...found, { ts: T(5), kind: 'pack', slug: 'system-1', pack: 'build' }, { ts: T(6), kind: 'spawn', slug: 'system-1', pack: 'build' }, { ts: T(7), kind: 'spec_return', slug: 'system-1', from: 'build' }, { ts: T(8), kind: 'pack', slug: 'system-1', pack: 'attack' }, { ts: T(9), kind: 'spawn', slug: 'system-1', pack: 'attack' }, { ts: T(10), kind: 'attack', slug: 'system-1', total: 0, red: 0, files: [] }];
+  assert.match(all(retracted).cmd, /work\.mjs drop system-1 "system-attack 발견 0 — 공격 파일 0\(red였던 공격을 attack이 철회\)" --forget$/, '철회된 공격은 발견이 아니다 — drop');
   // ship: 시스템 공격의 red 증명은 「한 번이라도 red였던 공격 파일 ≥ 1」
   const x = { unit: sys({ state: 'build' }), slug: 'system-1', worktreeExists: true, clean: true, tree: 't', ledger: [{ kind: 'verify', mode: 'full', exit: 0, tree: 't' }, { kind: 'attack', slug: 'system-1', tree: 't', total: 3, red: 0 }], changed: [], runnerBlind: [], requireAttack: true, spikeText: '', lastSubject: 'fix(seam): x', stops: [], proseKb: 1, proseMax: 40, openQuestions: [] };
   assert.match(evaluateShip({ ...x, found: 0 }).find((k) => k.id === 'redproof').why, /결함을 찾지 못했다[\s\S]*drop system-1/);

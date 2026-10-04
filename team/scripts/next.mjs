@@ -89,7 +89,10 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   // system-attack: 발견(한 번이라도 red였던 공격)이 없으면 초록 테스트뿐 — 산출물이 아니라 drop(탐색은 원장 attack 줄에 남는다)
   const finish = () => {
     if (A.red > 0) return brief('build', `공격 red ${A.red} — build 다시`);
-    if (u.kind === 'system' && !mine.some((e) => e.kind === 'attack' && e.red > 0)) return run(`work.mjs drop ${slug} "system-attack 발견 0 — 공격 파일 ${A.total}" --forget`, '발견 0 — 초록 테스트는 산출물이 아니다(탐색은 원장에 남는다)');
+    // 사고 80(19라운드 다섯째 날): system-4의 첫 공격 red 3이 build의 반려(「카드끼리 어긋남」)로 attack에게 돌아가 철회됐다(파일 삭제 → total 0) — 「한 번이라도 red」만 보던 next는 ship을 냈고 ship은 「adversary 테스트 0개」로 두 번 서 framework 정지.
+    // 마지막 공격이 파일을 안 남겼으면 발견은 없다 — drop(철회도 원장 attack 줄에 남는다).
+    const everRed = mine.some((e) => e.kind === 'attack' && e.red > 0);
+    if (u.kind === 'system' && (A.total === 0 || !everRed)) return run(`work.mjs drop ${slug} "system-attack 발견 0 — 공격 파일 ${A.total}${everRed ? '(red였던 공격을 attack이 철회)' : ''}" --forget`, '발견 0 — 초록 테스트는 산출물이 아니다(탐색은 원장에 남는다)');
     // 사고 64(L2 5판 리눅스 4라운드): red 0인데 예산 정지(미검수 3)면 ship이 budget 조건으로 거부한다 — 예산 정지의 ceo는 seed 자리에만 있어 next가 ship을 계속 냈고
     // conductor가 ship의 FAIL 줄을 읽어 스스로 멈췄다. ship 직전에도 같은 ceo — 그 unit은 red 0으로 서 있고 CEO가 써봐야 출하가 열린다.
     if (stops.length) return { kind: 'ceo', text: `STOP ${stops.join('; ')} — 예산 정지: ${slug}는 red 0으로 ship 직전에 서 있다 — CEO에게 docs/STATUS.md 「써볼 것」·「정해 주세요」` };
