@@ -1460,3 +1460,23 @@ test('kind refactor: 핀(현재 동작, base에서 초록) → PIN → build(구
   const pinRed = script('redproof', ['greet-shout'], repo);
   assert.equal(pinRed.status, 1); assert.match(pinRed.out, /^FAIL redproof greet-shout: 핀이 base에서 red — tests\/acceptance\/greet-shout\.test\.mjs — 현재 동작이 아니다[\s\S]*work\.mjs ask greet-shout "핀이 base에서 red[^"]*" --hold/);
 });
+// Q14 사람-증거 레인 첫 조각(R&D 8라운드 2026-10-04 — 윈도우 M1 관찰 「사람 확인 집계 1/9」): CEO가 본 것(스크린샷·녹화·빌드)이 파일로 원장의 증거가 된다.
+test('tried --evidence: 파일을 docs/units/<slug>/evidence/로 복사하고 docs 차선으로 커밋(main은 깨끗) · 원장 tried.evidence · STATUS 「사람 증거」 · 없는 파일은 FAIL', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  assert.match(conduct(repo).out, /SHIPPED hello/);
+  const shot = path.join(os.tmpdir(), `garagiste-shot-${process.pid}.png`); fs.writeFileSync(shot, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  const note = path.join(os.tmpdir(), `garagiste-note-${process.pid}.txt`); fs.writeFileSync(note, 'hello Ada 가 보였다\n');
+  assert.match(script('work', ['tried', 'hello', 'ok', '봤다', '--evidence', `${shot},/nonexistent/x.png`], repo).out, /^FAIL tried hello: 증거 파일 없음 — \/nonexistent\/x\.png/);
+  assert.ok(!ledgerOf(repo).some((e) => e.kind === 'tried'), '없는 파일이면 아무것도 남기지 않는다(fail-closed)');
+  const ok = script('work', ['tried', 'hello', 'ok', '봤다', '--evidence', `${shot},${note}`], repo);
+  assert.match(ok.out, /^PASS tried hello ok · 증거 2 → docs\/units\/hello\/evidence\//, ok.out);
+  for (const f of [path.basename(shot), path.basename(note)]) assert.ok(fs.existsSync(path.join(repo, 'docs/units/hello/evidence', f)), f);
+  assert.equal(git(['ls-files', 'docs/units/hello/evidence'], repo).out.trim().split('\n').length, 2, '증거는 추적된다');
+  assert.ok(!git(['status', '--porcelain'], repo).out.includes('evidence'), 'docs 차선으로 커밋됐다 — 다음 ship이 「미커밋 변경」으로 서지 않는다');
+  assert.match(git(['log', '-1', '--format=%s'], repo).out, /^docs\(tried\): hello 증거 2/);
+  const tr = ledgerOf(repo).filter((e) => e.kind === 'tried' && e.slug === 'hello').pop();
+  assert.deepEqual(tr.evidence, [`docs/units/hello/evidence/${path.basename(shot)}`, `docs/units/hello/evidence/${path.basename(note)}`]);
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/hello.json'), 'utf8')).tried.evidence, tr.evidence);
+  script('state', [], repo);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 사람 증거\n- hello: 2 — docs\/units\/hello\/evidence\//);
+});
