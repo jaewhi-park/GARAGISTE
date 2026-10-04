@@ -11,7 +11,7 @@ const main = process.cwd(); // conduct는 메인 루트에서 띄운다
 const tokens = Number(process.env.GARAGISTE_FAKE_TOKENS || 1200);
 // unit의 정체(kind)는 unit 상태가 말한다 — refactor면 핀·구조·바뀐 동작의 흐름(7라운드)
 const unit = (() => { try { return JSON.parse(fs.readFileSync(path.join(main, '.garagiste', 'units', `${slug}.json`), 'utf8')); } catch { return null; } })();
-const refactor = unit?.kind === 'refactor';
+const refactor = unit?.kind === 'refactor' || unit?.kind === 'pin'; // pin(13라운드): 같은 핀 spec·같은 공격, build는 공격이 red일 때만
 const script = (name, args, cwd = wt) => spawnSync(process.execPath, [path.join(main, '.garagiste', 'scripts', `${name}.mjs`), ...args], { cwd, encoding: 'utf8' });
 const git = (args) => spawnSync('git', args, { cwd: wt, encoding: 'utf8' });
 const write = (rel, text) => { fs.mkdirSync(path.dirname(path.join(wt, rel)), { recursive: true }); fs.writeFileSync(path.join(wt, rel), text); };

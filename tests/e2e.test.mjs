@@ -1210,6 +1210,9 @@ test('adopt 탄생: 기존 코드 → intake 팩이 「저장소 상태: 코드 
   assert.ok(!fs.existsSync(path.join(wt, 'tests/acceptance/garagiste-probe-adopt-greet.test.mjs')), '탐침 파일은 남지 않는다');
   const wide = script('work', ['commands', 'quick=node --test "tests/**/*.test.mjs" test/*.test.js', 'full=node --test "tests/**/*.test.mjs" test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install'], wt);
   assert.equal(wide.status, 1); assert.match(wide.out, /^FAIL commands — 눈먼 명령 1\(저장하지 않았다\)\n- quick이 tests\/acceptance·tests\/adversary의 파일을 돈다 — 깨진 탐침에 red/, wide.out);
+  // 13라운드(둘의 규칙 — Node·Python adopt 둘 다 setup=true): 설치가 아닌 setup은 저장하지 않는다
+  const noop = script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test "tests/**/*.test.mjs" test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=true'], wt);
+  assert.equal(noop.status, 1); assert.match(noop.out, /^FAIL commands — setup="true"는 설치 명령이 아니다 — package\.json이 있다: 의존성 0이어도 생태계의 설치 명령으로\(npm install/, noop.out);
   assert.match(script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test "tests/**/*.test.mjs" test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install'], wt).out, /^COMMANDS /, 'commands는 adopt의 worktree에서도 열린다 — full은 인수·공격 자리까지, quick은 unit만');
   assert.match(script('work', ['rules', 'project=greet', 'one_line=인사 CLI'], wt).out, /^RULES CLAUDE\.md/);
   git(['add', '-A'], wt);
@@ -1477,6 +1480,48 @@ test('kind refactor: 핀(현재 동작, base에서 초록) → PIN → build(구
   assert.equal(git(['commit', '-q', '-m', 'test(greet-shout): 핀?\n\nUnit: greet-shout\nStep: 1'], wt).status, 0);
   const pinRed = script('redproof', ['greet-shout'], repo);
   assert.equal(pinRed.status, 1); assert.match(pinRed.out, /^FAIL redproof greet-shout: 핀이 base에서 red — tests\/acceptance\/greet-shout\.test\.mjs — 현재 동작이 아니다[\s\S]*work\.mjs ask greet-shout "핀이 base에서 red[^"]*" --hold/);
+});
+// kind pin — R&D 13라운드(2026-10-04, 백로그 「2순위: 이미 충족된 주장 박기」 — 필드 시험 2의 web persist·browser-check · 파이썬 no-network · 12라운드 실전 run의 discount-reject):
+// redproof 「base에서 green」의 유일한 길이 drop이라 주장 파일이 dropped 브랜치로 갔다. 둘째 길 — 회귀 증거로 고정해 출하(핀 증명 재사용 · build 없음 · attack 한 바퀴).
+test('kind pin: (1) redproof base green → hold → decide → work.mjs pin → PIN → attack(red 0) → ship(LEDGER pin) — 주장 파일이 main에 남는다 · (2) --kind pin 직접(제약형 요구) 끝까지 · (3) pin은 spec 단계의 feature·refactor에만', { timeout: 180000 }, (t) => {
+  const repo = legacyRepo(t); if (!repo) return;
+  const teamPath = path.join(repo, '.garagiste/team.json'); const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'node --test test/*.test.js', full: 'node --test test/*.test.js "tests/**/*.test.mjs"', test_file: 'node --test {files}', run: 'node bin/greet.js', setup: 'npm install' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2) + '\n');
+  git(['add', '-A'], repo); assert.match(script('verify', ['quick'], repo).out, /^PASS verify:quick/);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: commands'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  // (1) hold 경로 — 이미 참인 주장(greet Bo → hi Bo)을 feature로 열었다
+  assert.match(script('work', ['new', 'greet-keeps', 'greet <이름>은 hi <이름>을 찍는다(그대로)'], repo).out, /^UNIT greet-keeps spec/);
+  const wt = path.join(repo, '.worktrees', 'greet-keeps');
+  assert.match(script('brief', ['spec', 'greet-keeps'], repo).out, /^PACK /);
+  write(wt, 'tests/acceptance/greet-keeps.test.mjs', "// @claim greet Bo → hi Bo\n// @milestone M1\n// @sensor machine@linux\nimport test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('이미 참', () => assert.equal(spawnSync(process.execPath, ['bin/greet.js', 'Bo'], { encoding: 'utf8' }).stdout, 'hi Bo\\n'));\n");
+  git(['add', '-A'], wt); assert.match(script('verify', ['quick'], wt).out, /^PASS verify:quick/);
+  assert.equal(git(['commit', '-q', '-m', 'test(greet-keeps): 주장\n\nUnit: greet-keeps\nStep: 1'], wt).status, 0);
+  assert.match(script('work', ['spawned', 'greet-keeps', 'spec'], repo).out, /^SPAWN/);
+  const green = script('redproof', ['greet-keeps'], repo);
+  assert.equal(green.status, 1); assert.match(green.out, /^FAIL redproof greet-keeps: base에서 green[\s\S]*work\.mjs drop greet-keeps[\s\S]*회귀 증거로 고정해 출하한다 → node \.garagiste\/scripts\/work\.mjs pin greet-keeps \(kind pin[\s\S]*이미 충족: 닫을까\(drop\) · 회귀 증거로 고정해 출하할까\(pin\)" --hold/, green.out);
+  assert.match(script('work', ['pin', 'greet-keeps'], repo, { GARAGISTE_CONDUCT: '' }).out, /^PIN greet-keeps — kind feature → pin/);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /^- \[ \] greet-keeps · .* · kind: pin$/m, 'BACKLOG 줄의 kind도');
+  assert.match(script('work', ['pin', 'greet-keeps'], repo).out, /^PIN greet-keeps — 이미 pin이다/);
+  assert.match(script('next', [], repo).out, /^NEXT run node \.garagiste\/scripts\/redproof\.mjs greet-keeps — 마지막 redproof가 FAIL/);
+  const r = conduct(repo);
+  assert.equal(r.status, 2, r.out);
+  assert.match(r.out, /PIN greet-keeps 1\/1 — 이미 충족된 주장이 회귀 증거로 고정됐다[\s\S]*NEXT run node \.garagiste\/scripts\/brief\.mjs attack greet-keeps — PIN — 이미 충족된 주장이 회귀 증거로 고정됐다\(base에서 초록\), build 없음[\s\S]*SPAWN greet-keeps attack[\s\S]*ATTACK greet-keeps red 0\/1[\s\S]*SHIPPED greet-keeps/, r.out);
+  assert.doesNotMatch(r.out, /SPAWN greet-keeps build/, 'pin엔 build가 없다(공격이 red일 때만)');
+  assert.match(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| greet-keeps \| [0-9a-f]{7} \| [0-9a-f]{7} \| PASS \| pin_base=green head_green \(pin\) \|/);
+  assert.ok(fs.existsSync(path.join(repo, 'tests/acceptance/greet-keeps.test.mjs')), '주장 파일이 main에 남는다 — drop이면 dropped 브랜치로 갔다');
+  assert.ok(ledgerOf(repo).some((e) => e.kind === 'rekind' && e.slug === 'greet-keeps' && e.from === 'feature' && e.to === 'pin'), '원장 rekind 줄');
+  const packs = fs.readdirSync(path.join(repo, '.garagiste/session/packs'));
+  const atkPack = fs.readFileSync(path.join(repo, '.garagiste/session/packs', packs.find((f) => f.startsWith('greet-keeps-attack-'))), 'utf8');
+  assert.match(atkPack, /## pin — 이미 충족된 주장을 회귀 증거로[\s\S]*고정된 주장이 깨지는 입력/, '팩에 pin 절(코드 — 산문 상한 밖)');
+  // (2) 제약형 요구는 처음부터 --kind pin — 가짜 팩이 핀을 쓰고(base에서 초록) attack까지 끝낸다
+  assert.match(script('work', ['new', 'greet-no-net', 'greet는 네트워크를 쓰지 않는다', '--kind', 'pin'], repo).out, /^UNIT greet-no-net spec[\s\S]*PIN — 이미 충족된 주장/);
+  const r2 = conduct(repo);
+  assert.equal(r2.status, 2, r2.out);
+  assert.match(r2.out, /SPAWN greet-no-net spec[\s\S]*│ PIN greet-no-net 1\/1 — 이미 충족된 주장이 회귀 증거로 고정됐다[\s\S]*SPAWN greet-no-net attack[\s\S]*SHIPPED greet-no-net/, r2.out);
+  // (3) pin의 자리: shipped·build 뒤는 거부
+  assert.match(script('work', ['pin', 'greet-keeps'], repo).out, /^FAIL greet-keeps은 shipped — pin은 진행 중 unit에만/);
+  assert.match(script('work', ['pin', 'nope'], repo).out, /^FAIL/);
 });
 // Q14 사람-증거 레인 첫 조각(R&D 8라운드 2026-10-04 — 윈도우 M1 관찰 「사람 확인 집계 1/9」): CEO가 본 것(스크린샷·녹화·빌드)이 파일로 원장의 증거가 된다.
 test('tried --evidence: 파일을 docs/units/<slug>/evidence/로 복사하고 docs 차선으로 커밋(main은 깨끗) · 원장 tried.evidence · STATUS 「사람 증거」 · 없는 파일은 FAIL', { timeout: 120000 }, (t) => {

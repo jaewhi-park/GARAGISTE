@@ -27,8 +27,8 @@ import { killPlan, missingFlags, orphanOf, runChild, spawnOpts, spawnerGap, trus
 import { conductBusyLine, conductRunning, readLedger } from '../team/scripts/lib.mjs';
 import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
-import { FLAGS, KINDS } from '../team/scripts/work.mjs';
-import { REFACTOR_NOTE } from '../team/scripts/brief.mjs';
+import { FLAGS, KINDS, setupNoop } from '../team/scripts/work.mjs';
+import { PIN_NOTE, REFACTOR_NOTE } from '../team/scripts/brief.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
@@ -145,7 +145,7 @@ test('guard: 필드 시험 — git 전역 옵션(-C·-c) 뒤의 파괴 명령도
 });
 test('settings: 팩이 worktree에서 일하는 명령(cd·git -C)이 허용 목록에 있다 — 없으면 헤드리스·신규 설치에서 boot가 커밋하지 못해 루프가 멈춘다 (필드 시험)', () => {
   const st = JSON.parse(fs.readFileSync(new URL('../team/claude/settings.json', import.meta.url), 'utf8'));
-  for (const r of ['Bash(cd:*)', 'Bash(git -C:*)']) assert.ok(st.permissions.allow.includes(r), r);
+  for (const r of ['Bash(cd:*)', 'Bash(git -C:*)', 'Bash(git reset --soft:*)']) assert.ok(st.permissions.allow.includes(r), r); // --soft(13라운드): build가 wip 체크포인트를 풀어 정식 커밋으로 — 측정 4건 거부
 });
 test('guard: 보호 브랜치가 main이 아니어도 push가 막힌다', () => {
   const pb = { ...gctx(null), protectedBranch: 'claude/quirky-wozniak-keqgbi' };
@@ -1154,6 +1154,22 @@ test('verify(12라운드): probeCommand — 깨진 탐침을 인수·공격 자�
   assert.ok(!fs.existsSync(path.join(d, files[0])), '탐침 파일은 남지 않는다');
   assert.equal(fs.readFileSync(path.join(d, files[1]), 'utf8'), 'kept', '있던 파일은 되돌린다');
 });
+test('work(13라운드): setupNoop — true·:·echo·exit 0은 설치가 아니다(매니페스트가 있을 때만) · 진짜 설치 명령·빈 값은 통과', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-setup-'));
+  assert.equal(setupNoop('true', d), null, '매니페스트 없는 저장소엔 설치가 없다');
+  fs.writeFileSync(path.join(d, 'package.json'), '{}');
+  assert.match(setupNoop('true', d), /^setup="true"는 설치 명령이 아니다 — package\.json이 있다: 의존성 0이어도 생태계의 설치 명령으로\(npm install/);
+  for (const s of [':', 'echo skip', 'exit 0', ' true ']) assert.ok(setupNoop(s, d), s);
+  for (const s of ['npm install', 'pip install -e .', 'uv sync', '', undefined]) assert.equal(setupNoop(s, d), null, String(s));
+  fs.rmSync(path.join(d, 'package.json')); fs.writeFileSync(path.join(d, 'pyproject.toml'), '');
+  assert.match(setupNoop('true', d), /pyproject\.toml이 있다: .*pip install -e \. 또는 uv sync/);
+});
+test('conduct(13라운드): runChild — SIGTERM을 무시하는 팩은 killAfterMs 뒤 SIGKILL(드라이버가 영원히 서지 않는다)', async () => {
+  const t0 = Date.now();
+  const h = await runChild({ argv: [process.execPath, '-e', 'process.on("SIGTERM", () => {}); setInterval(() => {}, 1000)'] }, { cwd: process.cwd(), env: process.env, timeoutMs: 200, killAfterMs: 400 });
+  assert.ok(h.timedOut && h.status === null && h.signal === 'SIGKILL', JSON.stringify(h));
+  assert.ok(Date.now() - t0 < 5000, '5초 기본값이 아니라 killAfterMs');
+});
 test('conduct(12라운드): trustWorkspace — ~/.claude.json의 다른 키는 그대로 두고 projects[root].hasTrustDialogAccepted만 켠다 · 파일 없으면 FAIL 사유 · 이미면 already · JSON 아니면 손대지 않는다', () => {
   const home = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-trust-'));
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-root-'));
@@ -1365,7 +1381,9 @@ test('ship(7라운드): kind refactor의 redproof 조건은 refactor 줄의 pin_
   const feature = evaluateShip({ ...base, ledger: [...base.ledger.slice(0, 2), { kind: 'redproof', slug: 'r', tree: 'T', base_red: true, head_green: true }] }).find((k) => k.id === 'redproof');
   assert.match(feature.why, /동작 보존 증명 없음\(핀 base·head 초록 — kind refactor\)/, 'feature 꼴의 red 증명은 refactor의 증명이 아니다');
   assert.ok(!evaluateShip({ ...base, ledger: [...base.ledger.slice(0, 2), { ...base.ledger[2], head_green: false }] }).find((k) => k.id === 'redproof').ok, '동작이 바뀐 핀(head red)은 증명이 아니다');
-  assert.deepEqual(KINDS, ['feature', 'scaffold', 'adopt', 'refactor', 'system']);
+  assert.deepEqual(KINDS, ['feature', 'scaffold', 'adopt', 'refactor', 'pin', 'system']);
+  for (const p of ['spec', 'build', 'attack']) assert.match(PIN_NOTE[p]({ slug: 'p', acceptance: 'tests/acceptance', main: 'main' }), /\*\*pin\*\*/, `PIN_NOTE ${p}`);
+  assert.match(PIN_NOTE.spec({ slug: 'p', acceptance: 'tests/acceptance', main: 'main' }), /base\(main\)에서도 초록[\s\S]*tests\/acceptance\/p\*[\s\S]*회귀 지킴/, '13라운드: 이미 충족된 주장의 핀');
   for (const p of ['spec', 'build', 'attack']) assert.match(REFACTOR_NOTE[p]({ slug: 'r', acceptance: 'tests/acceptance', main: 'main' }), /refactor/);
   assert.match(REFACTOR_NOTE.spec({ slug: 'r', acceptance: 'tests/acceptance', main: 'main' }), /base\(main\)에서도 초록[\s\S]*tests\/acceptance\/r\*/);
 });

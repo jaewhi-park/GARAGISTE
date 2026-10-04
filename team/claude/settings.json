@@ -19,7 +19,7 @@
       "Bash(python:*)", "Bash(python3:*)", "Bash(uv:*)", "Bash(pytest:*)", "Bash(pip:*)", "Bash(ruff:*)", "Bash(mypy:*)",
       "Bash(cargo:*)", "Bash(go:*)", "Bash(dotnet:*)", "Bash(mvn:*)", "Bash(gradle:*)", "Bash(make:*)", "Bash(tsc:*)", "Bash(vitest:*)", "Bash(jest:*)", "Bash(playwright:*)",
       "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(git branch:*)", "Bash(git rev-parse:*)", "Bash(git ls-files:*)",
-      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git worktree:*)", "Bash(git -C:*)", "Bash(cd:*)", "Bash(git config core.hooksPath:*)", "Bash(git fetch:*)", "Bash(git switch:*)",
+      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git reset --soft:*)", "Bash(git worktree:*)", "Bash(git -C:*)", "Bash(cd:*)", "Bash(git config core.hooksPath:*)", "Bash(git fetch:*)", "Bash(git switch:*)",
       "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(wc:*)", "Bash(find:*)", "Bash(grep:*)", "Bash(rg:*)", "Bash(pwd)", "Bash(which:*)", "Bash(mkdir:*)", "Bash(touch:*)", "Bash(echo:*)", "Bash(date:*)", "Bash(tree:*)"
     ],
     "deny": [

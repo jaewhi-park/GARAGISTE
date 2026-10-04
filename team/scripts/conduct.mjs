@@ -209,13 +209,14 @@ function killChild(child, signal = 'SIGTERM') {
   if (k.cmd) { try { spawnSync(k.cmd, k.args, { stdio: 'ignore' }); } catch { /* 이미 끝났다 */ } } else { try { child.kill(k.signal); } catch { /* 이미 끝났다 */ } }
 }
 let CHILD = null;
-export function runChild(cmd, { cwd, env, timeoutMs = 0, onSpawn = null, spawner = spawn } = {}) {
+export function runChild(cmd, { cwd, env, timeoutMs = 0, onSpawn = null, spawner = spawn, killAfterMs = 5000 } = {}) {
   return new Promise((resolve) => {
     const opts = { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] };
     const child = cmd.argv ? spawner(cmd.argv[0], cmd.argv.slice(1), spawnOpts(opts)) : spawner(cmd.shell, { ...opts, shell: true });
-    let stdout = ''; let stderr = ''; let error = null; let timedOut = false; let settled = false; let timer = null;
-    const done = (status, signal) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); if (CHILD === child) CHILD = null; resolve({ status, signal, stdout, stderr, error, timedOut, pid: child.pid ?? null }); };
-    if (timeoutMs > 0) timer = setTimeout(() => { timedOut = true; killChild(child, 'SIGTERM'); }, timeoutMs);
+    let stdout = ''; let stderr = ''; let error = null; let timedOut = false; let settled = false; let timer = null; let killer = null;
+    const done = (status, signal) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); if (killer) clearTimeout(killer); if (CHILD === child) CHILD = null; resolve({ status, signal, stdout, stderr, error, timedOut, pid: child.pid ?? null }); };
+    // 13라운드: SIGTERM을 무시하는(또는 정리에 오래 걸리는) 팩이 드라이버를 영원히 세우지 않게 — installSignals와 같은 5초 뒤 SIGKILL
+    if (timeoutMs > 0) timer = setTimeout(() => { timedOut = true; killChild(child, 'SIGTERM'); killer = setTimeout(() => killChild(child, 'SIGKILL'), killAfterMs); }, timeoutMs);
     const cap = 64 * 1024 * 1024;
     if (child.stdout) { child.stdout.setEncoding('utf8'); child.stdout.on('data', (d) => { if (stdout.length < cap) stdout += d; }); }
     if (child.stderr) { child.stderr.setEncoding('utf8'); child.stderr.on('data', (d) => { if (stderr.length < cap) stderr += d; }); }

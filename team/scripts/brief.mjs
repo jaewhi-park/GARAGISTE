@@ -58,6 +58,20 @@ export function overflowAdvice({ bytes, capKb, slug, mult = 1 }) {
 // 팩 상한 이유-차선(CEO 채용 2026-10-02 · 측정 H3): 상한 FAIL의 CEO 결정은 측정마다 ①(올린다)뿐이었다 — 기본 상한 8→16→24→32, 벤치 웹 24→31, 홀드아웃 library 32→49
 // (L2 2·5일차가 이 FAIL로 멈췄다). 커밋 게이트의 LARGE_STEP과 같은 모양: 상한~2배는 conductor의 이유 한 줄(원장)로 지나가고, 2배를 넘으면 벽 — CEO 결정.
 // kind refactor(R&D 7라운드 2026-10-04, 백로그 Q13 「동작 보존 증명」): 팩 산문은 그대로 두고 뒤집힌 증명은 여기서 — 산문 상한 밖(코드). 팩 절(## 팩) 바로 뒤에 들어간다.
+// kind pin(R&D 13라운드 2026-10-04 — 「이미 충족된 주장 박기」): 주장이 이미 참이다(앞 unit이 만들었거나 제약형 요구). 산문은 그대로, 뒤집힌 증명은 코드로 — refactor와 같은 핀 증명, build는 공격이 찾은 결함에만.
+export const PIN_NOTE = {
+  spec: ({ slug, acceptance, main }) => [
+    `이 unit은 **pin**이다 — 주장이 이미 충족돼 있다(앞 unit이 만들었거나 「쓰지 않는다」·「그대로다」 같은 제약형 요구). 위 spec 규칙의 「red 주장」을 「이미 참인 주장의 고정」으로 읽는다: 인수 테스트는 base(${main})에서도 초록이어야 한다(redproof가 pin_base=green·head_green을 요구). base에서 red면 pin이 아니라 feature다 — 원문을 고치지 말고 마지막 줄 \`spec: 새 동작 <한 줄>\`로 멈춘다.`,
+    `- ${acceptance}/${slug}*에 그 주장의 **외부 동작**(명령·출력·종료 코드·파일·API)을 고정한다 — 경계값·빈 입력·에러 경로도. @claim은 「이미 참: …」. 이 파일은 출하 뒤 main의 회귀 지킴이다.`,
+    `- 끝은 node .garagiste/scripts/redproof.mjs ${slug} → PIN ${slug} n/n.`,
+  ].join('\n'),
+  build: () => [
+    '이 unit은 **pin**이다 — build는 attack이 찾은 결함(red 공격 파일)만 고친다. 핀(tests/acceptance)과 기존 테스트는 초록인 채로. 새 동작을 더하지 않는다 — 고정된 주장이 틀렸으면 고치지 말고 마지막 줄 `spec: <어느 핀이 왜>`.',
+  ].join('\n'),
+  attack: () => [
+    '이 unit은 **pin**이다 — 공격의 목표는 고정된 주장이 깨지는 입력(경계값·빈 입력·순서·에러 경로·출력 형식). 기대값은 핀·surface·README가 말하는 현재 동작이다.',
+  ].join('\n'),
+};
 export const REFACTOR_NOTE = {
   spec: ({ slug, acceptance, main }) => [
     `이 unit은 **refactor**다 — 위 spec 규칙의 「red 주장」을 「현재 동작의 핀」으로 읽는다. 핀은 base(${main})에서도 초록이어야 한다: redproof가 뒤집혀 pin_base=green·head_green을 요구하고, base에서 red인 핀은 FAIL이다(새 동작이면 refactor가 아니라 feature unit — 원문을 고치지 말고 마지막 줄 \`spec: 새 동작 <한 줄>\`로 멈춘다).`,
@@ -222,6 +236,7 @@ function main() {
   const fileNote = pack === 'spec' || pack === 'attack' ? ' — 증명은 파일 하나씩(이 명령에 그 파일 하나): 네가 쓰는 테스트 파일은 혼자 돈다, 다른 테스트 파일의 도우미에 기대지 않는다(필요한 도우미는 그 파일 안에)' : '';
   sec('commands', '명령', Object.entries(c.team.commands).filter(([, v]) => v).map(([k, v]) => `- ${k}: \`${v}\`${k === 'test_file' ? fileNote : ''}`).join('\n'));
   if (unit.kind === 'refactor' && REFACTOR_NOTE[pack]) sec('refactor', 'refactor — 동작 보존 (이 unit엔 새 동작이 없다)', REFACTOR_NOTE[pack]({ slug, acceptance: c.team.paths.acceptance, main: c.team.protected_branch }));
+  if (unit.kind === 'pin' && PIN_NOTE[pack]) sec('pin', 'pin — 이미 충족된 주장을 회귀 증거로 (이 unit엔 새 동작이 없다)', PIN_NOTE[pack]({ slug, acceptance: c.team.paths.acceptance, main: c.team.protected_branch }));
   if (pack === 'adopt') sec('map', '저장소 지도 — 스크립트가 센 것(판단 없음)', repoMap(wt).text);
   if (system && pack === 'attack') sec('system', '시스템 공격 — 입력은 diff가 아니라 출하된 제품 전체', [
     '이 unit은 출하된 unit들의 **이음새**를 공격한다(한 unit 안의 결함은 그 unit의 attack이 이미 봤다): 두 unit이 함께 만드는 흐름 · 한 unit의 산출물이 다른 unit의 입력일 때 · 같은 파일·상태를 두 unit이 다르게 가정하는 곳 · try 카드대로 실제로 돌렸을 때(실행은 「명령」의 run).',

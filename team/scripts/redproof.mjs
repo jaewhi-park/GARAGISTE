@@ -18,7 +18,7 @@ export function verdict(baseResults, headResults) {
 // 사고 47(필드 벤치 넷): 먼저 출하된 unit이 주장의 일부만 채우면(BOM 처리) drop은 남은 red 주장(CEO가 정한 CP949)까지 닫는다 — 충족된 파일만 빼는 길
 export function baseGreenAdvice(slug, files, red = []) {
   if (red.length) return `FAIL redproof ${slug}: 부분 충족 — base에서 green ${files.join(' ')} · base에서 red ${red.join(' ')} — drop은 red 주장까지 닫는다. CEO 결정(예/아니오로 묻는다): 이미 충족된 주장만 뺀다 → node .garagiste/scripts/brief.mjs spec ${slug} --met "<CEO 말 그대로>" → 팩 spawn(그 파일만 뺀다) → redproof 다시 · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec ${slug} 재spawn · ${holdAsk(slug, 'redproof 부분 충족 — 이미 충족된 주장만 뺄까')}`;
-  return `FAIL redproof ${slug}: base에서 green — ${files.join(' ')} — 기존 코드가 이 주장을 이미 만족한다(old code에서도 통과하는 테스트는 테스트가 아니다). CEO 결정(예/아니오로 묻는다): 이미 충족으로 닫는다 → node .garagiste/scripts/work.mjs drop ${slug} "이미 충족 — <근거>" --forget (주장 파일은 dropped 브랜치에 남는다) · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec ${slug} 재spawn · ${holdAsk(slug, 'redproof base에서 green — 이미 충족으로 닫을까')}`;
+  return `FAIL redproof ${slug}: base에서 green — ${files.join(' ')} — 기존 코드가 이 주장을 이미 만족한다(old code에서도 통과하는 테스트는 테스트가 아니다). CEO 결정(예/아니오로 묻는다): 이미 충족으로 닫는다 → node .garagiste/scripts/work.mjs drop ${slug} "이미 충족 — <근거>" --forget (주장 파일은 dropped 브랜치에 남는다) · 회귀 증거로 고정해 출하한다 → node .garagiste/scripts/work.mjs pin ${slug} (kind pin — 핀 증명·attack·ship, build 없음; 주장 파일이 main의 회귀 지킴이 된다, 13라운드) · 아니면 CEO가 더 말한 것을 work.mjs brief로 받고 brief.mjs spec ${slug} 재spawn · ${holdAsk(slug, 'redproof base에서 green — 이미 충족: 닫을까(drop) · 회귀 증거로 고정해 출하할까(pin)')}`;
 }
 // 사고 57(벤치 070f185 파이썬): base green이 눈먼 test_file(0건 실행)이면 이미 충족이 아니다 — drop은 만들지도 않은 기능을 닫는다. test_file·tests/harness는 boot의 것(R6)이라
 // 이 unit에서는 못 고친다: 하네스를 고치는 scaffold unit을 먼저 출하하고(그 ship이 같은 탐침으로 본다) 이 unit은 그 뒤에 새로 연다.
@@ -41,19 +41,20 @@ export function pinVerdict(baseRes, headRes) {
   const head_green = headRes === null ? null : headRes.length > 0 && headRes.every((r) => r.exit === 0);
   return { pin_base, head_green, ok: pin_base === 'green' && head_green !== false };
 }
-export function pinRedAdvice(slug, red) {
-  return `FAIL redproof ${slug}: 핀이 base에서 red — ${red.join(' ')} — 현재 동작이 아니다(refactor의 핀은 base에서도 초록이어야 한다). 새 동작을 원하면 이 unit은 refactor가 아니라 feature다. 둘 중 하나: 핀을 현재 동작대로 고친다(spec 재spawn: node .garagiste/scripts/brief.mjs spec ${slug}) · CEO가 unit을 feature로 다시 연다(work.mjs drop ${slug} "<사유>" --forget → work.mjs add ${slug} "<원문>" — --kind 없이)\n- ${holdAsk(slug, `핀이 base에서 red(${red.join(' ')}) — refactor가 아니다: 핀을 현재 동작대로 고칠까(예) · feature unit으로 다시 열까(아니오)`)}`;
+export function pinRedAdvice(slug, red, kind = 'refactor') {
+  return `FAIL redproof ${slug}: 핀이 base에서 red — ${red.join(' ')} — ${kind === 'pin' ? '이미 충족이 아니다(pin의 인수 테스트는 base에서도 초록이어야 한다)' : '현재 동작이 아니다(refactor의 핀은 base에서도 초록이어야 한다)'}. 새 동작을 원하면 이 unit은 ${kind}가 아니라 feature다. 둘 중 하나: 핀을 현재 동작대로 고친다(spec 재spawn: node .garagiste/scripts/brief.mjs spec ${slug}) · CEO가 unit을 feature로 다시 연다(work.mjs drop ${slug} "<사유>" --forget → work.mjs add ${slug} "<원문>" — --kind 없이)\n- ${holdAsk(slug, `핀이 base에서 red(${red.join(' ')}) — ${kind}가 아니다: 핀을 현재 동작대로 고칠까(예) · feature unit으로 다시 열까(아니오)`)}`;
 }
-function refactorProof(c, slug) {
+function refactorProof(c, slug, kind = 'refactor') {
+  const pin = kind === 'pin'; // 13라운드: 이미 충족된 주장 — 같은 핀 증명, build 없음(공격이 결함을 찾을 때만)
   const files = acceptanceFiles(c.root, c.team, slug);
-  if (!files.length) fail(`FAIL redproof ${slug}: 핀 없음 — ${c.team.paths.acceptance}/${slug}*에 현재 동작을 고정하는 테스트(base에서도 초록)를 쓴다(kind refactor)`);
+  if (!files.length) fail(`FAIL redproof ${slug}: 핀 없음 — ${c.team.paths.acceptance}/${slug}*에 ${pin ? '이미 참인 주장' : '현재 동작'}을 고정하는 테스트(base에서도 초록)를 쓴다(kind ${kind})`);
   const base = mergeBase(c.root, c.team.protected_branch);
   if (!base) fail(`FAIL redproof ${slug}: base(${c.team.protected_branch}) 없음 — refactor는 기존 코드 위에서만`);
   const codeChanged = git(['diff', '--name-only', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`, ':!docs'], c.root).stdout.trim() !== '';
   const tree = workTree(c.root);
   const head = headSha(c.root);
   const unit = readJson(unitFile(c.main, c.team, slug), null) || {};
-  const record = (extra) => appendLedger(c.main, c.team, { kind: 'redproof', slug, tree, head, base, refactor: true, files: files.length, ...extra });
+  const record = (extra) => appendLedger(c.main, c.team, { kind: 'redproof', slug, tree, head, base, refactor: true, ...(pin ? { pin: true } : {}), files: files.length, ...extra });
   const redOf = (res) => res.filter((r) => r.exit !== 0).map((r) => r.file);
   const greenOf = (res) => res.filter((r) => r.exit === 0).map((r) => r.file);
   if (!codeChanged) {
@@ -63,8 +64,8 @@ function refactorProof(c, slug) {
     const v = pinVerdict(res, null);
     record({ pin_base: blind.length ? null : v.pin_base, head_green: null, ...(blind.length ? { blind } : {}) });
     if (blind.length) fail(blindAdvice(slug, blind, unit));
-    if (v.pin_base !== 'green') fail(pinRedAdvice(slug, redOf(res)));
-    return out(`PIN ${slug} ${files.length}/${files.length} — 현재 동작이 고정됐다(base에서 초록): 다음은 build → node .garagiste/scripts/brief.mjs build ${slug}`);
+    if (v.pin_base !== 'green') fail(pinRedAdvice(slug, redOf(res), kind));
+    return out(pin ? `PIN ${slug} ${files.length}/${files.length} — 이미 충족된 주장이 회귀 증거로 고정됐다(base에서 초록): 다음은 attack → node .garagiste/scripts/brief.mjs attack ${slug}` : `PIN ${slug} ${files.length}/${files.length} — 현재 동작이 고정됐다(base에서 초록): 다음은 build → node .garagiste/scripts/brief.mjs build ${slug}`);
   }
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-redproof-'));
   let baseRes; let blind = [];
@@ -80,9 +81,9 @@ function refactorProof(c, slug) {
   const headRes = runFiles(c, files);
   const v = pinVerdict(baseRes, headRes);
   record({ pin_base: v.pin_base, head_green: v.head_green });
-  if (v.pin_base !== 'green') fail(pinRedAdvice(slug, redOf(baseRes)));
-  if (!v.head_green) fail(`FAIL redproof ${slug}: 동작이 바뀌었다 — 핀이 head에서 red: ${redOf(headRes).join(' ')} (base에서는 초록). refactor는 동작을 바꾸지 않는다 → build가 되돌린다: node .garagiste/scripts/brief.mjs build ${slug} 뒤 재spawn. 바꿔야 하는 동작이면 refactor가 아니다 — build가 \`spec: …\` 줄로 반려하고 CEO가 feature unit으로 연다`);
-  return out(`PASS redproof ${slug} pin_base=green head_green — 동작 보존(핀 ${files.length})`);
+  if (v.pin_base !== 'green') fail(pinRedAdvice(slug, redOf(baseRes), kind));
+  if (!v.head_green) fail(pin ? `FAIL redproof ${slug}: 고정된 주장이 head에서 red: ${redOf(headRes).join(' ')} (base에서는 초록) — 공격 수리(build)가 핀을 깨뜨렸다 → build가 되돌린다: node .garagiste/scripts/brief.mjs build ${slug} 뒤 재spawn` : `FAIL redproof ${slug}: 동작이 바뀌었다 — 핀이 head에서 red: ${redOf(headRes).join(' ')} (base에서는 초록). refactor는 동작을 바꾸지 않는다 → build가 되돌린다: node .garagiste/scripts/brief.mjs build ${slug} 뒤 재spawn. 바꿔야 하는 동작이면 refactor가 아니다 — build가 \`spec: …\` 줄로 반려하고 CEO가 feature unit으로 연다`);
+  return out(`PASS redproof ${slug} pin_base=green head_green — ${pin ? '이미 충족된 주장 고정' : '동작 보존'}(핀 ${files.length})`);
 }
 function main() {
   const slug = process.argv[2];
@@ -98,7 +99,7 @@ function main() {
     if (!found.length) fail(`FAIL redproof ${slug}: 시스템 공격 발견 0(red였던 공격 파일 없음) — 초록 테스트는 산출물이 아니다: node .garagiste/scripts/work.mjs drop ${slug} "system-attack 발견 0" --forget`);
     return out(`PASS redproof ${slug}: system — 발견 ${found.length}(red였던 공격 파일 ${found.join(' ')}) — 인수 테스트 없음, 증명은 공격 파일의 red→green(ship 조건 redproof = 발견 ≥1)`);
   }
-  if (unit?.kind === 'refactor') return refactorProof(c, slug); // 동작 보존: 핀은 base·head 모두 초록(red 증명이 뒤집힌다)
+  if (unit?.kind === 'refactor' || unit?.kind === 'pin') return refactorProof(c, slug, unit.kind); // 동작 보존(refactor)·이미 충족(pin): 핀은 base·head 모두 초록(red 증명이 뒤집힌다)
   const files = acceptanceFiles(c.root, c.team, slug);
   if (!files.length) fail(`FAIL redproof ${slug}: ${c.team.paths.acceptance}/${slug}* 없음`);
   const base = mergeBase(c.root, c.team.protected_branch);

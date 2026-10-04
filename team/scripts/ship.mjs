@@ -52,10 +52,10 @@ export function evaluateShip(x) {
   const blindRunner = scaffold ? (x.runnerBlind || []) : [];
   // system-attack(채용 2026-10-03): 이음새 공격 unit의 red 증명은 「공격이 결함을 찾았다」 — 이 생애에서 한 번이라도 red였던 공격 파일 ≥ 1(found). 발견 0이면 초록 테스트뿐이라 출하물이 아니다(drop).
   const system = x.unit?.kind === 'system';
-  const refactor = x.unit?.kind === 'refactor'; // 동작 보존(7라운드): red 증명이 뒤집힌다 — 핀이 base·head에서 초록
+  const refactor = x.unit?.kind === 'refactor' || x.unit?.kind === 'pin'; // 동작 보존(7라운드)·이미 충족(13라운드): red 증명이 뒤집힌다 — 핀이 base·head에서 초록
   const rpAny = scaffold ? !blindRunner.length : system ? (x.found || 0) >= 1 : [...x.ledger].reverse().find((e) => e.kind === 'redproof' && e.slug === x.slug && e.head_green === true && (refactor ? e.refactor && e.pin_base === 'green' : e.base_red));
   const rp = scaffold || system ? rpAny : (rpAny && rpAny.tree === x.tree ? rpAny : null);
-  c.push({ id: 'redproof', ok: !!rp, why: rp ? '' : scaffold ? `test_file이 인수·공격 자리의 하이픈 이름 파일을 돌리지 않는다 — 깨진 탐침도 exit 0: ${blindRunner.join(' ')} (0건 실행 — 예: 파일 이름을 모듈 이름으로 찾는 discover). slug에는 하이픈이 든다: test_file은 받은 경로의 파일을 그대로 돌려야 한다 → node .garagiste/scripts/brief.mjs boot ${x.slug} 재spawn(팩이 이 목록을 받는다) → ship 다시` : system ? `시스템 공격이 결함을 찾지 못했다(red였던 공격 파일 0) — 초록 테스트는 산출물이 아니다: node .garagiste/scripts/work.mjs drop ${x.slug} "system-attack 발견 0" --forget (탐색은 원장 attack 줄에 남는다)` : rpAny ? `redproof${refactor ? '(핀)' : ''}가 이전 tree의 것 — 마지막 커밋 뒤 다시: node .garagiste/scripts/redproof.mjs ${x.slug}` : refactor ? `동작 보존 증명 없음(핀 base·head 초록 — kind refactor) — node .garagiste/scripts/redproof.mjs ${x.slug}` : `base red · head green 증명 없음 — node .garagiste/scripts/redproof.mjs ${x.slug}` });
+  c.push({ id: 'redproof', ok: !!rp, why: rp ? '' : scaffold ? `test_file이 인수·공격 자리의 하이픈 이름 파일을 돌리지 않는다 — 깨진 탐침도 exit 0: ${blindRunner.join(' ')} (0건 실행 — 예: 파일 이름을 모듈 이름으로 찾는 discover). slug에는 하이픈이 든다: test_file은 받은 경로의 파일을 그대로 돌려야 한다 → node .garagiste/scripts/brief.mjs boot ${x.slug} 재spawn(팩이 이 목록을 받는다) → ship 다시` : system ? `시스템 공격이 결함을 찾지 못했다(red였던 공격 파일 0) — 초록 테스트는 산출물이 아니다: node .garagiste/scripts/work.mjs drop ${x.slug} "system-attack 발견 0" --forget (탐색은 원장 attack 줄에 남는다)` : rpAny ? `redproof${refactor ? '(핀)' : ''}가 이전 tree의 것 — 마지막 커밋 뒤 다시: node .garagiste/scripts/redproof.mjs ${x.slug}` : refactor ? `${x.unit?.kind === 'pin' ? '이미 충족 증명' : '동작 보존 증명'} 없음(핀 base·head 초록 — kind ${x.unit?.kind}) — node .garagiste/scripts/redproof.mjs ${x.slug}` : `base red · head green 증명 없음 — node .garagiste/scripts/redproof.mjs ${x.slug}` });
   const atAny = [...x.ledger].reverse().find((e) => e.kind === 'attack' && e.slug === x.slug);
   const at = atAny && atAny.tree === x.tree ? atAny : null;
   const atOk = scaffold || !x.requireAttack || (!!at && at.red === 0 && at.total >= 1);
@@ -296,7 +296,7 @@ function main() {
   if (!fs.existsSync(ledgerDoc)) fs.writeFileSync(ledgerDoc, '# LEDGER — 증명 커밋. 한 줄 = 출하 하나 = 기계가 확인한 사실의 목록.\n\n| 날짜 | unit | head | tree | full | redproof | attack 선발견→red/총 | sensor |\n|---|---|---|---|---|---|---|---|\n');
   // Q4 계측: attack 선발견 — CEO의 tried fail(후발견)과 대조하는 열. 정의는 attackCell 하나(사고 23)
   const atCell = unit.kind === 'scaffold' || unit.kind === 'adopt' ? '—' : attackCell({ ledger, slug, since: unit.created });
-  const rpCol = unit.kind === 'scaffold' ? 'scaffold' : unit.kind === 'adopt' ? 'adopt' : unit.kind === 'system' ? 'system' : unit.kind === 'refactor' ? 'pin_base=green head_green' : 'base_red head_green';
+  const rpCol = unit.kind === 'scaffold' ? 'scaffold' : unit.kind === 'adopt' ? 'adopt' : unit.kind === 'system' ? 'system' : unit.kind === 'refactor' ? 'pin_base=green head_green' : unit.kind === 'pin' ? 'pin_base=green head_green (pin)' : 'base_red head_green';
   row = `| ${unit.shipped.slice(0, 10)} | ${slug} | ${short(head)} | ${short(newTree)} | PASS | ${rpCol} | ${atCell} | ${unit.sensor} |\n`;
   fs.appendFileSync(ledgerDoc, row);
   if (fs.existsSync(backlog)) fs.writeFileSync(backlog, readText(backlog).replace(new RegExp(`^- \\[ \\] ${slug} `, 'm'), `- [x] ${slug} `));

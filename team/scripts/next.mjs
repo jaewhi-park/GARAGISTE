@@ -70,8 +70,9 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   if (st === 'spec') {
     const rp = last(mine, (e) => e.kind === 'redproof' && since(e, P.ts));
     if (!rp) return run(`redproof.mjs ${slug}`, u.kind === 'refactor' ? 'spec이 끝났다 — PIN 증명(핀은 base에서 초록)' : 'spec이 끝났다 — RED 증명');
-    if (u.kind === 'refactor') { // 동작 보존(7라운드): 핀이 base에서 초록이면 build — 구조만 바꾼다. re-spec(이미 충족) 분기는 refactor엔 없다(핀은 본래 충족이다)
+    if (u.kind === 'refactor' || u.kind === 'pin') { // 동작 보존(7라운드)·이미 충족(13라운드): 핀이 base에서 초록이면 refactor는 build(구조만), pin은 attack(build 없음). re-spec 분기는 둘엔 없다(핀은 본래 충족이다)
       if (rp.pin_base !== 'green') return run(`redproof.mjs ${slug}`, '마지막 redproof가 FAIL(핀이 base에서 red 또는 눈먼 test_file) — 그 줄의 안내대로(CEO 결정이면 ask --hold)');
+      if (u.kind === 'pin') return brief('attack', 'PIN — 이미 충족된 주장이 회귀 증거로 고정됐다(base에서 초록), build 없음 — attack이 그 주장이 깨지는 입력을 찾는다');
       return brief('build', 'PIN — 현재 동작이 고정됐다, 구조만 바꾼다(동작 보존)');
     }
     if (!rp.base_red) return run(`redproof.mjs ${slug}`, '마지막 redproof가 FAIL(base에서 green 또는 눈먼 test_file) — 그 줄의 안내대로(CEO 결정이면 ask --hold)');
@@ -88,7 +89,7 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     if (stops.length) return { kind: 'ceo', text: `STOP ${stops.join('; ')} — 예산 정지: ${slug}는 red 0으로 ship 직전에 서 있다 — CEO에게 docs/STATUS.md 「써볼 것」·「정해 주세요」` };
     // 7라운드(refactor e2e가 드러냄): attack이 red 0으로 끝나면 공격 파일만 더해진 tree엔 redproof·full PASS가 없다 — ship이 「이전 tree의 것」·「full 없음」으로 서고 드라이버는 같은 FAIL 둘로 멈췄을 것(대화형 conductor는 FAIL 안내를 따랐다). 판단 없는 한 걸음씩.
     const tree = wt.tree || null; // computeNext의 wtOf가 센다 — nextStep은 조립된 입력만 받는다(판단 없음·순수)
-    const proven = (e) => e.kind === 'redproof' && e.slug === slug && e.tree === tree && e.head_green === true && (u.kind === 'refactor' ? e.refactor && e.pin_base === 'green' : e.base_red);
+    const proven = (e) => e.kind === 'redproof' && e.slug === slug && e.tree === tree && e.head_green === true && (u.kind === 'refactor' || u.kind === 'pin' ? e.refactor && e.pin_base === 'green' : e.base_red);
     if (tree && u.kind !== 'system' && !ledger.some(proven)) return run(`redproof.mjs ${slug}`, 'red 0 — 공격 파일이 더해져 tree가 움직였다: 이 tree의 redproof(ship 조건은 tree 단위)');
     if (tree && !ledger.some((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === tree)) return run(`verify.mjs full ${slug}`, 'red 0 — 이 tree의 full PASS가 원장에 없다(공격 파일만 더해진 tree): ship 조건');
     return run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
