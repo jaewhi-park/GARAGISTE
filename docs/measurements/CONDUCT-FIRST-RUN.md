@@ -1,4 +1,4 @@
-# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python · 14라운드 중간 크기 레거시 + conductor 턴 · 15라운드 대규모 레거시 138파일 + 비용 상한 실발동 · 16라운드 운영 둘째 날 — 갱신·재개·M2 · 17라운드 운영 셋째 날 — 후보 → unit · 이음새 둘째 바퀴 · 18라운드 운영 넷째 날 — unit 셋 · 질문 셋 · 움직인 main 위의 ship · 이음새 셋째 바퀴 · 19라운드 운영 다섯째 날 — 충돌 rebase · team.json의 손 · 사고 78·79·80 · 이음새 넷째 바퀴 철회 · 20라운드 운영 여섯째 날 — 예고된 상한은 오지 않았다(fit · 이유-차선))
+# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python · 14라운드 중간 크기 레거시 + conductor 턴 · 15라운드 대규모 레거시 138파일 + 비용 상한 실발동 · 16라운드 운영 둘째 날 — 갱신·재개·M2 · 17라운드 운영 셋째 날 — 후보 → unit · 이음새 둘째 바퀴 · 18라운드 운영 넷째 날 — unit 셋 · 질문 셋 · 움직인 main 위의 ship · 이음새 셋째 바퀴 · 19라운드 운영 다섯째 날 — 충돌 rebase · team.json의 손 · 사고 78·79·80 · 이음새 넷째 바퀴 철회 · 20라운드 운영 여섯째 날 — 예고된 상한은 오지 않았다(fit · 이유-차선) · 21라운드 운영 일곱째 날 — CEO try · 출하 18의 사고 81 · 토큰 상한 2.5M)
 
 ## 왜
 1~11라운드의 드라이버(`conduct.mjs`)·헤드리스 spawner(`claude -p <팩> --agent <팩> …`)는 가짜 팩(`tests/fakes/pack.mjs`)과 `--help` 텍스트로만 검증됐다 — 9라운드(`--max-turns` 없음)·11라운드(Windows 셸 심)의 벽은 둘 다 **읽어서** 찾은 것이고, 실제 CLI가 실제로 어떻게 끝나는지(JSON 꼴 · 권한 · 모델 선택 · 훅)는 한 번도 보지 않았다. 12라운드는 그 자리를 **측정**으로 채운다: 정비 자리(리눅스 컨테이너)에 설치된 claude 2.1.289로 기존 코드가 있는 저장소에 설치 → intake → conduct 끝까지. 테스트는 그대로 모델 0 · 네트워크 0 — 이 문서는 측정 기록이다(HANDOFF 「장치는 사고·측정에서만」).
@@ -359,7 +359,49 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 58. **셸로 파일 고치기의 셋째·넷째 근거**: agents에 「파일 고치기는 Edit 도구로」를 넣은 첫날에도 build 둘이 `for … sed -i`(9 파일 일괄)와 `node -e "…replace…"`(한 줄)로 고치려다 승인 거부됐다(각 1턴 손실, 팩은 Edit로 끝냈다). 산문 한 줄은 꼴을 바꾸지 못한다 — 거부가 싸서(1턴) 장치는 아직; 셈만 한다(넷째 1 · 다섯째 1 · 여섯째 2).
 59. 공격의 눈: system-5가 잡은 「UTF-8 청크 경계」·「Node 기본 413·408을 400으로」는 다섯째 날 Y(http-error-json)가 만든 clientError 처리의 이음새 — 바퀴마다 앞날의 unit이 낸 자리를 찍는다(셋째·넷째·다섯째 바퀴 모두). 후보는 하루 3씩 쌓이고 CEO는 2씩 거른다(남은 4).
 
-## 비용 합계 (아홉 run)
+## 열째 run — 운영 일곱째 날(같은 베드 · 21라운드 2026-10-04) · 사람 센서 unit의 CEO try · 출하 18의 이음새 — 예고된 상한이 왔다(사고 81) · 토큰 상한 셋째 근거
+질문 셋: (a) 사람 센서 unit(system-4-f2 — 공격 선발견 0)을 CEO가 카드대로 써보는 길(`try` 사본 → 카드 → `tried --evidence`) (b) unit 넷을 더해 출하 18 — 이음새 attack 팩이 32KB 상한을 넘는가(20라운드 예고 unit 17~18) (c) CEO 질문이 출하된 unit의 테스트 셋 겹(인수·공격·특성화)과 부딪히는 날.
+
+### stage A — 갱신(동결 24) → CEO try → scope 4 → conduct(unit 셋 출하 → health-json 질문 → STOP wait)
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 15:04:07 | `install.sh`(같은 판 2393298→2144bb6) → `conduct check` → **`work.mjs try system-4-f2`** | — | — | — | 사본 `.worktrees/try-system-4-f2`(main ceac69c) · 원장 try · 카드대로: **카드의 `localhost:3000`은 connection refused**(서버 기본 8790) → 8790에선 400 `{"error":"invalid field"}` · orders.json 안 씀 · 유한 total 201 |
+| 15:04:11 | **`tried system-4-f2 ok "…카드의 포트 3000은 틀렸다" --evidence <curl 기록>`** | — | — | — | 「PASS tried … 증거 1 → docs/units/system-4-f2/evidence/ · try 사본을 지웠다」 · 커밋 `docs(tried)` — **Q14 증거 레인 첫 실전** · 미검수 1 → 0 |
+| 15:04:11 | `brief` → `add health-json --milestone M7` → **`scope order-id-monotonic-f4 system-4-f3 system-4-f4 health-json`**(system-4-f1은 둔다) | — | — | — | 요청 4(후보 3 + CEO unit 1) |
+| 15:04:11 | f4 spec → build → attack → build → ship | opus · sonnet · opus · sonnet | 206K·1.0 / 158K·0.9 / 177K·1.1 / 168K·1.0 | 0.396 / 0.116 / 0.398 / 0.134 | RED → 권한 보존 → 공격 6건 **red 3**(임시 파일이 0644로 먼저 쓰여 rename 전까지 읽힌다 · 심볼릭 링크를 끊는다) → 처음부터 원 권한 · 링크 대상에 쓴다 → **SHIPPED 97ca146**(15:08:56) |
+| 15:08:56 | s4-f3 spec → build → attack → build → ship | opus · sonnet · opus · sonnet | 203K·1.1 / 150K·1.0 / 193K·1.0 / 178K·1.1 | 0.377 / 0.107 / 0.388 / 0.134 | RED → `Number.isFinite(customerId)` → 공격 5건 **red 1**(`[1e999]`로 감싼 것) + `defect:` → FOUND system-4-f5(invoice·payment·shipment의 amount) → **SHIPPED 322ada8**(15:13:48) |
+| 15:13:48 | s4-f4 spec → build → attack → redproof·full → ship | opus · sonnet · opus | 131K·0.7 / 166K·1.0 / 215K·1.4 | 0.277 / 0.109 / 0.425 | RED → price 유한성 → 공격 5건 **red 0**(사람 센서 unit 하나 더) + `defect:` ×2 → FOUND system-4-f6(product id가 늘 0) · f7(name·sku의 1e999 → null) → **SHIPPED 336732b**(15:18:18) |
+| 15:18:18 | health-json spec | opus | 354K · 1.6 | 0.538 | RED 15건 · **Q9(가정 포함)**: 새 /health 503 본문 `{ok:false,domains}`가 「5xx 본문은 {error}만」(http-error-json의 결정)과 그 인수 테스트의 `/health→{ok:true,domains:10}` 기대와 어긋난다 — 예외로 두고 기대를 고칠까 → **STOP wait**(exit 3) |
+
+### stage B — CEO `decide 9` 「예」 → `brief` → **`spec --revise`** → conduct(세 겹의 테스트와 부딪히는 unit) → 토큰 상한
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 15:20:50 | `decide 9` → RESPEC·ACCEPT → `brief` → `brief.mjs spec health-json --revise "…"` | — | — | — | 팩 15.8KB(「고쳐 쓰기」 절 — 사고 77의 길: 질문에 답한 닫힌 줄이 근거) |
+| 15:20:50 | spec(revise) | opus | 165K · 0.6 | 0.294 | **출하된 http-error-json의 인수 기대를 새 꼴로** · RED 1/1 유지 |
+| 15:21:28 | build | sonnet | 425K · 2.4 | 0.236 | /health 새 꼴 · 특성화 테스트의 옛 /health 단언도 고침 · **verify full FAIL — 출하된 공격 테스트 둘**(no-network-1 · order-id-monotonic-f2-1)이 서버 기동을 `/health` 2xx로 판단 → **`spec:` 반려**(이 팩은 tests/adversary를 못 쓴다) |
+| 15:23:56 | spec(반려 받음) | opus | 117K · 0.4 | 0.247 | 「**반려 기각** — 인수 주장은 서로·원문·Q9와 맞다; 충돌은 adversary 둘의 기동 판단, attack의 몫」 · redproof PASS(base_red head_green) |
+| 15:24:21 | attack(실린 결정) | opus | 460K · 2.3 | 0.717 | **Q9에 맞춰 출하된 공격 테스트 둘을 503에도 기동으로 고쳤다**(adversary_revise carried — 사고 75의 길) · 14건 중 **red 2**(쓰는 쪽 없는 FIFO면 /health가 3초 넘게 안 답한다 · 자기를 가리키는 링크가 200 records 0) |
+| 15:26:44 | — | — | — | — | **STOP ceo unit 토큰 1521K ≥ 1500K**(exit 2) — spec 셋(원·revise·반려) + build + 큰 attack = 정상 unit의 셋째 근거(1023K/1M · 1014K/1M · 1521K/1.5M) → **기본 2.5M**(수리) |
+
+### stage C·D — CEO `budget health-json 2500K` → ship → system-6(출하 18) **FAIL 팩 34KB**(사고 81) → 수리·갱신 → 이유-차선 → ship → REPORT
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 15:27:32 | `budget health-json 2500K` → conduct: build → ship | sonnet | 297K · 2.4 | 0.195 | ELOOP·FIFO를 파일 상태로 먼저 가른다 → red 0 → **SHIPPED health-json 6b8f602**(15:30:38 · 팩 6 · 1.82M · $2.23) |
+| 15:30:38 | `work.mjs system` → `brief.mjs attack system-6`(출하 18) | — | — | — | **FAIL 팩 34KB > 32KB — 절별: units 28.9KB · rules 2.5 · system 1.1 · brief 2.3 · hazards 3.8 …**(fit이 hazards·brief를 포인터로 줄여도 34KB) ×2 → **STOP framework**(exit 4) — **사고 81, 19·20라운드가 예고한 자리(unit 17~18)** |
+| 15:31:42 | 수리 → 갱신(626a221 · brief.mjs) → conduct | — | — | — | 「PACK … 33.7KB · **이유-차선(상한 32KB): 자동: 인수 테스트 0.0KB + 공격 테스트 0.0KB + 출하 unit 표면·카드 28.9KB — 그 밖 4.7KB ≤ 32KB**」 — 출하 unit 절도 법 |
+| 15:31:43 | system-6 attack → build → ship | opus · sonnet | 732K·2.7 / 606K·3.1 | 1.017 / 0.343 | 13건 **red 13**: lib/atomic.js(9 도메인)가 임시 파일을 0644로 먼저 쓴다(f4는 order만 고쳤다) · seq 기록이 깨져 POST가 500인데 /health는 200 · **system-4-f2·f3·f4 try 카드가 `:3000`**(CEO가 아침에 찍은 것을 공격도 찍었다) → build 팩 41.2KB(차선) → 세 자리 수리 + 카드 셋 포트 → **SHIPPED fa1cc8e**(15:38:13) · 승인 거부 1(`sed -i` 카드 3개 — Edit로 끝냄) |
+| 15:38:14 | report | — | — | — | REPORT 출하 4/4 · 이음새 공격 6줄 · 「후보」 4 · **SCOPE DONE**(exit 0) · 써볼 것 19 |
+
+합계(일곱째 날): 팩 19 · 토큰 5.10M · **$6.45** · 팩 시간 26.8분 · 벽시계 34분(15:04 → 15:38, 수리 1회 포함) · 출하 5(후보 unit 3 · CEO unit 1 · 이음새 1) · 공격이 찍은 결함 19건(3+1+0+2+13) 전부 수리 · 출하된 테스트 고침 3(인수 1 · 공격 2) · 새 후보 3(남은 4) · 승인 거부 1 · 멈춤 3(wait 질문 · 토큰 상한 · framework 사고 81) · **프레임워크 FAIL 1 · 사고 1(81 — 예고된 것, 코드로 닫음)** · 사람 줄 11(갱신 2 · try · tried · brief 2 · add · scope · decide · revise · budget) · 베드 누계(15~21라운드): 팩 116 · 22.95M · $31.40 · 출하 23 · 이음새 drop 1.
+
+### 관찰 (21라운드)
+60. **사람 센서 unit의 try가 돈다**: `try`가 main을 더럽히지 않는 사본을 열고, CEO가 카드대로 쳐서 `tried ok --evidence`로 닫으면 증거 파일이 docs 차선 커밋으로 남는다(Q14 첫 실전). 카드는 틀릴 수 있다 — 포트 3000(서버 기본 8790). 같은 날 system-6 공격이 같은 카드 셋을 찍어 build가 고쳤다: **카드의 기계 검증은 이음새 공격이, 사람 검증은 try가** — 두 센서가 같은 결함을 봤다.
+61. **사고 81 — 예고가 맞았다**: 출하 18의 「출하된 unit」 절 28.9KB는 fit이 부대물을 다 줄여도 34KB. brief가 이유를 물었고 conduct는 같은 FAIL 둘로 섰다(19·20라운드가 unit 17~18로 예고). 출하 unit 절도 법(이음새 공격의 표면) — 테스트 절처럼 자동 이유-차선. 다음 벽은 2배(64KB ≈ unit 36)의 CEO 결정(`budget budgets.pack_kb_max`).
+62. **세 겹의 테스트와 부딪힌 CEO unit**: /health의 새 꼴은 출하된 unit의 인수(http-error-json) · 공격(no-network-1 · monotonic-f2-1의 기동 판단) · 특성화(characterize.http)와 부딪혔다. 길은 전부 있었다 — 인수는 `spec --revise`(사고 75·77), 공격은 실린 결정을 받은 attack이(사고 75), 특성화는 build가. 중간의 「반려 기각」(spec이 build의 반려를 돌려보냄 — 인수는 맞고 충돌은 공격 몫)은 처음 본 모양이다.
+63. **토큰 상한의 셋째 근거**: 1023K/1M · 1014K/1M · 1521K/1.5M — 상한을 올릴 때마다 다음 무거운 정상 unit이 조금 넘었다. 넘긴 셋은 전부 「재spec + 큰 공격」이고 진동은 사고 71 뒤로 없다 — 상한은 이제 진동 감지기가 아니라 비용 천장이다 → **기본 2.5M**(≈ unit 하나 $3). 진동이 다시 오면 그때의 모양(같은 팩 반복 횟수)으로 센다.
+64. 팩 크기: 이음새 attack 33.7KB(units 28.9 = +1.8KB/unit) · build 41.2KB(공격 8.0 + units 28.9) — 차선 둘 · 승인 거부 1(`sed -i` 카드 3 — 셈 넷째 1 · 다섯째 1 · 여섯째 2 · 일곱째 1) · 후보 하루 3(남은 4 — system-4-f1은 사흘째 둔 채) · 써볼 것 19.
+
+## 비용 합계 (열 run)
 | 무엇 | $ |
 |---|---|
 | 12라운드 탐침 13 + run(Node, 팩 8) | 2.30 |
@@ -371,9 +413,11 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 | 18라운드 운영 넷째 날(같은 베드 — unit 셋 한 범위 · 질문 셋 · 움직인 main 위의 ship · 이음새 셋째 바퀴, 팩 13) | 4.52 |
 | 19라운드 운영 다섯째 날(같은 베드 — 같은 줄을 고치는 두 unit · 충돌 rebase · team.json의 손 · 사고 78·79·80 · 이음새 철회, 팩 11) | 4.08 |
 | 20라운드 운영 여섯째 날(같은 베드 — 후보 둘 → unit · 출하 14의 이음새 · fit·이유-차선 · 멈춤 0, 팩 9) | 3.59 |
-| **합계** | **32.95** — 충돌 rebase 풀기 ≈ $0.1(74K 토큰 · 0.2분) · unit 하나(spec·build·attack·수리) ≈ $0.6~1.1(재spec 하나 더하면 ≈ 1.7) · pin unit ≈ $0.9~1.1 · 이음새 공격 한 바퀴 ≈ $0.3~1.0(출하 4 → 10 — 팩 크기에 비례, 되풀이 제외) · adopt ≈ $0.14~0.31(파일 3 → 138 — 표면 수에 비례) · 사고 71의 되풀이 $2.87(수리됨 — 다음부턴 되풀이 2에서 선다, 사고 72의 토큰 상한이 먼저 서면 ≈ $1.3) |
+| 21라운드 운영 일곱째 날(같은 베드 — CEO try · unit 4 · 출하 18의 이음새 사고 81 · 토큰 상한, 팩 19) | 6.45 |
+| **합계** | **39.40** — 충돌 rebase 풀기 ≈ $0.1(74K 토큰 · 0.2분) · unit 하나(spec·build·attack·수리) ≈ $0.6~1.1(재spec 하나 더하면 ≈ 1.7) · pin unit ≈ $0.9~1.1 · 이음새 공격 한 바퀴 ≈ $0.3~1.0(출하 4 → 10 — 팩 크기에 비례, 되풀이 제외) · adopt ≈ $0.14~0.31(파일 3 → 138 — 표면 수에 비례) · 사고 71의 되풀이 $2.87(수리됨 — 다음부턴 되풀이 2에서 선다, 사고 72의 토큰 상한이 먼저 서면 ≈ $1.3) |
 
-## 판정 (20라운드 갱신)
+## 판정 (21라운드 갱신)
+- **운영 일곱째 날(21라운드)**: 사람 센서 unit의 CEO try(`try` → 카드 → `tried --evidence`)가 돌고, 예고된 이음새 팩 상한(사고 81)이 unit 18에서 왔다 — 출하 unit 절도 법으로 닫았다. CEO unit 하나(/health)가 출하된 테스트 세 겹과 부딪혔고 길은 전부 있었다(revise · 실린 결정 · build). **팩 19 · $6.45 · 34분 · 출하 5 · 결함 19건 수리 · 멈춤 3 · FAIL 1 · 사고 1(예고된 것).** 토큰 상한은 셋째 근거로 2.5M. **운영 이레**: 사고가 난 날은 겹침·사람의 손·예고된 상한의 날이고, 순차의 날은 멈춤 0.
 - **운영 여섯째 날(20라운드)**: 예고된 이음새 팩 32KB 상한은 두 장치(fit의 부대물 포인터 · 사고 68의 자동 이유-차선 — 첫 실전)가 받아 멈춤 없이 지나갔다. 다섯째 날의 사고 셋을 닫은 판은 scope 한 줄 뒤 **16분 · $3.59 · 출하 3 · 결함 22건 수리 · 멈춤 0 · FAIL 0 · 사고 0**. 다음 예고는 unit 17~18의 attack 팩(장치 후보는 적어 두었다 — 사고가 나면 그 자리에서). **운영 엿새**: 사고가 난 날은 겹침·사람의 손이 있던 날(다섯째)이고, 순차의 날(셋째·여섯째)은 사람 줄 1~3으로 닫힌다.
 - **운영 다섯째 날(19라운드)**: 두 unit이 같은 줄을 고치는 날 — 충돌 rebase의 길(사고 26·58)이 사람 0으로 끝까지 섰다($0.09). 대신 겹침과 사람의 손이 사고 셋을 드러냈다(78 team.json 손 커밋 · 79 세워 둔 unit과 slug 없는 spawn_stop · 80 철회된 이음새 공격) — 전부 그날 코드로 닫고 갱신해 SCOPE DONE까지. **팩 11 · $4.08 · 20분 · 출하 2 · 결함 13건 수리 · 프레임워크 FAIL 2 · 사고 3.** 투입 판정은 그대로(①·③) — 단 **「한 범위에 unit 둘 이상 + 하루 사이의 CEO 질문」은 다섯째 날에야 처음 돌았다**; 순차 운전 나흘의 FAIL 0은 겹침을 안 본 숫자였다.
 - **운영 넷째 날(18라운드)**: unit 셋을 한 범위에 — 셋이 각자 다른 길로 CEO 질문이 되어 선 아침(STOP wait)을 세 명령(decide · pin · spec --revise)으로 풀고 한 conduct가 셋을 출하했다 · 움직인 main 위의 ship(rebase 충돌 없음 · 통합 tree 재검증 25초) · 미검수 상한 첫 실전(사람 센서 unit 셋 → `tried` 세 줄) · 이음새 셋째 바퀴(출하 10 · 팩 24.5KB)는 코드가 아니라 카드의 드리프트를 찍었다. **팩 13 · $4.52 · 26분 · 출하 4 · 결함 8건 수리 · 멈춤 4(전부 설계) · FAIL 0 · 사고 1(77, 코드로 닫음)**. 하루치 비용 꼴: unit ≈ $0.9~1.7(재spec 있으면 위) · 이음새 ≈ $1.0(출하 10 — 팩 크기에 비례). 사람 줄 16 — 시작 3 · 시나리오 3(hold · 갱신 2) · 나머지 10은 전부 STATUS·안내가 가리킨 줄(decide 3 · pin · brief+revise · budget · tried 3).
@@ -384,4 +428,4 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 - **대화형 conductor(CLAUDE.md Flow)**: Flow 2 한 턴이 배선(Agent 서브에이전트 · SubagentStop 훅 · spawned)을 전부 지났다. 단 서브에이전트가 허용된 명령을 `\`+줄바꿈으로 시작해 거부되자 conductor가 팩의 일을 대신했다 — 무인 세션에선 사람이 모르는 채 결과만 옳다. agents 한 줄이 꼴을 막지만, 「conductor가 팩의 일을 대신한다」는 둘째 근거가 오면 장치.
 - **상한 둘(15라운드 실측)**: 비용 상한(run)은 설계대로 선다 · 토큰 상한(unit)은 진동 안에서 안 섰다 → 걸음마다(사고 72). 둘이 다 선 뒤의 무인 운전 비용 꼴: unit당 $0.6~1.1 · 이음새 한 바퀴 ≤ 1M 토큰(≈ $1.3) 뒤 CEO.
 - **② UI 중심·DB·마이그레이션·멀티서비스**: 변화 없음 — 아직. **Windows**: CEO PC 대기.
-- 아홉 run이 못 본 것: **이음새 attack 팩의 상한**(unit 17~18 — fit이 부대물을 다 줄인 뒤; 장치 후보: 출하 unit 절도 법) · 카드가 도는 자리(APP_DATA — system-4-f1은 CEO가 둔 채) · 충돌이 테스트 파일에 있을 때(`spec: 충돌 <파일>` 경로) · 모노레포 · 사람 센서 unit의 CEO try(f2가 첫 후보 — 미검수 1/3) · opencode 레인 · 이레 이상의 운영 · 후보가 쌓이는 속도(하루 3 · 거름 2) 대 CEO의 손 · 써볼 것 15의 사람 빚.
+- 열 run이 못 본 것: 이음새 팩의 2배 벽(64KB ≈ unit 36 — CEO 결정 `budget budgets.pack_kb_max`) · 카드가 도는 자리(system-4-f1 — 사흘째 둔 채) · 충돌이 테스트 파일에 있을 때(`spec: 충돌 <파일>` 경로) · 진동(사고 71 뒤로 없다 — 다시 오면 같은 팩 반복 횟수로) · 모노레포 · opencode 레인 · Windows 끝까지(11라운드 뒤 재측정 없음) · 여드레 이상의 운영 · 후보가 쌓이는 속도(하루 3 · 거름 0~2) 대 CEO의 손 · 써볼 것 19의 사람 빚.
