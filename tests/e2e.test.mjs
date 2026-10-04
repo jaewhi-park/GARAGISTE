@@ -1127,8 +1127,10 @@ test('conduct: attack의 defect: 줄은 BACKLOG 후보가 된다(work.mjs found 
   assert.match(script('work', ['found', 'hello', '빈 이름을 add하면 500'], repo).out, /^FOUND hello-f2 — BACKLOG 후보/);
   assert.match(script('work', ['found', 'hello', '이름이 1만 자면 표가 깨진다 — 이 diff 밖(adopt 전 코드)'], repo).out, /^FOUND 이미 있음 hello-f1/, '같은 줄은 한 후보');
   assert.match(script('work', ['found', 'nope', 'x'], repo).out, /^FAIL/, '없는 unit의 후보는 없다');
+  assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 후보 — 팩이 찍은 이 diff 밖 결함 \(범위에 넣기 전엔 unit이 아니다\)\n- hello-f1 ← hello: "이름이 1만 자면 표가 깨진다[^\n]*→ node \.garagiste\/scripts\/work\.mjs scope hello-f1/, '17라운드: 후보는 STATUS에 보인다(CEO 면)');
   assert.match(script('work', ['scope', 'hello-f1'], repo).out, /^SCOPE 요청 1/);
   assert.match(script('work', ['seed'], repo).out, /^UNIT hello-f1 spec/);
+  script('state', [], repo); assert.doesNotMatch(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /- hello-f1 ← hello/, '범위에 들어 unit이 되면 후보가 아니다(진행 중)');
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/hello-f1.json'), 'utf8')).origin_kind, 'seed', 'CEO가 scope에 넣어 열렸다 — 그 scope가 CEO 접점(seed 경유)');
 });
 

@@ -13,7 +13,7 @@ import { blindFiles, gateDecision, gateFailLine, logicLines, probeCommand, probe
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { againCmd, attackRoundUsed, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
-import { firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
+import { candidateLines, firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
@@ -1423,6 +1423,17 @@ test('install.sh ↔ install.ps1 정적 패리티: VERSION · 기존 저장소 �
   for (const [a, b] of pairs) { assert.ok(sh.includes(a), `install.sh: ${a}`); assert.ok(ps.includes(b), `install.ps1: ${b}`); }
   for (const m of ['BOOT', 'ADOPT', 'INTAKE', 'SPEC', 'BUILD', 'ATTACK', 'SPIKE']) { assert.ok(sh.includes(`{{MODEL_${m}}}`), `sh ${m}`); assert.ok(ps.includes(`{{MODEL_${m}}}`), `ps1 ${m}`); }
   assert.ok(/-SkipSelftest/.test(sh) && /\[switch\]\$SkipSelftest/.test(ps));
+});
+// 17라운드: 결함의 집의 CEO 면 — 후보는 STATUS·REPORT에 한 절(열린 unit이 되면 후보가 아니다)
+test('state(17라운드): candidateLines — found 원장 줄 ∩ 열린 BACKLOG 줄, 열린 unit은 빼고 · reportText에 「후보」 절', () => {
+  const backlog = '# BACKLOG\n- [ ] add-f1 · M? · needs: add · "빈 이름을 add하면 500" · 인수: -\n- [ ] add-f2 · M? · needs: add · "id가 문자열이면 get이 못 찾는다" · 인수: -\n- [x] add-f3 · M? · needs: add · "닫힘" · 인수: -\n- [ ] list · M1 · needs: - · "CEO의 unit" · 인수: -\n';
+  const ledger = [{ kind: 'found', slug: 'add', candidate: 'add-f1' }, { kind: 'found', slug: 'add', candidate: 'add-f2' }, { kind: 'found', slug: 'add', candidate: 'add-f3' }];
+  const units = [{ slug: 'add', state: 'shipped' }, { slug: 'add-f2', state: 'spec' }];
+  assert.deepEqual(candidateLines({ ledger, backlogText: backlog, units }), ['- add-f1 ← add: "빈 이름을 add하면 500" → node .garagiste/scripts/work.mjs scope add-f1 · 아니면 work.mjs drop add-f1 "<사유>" --forget'], 'f2는 열린 unit(진행 중), f3은 닫힘, list는 후보가 아니다');
+  assert.deepEqual(candidateLines({ ledger: [], backlogText: backlog, units }), [], 'found 줄이 없으면 BACKLOG 줄은 후보가 아니다');
+  const rt = reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['add'] }, units, ledger, backlogText: backlog });
+  assert.match(rt, /## 후보 — 팩이 찍은 이 diff 밖 결함 \(다음 범위의 재료\)\n- add-f1 ← add:/);
+  assert.doesNotMatch(reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['add'] }, units, ledger: [] }), /## 후보/, '후보가 없으면 절도 없다');
 });
 test('state(8라운드): tried의 증거가 REPORT 줄에 「증거 n」으로 · FLAGS.tried에 evidence', () => {
   const text = reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['a'] }, units: [{ slug: 'a', state: 'shipped', milestone: 'M1', origin: 'o', kind: 'feature', shipped: '2026-10-04T00:00:00Z', tried: { result: 'ok', note: '', evidence: ['docs/units/a/evidence/s.png'] }, defaults: [] }], ledger: [] });
