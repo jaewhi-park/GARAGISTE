@@ -15,7 +15,7 @@ cd ~/GARAGISTE && node --test "tests/*.test.mjs"      # 단위 + e2e + 필드 �
 ```
 설치기가 `git init`, 팀 파일 복사, 첫 커밋(팀 파일만), **자가 진단**(doctor → selftest: 이 기계에서 기계 루프 첫 커밋 → boot unit → 게이트 → ship이 닫히는지 30초 안에)까지 한 번에 한다 — 끝 줄이 `SELFTEST PASS n/n`이어야 설치다. FAIL이면 그 출력을 그대로 붙여 달라(설치기는 빨간 채로 끝내지 않는다 · 건너뛰기는 `-SkipSelftest`).
 
-team.json의 명령과 CLAUDE.md의 자리는 비어 있는 것이 정상이다 — 첫 unit `boot`가 채운다. 기존 프로젝트에 설치할 때도 같은 명령이고, 그때는 첫 커밋 대신 conductor가 `work.mjs commands`로 기존 검증 명령을 적는다.
+team.json의 명령과 CLAUDE.md의 자리는 비어 있는 것이 정상이다 — 첫 unit `boot`가 채운다. 기존 프로젝트(코드가 있는 저장소)에 설치할 때도 같은 명령이다 — 설치가 팀 파일을 커밋하고(사고 70), intake가 「저장소 상태: 코드 있음」을 받아 첫 unit을 `adopt`로 올리며, adopt 팩이 특성화 테스트·검증 명령·규칙 파일을 채운다(제품 코드는 그대로 — 2026-10-04 3라운드, 첫 측정은 parcel-desk 홀드아웃).
 
 ## 3. 세션 열기
 권한: `.claude/settings.json`이 `defaultMode: acceptEdits`(파일 쓰기는 묻지 않음 — 경계는 guard 훅이 지킨다)와 allow 목록(`node .garagiste/scripts/*`·git 읽기·add·commit·worktree·npm/pnpm/python 등)을 갖는다. 그래도 프롬프트가 계속 뜨면 어떤 명령이었는지 붙여 달라 — allow 목록에 더한다.
@@ -45,11 +45,11 @@ node .garagiste/scripts/work.mjs models              # 지금 편성
 node .garagiste/scripts/work.mjs models low          # tier 통째로
 node .garagiste/scripts/work.mjs models build=opus   # 팩 하나
 ```
-| tier | intake | spec | build | attack | spike | boot |
-|---|---|---|---|---|---|---|
-| low | sonnet | sonnet | haiku | sonnet | haiku | haiku |
-| medium | opus | opus | sonnet | opus | sonnet | sonnet |
-| high | opus | opus | opus | opus | sonnet | sonnet |
+| tier | intake | spec | build | attack | spike | boot | adopt |
+|---|---|---|---|---|---|---|---|
+| low | sonnet | sonnet | haiku | sonnet | haiku | haiku | haiku |
+| medium | opus | opus | sonnet | opus | sonnet | sonnet | sonnet |
+| high | opus | opus | opus | opus | sonnet | sonnet | sonnet |
 opencode는 기본 provider/model을 상속한다. 팩별로 바꾸려면 같은 명령이 `.opencode/agents/<팩>.md`의 `model:`을 쓴다(값은 `provider/model`).
 
 ## 7. 막히면

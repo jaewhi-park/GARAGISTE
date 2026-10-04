@@ -36,7 +36,7 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **Q12. 포트폴리오 — CEO 주의력이 전 제품의 스케줄링 자원.**
   전역 미검수 상한 + 제품 관통 인박스(각 레포 STATUS 첫 줄 수집) + 공유 HAZARDS(프레임워크 제공 + 제품 오버레이 — 이미 그 구조). 제품 2개 이상일 때만 구현.
   검사: 전역 상한 도달 시 모든 레포의 seed 정지.
-- **Q13. 레거시 팩 — 회사 투입의 전제.**
+- **Q13. 레거시 팩 — 회사 투입의 전제.** **→ 입구 채용 2026-10-04(R&D 3라운드)**: adopt 팩(기존 코드의 첫 unit — 특성화·commands·rules, 소스 불변) + intake 「저장소 상태」 + brief `repoMap`(폴더·매니페스트·기존 테스트·README — map.mjs의 최소형). 특성화 대량 고정·관심 영역 지도·`kind: refactor`(동작 보존 증명)는 parcel-desk 첫 측정의 멈춘 자리에서.
   v1에서 살아남을 자격이 있는 것(assess·parity — 대상이 사람 마음이 아니라 코드): 현행 동작의 characterization 테스트 = 수용 기준, redproof 그대로 작동. incremental intake(오프셋 재개)는 있음 — LACUNA 레거시 intake 팩 151KB가 반례 근거.
   검사: 기존 코드베이스 1개에서 boot 없이 첫 unit 출하.
 
@@ -107,3 +107,4 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **채용(R&D 2026-10-04, CHANGELOG 「2026-10-04 R&D」)**: 임시 폴더 쓰기 거부(5판 관찰 b · 6판 누적 6) → 가드가 mktemp·TMPDIR·OS 임시 폴더를 저장소 밖으로 · 끊긴 spawn의 원장 꼴(6판 (7)) → `conduct.mjs`가 spawn_stop·spawned(실측)를 남긴다 · 끊긴 worktree 링크(2026-10-01 관찰) → doctor · attack↔build 진동의 예산(2판 윈도우 1일차) → `budgets.unit_tokens_max` + `work.mjs budget` · L3 Q13 측정 장치 → `tests/field/setup-seed.sh` + seed(서명·첫 측정은 CEO) · 사고 70(기존 저장소 설치 커밋).
 - **후보(종이에서 — 사고 없이 장치 없음, CEO 「가」 대기)**: (a) 경계를 OS에 — 팩마다 자기 worktree·임시 폴더만 쓰기 가능한 샌드박스(컨테이너·사용자 분리), guard는 이중 방어로(사고 60·62·67의 정규식 오탐 계급 — 엔터프라이즈 보안 검토가 정규식을 경계로 보지 않는다) (b) ship을 PR + 원격 필수 검사로 — 8조건은 그대로, 머지 주체만 원격(카탈로그 D11; CI 미사용은 CEO 결정 26d3e94를 되돌리는 일) (c) 병렬 seed — needs와 예상 쓰기 집합이 겹치지 않는 unit(a093919 「미검수 상한을 올려 팀 속도가 병목이 될 때 계측과 함께」) (d) `conduct.mjs`를 selftest에(설치가 드라이버까지 검증) — 다음 홀드아웃 뒤 (e) 벤치의 conductor를 `conduct.mjs`로(구성 ③) — 모델 conductor 판과 비교하지 않고 따로 잰다.
 - **채용(R&D 2라운드 2026-10-04)**: (d) conduct를 selftest에 → 채용(20단계) · 무인 안전벨트 셋(팩 시간 상한 · 비용 상한 · 잠금/heartbeat — DEVICES 4.6 「무인 폭주는 예산으로」의 자리) · Q11 부분(VERSION). 남은 종이 후보: (a) 샌드박스 (b) PR ship (c) 병렬 seed (e) 벤치 구성 ③ · Q11의 unit화.
+- **채용(R&D 3라운드 2026-10-04)**: Q13의 입구 — adopt 팩. 투입 판정(HANDOFF 「2026-10-04 R&D 3라운드」): 신규(기계 검증 가능)만 가능, 레거시는 입구가 생겼을 뿐 — 첫 측정 전.

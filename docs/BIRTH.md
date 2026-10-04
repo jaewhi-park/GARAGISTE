@@ -7,7 +7,7 @@
 2. `.garagiste/scripts/verify.mjs` — 검증을 돌리고 원장에 `{tree, exit}`를 남기고, 커밋 게이트로 원장과 tree를 대조한다.
 3. 규칙 파일 20줄(`CLAUDE.md` 또는 `AGENTS.md`) — 명령과 Flow.
 
-페르소나 없음. conductor는 Claude Code에선 메인 세션, opencode에선 edit 권한 없는 primary agent다. 팩 여섯(boot·intake·spec·build·attack·spike)은 10줄 spawn 설정 + 쓰기 경계로만 존재한다.
+페르소나 없음. conductor는 Claude Code에선 메인 세션, opencode에선 edit 권한 없는 primary agent다. 팩 일곱(boot·adopt·intake·spec·build·attack·spike)은 10줄 spawn 설정 + 쓰기 경계로만 존재한다 — adopt(2026-10-04)는 기존 코드의 첫 unit, boot과 같은 생애에 다른 경계(소스·기존 테스트·매니페스트를 쓰지 않는다).
 
 ## Unit 1 — 기계가 닫은 첫 루프
 CEO 한 문장 → `work.mjs new` → spec 팩이 red 주장을 쓴다 → `redproof.mjs`가 RED를 확인 → build 팩이 green으로 → 커밋 게이트 → attack 팩이 실패하는 테스트를 남긴다 → build 재spawn → red 0 → `ship.mjs` 8조건 → LEDGER 한 줄 → try.md → CEO 「써봤다」.
