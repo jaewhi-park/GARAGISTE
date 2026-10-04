@@ -329,7 +329,7 @@ function main() {
   if (last) sec('verify', '직전 verify', `${last.mode} exit=${last.exit} tree=${(last.tree || '').slice(0, 7)} 로그: ${last.log || '-'}`);
   if (pack === 'build' && base) {
     const log = git(['log', '--oneline', `${base}..HEAD`], wt).stdout;
-    if (log) sec('resume', '이어받기 — 이 브랜치에 이미 있는 것', `커밋:\n${log}\n\n변경 파일:\n${git(['diff', '--stat', `${base}..HEAD`], wt).stdout}${/^\w+ wip:/m.test(log) ? '\n\nHEAD는 wip 체크포인트다. 첫 명령: `git reset --soft HEAD~1` 뒤 계속.' : ''}`);
+    if (log) sec('resume', '이어받기 — 이 브랜치에 이미 있는 것', `커밋:\n${log}\n\n변경 파일:\n${git(['diff', '--stat', `${base}..HEAD`], wt).stdout}${/^\w+ wip:/m.test(log) ? '\n\nHEAD는 wip 체크포인트다. 첫 명령: `node .garagiste/scripts/checkpoint.mjs unwip`(wip 커밋을 풀어 변경을 인덱스에 — `git reset --soft`를 cd와 묶으면 무인 세션이 거부한다, 14라운드 측정) 뒤 계속.' : ''}`);
   }
   if (pack === 'attack' && base && !system) sec('diff', 'diff (base..HEAD)', `\`\`\`diff\n${git(['diff', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`], wt).stdout}\n\`\`\``);
   const capKb = c.team.budgets.pack_kb_max * (pack === 'boot' || pack === 'adopt' ? 4 : 1); // boot는 intake처럼 BRIEF 전문을 진다

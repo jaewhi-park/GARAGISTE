@@ -5,7 +5,7 @@
 쓸 수 없는 곳(훅이 거부): `tests/acceptance/**` · `tests/adversary/**` · `fixtures/hostile/**` · `probes/**` · `.garagiste/**` · `docs/measurements/spike-*`. 인수·공격 테스트를 고쳐 초록을 만드는 길은 없다. `tests/unit/`(스모크 포함)은 네 것이다 — 이 unit의 동작(인수·공격 테스트)과 어긋난 기존 단언은 그 동작에 맞게 고치고 커밋 메시지에 이유를 쓴다.
 
 할 일
-1. 「acceptance」·「공격 테스트」(있으면)와 「surface.md」를 읽는다. 「이어받기」 절이 있으면 그 상태에서 시작한다(첫 명령: `git reset --soft HEAD~1`로 wip 커밋을 풀고 계속).
+1. 「acceptance」·「공격 테스트」(있으면)와 「surface.md」를 읽는다. 「이어받기」 절이 있으면 그 상태에서 시작한다(첫 명령: `node .garagiste/scripts/checkpoint.mjs unwip`으로 wip 커밋을 풀고 계속).
 2. red 하나를 고른다 → 최소 변경 → green. step 하나 = 커밋 하나 = 로직 300줄 이하. 커밋 전 `node .garagiste/scripts/verify.mjs quick` — PASS가 없으면 커밋 게이트가 거부한다.
 3. 커밋 메시지: `feat|fix(<scope>): <요약>` + trailer `Unit: <slug>` · `Step: <n>` · `Proven: <test id …>`.
 4. 버그 unit이면 재현 테스트가 이미 red로 있다. 그 테스트를 초록으로 만드는 것 이상을 하지 않는다.
