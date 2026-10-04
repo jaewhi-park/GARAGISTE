@@ -99,10 +99,8 @@ export function render(r) {
   if (r.kind === 'spawn') return `NEXT spawn ${r.pack} ${r.slug} ${r.path} — ${r.why} · Agent(subagent_type: "${r.pack}", prompt: "${r.path}")를 띄우고 끝나면 ${S}/work.mjs spawned ${r.slug} ${r.pack} --tokens N --minutes M`;
   return `NEXT ${r.kind} ${r.text}`;
 }
-function main() {
-  const c = ctx();
-  const probs = blocking(diagnose(c.main));
-  if (probs.length) fail(`FAIL doctor ${probs.length} — 설치가 병든 채로 돌지 않는다\n${probs.map((x) => `- ${x}`).join('\n')}`);
+// 입력 조립 — next.mjs(한 줄을 낸다)와 conduct.mjs(그 줄을 실행한다)가 같은 함수를 쓴다. 판단 없음.
+export function computeNext(c) {
   const units = listUnits(c.main, c.team);
   const ledger = readLedger(c.main, c.team);
   const packsDir = path.join(c.main, c.team.paths.packs);
@@ -111,9 +109,19 @@ function main() {
     return f ? path.relative(c.main, path.join(packsDir, f)).replace(/\\/g, '/') : `(팩 파일 없음 — ${S}/brief.mjs ${pack} ${slug})`;
   };
   const wtOf = (u) => { const d = worktreeDir(c.main, c.team, u.slug); const exists = fs.existsSync(d); const rebase = exists && rebaseInProgress(d); return { exists, rebase, unmerged: rebase ? unmergedFiles(d) : [] }; };
-  out(render(nextStep({
+  return nextStep({
     units, ledger, decisionsText: readText(path.join(c.main, c.team.paths.decisions)), scope: readJson(path.join(c.main, '.garagiste', 'scope.json'), null),
     backlog: parseBacklog(readText(path.join(c.main, c.team.paths.backlog))), stops: budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) }).stops, systemAttack: c.team.system_attack !== false, wtOf, packPath,
-  })));
+  });
+}
+// 설치가 병들었으면 한 걸음도 내지 않는다 — conduct도 같은 검사를 먼저 한다
+export function doctorGate(c) {
+  const probs = blocking(diagnose(c.main));
+  if (probs.length) fail(`FAIL doctor ${probs.length} — 설치가 병든 채로 돌지 않는다\n${probs.map((x) => `- ${x}`).join('\n')}`);
+}
+function main() {
+  const c = ctx();
+  doctorGate(c);
+  out(render(computeNext(c)));
 }
 if (isMain(import.meta.url)) main();

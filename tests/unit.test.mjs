@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { cdBase, decide, expandAssignments, makeCtx, stripQuoted, worktreeFromCommand, writeTargets } from '../team/scripts/guard-rules.mjs';
+import { cdBase, decide, expandAssignments, expandTemp, isTempPath, makeCtx, stripQuoted, worktreeFromCommand, writeTargets } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, gateDecision, gateFailLine, logicLines, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
@@ -18,6 +18,7 @@ import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/
 import { acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { nextStep, render } from '../team/scripts/next.mjs';
+import { DEFAULTS as CONDUCT_DEFAULTS, EXIT, failKey, headlessEnv, holdCommand, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
@@ -1043,7 +1044,7 @@ test('work quotesBrief(사고 65): CEO의 말이 BRIEF에 그대로 있나 — �
 });
 
 // ── L2 6판(홀드아웃 snap) 뒤 수리 — 사고 66~69 ──
-test('guard: 사고 67(L2 6판 세 라운드 가드 거부 9/9) — `W=<경로>; … $W/…` 변수 경로와 줄 시작의 `cd $W`를 풀어 worktree 안 쓰기를 거부하지 않는다 · 풀 수 없는 변수($(mktemp -d))는 fail-closed', () => {
+test('guard: 사고 67(L2 6판 세 라운드 가드 거부 9/9) — `W=<경로>; … $W/…` 변수 경로와 줄 시작의 `cd $W`를 풀어 worktree 안 쓰기를 거부하지 않는다 · 풀 수 없는 변수($(pwd))는 fail-closed, mktemp는 임시 폴더', () => {
   const wt = `${root}/.worktrees/hello`;
   assert.equal(expandAssignments(`W=${wt}; mkdir -p $W/src && cat > $W/src/a.py`), `W=${wt}; mkdir -p ${wt}/src && cat > ${wt}/src/a.py`);
   assert.equal(expandAssignments(`export W="${wt}"\ncat > \${W}/x`), `export W="${wt}"\ncat > ${wt}/x`, '큰따옴표 값·${W} 꼴');
@@ -1054,7 +1055,8 @@ test('guard: 사고 67(L2 6판 세 라운드 가드 거부 9/9) — `W=<경로>;
   assert.equal(decide(bash(`W=${wt}\nmkdir -p $W/docs/units/hello && cat > $W/docs/units/hello/try.md <<'EOF'\n# try\nEOF`), gctx('spec')), null, 'spec은 $W/docs/units에 쓴다(6판 status·restore-to의 꼴)');
   assert.equal(decide(bash(`W=${wt}; mkdir -p $W/src/snap\ncd $W\ncat > pyproject.toml <<'E'\n[x]\nE`), gctx('boot')), null, 'boot: cd $W 뒤 상대 경로 pyproject.toml은 worktree의 것(6판 1라운드 첫 거부)');
   assert.match(decide(bash(`W=${wt}; cat > $W/tests/acceptance/h.test.mjs <<'EOF'\nx\nEOF`), gctx('build')) || '', /build 팩은 tests\/acceptance/, '풀린 경로도 쓰기 경계는 그대로');
-  assert.match(decide(bash(`T=$(mktemp -d); cat > $T/x.txt <<'EOF'\nx\nEOF`), gctx('build')) || '', /worktree 밖/, '풀 수 없는 변수는 fail-closed(저장소 안으로 읽힌다)');
+  assert.equal(decide(bash(`T=$(mktemp -d); cat > $T/x.txt <<'EOF'\nx\nEOF`), gctx('build')), null, 'mktemp는 임시 폴더 — 저장소 밖(R&D 2026-10-04: 5판 관찰 b·6판 누적 6)');
+  assert.match(decide(bash(`T=$(pwd)/out; cat > $T/x.txt <<'EOF'\nx\nEOF`), gctx('build')) || '', /worktree 밖/, '풀 수 없는 변수는 fail-closed(저장소 안으로 읽힌다)');
   assert.match(decide(bash(`W=${root}/docs; cat > $W/x.md <<'EOF'\nx\nEOF`), gctx('build')) || '', /worktree 밖/, '변수가 worktree 밖 저장소를 가리키면 거부');
 });
 test('brief: 사고 68(L2 6판 팩 상한 FAIL 7/7이 build의 인수+공격 테스트 몫) — 테스트 절을 뺀 크기가 상한 안이면 이유를 묻지 않고 자동 이유-차선, 산문·diff 몫의 초과와 2배 벽은 그대로', () => {
@@ -1095,4 +1097,100 @@ test('work: 사고 66(L2 6판 결함 1 — Q1 「예」의 래퍼 둘이 어느 
   assert.equal(r2.accept, '결정 Q2 → 홈에: 어디에?', '인수 -는 결정으로 바뀐다');
   assert.equal(acceptWithDecision(bl, 3, '예', '없는 질문', 'intake'), null, '기다리는 unit도 임자도 없으면 null');
   assert.equal(acceptWithDecision(bl, 1, '예', '같은 질문', 'old').slug, 'boot', '질문을 올린 unit이 닫혔어도 needs의 첫 열린 unit이 임자');
+});
+
+// conduct — Flow 4의 conductor를 모델 밖으로(R&D 2026-10-04): 한 줄을 읽고 그대로 실행하는 자리의 순수 함수들
+test('conduct: 인자 — 기본값·상한·spawner 템플릿·intake·모르는 인자는 FAIL 사유', () => {
+  assert.deepEqual(conductArgs([]), { ...CONDUCT_DEFAULTS, once: false, intake: false });
+  const o = conductArgs(['intake', '--once', '--max-steps', '3', '--max-minutes', '90', '--turns', '50', '--spawner', 'node fake.mjs']);
+  assert.deepEqual(o, { maxSteps: 3, maxMinutes: 90, turns: 50, spawner: 'node fake.mjs', once: true, intake: true });
+  assert.match(conductArgs(['--bogus']).error, /알 수 없는 인자 --bogus/);
+  assert.match(conductArgs(['--max-steps', 'x']).error, /maxSteps/);
+  assert.deepEqual(EXIT, { done: 0, fail: 1, ceo: 2, wait: 3, framework: 4, cap: 5 }, '멈춤이 종료 코드다 — 밖이 판단 없이 읽는다');
+});
+test('conduct: spawner — 기본은 claude -p <팩 경로> --agent <팩>(agents 파일이 모델·도구·정체), 템플릿은 자리표시자를 채워 셸로', () => {
+  const d = spawnerCommand({ pack: 'build', slug: 'hello', packPath: '.garagiste/session/packs/hello-build-1.md', model: 'sonnet', turns: 200 });
+  assert.deepEqual(d.argv, ['claude', '-p', '.garagiste/session/packs/hello-build-1.md', '--agent', 'build', '--output-format', 'json', '--permission-mode', 'acceptEdits', '--max-turns', '200']);
+  const t = spawnerCommand({ template: 'node fake.mjs {pack} {slug} {path} {model} {turns}', pack: 'spec', slug: 'x', packPath: 'p.md', model: 'opus', turns: 7 });
+  assert.equal(t.shell, 'node fake.mjs spec x p.md opus 7');
+});
+test('conduct: 결과 읽기 — claude -p --output-format json의 토큰·분·비용·오류, JSON이 아니면 글만', () => {
+  const r = parseResult(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, duration_ms: 90000, num_turns: 12, total_cost_usd: 0.42, usage: { input_tokens: 1000, output_tokens: 500, cache_creation_input_tokens: 200, cache_read_input_tokens: 300 }, result: '커밋 2\nverify full PASS' }));
+  assert.deepEqual({ tokens: r.tokens, minutes: r.minutes, cost: r.cost, turns: r.turns, isError: r.isError, text: r.text }, { tokens: 2000, minutes: 1.5, cost: 0.42, turns: 12, isError: false, text: '커밋 2\nverify full PASS' });
+  assert.equal(parseResult(JSON.stringify({ subtype: 'error_max_turns', is_error: false, result: '' })).isError, true, 'success가 아닌 subtype은 오류다');
+  assert.deepEqual(parseResult('그냥 글\n두 줄'), { json: null, text: '그냥 글\n두 줄', tokens: null, minutes: null, cost: null, turns: null, isError: false });
+  assert.equal(parseResult('앞 잡음\n{"result":"x","usage":{"input_tokens":5}}').tokens, 5, '마지막 JSON 객체를 읽는다');
+});
+test('conduct: 반려 줄·FAIL 열쇠·hold 안내·진전 없음', () => {
+  assert.equal(specReturn('커밋 0 · verify full 안 돌림\nspec: 인수가 서로 어긋난다 — -30000 ⊃ 3000'), '인수가 서로 어긋난다 — -30000 ⊃ 3000');
+  assert.equal(specReturn('커밋 3 · PASS verify:full'), null);
+  assert.equal(specReturn(Array.from({ length: 8 }, (_, i) => `줄 ${i}`).join('\n') + '\nspec: 늦은 줄'), '늦은 줄', '마지막 다섯 줄 안에서만 본다');
+  assert.equal(specReturn('spec: 이른 줄\n' + Array.from({ length: 8 }, (_, i) => `줄 ${i}`).join('\n')), null);
+  assert.equal(failKey('PASS gate\nFAIL ship hello 1/8\n- attack: 기록 없음\n- x'), 'FAIL ship hello 1/8 | - attack: 기록 없음', 'ship은 둘째 줄(조건)이 열쇠를 가른다');
+  assert.equal(failKey('ATTACK hello red 1/1'), null, 'FAIL 줄이 없으면 열쇠 없음 — 되풀이로 세지 않는다');
+  const h = holdCommand('FAIL spec 반려가 두 번째 …\n- 그 unit만 세우고 다음 seed로: node .garagiste/scripts/work.mjs ask hello "spec 반려 두 번째 — 두 줄은 이 FAIL 그대로" --hold — CEO의 답은 …');
+  assert.deepEqual({ slug: h.slug, question: h.question }, { slug: 'hello', question: 'spec 반려 두 번째 — 두 줄은 이 FAIL 그대로' });
+  assert.match(h.cmd, /^node \.garagiste\/scripts\/work\.mjs ask hello '[^']+' --hold$/, '셸 인자는 작은따옴표 — 큰따옴표 안의 \$·백틱은 셸이 푼다');
+  assert.equal(holdCommand('FAIL redproof hello: tests/acceptance/hello* 없음'), null);
+  const hist = new Map();
+  assert.equal(noProgress(hist, { slug: 'h', pack: 'build', before: 'a', after: 'a' }), 1);
+  assert.equal(noProgress(hist, { slug: 'h', pack: 'build', before: 'a', after: 'b' }), 0, '커밋이 생기면 0으로');
+  assert.equal(noProgress(hist, { slug: 'h', pack: 'build', before: 'b', after: 'b' }), 1);
+  assert.equal(noProgress(hist, { slug: 'h', pack: 'build', before: 'b', after: 'b' }), 2, '두 번째면 멈춤의 수');
+  assert.equal(noProgress(hist, { slug: 'h', pack: 'spike', before: 'b', after: 'b' }), 0, 'spike는 커밋하지 않는 팩');
+  assert.equal(noProgress(hist, { slug: 'h', pack: 'spec', before: null, after: 'b' }), 0, 'worktree가 없던 때는 세지 않는다');
+});
+test('conduct: 헤드리스 환경 — 부모 Claude 세션의 CLAUDE* 변수는 걷고 인증 변수만 남긴다 · 멈춤 줄', () => {
+  const e = headlessEnv({ PATH: '/bin', CLAUDE_PROJECT_DIR: '/x', CLAUDECODE: '1', CLAUDE_CODE_ENTRYPOINT: 'cli', CLAUDE_CODE_USER_EMAIL: 'a@b' }, { GARAGISTE_PACK: 'build' });
+  assert.deepEqual(e, { PATH: '/bin', CLAUDE_CODE_USER_EMAIL: 'a@b', GARAGISTE_PACK: 'build' });
+  assert.equal(stopLine('ceo', 'STOP 미검수 3\n둘째 줄', '2026-10-04T00:00:00Z'), 'STOP ceo 2026-10-04T00:00:00Z — STOP 미검수 3\nCEO: docs/STATUS.md 「써볼 것」(work.mjs try → tried) · 「정해 주세요」(work.mjs decide) · 「멈춘 이유」 — 접점 하나면 다시 conduct');
+});
+
+// 임시 폴더는 저장소 밖 — 5판 관찰 b · L2 6판 가드 거부 누적 6(R&D 2026-10-04)
+test('guard: 임시 폴더 쓰기는 경계 밖이다 — $(mktemp -d)·$TMPDIR·/tmp(Bash)와 Write 툴 모두, 저장소 안 상대 경로는 그대로 거부', () => {
+  const wt = `${root}/.worktrees/coc`;
+  const packCtx = { ...gctx('attack'), env: {} };
+  assert.equal(decide(bash('T=$(mktemp -d); cat > $T/base.txt <<EOF\nx\nEOF', wt), packCtx), null, 'mktemp 대입은 OS 임시 폴더(풀리지 않으면 저장소 안 상대 경로로 읽혀 거부됐다 — 6판 boot-fix)');
+  assert.equal(decide(bash('cat > ${TMPDIR:-/tmp}/coc_base.txt <<EOF\nx\nEOF', wt), packCtx), null);
+  assert.equal(decide(bash('echo x > /tmp/claude-0/coc_base.txt', wt), packCtx), null, '5판 관찰 b: 저장소 밖 임시 파일');
+  assert.equal(decide(bash('mkdir -p $(mktemp -d)/home && HOME=$(mktemp -d) node src/x.mjs', wt), packCtx), null, '임시 HOME');
+  assert.match(decide(bash('echo x > src/x.py', wt), packCtx), /attack 팩의 쓰기 경계 밖/, '경계는 그대로');
+  assert.match(decide(bash('cat > $T/x.py', wt), packCtx), /쓰기 경계 밖|worktree 밖/, '풀리지 않는 변수는 fail-closed');
+  assert.equal(decide(write(`${os.tmpdir()}/garagiste-x/fixture.json`), gctx(null)), null, 'Write 툴의 임시 폴더도 경계 밖');
+  assert.equal(decide(write('/tmp/x.txt'), gctx(null)), null);
+  assert.match(decide(write('src/a.ts'), gctx(null)), /conductor는 쓰지 않는다/, '저장소 안은 그대로');
+  assert.match(decide(write('/repo/tmp/a.ts'), gctx(null)), /conductor는 쓰지 않는다/, '저장소 안의 tmp/ 폴더는 임시 폴더가 아니다');
+  assert.ok(isTempPath('/tmp/a', {}) && isTempPath(os.tmpdir() + '/b', {}) && !isTempPath('/tmpx/a', {}) && !isTempPath('/repo/tmp', {}));
+  assert.equal(expandTemp('cat > $(mktemp -d)/x; cp a $TMP/b; echo ${TMPDIR:-/tmp}/c; ls `mktemp -d`', { TMPDIR: '/t' }), 'cat > /t/garagiste-mktemp/x; cp a /t/b; echo /t/c; ls /t/garagiste-mktemp');
+  assert.match(decide(bash('echo x >> .garagiste/ledger/evidence.jsonl', wt), packCtx), /원장/, '원장은 그대로 막힌다');
+});
+// unit 토큰 상한 — L2 2판 윈도우 1일차의 진동(토큰 16배)에 대한 예산 장치(R&D 2026-10-04)
+test('budget: 진행 중 unit의 spawn 토큰 합이 상한이면 멈춤 — unit의 상한(work.mjs budget)이 team.json보다 먼저, 0이면 끈다, 출하된 unit·앞 생애의 토큰은 세지 않는다', () => {
+  const at = '2026-10-03T10:00:00Z';
+  const spawn = (slug, tokens, ts = '2026-10-03T11:00:00Z') => ({ ts, kind: 'spawn', slug, pack: 'build', tokens });
+  const units = [{ slug: 'add', state: 'build', created: at, origin_kind: 'ceo' }, { slug: 'old', state: 'shipped', shipped: at, created: at, origin_kind: 'ceo', tried: { result: 'ok' } }];
+  const cap = { ...team, budgets: { ...team.budgets, unit_tokens_max: 3000 } };
+  assert.equal(budgetStatus({ units, ledger: [spawn('add', 1200), spawn('add', 1200)], team: cap, ceoTouchTs: null }).stops.length, 0, '2400 < 3000');
+  const b = budgetStatus({ units, ledger: [spawn('add', 1200), spawn('add', 1200), spawn('add', 1200)], team: cap, ceoTouchTs: null });
+  assert.match(b.stops.join(), /^unit add 토큰 4K ≥ 상한 3K — CEO 결정: node \.garagiste\/scripts\/work\.mjs budget add <새 상한> 또는 work\.mjs drop add/);
+  assert.equal(budgetStatus({ units, ledger: [spawn('old', 99999)], team: cap, ceoTouchTs: null }).stops.length, 0, '출하된 unit은 세지 않는다');
+  assert.equal(budgetStatus({ units, ledger: [spawn('add', 99999, '2026-10-02T00:00:00Z')], team: cap, ceoTouchTs: null }).stops.length, 0, '앞 생애(drop 전)의 토큰은 세지 않는다');
+  assert.equal(budgetStatus({ units: [{ ...units[0], tokens_max: 10000 }, units[1]], ledger: [spawn('add', 5000)], team: cap, ceoTouchTs: null }).stops.length, 0, 'unit의 상한(budget)이 team.json보다 먼저');
+  assert.equal(budgetStatus({ units, ledger: [spawn('add', 5000000)], team: { ...team, budgets: { ...team.budgets, unit_tokens_max: 0 } }, ceoTouchTs: null }).stops.length, 0, '0이면 끈다');
+  assert.equal(budgetStatus({ units, ledger: [spawn('add', 5000000)], team: { ...team, budgets: { ...team.budgets, unit_tokens_max: undefined } }, ceoTouchTs: null }).stops.length, 0, '옛 team.json(키 없음)도 끈 것');
+  assert.equal(team.budgets.unit_tokens_max, 1000000, '기본 1M — 6판 unit 최대 185K의 5배, 2판 진동(≈1.6M)은 잡힌다');
+  assert.match(decide(bash('node .garagiste/scripts/work.mjs budget add 2000000', `${root}/.worktrees/add`), gctx('build')), /budget\(토큰 상한\)/, '팩은 자기 상한을 올리지 못한다');
+});
+// doctor — 끊긴 worktree(2026-10-01 관찰: 폴더를 옮기면 verify가 FAIL 줄 대신 스택을 냈다)
+test('doctor: 끊긴 worktree(prunable)를 한 줄로 말한다', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-doctor-wt-'));
+  const g = (args, cwd = d) => spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, GIT_AUTHOR_NAME: 't', GIT_AUTHOR_EMAIL: 't@t', GIT_COMMITTER_NAME: 't', GIT_COMMITTER_EMAIL: 't@t' } });
+  g(['init', '-q', '-b', 'main']); fs.writeFileSync(path.join(d, 'a.txt'), 'a\n'); g(['add', '-A']); g(['commit', '-q', '-m', 'init']);
+  const wt = path.join(d, '.worktrees', 'x');
+  assert.equal(g(['worktree', 'add', '-q', '-b', 'unit/x', wt]).status, 0);
+  assert.ok(!diagnose(d).some((x) => x.includes('끊김')), '살아 있는 worktree는 문제가 아니다');
+  fs.rmSync(wt, { recursive: true, force: true });
+  const probs = diagnose(d);
+  assert.ok(probs.some((x) => /^worktree .*[\\/]\.worktrees[\\/]x 끊김\(prunable/.test(x) && x.includes('git worktree prune')), probs.join('\n'));
+  assert.deepEqual(blocking(probs.filter((x) => x.includes('끊김'))), probs.filter((x) => x.includes('끊김')), '끊긴 worktree는 fresh가 아니다 — seed·ship을 막는다');
 });

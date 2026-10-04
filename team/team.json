@@ -83,7 +83,8 @@
     "prose_kb_max": 40,
     "pack_kb_max": 32,
     "step_logic_lines_max": 300,
-    "spike_minutes": 30
+    "spike_minutes": 30,
+    "unit_tokens_max": 1000000
   },
   "sensors": {
     "human_os": []
