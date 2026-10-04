@@ -15,7 +15,7 @@ cd ~/GARAGISTE && node --test "tests/*.test.mjs"      # 단위 + e2e + 필드 �
 ```
 설치기가 `git init`, 팀 파일 복사, 첫 커밋(팀 파일만), **자가 진단**(doctor → selftest: 이 기계에서 기계 루프 첫 커밋 → boot unit → 게이트 → ship이 닫히는지 30초 안에)까지 한 번에 한다 — 끝 줄이 `SELFTEST PASS n/n`이어야 설치다. FAIL이면 그 출력을 그대로 붙여 달라(설치기는 빨간 채로 끝내지 않는다 · 건너뛰기는 `-SkipSelftest`).
 
-team.json의 명령과 CLAUDE.md의 자리는 비어 있는 것이 정상이다 — 첫 unit `boot`가 채운다. 기존 프로젝트에 설치할 때도 같은 명령이고, 그때는 첫 커밋 대신 conductor가 `work.mjs commands`로 기존 검증 명령을 적는다.
+team.json의 명령과 CLAUDE.md의 자리는 비어 있는 것이 정상이다 — 첫 unit `boot`가 채운다. 기존 프로젝트(코드가 있는 저장소)에 설치할 때도 같은 명령이다 — 설치가 팀 파일을 커밋하고(사고 70), intake가 「저장소 상태: 코드 있음」을 받아 첫 unit을 `adopt`로 올리며, adopt 팩이 특성화 테스트·검증 명령·규칙 파일을 채운다(제품 코드는 그대로 — 2026-10-04 3라운드, 첫 측정은 parcel-desk 홀드아웃).
 
 ## 3. 세션 열기
 권한: `.claude/settings.json`이 `defaultMode: acceptEdits`(파일 쓰기는 묻지 않음 — 경계는 guard 훅이 지킨다)와 allow 목록(`node .garagiste/scripts/*`·git 읽기·add·commit·worktree·npm/pnpm/python 등)을 갖는다. 그래도 프롬프트가 계속 뜨면 어떤 명령이었는지 붙여 달라 — allow 목록에 더한다.
@@ -45,11 +45,11 @@ node .garagiste/scripts/work.mjs models              # 지금 편성
 node .garagiste/scripts/work.mjs models low          # tier 통째로
 node .garagiste/scripts/work.mjs models build=opus   # 팩 하나
 ```
-| tier | intake | spec | build | attack | spike | boot |
-|---|---|---|---|---|---|---|
-| low | sonnet | sonnet | haiku | sonnet | haiku | haiku |
-| medium | opus | opus | sonnet | opus | sonnet | sonnet |
-| high | opus | opus | opus | opus | sonnet | sonnet |
+| tier | intake | spec | build | attack | spike | boot | adopt |
+|---|---|---|---|---|---|---|---|
+| low | sonnet | sonnet | haiku | sonnet | haiku | haiku | haiku |
+| medium | opus | opus | sonnet | opus | sonnet | sonnet | sonnet |
+| high | opus | opus | opus | opus | sonnet | sonnet | sonnet |
 opencode는 기본 provider/model을 상속한다. 팩별로 바꾸려면 같은 명령이 `.opencode/agents/<팩>.md`의 `model:`을 쓴다(값은 `provider/model`).
 
 ## 7. 막히면
@@ -60,6 +60,7 @@ opencode는 기본 provider/model을 상속한다. 팩별로 바꾸려면 같은
 - **pnpm 모노레포.** worktree에 패키지별 node_modules가 링크된다(자동). 안 되면 `pnpm install`을 worktree에서.
 - **ship이 spike를 요구한다.** diff가 package.json·워크플로·설치기 등 boundary 파일을 건드렸다. spike 팩을 돌려 `docs/measurements/spike-<slug>.md`의 필수 행(wire·host·license·default·os·측정)을 채운다.
 - **STOP ceo … unit 토큰 상한.** 그 unit이 spawn 토큰을 상한(team.json `budgets.unit_tokens_max`, 기본 1M)만큼 썼다 — attack↔build 진동의 예산 장치. 계속이면 `node .garagiste/scripts/work.mjs budget <slug> 2000000`, 아니면 `work.mjs drop <slug> "<사유>"`.
+- **설치본이 어느 판인지.** `node .garagiste/scripts/doctor.mjs --version`이 GARAGISTE 커밋 sha·team/ tree·하네스를 말한다(2026-10-04부터 `.garagiste/VERSION`). 없으면 그 전 설치본 — `install.sh`를 다시 돌리면 갱신 커밋으로 적힌다(scripts·packs·훅·agents는 덮고 team.json·HAZARDS·규칙 파일은 남긴다).
 - **에이전트가 경계 밖에 썼다.** 훅이 거부해야 정상이다. 거부 로그가 없는데 파일이 바뀌었으면 훅이 죽은 것이다 → doctor.
 
 ## 8. 무인으로 돌리기 — conduct.mjs (2026-10-04)
@@ -69,6 +70,7 @@ cd ~/work/f1
 node .garagiste/scripts/conduct.mjs intake          # Flow 2: brief.mjs intake → intake 팩 → work.mjs list (질문은 CEO가 work.mjs decide)
 node .garagiste/scripts/work.mjs scope --milestone M1
 node .garagiste/scripts/conduct.mjs                 # Flow 4: 멈출 때까지 — 「아침」 절의 멈춤과 같고 종료 코드가 멈춤이다
+node .garagiste/scripts/conduct.mjs --max-usd 15 --pack-minutes 45   # 이 실행의 비용 상한 · 팩 하나의 시간 상한(기본 team.json budgets: run_usd_max 0=끔 · pack_minutes_max 60)
 ```
 | 종료 코드 | 멈춤 | CEO가 할 일 |
 |---|---|---|
@@ -76,7 +78,9 @@ node .garagiste/scripts/conduct.mjs                 # Flow 4: 멈출 때까지 �
 | 2 | ceo — hard 질문 · 미검수 3 · 무인 출하 5 · unit 토큰 상한 · 범위 없음 | docs/STATUS.md 첫 줄 · 카드(`work.mjs try` → `tried`) · `decide` · `budget` |
 | 3 | wait — 선행 unit 또는 CEO 결정 | `decide` 뒤 다시 |
 | 4 | 프레임워크 FAIL — 같은 FAIL 되풀이 · 팩 비정상 종료 2회 · worktree가 그대로인 팩 재spawn 2회 | 그 줄 전문을 정비 채널로(우회·스크립트 편집 없음), STATUS 「막힌 것」에 남는다 |
-| 5 | 상한 — `--max-steps`(기본 200) · `--max-minutes` · `--once` | 다시 돌리면 이어서 |
+| 5 | 상한 — `--max-steps`(기본 200) · `--max-minutes` · `--max-usd` · `--once` | 다시 돌리면 이어서 |
+| 1 | 이미 돌고 있다(잠금 `.garagiste/session/conduct.json`의 pid가 살아 있음) 또는 인자·doctor FAIL | 한 저장소에 드라이버 하나 — 기다리거나, 정말 죽었으면 잠금 파일을 지운다 |
 - 전제: 그 폴더에서 대화형 `claude`를 한 번 열어 작업 공간을 신뢰했을 것(헤드리스엔 신뢰 대화가 없다). 팩마다 `.garagiste/session/logs/conduct-<slug>-<팩>-<시각>.json`에 stdout·stderr가 남고, 원장 spawn 줄에 실측 토큰·분·비용이 적힌다(`work.mjs spawned`와 같은 줄).
 - CEO 결정만 요구하는 FAIL(두 번째 spec 반려 · 팩 상한 2배 · 이미 충족)은 안내 끝의 `work.mjs ask … --hold`를 드라이버가 그대로 실행해 그 unit만 세운다 — 답은 저녁에 `decide`.
-- 대화형 conductor와 같은 저장소에서 동시에 돌리지 않는다 — unit은 한 번에 하나다. 다른 하네스·시험은 `--spawner "<명령 템플릿 {path} {pack} {slug} {model} {turns}>"`(모델 0 가짜 팩은 `tests/fakes/pack.mjs`).
+- 멈춘 팩은 `--pack-minutes`(기본 60)에 SIGTERM으로 끊긴다 — 비정상 종료 둘이면 프레임워크 FAIL로 멈춘다(밤새 걸리지 않는다). 돌아와서 STATUS 「진행 중」을 보면 살아 있는 conduct의 걸음·slug·팩·비용이 한 줄로 있다.
+- 대화형 conductor와 같은 저장소에서 동시에 돌리지 않는다 — unit은 한 번에 하나다(잠금이 막는다). 다른 하네스·시험은 `--spawner "<명령 템플릿 {path} {pack} {slug} {model} {turns}>"`(모델 0 가짜 팩은 `tests/fakes/pack.mjs`).

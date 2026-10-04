@@ -2,14 +2,14 @@
 
 > Coding is making claims true. Claims are tests, probes and invariants; the team is a scheduler over that graph; the human supplies direction, reality and accountability — and keeps the windows.
 
-GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), fifteen judgment-free scripts, a boundary hook or plugin, and a ledger.
+GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are seven packs that hand off only through files (boot · adopt · intake · spec · build · attack · spike), fifteen judgment-free scripts, a boundary hook or plugin, and a ledger.
 
 - **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
 - **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all eight conditions hold.
 - **The human gives one sentence, yes/no, and "tried it".** The first line of STATUS is all they read each day.
 
 ## There are agents — there are no personas
-The six packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
+The seven packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
 
 ## Install
 ```
@@ -24,7 +24,7 @@ The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs ·
 | rules file | `CLAUDE.md` (20 lines) | `AGENTS.md` (20 lines) |
 | boundary | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
 | the rules themselves | both call `.garagiste/scripts/guard-rules.mjs` | |
-| spawn configs | `.claude/agents/{boot,intake,spec,build,attack,spike}.md` | `.opencode/agents/{conductor,boot,intake,spec,build,attack,spike}.md` |
+| spawn configs | `.claude/agents/{boot,adopt,intake,spec,build,attack,spike}.md` | `.opencode/agents/{conductor,boot,adopt,intake,spec,build,attack,spike}.md` |
 | wip of a dead agent | SubagentStop hook → `checkpoint.mjs` | plugin after `task` → `checkpoint.mjs` |
 | conductor | the main session (CLAUDE.md Flow) | the `conductor` primary agent (no edit permission) |
 | models | budget → `model:` in the agent files | inherits the default provider/model; per-pack `model:` by hand |
@@ -32,7 +32,7 @@ The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs ·
 The verification commands (`commands`: quick · full · test_file · run) are written by the first unit, `boot`, through `work.mjs commands` — there is no file for the human to fill. The rule: `quick` must exclude `tests/acceptance` and `tests/adversary` (they are committed red by design); `full` includes everything.
 
 ## The entrance — from an empty folder to scope
-Install is one command (`install.sh claude -Project <empty dir>`: git init, team files, first commit). After that there is no file for the human to fill in: the first unit, `boot` (kind scaffold), picks the stack, writes the verification commands, the smoke test and the rules file, and ships. You do not speak one sentence at a time; the unit of input is the whole conversation.
+Install is one command (`install.sh claude -Project <empty dir>`: git init, team files, first commit). After that there is no file for the human to fill in: the first unit, `boot` (kind scaffold), picks the stack, writes the verification commands, the smoke test and the rules file, and ships. You do not speak one sentence at a time; the unit of input is the whole conversation. If the repository already has code, the first unit is `adopt` (kind adopt): it pins the current behaviour with characterization tests, registers the verify commands and the rule file, and never touches product code (intake tells boot from adopt by the repo state the script measures).
 ```
 conversation ─▶ work.mjs brief "<verbatim>" | --file PRD.md   accumulated verbatim in docs/BRIEF.md (no summarising)
 "build it"   ─▶ brief.mjs intake → intake pack spawn           BACKLOG lines: slug · milestone · needs · "one sentence" · one acceptance line
@@ -61,7 +61,7 @@ Agents receive one pack file and never talk to each other. Build has never met a
 | script | does |
 |---|---|
 | `next` | the loop's next step, one line: run · spawn · ceo · wait · done — the conductor follows this line only (seed → spec → redproof → build → attack → ship; re-spec, late spike, conflict, one unit at a time) |
-| `conduct` | runs Flow 4 as a script — executes next's line verbatim (run = that command; spawn = the pack as a headless `claude -p --agent <pack>` session), records spawned (measured tokens · minutes · cost) · spawn_stop · checkpoint per pack, forwards `spec:` returns, parks a unit via `ask --hold` when a FAIL asks for a CEO decision. The stops are exit codes (0 done · 2 ceo · 3 wait · 4 framework FAIL · 5 cap) · `intake` · other harnesses via `--spawner` |
+| `conduct` | runs Flow 4 as a script — executes next's line verbatim (run = that command; spawn = the pack as a headless `claude -p --agent <pack>` session), records spawned (measured tokens · minutes · cost) · spawn_stop · checkpoint per pack, forwards `spec:` returns, parks a unit via `ask --hold` when a FAIL asks for a CEO decision. The stops are exit codes (0 done · 2 ceo · 3 wait · 4 framework FAIL · 5 cap) · safety belts (per-pack time cap · run cost cap · lock/heartbeat) · `intake` · other harnesses via `--spawner` |
 | `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · system (seam attack at the end of a scope) · new · ask (`--assumed`) · decide · default · tried · list · models (one place) · spawned (ledger) |
 | `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |

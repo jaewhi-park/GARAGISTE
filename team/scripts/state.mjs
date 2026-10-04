@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { collect, coverage } from './claims.mjs';
-import { appendLedger, ceoTouch, ctx, fail, git, isMain, listUnits, out, readJson, readLedger, readText, writeJson } from './lib.mjs';
+import { CONDUCT_LOCK, appendLedger, ceoTouch, ctx, fail, git, isMain, listUnits, out, pidAlive, readJson, readLedger, readText, writeJson } from './lib.mjs';
 
 export function firstLine({ run, unseen, unseenMax, unobservedOs, decisionsOpen, coveragePct, uncertain, repeatedFails = 0 }) {
   return `실행: ${run || '—'} · 안 본 것 ${unseen}/${unseenMax} · target-OS 미관측 ${unobservedOs} · 결정 대기 ${decisionsOpen} · 센서 커버리지 ${coveragePct}% · 불확실: ${uncertain || '없음'}${repeatedFails > 0 ? ` · 반복 FAIL ${repeatedFails}` : ''}`;
@@ -25,7 +25,7 @@ export function attackFound(ledger, u) { return new Set(ledger.filter((e) => e.k
 export function humanNeeded(u, ledger, team) {
   if (team.budgets.unseen_machine_exempt === false) return true;
   if (u.sensor && String(u.sensor).startsWith('human')) return true;
-  if (u.kind === 'scaffold' || u.kind === 'system') return false;
+  if (u.kind === 'scaffold' || u.kind === 'adopt' || u.kind === 'system') return false;
   return attackFound(ledger, u) === 0;
 }
 export function budgetStatus({ units, ledger, team, ceoTouchTs }) {
@@ -69,7 +69,7 @@ export function render(c) {
   parts.push('## 써볼 것 (≤3)');
   for (const u of shippedUnseen.slice(0, 3)) {
     const tryMd = readText(path.join(c.main, c.team.paths.units_docs, u.slug, 'try.md')).trim();
-    const fallback = u.kind === 'scaffold' ? `  실행: \`${c.team.commands.run || c.team.commands.quick}\`` : u.kind === 'system' ? `  이음새 공격이 고친 흐름: tests/adversary/${u.slug}-* 가 가리키는 대로` : '  (try.md 없음)'; // scaffold(boot)·system(이음새 공격)엔 try.md가 없다
+    const fallback = u.kind === 'scaffold' || u.kind === 'adopt' ? `  실행: \`${c.team.commands.run || c.team.commands.quick}\`` : u.kind === 'system' ? `  이음새 공격이 고친 흐름: tests/adversary/${u.slug}-* 가 가리키는 대로` : '  (try.md 없음)'; // scaffold(boot)·system(이음새 공격)엔 try.md가 없다
     parts.push(`- **${u.slug}** — "${u.origin}"${humanNeeded(u, ledger, c.team) ? '' : ` · 기계 증명(공격 선발견 ${attackFound(ledger, u)}) — 상한에 세지 않는다, 마일스톤 끝에 써봐도 된다`}`, ...(tryMd ? tryMd.split('\n').slice(0, 6).map((l) => `  ${l}`) : [fallback]), `  → \`node .garagiste/scripts/work.mjs try ${u.slug}\`(main을 더럽히지 않는 사본 — 카드는 거기서) → \`node .garagiste/scripts/work.mjs tried ${u.slug} ok|fail "<말>"\``);
   }
   if (!shippedUnseen.length) parts.push('- 없음');
@@ -86,6 +86,8 @@ export function render(c) {
   parts.push('', '## 진행 중');
   const open = units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped');
   parts.push(...(open.length ? open.map((u) => `- ${u.slug} (${u.state}${u.boundary.hit ? ', boundary' : ''}) — "${u.origin}"`) : ['- 없음']));
+  const lock = readJson(path.join(c.main, CONDUCT_LOCK), null); // conduct의 heartbeat — 돌아온 CEO가 「지금 무엇을 하는가」를 본다
+  if (lock && lock.pid && pidAlive(lock.pid)) parts.push(`- conduct 돌고 있음 — pid ${lock.pid} · ${[lock.step, lock.slug, lock.pack].filter(Boolean).join(' ')} · 걸음 ${lock.steps ?? 0} · $${lock.usd ?? 0} · 시작 ${lock.started} · 마지막 ${lock.at}`);
   parts.push('', `_생성: state.mjs ${new Date().toISOString()} · 주장 ${cov.total} · 손편집 없음_`, '');
   return { text: parts.join('\n'), line, stops: b.stops };
 }
@@ -111,7 +113,7 @@ export function reportText({ team, scope, units, ledger, ledgerMd = '', claims =
   const unseen = [...unsensed.map((x) => `- 사람 센서 대기: ${x.file}${x.claim ? ' — ' + x.claim : ''}`), ...open.map((q) => `- 결정 대기: ${q.replace(/^- \[ \] /, '')}`)];
   L.push('', '## 못 본 것', ...(unseen.length ? unseen : ['- 없음 — 기계가 다 봤다']));
   L.push('', '## 써볼 것 — 마일스톤 끝의 try', `- 실행: \`${run}\``);
-  for (const u of untried) L.push(`- ${u.slug}: ${u.kind === 'scaffold' ? '실행이 뜨는가' : u.kind === 'system' ? `이음새 공격이 고친 흐름(tests/adversary/${u.slug}-*)` : `docs/units/${u.slug}/try.md`} → \`node .garagiste/scripts/work.mjs try ${u.slug}\` → \`tried ${u.slug} ok|fail "<말>"\``);
+  for (const u of untried) L.push(`- ${u.slug}: ${u.kind === 'scaffold' ? '실행이 뜨는가' : u.kind === 'adopt' ? '쓰던 명령이 그대로 도는가(특성화)' : u.kind === 'system' ? `이음새 공격이 고친 흐름(tests/adversary/${u.slug}-*)` : `docs/units/${u.slug}/try.md`} → \`node .garagiste/scripts/work.mjs try ${u.slug}\` → \`tried ${u.slug} ok|fail "<말>"\``);
   if (!untried.length) L.push('- 없음 — 전부 써봤다');
   if (systems.length) L.push('', '## 이음새 공격', ...systems.map((s) => `- ${s.slug}: ${s.state === 'shipped' ? `발견 ${attackFound(ledger, s)} → 고쳐 출하` : '발견 0 — drop'}`));
   L.push('', `_생성: state.mjs report ${now} · 손편집 없음_`, '');

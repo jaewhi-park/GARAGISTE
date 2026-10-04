@@ -9,7 +9,7 @@ const DESTRUCTIVE = new RegExp(GIT + String.raw`(reset\s+--hard|clean\s+-\S*f|ch
 const HOOK_BYPASS = /\bgit\b[^;&|\n]*\s-c\s+core\.hookspath\s*=/i;
 const SECRET = /(^|[\\/])\.env(\.|$)|\.pem$|\.key$|credentials\.json$/i;
 // 규칙집 = 팀 정본(.garagiste) + 하네스 배선(.claude settings·hooks·agents / opencode.json·.opencode agents·plugins / .githooks)
-const RULEBOOK = /(^|[\\/])(\.garagiste[\\/](team\.json|HAZARDS\.md|scripts[\\/]|packs[\\/]|ledger[\\/]|units[\\/])|\.claude[\\/](settings\.json|hooks[\\/]|agents[\\/])|opencode\.json|\.opencode[\\/](agents|plugins)[\\/]|\.githooks[\\/])/;
+const RULEBOOK = /(^|[\\/])(\.garagiste[\\/](team\.json|HAZARDS\.md|VERSION|scripts[\\/]|packs[\\/]|ledger[\\/]|units[\\/])|\.claude[\\/](settings\.json|hooks[\\/]|agents[\\/])|opencode\.json|\.opencode[\\/](agents|plugins)[\\/]|\.githooks[\\/])/;
 // 원장·unit 상태 — 향하는 쓰기만 거부한다(L2 1일차: 같은 줄의 sed -n·2>/dev/null까지 쓰기로 읽어 conductor의 표 산출이 막혔다 — 규칙집 읽기 오탐과 같은 수리)
 const LEDGER_PATHS = '\\.garagiste[\\\\/](ledger|units)';
 const LEDGER_SHELL = new RegExp(`(^|[\\s;&|])(rm|mv|cp|tee|truncate|sed\\s+(-\\S+\\s+)*-i\\S*)\\b[^;&|]*${LEDGER_PATHS}`);
@@ -17,7 +17,7 @@ const LEDGER_REDIR = new RegExp(`>{1,2}\\s*("[^"]*|'[^']*|[^\\s;&|<>]*)?${LEDGER
 const MEMORY = /\/\.claude\/(?:.*\/)?memory\/|\/MEMORY\.md$/i;
 // 규칙집 셸 쓰기 — 쓰기 verb(rm·mv·cp·tee·truncate·sed -i)는 그대로 거부, 읽기 verb(cat·sed -n·echo·printf)는 리다이렉트로 규칙집을 향할 때만.
 // (첫 Windows 실기의 오탐: conductor가 진단하려고 cat으로 스크립트를 읽는 것까지 거부됐다 — 읽기는 경계가 아니다)
-const RULEBOOK_PATHS = '(\\.garagiste[\\\\/](team\\.json|HAZARDS\\.md|scripts|packs)|\\.claude[\\\\/](settings\\.json|hooks|agents)|opencode\\.json|\\.opencode[\\\\/](agents|plugins)|\\.githooks)';
+const RULEBOOK_PATHS = '(\\.garagiste[\\\\/](team\\.json|HAZARDS\\.md|VERSION|scripts|packs)|\\.claude[\\\\/](settings\\.json|hooks|agents)|opencode\\.json|\\.opencode[\\\\/](agents|plugins)|\\.githooks)';
 const RULEBOOK_SHELL = new RegExp(`(^|[\\s;&|])(rm|mv|cp|tee|truncate|sed\\s+(-\\S+\\s+)*-i\\S*)\\b[^;&|]*${RULEBOOK_PATHS}`);
 const RULEBOOK_REDIR = new RegExp(`>{1,2}\\s*("[^"]*|'[^']*|[^\\s;&|<>]*)?${RULEBOOK_PATHS}`);
 // 게이트 우회 접두 — SHIP·WIP·ADMIN은 스크립트 내부(ship·checkpoint)와 CEO 세션만 쓴다. LARGE_STEP은 게이트가 받는 정상 경로라 막지 않는다.
@@ -30,6 +30,8 @@ export const PACK_RULES = {
   build: { deny: [/^tests\/acceptance\//, /^tests\/adversary\//, /^fixtures\/hostile\//, /^probes\//, /^docs\/measurements\/spike-/] },
   attack: { allow: [/^tests\/adversary\//, /^fixtures\/hostile\//] },
   spike: { allow: [/^docs\/measurements\/spike-[^/]+\.md$/] },
+  // adopt(기존 코드의 첫 unit): 특성화 테스트·하네스·저장소 위생·규칙 파일 자리 — 소스·기존 테스트·매니페스트는 쓰지 않는다(증명은 「현재 동작 그대로」)
+  adopt: { allow: [/^(\.gitignore|\.gitattributes|CLAUDE\.md|AGENTS\.md)$/, /^tests\/unit\//, /^tests\/harness\//, /^docs\/units\/[^/]+\//] },
   // boot(kind scaffold): 스택·진입점·스모크·규칙 파일. 테스트 폴더는 unit 하나·프로브 없음
   boot: { allow: [/^(package\.json|pnpm-workspace\.yaml|pnpm-lock\.yaml|package-lock\.json|pyproject\.toml|uv\.lock|requirements[^/]*\.txt|Cargo\.toml|go\.mod|\.node-version|\.python-version|\.nvmrc|\.tool-versions|\.gitignore|\.gitattributes|README(\.[a-z]{2})?\.md|CLAUDE\.md|AGENTS\.md|tsconfig[^/]*\.json|[^/]*\.config\.[a-z]+)$/, /^src\//, /^tests\/unit\//, /^tests\/harness\//, /^docs\/units\/[^/]+\//] },
 };

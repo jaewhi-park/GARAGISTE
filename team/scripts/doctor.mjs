@@ -20,11 +20,11 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
   if (!team) p.push('.garagiste/team.json 없음 또는 JSON 오류 → install.sh <claude|opencode> 다시');
   else {
     for (const k of REQUIRED_TEAM_KEYS.filter((k2) => !(k2 in team))) p.push(`team.json 키 없음: ${k} → team.json 확인`);
-    for (const k of ['quick', 'full', 'test_file']) if (!team.commands?.[k]) p.push(`team.json commands.${k} 비어 있음 → 첫 unit(boot)이 채운다: 세션을 열고 만들 것을 말하라`);
+    for (const k of ['quick', 'full', 'test_file']) if (!team.commands?.[k]) p.push(`team.json commands.${k} 비어 있음 → 첫 unit(boot — 기존 코드가 있으면 adopt)이 채운다: 세션을 열고 만들 것을 말하라`);
     if (team.commands?.test_file && !hasFileSlot(team.commands.test_file)) p.push('commands.test_file에 {file}·{files} 자리표시자 없음');
   }
   for (const s of SCRIPTS) if (!fs.existsSync(path.join(root, '.garagiste', 'scripts', `${s}.mjs`))) p.push(`.garagiste/scripts/${s}.mjs 없음 → install.sh 다시`);
-  for (const k of ['intake', 'spec', 'build', 'attack', 'spike', 'boot']) if (!fs.existsSync(path.join(root, '.garagiste', 'packs', `${k}.md`))) p.push(`.garagiste/packs/${k}.md 없음 → install.sh 다시`);
+  for (const k of ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt']) if (!fs.existsSync(path.join(root, '.garagiste', 'packs', `${k}.md`))) p.push(`.garagiste/packs/${k}.md 없음 → install.sh 다시`);
   const hs = harnesses(root);
   if (!hs.length) p.push('하네스 배선 없음(.claude/settings.json도 opencode.json도 없다) → install.sh claude 또는 install.sh opencode');
   if (hs.includes('claude')) {
@@ -37,14 +37,14 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
       if (!fs.existsSync(path.join(root, '.claude', 'hooks', h))) p.push(`.claude/hooks/${h} 없음 → install.sh claude 다시`);
     }
     if (cmds.includes('hooks/') && !cmds.includes('${CLAUDE_PROJECT_DIR}')) p.push('hooks 경로가 상대 경로 → ${CLAUDE_PROJECT_DIR} 절대 경로로(Windows에서 조용히 죽는다)');
-    for (const a of ['intake', 'spec', 'build', 'attack', 'spike', 'boot']) if (!fs.existsSync(path.join(root, '.claude', 'agents', `${a}.md`))) p.push(`.claude/agents/${a}.md 없음 → install.sh claude 다시`);
+    for (const a of ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt']) if (!fs.existsSync(path.join(root, '.claude', 'agents', `${a}.md`))) p.push(`.claude/agents/${a}.md 없음 → install.sh claude 다시`);
     const alive = readJson(path.join(root, '.garagiste', 'session', 'alive'), null);
     if (!alive) p.push('session-start alive 마커 없음 → 훅이 한 번도 돌지 않았다: settings.json 경로·node PATH 확인(첫 세션이면 정상)');
     else if (now - Date.parse(alive.ts) > 7 * 86400e3) p.push('alive 마커 7일 이상 → 훅이 죽었는지 확인');
   }
   if (hs.includes('opencode')) {
     if (!fs.existsSync(path.join(root, '.opencode', 'plugins', 'guard.ts'))) p.push('.opencode/plugins/guard.ts 없음 → install.sh opencode 다시');
-    for (const a of ['conductor', 'intake', 'spec', 'build', 'attack', 'spike', 'boot']) if (!fs.existsSync(path.join(root, '.opencode', 'agents', `${a}.md`))) p.push(`.opencode/agents/${a}.md 없음 → install.sh opencode 다시`);
+    for (const a of ['conductor', 'intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt']) if (!fs.existsSync(path.join(root, '.opencode', 'agents', `${a}.md`))) p.push(`.opencode/agents/${a}.md 없음 → install.sh opencode 다시`);
     if (!fs.existsSync(path.join(root, 'AGENTS.md'))) p.push('AGENTS.md 없음 → team/opencode/AGENTS.md.template');
   }
   const hooksPath = git(['config', 'core.hooksPath'], root).stdout;
@@ -62,8 +62,14 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
   else for (const line of hz.split('\n').filter((l) => l.startsWith('- '))) if (!/`[^`]+`/.test(line)) p.push(`HAZARDS 경로 없는 줄: ${line.slice(0, 40)}… → 경로 패턴을 붙이거나 지워라`);
   return p;
 }
+// 설치본의 판(L3 Q11) — install.sh가 .garagiste/VERSION에 적는다(garagiste sha · team/ tree · flavor). 2026-10-04 전 설치본엔 없다.
+export function versionLine(root) {
+  const v = readJson(path.join(root, '.garagiste', 'VERSION'), null);
+  return v && v.garagiste ? `VERSION garagiste ${v.garagiste} · team ${v.team_tree || '?'} · ${v.flavor || '?'}` : 'VERSION 없음 — 2026-10-04 전 설치본: install.sh를 다시 돌리면 적힌다(갱신 커밋)';
+}
 function main() {
   const root = process.env.CLAUDE_PROJECT_DIR || scriptRoot(import.meta.url); // cwd가 아니라 이 스크립트가 설치된 저장소
+  if (process.argv.includes('--version')) return out(versionLine(root));
   const p = process.argv.includes('--fresh') ? blocking(diagnose(root)) : diagnose(root);
   if (!p.length) return out(`OK doctor (${harnesses(root).join('+') || '하네스 없음'})`);
   out(`FAIL doctor ${p.length}\n${p.map((x) => `- ${x}`).join('\n')}`);

@@ -43,7 +43,7 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   assert.equal(team.models.build, 'haiku', 'budget low가 모델 편성에 반영');
   assert.match(fs.readFileSync(path.join(repo, '.claude/agents/build.md'), 'utf8'), /^model: haiku$/m, '에이전트 파일은 팩의 spawn 설정 — 모델은 예산에서');
   assert.ok(fs.existsSync(path.join(repo, '.claude/hooks/guard.mjs')) && fs.existsSync(path.join(repo, '.garagiste/scripts/guard-rules.mjs')));
-  assert.match(script('work', ['models', 'build=opus'], repo).out, /^MODELS .*build=opus.* → 6 에이전트 파일 갱신/);
+  assert.match(script('work', ['models', 'build=opus'], repo).out, /^MODELS .*build=opus.* → 7 에이전트 파일 갱신/);
   assert.match(fs.readFileSync(path.join(repo, '.claude/agents/build.md'), 'utf8'), /^model: opus$/m, 'work models가 team.json과 에이전트 파일을 함께 바꾼다');
   assert.match(script('work', ['models', 'low'], repo).out, /build=haiku/);
   const re = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
@@ -612,7 +612,7 @@ test('사고 49~52(홀드아웃 — Go CLI): --로 시작하는 원문 · BACKLO
   assert.match(script('work', ['add', 'min-size', '다른 원문', '--replace'], repo).out, /^FAIL min-size은 unit이 열려 있다 — 진행 중 unit의 수용은 re-spec/, '열린 unit의 줄은 바꾸지 않는다');
   // 사고 52: <팩>에 팩 파일 경로를 넣고 같은 사용법을 두 번 받고 포기했다
   const sp = script('work', ['spawned', 'intake', '.garagiste/session/packs/intake-2026-10-01T11-30-50-078Z.md', '--tokens', '18594', '--minutes', '2'], repo);
-  assert.match(sp.out, /^FAIL <팩>은 팩 이름\(intake·spec·build·attack·spike·boot\)이다 — 받은 값은 경로[\s\S]*→ node \.garagiste\/scripts\/work\.mjs spawned intake intake --tokens 18594 --minutes 2$/m, sp.out);
+  assert.match(sp.out, /^FAIL <팩>은 팩 이름\(intake·spec·build·attack·spike·boot·adopt\)이다 — 받은 값은 경로[\s\S]*→ node \.garagiste\/scripts\/work\.mjs spawned intake intake --tokens 18594 --minutes 2$/m, sp.out);
   assert.match(script('work', ['spawned', 'intake', 'intake', '--tokens', '18594', '--minutes', '2'], repo).out, /^SPAWN intake intake/);
 });
 
@@ -802,7 +802,7 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   assert.match(inst.out, /SELFTEST PASS/, 'R15: 설치는 install→doctor→selftest 원샷이고 빨간 채로 완료를 선언하지 않는다');
   assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): GARAGISTE 증거 팀 설치/);
   assert.match(git(['ls-files', '-s', '.githooks/pre-commit'], repo).out, /^100755/, '훅의 실행 비트가 인덱스에 있다 — 없으면 맥·리눅스가 게이트를 무시한다');
-  assert.match(script('doctor', [], repo).out, /commands.quick 비어 있음 → 첫 unit\(boot\)이 채운다/);
+  assert.match(script('doctor', [], repo).out, /commands.quick 비어 있음 → 첫 unit\(boot — 기존 코드가 있으면 adopt\)이 채운다/);
   // CEO는 말만 한다 — 이 아래는 conductor와 boot 팩의 일
   script('work', ['brief', '터미널 메모 도구. memo add로 남기고 memo list로 본다.'], repo);
   assert.match(script('work', ['add', 'boot', '터미널 메모 도구', '--milestone', 'M1', '--accept', '진입점이 뜨고 quick·full이 PASS', '--kind', 'scaffold'], repo).out, /^ADD boot M1 needs=- kind=scaffold/);
@@ -1098,6 +1098,10 @@ test('사고 70: 기존 저장소에 설치 — 깨끗했으면 설치가 팀 �
   assert.equal(git(['log', '-1', '--format=%s'], repo).out.trim(), 'scaffold(team): GARAGISTE 증거 팀 설치 [claude, budget medium]');
   assert.equal(git(['rev-list', '--count', 'HEAD'], repo).out.trim(), '2');
   assert.match(git(['show', '--stat', '--format=', 'HEAD'], repo).out, /\.garagiste\/team\.json[\s\S]*\.githooks\/pre-commit[\s\S]*CLAUDE\.md/, '팀 파일만');
+  // L3 Q11(R&D 2라운드): 설치본의 판 — 어느 GARAGISTE 커밋의 team/인가
+  const ver = JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/VERSION'), 'utf8'));
+  assert.deepEqual(ver, { garagiste: git(['rev-parse', 'HEAD'], GARAGISTE).out.trim(), team_tree: git(['rev-parse', 'HEAD:team'], GARAGISTE).out.trim(), flavor: 'claude' }, '판 = GARAGISTE 커밋 · team/ tree · 하네스(날짜 없음 — 같은 판의 재설치가 diff를 만들지 않게)');
+  assert.equal(script('doctor', ['--version'], repo).out.trim(), `VERSION garagiste ${ver.garagiste} · team ${ver.team_tree} · claude`);
   // 더러운 저장소: 사람의 것과 섞이니 손대지 않는다
   write(repo, 'src/wip.js', '// 손으로 고치던 것\n');
   const re = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
@@ -1110,9 +1114,117 @@ test('사고 70: 기존 저장소에 설치 — 깨끗했으면 설치가 팀 �
   git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'docs: stale'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
   const up = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
   assert.equal(up.status, 0, up.out);
-  assert.match(up.out, /팀 파일 커밋\(갱신 — 기존 저장소, 생성물 차선\)/);
-  assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): GARAGISTE 증거 팀 갱신 /);
+  assert.match(up.out, /팀 파일 커밋\(갱신\(같은 판 [0-9a-f]{7}\) — 기존 저장소, 생성물 차선\)/);
+  assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): GARAGISTE 증거 팀 갱신\(같은 판 [0-9a-f]{7}\) /, '같은 GARAGISTE 커밋의 재설치 — 판이 바뀌면 old→new sha7이 커밋 제목에');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/team.json'), 'utf8'), /"build": "sonnet"/, 'R15: 재설치가 편성을 지우지 않는다');
   const same = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
   assert.equal(same.status, 0, same.out); assert.doesNotMatch(same.out, /팀 파일 커밋/, '바뀐 것이 없으면 커밋도 없다');
+});
+
+test('conduct 안전벨트(2라운드): 잠금 — 살아 있는 드라이버가 있으면 거부(exit 1), 죽은 pid의 잠금은 교체되고 끝나면 지워진다 · STATUS 「진행 중」이 살아 있는 conduct를 보인다', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const lockPath = path.join(repo, '.garagiste/session/conduct.json');
+  fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+  fs.writeFileSync(lockPath, JSON.stringify({ pid: process.pid, started: '2026-10-04T00:00:00Z', at: '2026-10-04T00:01:00Z', step: 'spawn', slug: 'hello', pack: 'build', steps: 3, usd: 0.02 }));
+  const busy = conduct(repo, ['--once']);
+  assert.equal(busy.status, 1, busy.out);
+  assert.match(busy.out, /^FAIL conduct: 이미 돌고 있다 — pid \d+ · spawn hello build · 2026-10-04T00:01:00Z/m);
+  script('state', [], repo);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 진행 중\n[^\n]*\n- conduct 돌고 있음 — pid \d+ · spawn hello build · 걸음 3 · \$0\.02 · 시작 2026-10-04T00:00:00Z/, '돌아온 CEO가 「지금 무엇을 하는가」를 본다');
+  fs.writeFileSync(lockPath, JSON.stringify({ pid: 2147483000, started: 'x', at: 'y', step: 'run' })); // 죽은 pid
+  const once = conduct(repo, ['--once']);
+  assert.equal(once.status, 5, once.out);
+  assert.ok(!fs.existsSync(lockPath), '끝나면 잠금을 지운다');
+  script('state', [], repo);
+  assert.doesNotMatch(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /conduct 돌고 있음/);
+});
+test('conduct 안전벨트(2라운드): 팩 시간 상한 — 멈춘 팩은 SIGTERM으로 끊고 비정상 종료로 센다 · 비용 상한 — 누적 $가 상한이면 cap(exit 5)', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const hang = conduct(repo, ['--pack-minutes', '0.02'], { GARAGISTE_FAKE_MODE: 'hang' });
+  assert.equal(hang.status, 4, hang.out);
+  assert.match(hang.out, /팩 시간 상한 0\.02분 — 끊었다\(SIGTERM\)[\s\S]*STOP framework/, '끊긴 spec 뒤 redproof FAIL 되풀이로 멈춘다 — 밤새 걸리지 않는다');
+  const L = ledgerOf(repo);
+  assert.ok(L.some((e) => e.kind === 'spawn' && e.pack === 'spec' && /exit (null|1|143)/.test(e.note || '') ), '끊긴 spawn도 원장에 남는다: ' + JSON.stringify(L.filter((e) => e.kind === 'spawn')));
+  const logs = fs.readdirSync(path.join(repo, '.garagiste/session/logs')).filter((f) => f.startsWith('conduct-hello-spec-'));
+  assert.ok(logs.some((f) => JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/session/logs', f), 'utf8')).timed_out === true), '로그에 timed_out');
+  // 비용 상한: 새 unit에서 가짜 팩 $0.01씩 — 둘 뒤 $0.02 ≥ 0.015
+  assert.match(script('work', ['drop', 'hello', '시간 상한 시험 끝', '--forget'], repo).out, /^DROPPED hello/);
+  assert.match(script('work', ['new', 'hello', '이름을 주면 그 이름으로 인사한다'], repo).out, /^UNIT hello spec/);
+  const usd = conduct(repo, ['--max-usd', '0.015']);
+  assert.equal(usd.status, 5, usd.out);
+  assert.match(usd.out, /SPAWN hello spec[\s\S]*SPAWN hello build[\s\S]*STOP cap [^\n]*비용 상한 \$0\.015 — 이 실행 \$0\.02/);
+  assert.doesNotMatch(usd.out, /SPAWN hello attack/, '상한 뒤 팩을 띄우지 않는다');
+  const stops = ledgerOf(repo).filter((e) => e.kind === 'conduct' && e.event === 'stop');
+  assert.equal(stops[stops.length - 1].usd, 0.02, '멈춤 줄에 이 실행의 비용');
+  const again = conduct(repo);
+  assert.equal(again.status, 2, again.out);
+  assert.match(again.out, /SHIPPED hello/, '다시 돌리면 이어서 출하한다');
+});
+
+// adopt — 기존 코드의 첫 unit(R&D 3라운드 2026-10-04): 레거시 인수의 입구. boot과 같은 생애(팩 하나 → ship), 다른 경계(소스·기존 테스트·매니페스트를 쓰지 않는다).
+function legacyRepo(t) {
+  if (!BASH) { t.skip(NO_BASH); return null; }
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-adopt-'));
+  assert.equal(git(['init', '-q', '-b', 'main'], repo).status, 0);
+  write(repo, 'package.json', '{ "name": "greet", "version": "1.2.0", "private": true, "bin": { "greet": "bin/greet.js" }, "scripts": { "test": "node --test test/" } }\n');
+  write(repo, 'bin/greet.js', "#!/usr/bin/env node\n'use strict';\nconst { greet } = require('../lib/greet');\nprocess.stdout.write(greet(process.argv[2]) + '\\n');\n");
+  write(repo, 'lib/greet.js', "'use strict';\nmodule.exports = { greet: (n) => `hi ${n || 'there'}` };\n");
+  write(repo, 'test/greet.test.js', "const test = require('node:test'); const assert = require('node:assert/strict'); const { greet } = require('../lib/greet');\ntest('greet', () => assert.equal(greet('Bo'), 'hi Bo'));\n");
+  write(repo, 'README.md', '# greet\n\n`greet <name>`가 인사한다.\n');
+  git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'legacy: greet 1.2.0'], repo).status, 0);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  return repo;
+}
+test('adopt 탄생: 기존 코드 → intake 팩이 「저장소 상태: 코드 있음」을 받는다 → add adopt --kind adopt → adopt 팩(저장소 지도) → 특성화 테스트·commands·rules → ship(adopt 열) → 다음 feature unit. 소스·기존 테스트·매니페스트는 훅이 거부', { timeout: 120000 }, (t) => {
+  const repo = legacyRepo(t); if (!repo) return;
+  script('work', ['brief', '쓰던 도구 greet에 기능을 더한다. 지금 동작(greet <이름>)은 그대로. greet bye <이름>을 더한다.'], repo);
+  const ip = script('brief', ['intake'], repo);
+  assert.match(ip.out, /^PACK /, ip.out);
+  assert.match(fs.readFileSync(path.join(repo, ip.out.split(' ')[1]), 'utf8'), /## 저장소 상태[^\n]*\n코드 있음 — 추적 파일 5개\(팀 파일·docs 제외\) — 폴더별: \(루트\) 2 · bin\/ 1 · lib\/ 1 · test\/ 1 · 매니페스트 package\.json · 기존 테스트 1개/, 'intake가 boot/adopt를 가르는 사실을 스크립트가 센다');
+  assert.match(script('work', ['add', 'adopt', '지금 동작(greet <이름>)은 그대로', '--milestone', 'M1', '--accept', '현재 동작이 그대로고 quick·full이 PASS', '--kind', 'adopt'], repo).out, /^ADD adopt M1 needs=- kind=adopt/);
+  script('work', ['add', 'bye', 'greet bye <이름>을 더한다', '--milestone', 'M1', '--needs', 'adopt'], repo);
+  assert.match(script('work', ['scope', '--milestone', 'M1'], repo).out, /순서: adopt → bye/);
+  assert.match(script('work', ['seed'], repo).out, /^UNIT adopt adopt \.worktrees\/adopt\nADOPT — adopt 팩 하나로 끝난다/);
+  const wt = path.join(repo, '.worktrees', 'adopt');
+  assert.match(script('brief', ['spec', 'adopt'], repo).out, /^FAIL adopt unit\(adopt\)은 adopt 팩 하나로 끝난다/);
+  assert.match(script('brief', ['boot', 'adopt'], repo).out, /^FAIL boot 팩은 kind scaffold unit에만/);
+  const bp = script('brief', ['adopt', 'adopt'], repo);
+  assert.match(bp.out, /^PACK .*adopt-adopt-.* model=haiku/, bp.out);
+  const packText = fs.readFileSync(path.join(repo, bp.out.split(' ')[1]), 'utf8');
+  assert.match(packText, /## 팩: adopt[\s\S]*## 저장소 지도 — 스크립트가 센 것[\s\S]*추적 파일 5개[\s\S]*### package\.json \(앞 60줄\)[\s\S]*"bin": \{ "greet"[\s\S]*기존 테스트 1개: test\/greet\.test\.js[\s\S]*### README\.md \(앞 30줄\)[\s\S]*## 인수 한 줄/, '팩은 저장소를 통째로 읽지 않는다 — 스크립트가 센 지도만');
+  assert.ok(packText.includes('## BRIEF'), 'adopt는 boot처럼 BRIEF 전문을 진다');
+  // 경계: 소스·기존 테스트·매니페스트는 거부, 특성화 테스트·위생 파일은 허용 — 훅으로
+  const hook = (file) => spawnSync(process.execPath, [path.join(repo, '.claude/hooks/guard.mjs')], { cwd: repo, encoding: 'utf8', input: JSON.stringify({ tool_name: 'Write', tool_input: { file_path: path.join(wt, file) }, cwd: wt }), env: { ...ENV, CLAUDE_PROJECT_DIR: repo } }).stdout;
+  for (const f of ['lib/greet.js', 'bin/greet.js', 'test/greet.test.js', 'package.json', 'src/new.js']) assert.match(hook(f), /adopt 팩의 쓰기 경계 밖/, f);
+  for (const f of ['tests/unit/adopt-greet.test.mjs', 'tests/harness/run.mjs', '.gitattributes', '.gitignore', 'docs/units/adopt/notes.md']) assert.equal(hook(f), '', f);
+  // adopt 팩이 할 일을 테스트가 대신한다 — 소스는 그대로
+  write(wt, 'tests/unit/adopt-greet.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('특성화: greet Ada → hi Ada', () => { const r = spawnSync(process.execPath, ['bin/greet.js', 'Ada'], { encoding: 'utf8' }); assert.equal(r.status, 0); assert.equal(r.stdout.trim(), 'hi Ada'); });\ntest('특성화: 이름 없음 → hi there', () => { assert.equal(spawnSync(process.execPath, ['bin/greet.js'], { encoding: 'utf8' }).stdout.trim(), 'hi there'); });\n");
+  write(wt, '.gitattributes', '* text=auto eol=lf\n');
+  assert.match(script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test tests/unit/*.test.mjs test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install'], wt).out, /^COMMANDS /, 'commands는 adopt의 worktree에서도 열린다');
+  assert.match(script('work', ['rules', 'project=greet', 'one_line=인사 CLI'], wt).out, /^RULES CLAUDE\.md/);
+  git(['add', '-A'], wt);
+  assert.match(script('verify', ['quick'], wt).out, /^PASS verify:quick/);
+  assert.equal(git(['commit', '-q', '-m', 'adopt(adopt): node:test — 특성화 2\n\nUnit: adopt\nStep: 1'], wt).status, 0);
+  assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
+  assert.match(script('work', ['spawned', 'adopt', 'adopt'], repo).out, /^SPAWN adopt adopt/, 'conductor가 spawn 뒤 남기는 줄');
+  assert.match(script('next', [], repo).out, /^NEXT run node \.garagiste\/scripts\/ship\.mjs adopt — adopt가 끝났다/);
+  const ship = script('ship', ['adopt'], repo);
+  assert.match(ship.out, /^SHIPPED adopt [0-9a-f]{7}[\s\S]*TRY: 실행 `node bin\/greet\.js`/, ship.out);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| adopt \| [0-9a-f]{7} \| [0-9a-f]{7} \| PASS \| adopt \| — \| machine \|/);
+  assert.equal(fs.readFileSync(path.join(repo, 'lib/greet.js'), 'utf8'), "'use strict';\nmodule.exports = { greet: (n) => `hi ${n || 'there'}` };\n", '제품 코드는 그대로다');
+  assert.ok(fs.existsSync(path.join(repo, 'tests/unit/adopt-greet.test.mjs')) && fs.existsSync(path.join(repo, 'test/greet.test.js')), '특성화 테스트가 더해지고 기존 테스트는 남는다');
+  assert.match(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/team.json'), 'utf8')).commands.quick, /^node --test tests\/unit/);
+  assert.match(fs.readFileSync(path.join(repo, 'CLAUDE.md'), 'utf8'), /^# greet\n인사 CLI/);
+  assert.match(script('state', ['--brief'], repo).out, /^실행: node bin\/greet\.js · 안 본 것 0\/3/, 'adopt는 기계 증명 — 미검수에 세지 않는다');
+  assert.match(script('work', ['seed'], repo).out, /^UNIT bye spec/, 'adopt 뒤 기능 unit이 열린다 — 여기부터는 greenfield와 같은 생애');
+});
+test('adopt + conduct: 가짜 팩 adopt로 기존 코드의 첫 unit이 끝까지 — adopt → ship → REPORT → SCOPE DONE(exit 0)', { timeout: 120000 }, (t) => {
+  const repo = legacyRepo(t); if (!repo) return;
+  script('work', ['brief', '쓰던 도구 greet. 지금 동작은 그대로.'], repo);
+  script('work', ['add', 'adopt', '지금 동작은 그대로', '--milestone', 'M1', '--accept', '현재 동작이 그대로고 quick·full이 PASS', '--kind', 'adopt'], repo);
+  script('work', ['scope', '--milestone', 'M1'], repo);
+  const r = conduct(repo);
+  assert.equal(r.status, 0, r.out);
+  assert.match(r.out, /NEXT run node \.garagiste\/scripts\/work\.mjs seed[\s\S]*UNIT adopt adopt[\s\S]*NEXT run node \.garagiste\/scripts\/brief\.mjs adopt adopt[\s\S]*NEXT spawn adopt adopt[\s\S]*SPAWN adopt adopt haiku 1200 tok[\s\S]*NEXT run node \.garagiste\/scripts\/ship\.mjs adopt — adopt가 끝났다[\s\S]*SHIPPED adopt[\s\S]*REPORT docs\/REPORT\.md[\s\S]*STOP done [^\n]*SCOPE DONE/);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/REPORT.md'), 'utf8'), /adopt: 쓰던 명령이 그대로 도는가\(특성화\)/);
 });

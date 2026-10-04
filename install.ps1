@@ -27,7 +27,7 @@ else {
 }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Error "node가 없다 (20 이상)"; exit 1 }
 function Run([scriptblock]$b, [string]$what) { if ($DryRun) { Write-Host "  [dry] $what" } else { & $b } }
-$tiers = @{ low = @{intake="sonnet";spec="sonnet";build="haiku";attack="sonnet";spike="haiku";boot="haiku"}; medium = @{intake="opus";spec="opus";build="sonnet";attack="opus";spike="sonnet";boot="sonnet"}; high = @{intake="opus";spec="opus";build="opus";attack="opus";spike="sonnet";boot="sonnet"} }
+$tiers = @{ low = @{intake="sonnet";spec="sonnet";build="haiku";attack="sonnet";spike="haiku";boot="haiku";adopt="haiku"}; medium = @{intake="opus";spec="opus";build="sonnet";attack="opus";spike="sonnet";boot="sonnet";adopt="sonnet"}; high = @{intake="opus";spec="opus";build="opus";attack="opus";spike="sonnet";boot="sonnet";adopt="sonnet"} }
 if (-not $tiers.ContainsKey($Budget)) { $Budget = "medium" }; $M = $tiers[$Budget]
 Write-Host "GARAGISTE 증거 팀 [$Flavor] → $Root (budget: $Budget)"
 foreach ($d in ".garagiste\scripts", ".garagiste\packs", ".githooks") { Run { New-Item -ItemType Directory -Force -Path (Join-Path $Root $d) | Out-Null } "mkdir $d" }
@@ -44,9 +44,9 @@ if (-not (Test-Path $team)) {
 # 편성의 정본은 프로젝트의 team.json — 재설치의 -Budget이 기존 편성을 지우지 않는다(v1 재적용병의 백신)
 if (-not $DryRun -and (Test-Path $team)) {
   $t2 = (ReadText $team) | ConvertFrom-Json
-  if ($t2.models) { $M = @{ intake = $t2.models.intake; spec = $t2.models.spec; build = $t2.models.build; attack = $t2.models.attack; spike = $t2.models.spike; boot = $t2.models.boot } }
+  if ($t2.models) { $M = @{ intake = $t2.models.intake; spec = $t2.models.spec; build = $t2.models.build; attack = $t2.models.attack; spike = $t2.models.spike; boot = $t2.models.boot; adopt = $(if ($t2.models.adopt) { $t2.models.adopt } else { $t2.models.boot }) } }
 }
-function Sub($src, $dst) { WriteText $dst ((ReadText $src).Replace("{{MODEL_BOOT}}", $M.boot).Replace("{{MODEL_INTAKE}}", $M.intake).Replace("{{MODEL_SPEC}}", $M.spec).Replace("{{MODEL_BUILD}}", $M.build).Replace("{{MODEL_ATTACK}}", $M.attack).Replace("{{MODEL_SPIKE}}", $M.spike)) }
+function Sub($src, $dst) { WriteText $dst ((ReadText $src).Replace("{{MODEL_BOOT}}", $M.boot).Replace("{{MODEL_ADOPT}}", $M.adopt).Replace("{{MODEL_INTAKE}}", $M.intake).Replace("{{MODEL_SPEC}}", $M.spec).Replace("{{MODEL_BUILD}}", $M.build).Replace("{{MODEL_ATTACK}}", $M.attack).Replace("{{MODEL_SPIKE}}", $M.spike)) }
 if ($Flavor -eq "claude") {
   foreach ($d in ".claude\hooks", ".claude\agents") { Run { New-Item -ItemType Directory -Force -Path (Join-Path $Root $d) | Out-Null } "mkdir $d" }
   Run { Copy-Item "$Here\team\claude\hooks\*.mjs" (Join-Path $Root ".claude\hooks") -Force } "hooks"

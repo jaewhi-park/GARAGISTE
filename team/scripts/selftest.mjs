@@ -49,6 +49,8 @@ step('work add boot', () => script('work', ['add', 'boot', '터미널에서 hell
 step('work scope', () => script('work', ['scope', '--milestone', 'M1']), (r) => /^SCOPE/.test(r.out));
 step('work seed → boot worktree', () => script('work', ['seed']), (r) => /^UNIT boot boot/.test(r.out));
 const wt = path.join(tmp, '.worktrees', 'boot');
+// 드라이버까지 설치의 일부다(R&D 2026-10-04): next 한 걸음(brief boot)을 conduct가 그대로 실행하고 --once에서 멈춘다(exit 5) — 잠금·STATUS·원장 줄까지
+step('conduct --once (한 걸음: brief boot → STOP cap)', () => script('conduct', ['--once']), (r) => r.status === 5 && /^NEXT run .*brief\.mjs boot boot/m.test(r.out) && /STOP cap/.test(r.out) && !fs.existsSync(path.join(tmp, '.garagiste', 'session', 'conduct.json')));
 step('brief boot', () => script('brief', ['boot', 'boot']), (r) => /^PACK/.test(r.out));
 write('.worktrees/boot/src/cli.mjs', "process.stdout.write('hello\\n');\n");
 write('.worktrees/boot/tests/unit/smoke.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('entry starts', () => { assert.equal(spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }).status, 0); });\n");

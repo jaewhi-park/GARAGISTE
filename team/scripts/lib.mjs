@@ -317,5 +317,8 @@ function lawFromMain(metaUrl) {
   const run = spawnSync(process.execPath, [target, ...process.argv.slice(2)], { stdio: 'inherit' });
   process.exit(run.status ?? 1);
 }
+// conduct의 잠금·heartbeat — 한 저장소에 드라이버 하나(unit은 한 번에 하나). state.mjs가 「진행 중」에 읽는다.
+export const CONDUCT_LOCK = '.garagiste/session/conduct.json';
+export function pidAlive(pid) { try { process.kill(Number(pid), 0); return true; } catch (e) { return e && e.code === 'EPERM'; } }
 export function short(sha) { return (sha || '').slice(0, 7); }
 export function stamp() { return new Date().toISOString().replace(/[:.]/g, '-'); }

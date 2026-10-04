@@ -15,6 +15,7 @@ const write = (rel, text) => { fs.mkdirSync(path.dirname(path.join(wt, rel)), { 
 const commit = (msg) => { git(['add', '-A']); const v = script('verify', ['quick']); const c = git(['commit', '-q', '-m', msg]); return `${v.stdout.trim().split('\n')[0]} · commit ${c.status}`; };
 const emit = (result, extra = {}) => process.stdout.write(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, duration_ms: 3000, num_turns: 3, total_cost_usd: 0.01, usage: { input_tokens: tokens - 200, output_tokens: 200 }, result, ...extra }) + '\n');
 
+if (mode === 'hang') { setTimeout(() => { emit('늦게 끝났다'); process.exit(0); }, 20000); await new Promise(() => {}); } // 팩이 멈췄다 — conduct의 시간 상한이 끊는다
 if (mode === 'crash') { emit('팩이 죽었다', { is_error: true, subtype: 'error_during_execution' }); process.exit(1); }
 if (mode === 'idle') { emit(`${pack} ${slug}: 아무것도 하지 않았다`); process.exit(0); }
 const lines = [];
@@ -33,6 +34,13 @@ if (pack === 'spec') {
 } else if (pack === 'attack') {
   write(`tests/adversary/${slug}-1.test.mjs`, `import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }); assert.equal(r.stdout, 'hello\\n'); });\n`);
   lines.push(commit(`test(${slug}): adversary`), script('verify', ['attack', slug]).stdout.trim(), '테스트 1 · red 1 · 이름 없을 때 끝 공백');
+} else if (pack === 'adopt') {
+  // 기존 코드(bin/greet.js)의 현재 동작을 특성화 테스트로 — 소스는 건드리지 않는다
+  write('tests/unit/adopt-greet.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('특성화: greet Ada → hi Ada', () => { const r = spawnSync(process.execPath, ['bin/greet.js', 'Ada'], { encoding: 'utf8' }); assert.equal(r.status, 0); assert.equal(r.stdout.trim(), 'hi Ada'); });\n");
+  write('.gitattributes', '* text=auto eol=lf\n');
+  lines.push(script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test tests/unit/*.test.mjs test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install']).stdout.trim());
+  lines.push(script('work', ['rules', 'project=greet', 'one_line=인사 CLI']).stdout.trim());
+  lines.push(commit(`adopt(${slug}): node:test — 특성화 1\n\nUnit: ${slug}\nStep: 1`), script('verify', ['full']).stdout.trim().split('\n')[0], '특성화 테스트 1 · 명령 넷 · 질문 0');
 } else if (pack === 'boot') {
   write('package.json', '{ "name": "p", "type": "module", "private": true }\n');
   write('src/cli.mjs', "process.stdout.write('hello\\n');\n");
