@@ -20,6 +20,13 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
 
+### Added — 2026-10-04 R&D 10라운드(CEO 「10라운드 진행」): 갱신은 보이고 묻지 않는다 — 갱신 미리보기(Q11) · 배선 설정 드리프트 · --permission-prompts none (team/·install 변경 — 머지가 동결 16)
+- **측정**: 6~9라운드가 「기존 설치본은 install.sh 다시」를 요구했는데, 설치는 `.claude/settings.json`(opencode.json)을 **덮지 않는다**(사용자 병합 보호 — guard.mjs가 있으면 그대로). 그래서 6라운드의 Read 매처는 어느 옛 설치본에도 닿지 않았다 — 규칙이 조용히 안 드는 침묵사. 또 갱신이 무엇을 바꾸는지 보이는 길이 없었다(Q11 「diff를 보이는 명시적 갱신」).
+- **갱신 미리보기** `node <GARAGISTE>/team/scripts/doctor.mjs --diff <설치본>`(소스에서만 — 설치본의 doctor는 옛것일 수 있다): scripts·packs·githooks·훅·agents(model: 줄 무시)·플러그인을 파일 단위로 비교해 한 줄 — `UPGRADE a → b — 바뀌는 파일 n · 새 파일 n · 배선 설정 다름 n(덮지 않는다 — 병합) · 설치본에만 n(지우지 않는다): …` 또는 `UPGRADE 같은 판`. team.json·HAZARDS·규칙 파일은 비교 밖(프로젝트의 것). **두 설치기가 기존 설치본엔 복사 전에 이 줄을 보인다**(-DryRun 포함).
+- **배선 설정 드리프트**: 설치는 team의 settings.json(opencode.json)과 다르면 `.claude/settings.garagiste.json`(`opencode.garagiste.json`)에 두고 「team의 것과 다르다 → 비교해 합쳐라」(전엔 guard.mjs 없을 때만). doctor가 PreToolUse 매처에 Read가 없으면 짚는다 — 경고(FRESH_OK: 설치·ship·conduct를 막지 않는다 — L1 경고지 L0가 아니다).
+- **기본 spawner에 `--permission-prompts none`**: 무인엔 답할 사람이 없다 — 묻는 건 거부. 기본 host는 호스트 없는 `-p`에서 암묵이었다(2.1.289 --help). conduct check의 깃발 검사가 이 깃발도 본다.
+- 검사: e2e(설치 → 설치본 스크립트 수정·옛 팩·매처 수정 → --diff 한 줄 · -DryRun은 바꾸지 않고 보인다 · 재설치는 스크립트만 갱신하고 설정은 옆에 둔다 · doctor 경고) · unit(spawner argv · 깃발 샘플 · 설치기 패리티 표지 +4). 9라운드 머지 = **동결 15 `ed543665a5690395b768c68d833034dc869e1b45`**(PR #117). unit 117 · e2e 34 · field 23.
+
 ### Added — 2026-10-04 R&D 9라운드(CEO 「9라운드 진행」): 실전 첫 run의 마지막 벽 — 기본 spawner의 깃발이 설치된 claude에 없었다 (team/ 변경 — 머지가 동결 15)
 - **측정**: 이 정비 자리의 claude 2.1.289 `--help`에 **`--max-turns`가 없다**. 기본 spawner(`claude -p <팩> --agent <팩> --output-format json --permission-mode acceptEdits --max-turns 200`)는 첫 spawn마다 unknown option으로 죽고, 드라이버는 「팩이 두 번 비정상 종료」로 멈췄을 것(exit 4). 가짜 spawner로 돈 e2e 33개는 이걸 볼 수 없었다 — 깃발은 모델 없이도 `--help` 텍스트로 찍어 볼 수 있다.
 - **수리**: 기본 argv에서 `--max-turns` 제거. 팩 하나의 상한은 시간(`--pack-minutes`)과 **비용**으로 — CLI의 `--max-budget-usd`를 `team.json budgets.pack_usd_max`(기본 0=끔) · `--pack-usd D`로 건다(무인 안전벨트 넷째 — DEVICES 4.6). `{turns}`는 `--spawner` 템플릿 자리표시자로 남는다.

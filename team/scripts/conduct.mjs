@@ -70,7 +70,7 @@ export function spawnerCommand({ template, pack, slug, packPath, model, turns, p
     return /[|&;<>$`"'\\*?(){}[\]]/.test(cmd) ? { shell: cmd } : { argv: cmd.trim().split(/\s+/) };
   }
   // --max-turns는 claude 2.1.289에 없다(9라운드 측정) — 팩의 상한은 시간(--pack-minutes)과 비용(--max-budget-usd, team budgets.pack_usd_max)으로. {turns}는 템플릿용으로 남긴다.
-  return { argv: ['claude', '-p', packPath, '--agent', pack, '--output-format', 'json', '--permission-mode', 'acceptEdits', ...(packUsd > 0 ? ['--max-budget-usd', String(packUsd)] : [])] };
+  return { argv: ['claude', '-p', packPath, '--agent', pack, '--output-format', 'json', '--permission-mode', 'acceptEdits', '--permission-prompts', 'none', ...(packUsd > 0 ? ['--max-budget-usd', String(packUsd)] : [])] }; // prompts none(10라운드): 무인엔 답할 사람이 없다 — 묻는 건 거부(기본 host는 호스트 없는 -p에서 암묵이었다)
 }
 export function parseResult(stdout) {
   const raw = String(stdout || '');

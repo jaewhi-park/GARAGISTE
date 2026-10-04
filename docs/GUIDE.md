@@ -61,6 +61,7 @@ opencode는 기본 provider/model을 상속한다. 팩별로 바꾸려면 같은
 - **ship이 spike를 요구한다.** diff가 package.json·워크플로·설치기 등 boundary 파일을 건드렸다. spike 팩을 돌려 `docs/measurements/spike-<slug>.md`의 필수 행(wire·host·license·default·os·측정)을 채운다.
 - **STOP ceo … unit 토큰 상한.** 그 unit이 spawn 토큰을 상한(team.json `budgets.unit_tokens_max`, 기본 1M)만큼 썼다 — attack↔build 진동의 예산 장치. 계속이면 `node .garagiste/scripts/work.mjs budget <slug> 2000000`, 아니면 `work.mjs drop <slug> "<사유>"`.
 - **설치본이 어느 판인지.** `node .garagiste/scripts/doctor.mjs --version`이 GARAGISTE 커밋 sha·team/ tree·하네스를 말한다(2026-10-04부터 `.garagiste/VERSION`). 없으면 그 전 설치본 — `install.sh`를 다시 돌리면 갱신 커밋으로 적힌다(scripts·packs·훅·agents는 덮고 team.json·HAZARDS·규칙 파일은 남긴다).
+- **갱신(새 GARAGISTE 판을 설치본에).** 먼저 `node <GARAGISTE>/team/scripts/doctor.mjs --diff <설치본>` — 바뀌는 파일·배선 설정 다름·설치본에만 있는 파일을 한 줄로(설치기도 복사 전에 같은 줄을 보인다). 그 뒤 같은 `install.sh|ps1` — 스크립트·팩·훅·agents는 갱신되고 team.json·HAZARDS·CLAUDE.md는 보존된다. `.claude/settings.json`은 덮지 않는다 — team의 것과 다르면 `.claude/settings.garagiste.json`이 옆에 생기니 매처·allow·deny를 비교해 합친다(doctor가 빠진 Read 매처를 경고한다).
 - **에이전트가 경계 밖에 썼다.** 훅이 거부해야 정상이다. 거부 로그가 없는데 파일이 바뀌었으면 훅이 죽은 것이다 → doctor.
 
 ## 8. 무인으로 돌리기 — conduct.mjs (2026-10-04)
