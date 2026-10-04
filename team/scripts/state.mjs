@@ -73,6 +73,8 @@ export function render(c) {
     parts.push(`- **${u.slug}** — "${u.origin}"${humanNeeded(u, ledger, c.team) ? '' : ` · 기계 증명(공격 선발견 ${attackFound(ledger, u)}) — 상한에 세지 않는다, 마일스톤 끝에 써봐도 된다`}`, ...(tryMd ? tryMd.split('\n').slice(0, 6).map((l) => `  ${l}`) : [fallback]), `  → \`node .garagiste/scripts/work.mjs try ${u.slug}\`(main을 더럽히지 않는 사본 — 카드는 거기서) → \`node .garagiste/scripts/work.mjs tried ${u.slug} ok|fail "<말>"\``);
   }
   if (!shippedUnseen.length) parts.push('- 없음');
+  const evidenced = units.filter((u) => u.tried?.evidence?.length); // Q14(8라운드): CEO가 본 것이 파일로 남았다 — 말이 아니라 증거
+  parts.push('', '## 사람 증거', ...(evidenced.length ? evidenced.map((u) => `- ${u.slug}: ${u.tried.evidence.length} — ${u.tried.evidence.join(' ')}`) : ['- 없음 — work.mjs tried <slug> ok|fail "<메모>" --evidence <파일,…>(스크린샷·녹화·빌드)로 남긴다']));
   parts.push('', '## 정해 주세요', ...(questions.length ? questions : ['- 없음']));
   parts.push('', '## 팀이 정한 것 (뒤집으려면 한 마디)');
   const defaults = units.flatMap((u) => u.defaults.map((d) => `- ${u.slug}: ${d.text}`)).slice(-10);
@@ -107,7 +109,7 @@ export function reportText({ team, scope, units, ledger, ledgerMd = '', claims =
   const defaults = units.flatMap((u) => (u.defaults || []).map((d) => `- ${u.slug}: ${d.text}`));
   const run = team.commands.run || team.commands.quick || '—';
   const L = [`# 출하 보고 — ${order.join(' → ')}`, '', `실행: \`${run}\` · 출하 ${shipped.length}/${order.length} · 써볼 것 ${untried.length} · 결정 대기 ${open.length} · 팀이 정한 것 ${defaults.length} · 못 본 것 ${unsensed.length}`, '', '## 만든 것 — CEO의 말 그대로'];
-  for (const u of inScope) L.push(`- **${u.slug}** (${u.milestone || 'M?'}) — "${u.origin}" · ${u.state === 'shipped' ? `출하 ${(u.shipped || '').slice(0, 10)} · 공격 선발견 ${attackFound(ledger, u)} · ${u.tried ? `써봤다 ${u.tried.result}` : '안 써봄'}` : u.state}`);
+  for (const u of inScope) L.push(`- **${u.slug}** (${u.milestone || 'M?'}) — "${u.origin}" · ${u.state === 'shipped' ? `출하 ${(u.shipped || '').slice(0, 10)} · 공격 선발견 ${attackFound(ledger, u)} · ${u.tried ? `써봤다 ${u.tried.result}${u.tried.evidence?.length ? ` · 증거 ${u.tried.evidence.length}` : ''}` : '안 써봄'}` : u.state}`);
   L.push('', '## 기계가 증명한 것 — docs/LEDGER.md', '| unit | head | full | red 증명 | attack 선발견→red/총 | sensor |', '|---|---|---|---|---|---|');
   for (const u of shipped) { const c = row(u.slug); if (c) L.push(`| ${c[2]} | ${c[3]} | ${c[5]} | ${c[6]} | ${c[7]} | ${c[8]} |`); }
   L.push('', '## 팀이 정한 것 (뒤집으려면 한 마디)', ...(defaults.length ? defaults : ['- 없음']));

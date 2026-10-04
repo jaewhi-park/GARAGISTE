@@ -411,18 +411,22 @@ function setDefault(c, slug, text) {
   u.defaults.push({ text, at: new Date().toISOString() }); saveUnit(c.main, c.team, u);
   out(`DEFAULT ${slug}: ${text} — CEO가 한 마디로 뒤집는다`);
 }
-function tried(c, slug, result, note = '') {
+function tried(c, slug, result, note = '', flags = {}) {
   if (c.root !== c.main) fail('FAIL tried는 메인 저장소에서만 — 팩이 자기 unit을 검수하지 않는다(CEO 접점)');
-  if (!['ok', 'fail'].includes(result)) fail('사용법: work.mjs tried <slug> ok|fail ["메모"]');
+  if (!['ok', 'fail'].includes(result)) fail('사용법: work.mjs tried <slug> ok|fail ["메모"] [--evidence <파일,…>]');
+  const evidence = String(flags.evidence || '').split(',').map((s) => s.trim()).filter(Boolean);
+  for (const f of evidence) if (!fs.existsSync(f) || !fs.statSync(f).isFile()) fail(`FAIL tried ${slug}: 증거 파일 없음 — ${f} (스크린샷·녹화·빌드: 있는 파일의 경로를 쉼표로)`);
   const u = loadUnit(c.main, c.team, slug);
   if (u.state !== 'shipped') fail(`FAIL ${slug} 아직 출하 전(${u.state})`);
   // 사고 45(필드 벤치 넷): 말 없는 fail은 -fix의 원문을 「써봤는데 실패」로 비워 spec이 재현을 CEO에게 되물었다
   if (result === 'fail' && !note.trim()) fail(`FAIL tried ${slug} fail에는 CEO의 말이 있어야 한다 — 무엇이 달랐는지 그대로: node .garagiste/scripts/work.mjs tried ${slug} fail "<CEO 말 그대로>" (그 줄이 ${slug}-fix의 원문·재현이다)`);
-  u.tried = { result, note, at: new Date().toISOString() }; saveUnit(c.main, c.team, u);
+  const kept = evidence.length ? keepEvidence(c, slug, evidence) : []; // Q14(8라운드): CEO가 본 것이 파일로 — 원장의 증거
+  u.tried = { result, note, at: new Date().toISOString(), ...(kept.length ? { evidence: kept } : {}) }; saveUnit(c.main, c.team, u);
   touchCeo(c.main);
-  appendLedger(c.main, c.team, { kind: 'tried', slug, result, note });
+  appendLedger(c.main, c.team, { kind: 'tried', slug, result, note, ...(kept.length ? { evidence: kept } : {}) });
   const gone = removeTry(c, slug) ? ' · try 사본을 지웠다' : '';
-  if (result !== 'fail') return out(`PASS tried ${slug} ${result}${gone}`);
+  const ev = kept.length ? ` · 증거 ${kept.length} → ${c.team.paths.units_docs}/${slug}/evidence/` : '';
+  if (result !== 'fail') return out(`PASS tried ${slug} ${result}${ev}${gone}`);
   const fix = `${slug}-fix`;
   appendBacklog(c, backlogLine({ slug: fix, milestone: u.milestone, origin: note, accept: '-' }));
   // 사고 46: scope는 slug 목록이라 -fix가 범위 밖에 남았다 — CEO의 fail이 곧 「고쳐라」, 새 기능보다 먼저
@@ -431,12 +435,23 @@ function tried(c, slug, result, note = '') {
     writeJson(scopePath(c), { ...sc, requested: [fix, ...sc.requested.filter((s) => s !== fix)], order: [fix, ...sc.order.filter((s) => s !== fix)] });
     appendLedger(c.main, c.team, { kind: 'scope_fix', slug: fix, from: slug });
   }
-  out(`PASS tried ${slug} fail · ${fix}${sc ? '이 범위 맨 앞에 — 다음 seed가 연다' : ' BACKLOG에 — 범위는 work.mjs scope'}${gone}`);
+  out(`PASS tried ${slug} fail · ${fix}${sc ? '이 범위 맨 앞에 — 다음 seed가 연다' : ' BACKLOG에 — 범위는 work.mjs scope'}${ev}${gone}`);
 }
 // try 사본(L2 1일차 eoren.sqlite · 필드 벤치 웹 data/memos.json ×3): CEO가 메인 루트에서 친 try의 산출물이 main을 더럽혀 다음 ship이 「CEO가 치운다」로 막혔다.
 // 남은 파일을 찾아 지우면 CEO의 의도된 파일을 지울 수 있고 카드 작성 규칙은 제품마다 다르다 — 처음부터 main에 닿지 않게: main 현재 커밋을 버릴 checkout으로 열고 tried가 지운다.
 // 한계: 저장소 밖 부작용(홈·네트워크)은 범위 밖.
 const tryDir = (c, slug) => path.join(c.main, '.worktrees', `try-${slug}`);
+// Q14 사람-증거(R&D 8라운드 2026-10-04 — 윈도우 M1 관찰 「사람 확인 집계 1/9」): CEO가 본 것은 말이 아니라 파일로 남는다 — docs/units/<slug>/evidence/에 복사,
+// docs 차선(SHIP·WIP — models·commands 커밋과 같다)으로 커밋해 main을 더럽히지 않는다(첫 ship의 「미커밋 변경」 FAIL을 만들지 않게). 원장 tried 줄이 가리킨다.
+function keepEvidence(c, slug, files) {
+  const relDir = path.posix.join(c.team.paths.units_docs, slug, 'evidence');
+  const dir = path.join(c.main, relDir); fs.mkdirSync(dir, { recursive: true });
+  const rel = files.map((f) => { const name = path.basename(f); fs.copyFileSync(f, path.join(dir, name)); return path.posix.join(relDir, name); });
+  git(['add', '--', ...rel], c.main);
+  const cm = git(['commit', '-q', '-m', `docs(tried): ${slug} 증거 ${rel.length}`, '--', ...rel], c.main, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' });
+  if (cm.status && !/nothing to commit|nothing added/.test(`${cm.stdout}${cm.stderr}`)) fail(`FAIL tried ${slug} 증거 커밋: ${(cm.stderr || cm.stdout).split('\n')[0]}`);
+  return rel;
+}
 function removeTry(c, slug) {
   const dir = tryDir(c, slug);
   if (!fs.existsSync(dir)) return false;
@@ -557,7 +572,7 @@ function spawned(c, slug, pack, flags) {
 const BOOL_FLAGS = new Set(['forget', 'replace', 'hold']);
 // 사고 49(홀드아웃 — Go CLI): 원문·질문은 무엇으로든 시작한다 — `--min-size 1M처럼…`이 플래그로 먹혀 원문이 「M1」, 마일스톤이 M?가 됐다.
 // 명령마다 아는 플래그만 플래그, 한 낱말 플래그 꼴(--milestne)은 오타라 FAIL로(원문은 문장이다), 나머지는 원문.
-export const FLAGS = { add: ['milestone', 'needs', 'accept', 'kind', 'replace'], new: ['milestone', 'needs', 'accept', 'kind', 'from'], ask: ['for', 'hold', 'assumed'], drop: ['forget'], spawned: ['tokens', 'minutes', 'model', 'note'] };
+export const FLAGS = { add: ['milestone', 'needs', 'accept', 'kind', 'replace'], new: ['milestone', 'needs', 'accept', 'kind', 'from'], ask: ['for', 'hold', 'assumed'], drop: ['forget'], spawned: ['tokens', 'minutes', 'model', 'note'], tried: ['evidence'] };
 export function parseArgs(raw, cmd) {
   const flags = {}; const pos = []; const unknown = [];
   const known = FLAGS[cmd] || [];
@@ -596,7 +611,7 @@ function main() {
   if (cmd === 'decide') return decide(c, pos[0], pos[1]);
   if (cmd === 'default') return setDefault(c, pos[0], pos[1]);
   if (cmd === 'drop') return drop(c, pos[0], pos[1], flags);
-  if (cmd === 'tried') return tried(c, pos[0], pos[1], pos[2]);
+  if (cmd === 'tried') return tried(c, pos[0], pos[1], pos[2], flags);
   if (cmd === 'try') return tryCopy(c, pos[0]);
   if (cmd === 'budget') return budget(c, pos[0], pos[1]);
   if (cmd === 'list') return list(c);
@@ -606,5 +621,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt|refactor] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt|refactor] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] [--evidence <파일,…>] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();

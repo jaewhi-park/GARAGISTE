@@ -109,4 +109,4 @@ if [ "$DRY" = 0 ]; then
     (cd "$ROOT" && node .garagiste/scripts/selftest.mjs) || { echo "설치 FAIL — selftest. 위 단계 출력이 원인이다." >&2; exit 1; }
   fi
 fi
-echo "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot)이 스택·명령·스모크·규칙 파일을 채운다. 사람이 채울 파일은 없다."
+echo "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot — 기존 코드가 있으면 adopt)이 스택·명령·스모크·규칙 파일을 채운다. 사람이 채울 파일은 없다."

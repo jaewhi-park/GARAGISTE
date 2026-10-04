@@ -26,7 +26,7 @@ import { PACKS as CP_PACKS } from '../team/scripts/checkpoint.mjs';
 import { orphanOf, runChild, spawnerGap } from '../team/scripts/conduct.mjs';
 import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
-import { KINDS } from '../team/scripts/work.mjs';
+import { FLAGS, KINDS } from '../team/scripts/work.mjs';
 import { REFACTOR_NOTE } from '../team/scripts/brief.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
@@ -1333,4 +1333,17 @@ test('ship(7라운드): kind refactor의 redproof 조건은 refactor 줄의 pin_
   assert.deepEqual(KINDS, ['feature', 'scaffold', 'adopt', 'refactor', 'system']);
   for (const p of ['spec', 'build', 'attack']) assert.match(REFACTOR_NOTE[p]({ slug: 'r', acceptance: 'tests/acceptance', main: 'main' }), /refactor/);
   assert.match(REFACTOR_NOTE.spec({ slug: 'r', acceptance: 'tests/acceptance', main: 'main' }), /base\(main\)에서도 초록[\s\S]*tests\/acceptance\/r\*/);
+});
+// 8라운드(2026-10-04) — 두 설치기는 같은 일을 한다. pwsh가 없는 자리에선 실행 대신 표지로 본다(install.ps1이 1~2라운드의 VERSION·기존 저장소 커밋을 빠뜨린 채 CEO의 Windows에 갔다).
+test('install.sh ↔ install.ps1 정적 패리티: VERSION · 기존 저장소 커밋(설치/갱신 · 미커밋 변경 안내 · SHIP+WIP) · autocrlf · chmod · doctor --fresh · selftest · SkipSelftest · 배선 파일 · 모델 자리표시자 7', () => {
+  const sh = fs.readFileSync(new URL('../install.sh', import.meta.url), 'utf8'); const ps = fs.readFileSync(new URL('../install.ps1', import.meta.url), 'utf8');
+  const pairs = [['.garagiste/VERSION', '.garagiste\\VERSION'], ['"garagiste": "', '"garagiste": "'], ['갱신', '갱신'], ['같은 판', '같은 판'], ['설치 전에 미커밋 변경이 있었다', '설치 전에 미커밋 변경이 있었다'], ['GARAGISTE_SHIP=1 GARAGISTE_WIP=1', '$env:GARAGISTE_SHIP = "1"; $env:GARAGISTE_WIP = "1"'], ['증거 팀 설치 [', '증거 팀 설치 ['], ['core.autocrlf false', 'core.autocrlf false'], ['update-index --chmod=+x .githooks/pre-commit', 'update-index --chmod=+x .githooks/pre-commit'], ['doctor.mjs --fresh', 'doctor.mjs --fresh'], ['selftest.mjs', 'selftest.mjs'], ['SkipSelftest', 'SkipSelftest'], ['guard.ts', 'guard.ts'], ['HAZARDS.md', 'HAZARDS.md'], ['gitignore.snippet', 'gitignore.snippet'], ['core.hooksPath .githooks', 'core.hooksPath .githooks'], ['첫 커밋이 닫히지 않았다', '첫 커밋이 닫히지 않았다'], ['팀 파일 커밋이 닫히지 않았다', '팀 파일 커밋이 닫히지 않았다'], ['기존 코드가 있으면 adopt', '기존 코드가 있으면 adopt']];
+  for (const [a, b] of pairs) { assert.ok(sh.includes(a), `install.sh: ${a}`); assert.ok(ps.includes(b), `install.ps1: ${b}`); }
+  for (const m of ['BOOT', 'ADOPT', 'INTAKE', 'SPEC', 'BUILD', 'ATTACK', 'SPIKE']) { assert.ok(sh.includes(`{{MODEL_${m}}}`), `sh ${m}`); assert.ok(ps.includes(`{{MODEL_${m}}}`), `ps1 ${m}`); }
+  assert.ok(/-SkipSelftest/.test(sh) && /\[switch\]\$SkipSelftest/.test(ps));
+});
+test('state(8라운드): tried의 증거가 REPORT 줄에 「증거 n」으로 · FLAGS.tried에 evidence', () => {
+  const text = reportText({ team: { commands: { run: 'x' }, paths: {} }, scope: { order: ['a'] }, units: [{ slug: 'a', state: 'shipped', milestone: 'M1', origin: 'o', kind: 'feature', shipped: '2026-10-04T00:00:00Z', tried: { result: 'ok', note: '', evidence: ['docs/units/a/evidence/s.png'] }, defaults: [] }], ledger: [] });
+  assert.match(text, /써봤다 ok · 증거 1/);
+  assert.deepEqual(FLAGS.tried, ['evidence']);
 });

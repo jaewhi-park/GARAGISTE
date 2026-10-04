@@ -1,5 +1,5 @@
 ﻿# GARAGISTE 증거 팀 설치 (Windows PowerShell) — 팀 정본을 <repo>/.garagiste/로, 하네스 배선을 .claude/ 또는 opencode.json + .opencode/로.
-# Usage: .\install.ps1 <claude|opencode> [-Project <path>] [-Budget low|medium|high] [-DryRun]
+# Usage: .\install.ps1 <claude|opencode> [-Project <path>] [-Budget low|medium|high] [-DryRun] [-SkipSelftest]
 param([Parameter(Position=0)][string]$Flavor = "", [string]$Project = ".", [string]$Budget = "medium", [switch]$DryRun, [switch]$SkipSelftest)
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -25,6 +25,11 @@ else {
   if ($init.Code -ne 0) { Write-Host "git init 실패: $($init.Out)"; exit 1 }
   $Root = (Resolve-Path $Project).Path; Write-Host "git init: $Root"
 }
+# 설치 전 상태(사고 70 — 기존 저장소): HEAD가 있었나 · 더러웠나 · 이미 설치돼 있었나 — 설치가 남긴 팀 파일을 커밋할지 가른다(install.sh와 같다)
+$PreHead = $false; $PreDirty = $false; $PreInstalled = (Test-Path (Join-Path $Root ".garagiste\team.json"))
+$h0 = Invoke-Git -C $Root rev-parse --verify -q HEAD
+if ($h0.Code -eq 0) { $PreHead = $true; $st0 = Invoke-Git -C $Root status --porcelain; if ($st0.Out.Trim()) { $PreDirty = $true } }
+function Short7([string]$s) { if ($s.Length -gt 7) { $s.Substring(0, 7) } else { $s } }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Error "node가 없다 (20 이상)"; exit 1 }
 function Run([scriptblock]$b, [string]$what) { if ($DryRun) { Write-Host "  [dry] $what" } else { & $b } }
 $tiers = @{ low = @{intake="sonnet";spec="sonnet";build="haiku";attack="sonnet";spike="haiku";boot="haiku";adopt="haiku"}; medium = @{intake="opus";spec="opus";build="sonnet";attack="opus";spike="sonnet";boot="sonnet";adopt="sonnet"}; high = @{intake="opus";spec="opus";build="opus";attack="opus";spike="sonnet";boot="sonnet";adopt="sonnet"} }
@@ -36,6 +41,12 @@ Run { Copy-Item "$Here\team\packs\*.md" (Join-Path $Root ".garagiste\packs") -Fo
 Run { Copy-Item "$Here\team\githooks\pre-commit" (Join-Path $Root ".githooks\pre-commit") -Force } "pre-commit"
 if (-not $DryRun) { $h = Invoke-Git -C $Root rev-parse --verify -q HEAD; if ($h.Code -eq 0) { Invoke-Git -C $Root add .githooks/pre-commit | Out-Null; Invoke-Git -C $Root update-index --chmod=+x .githooks/pre-commit | Out-Null } }
 if (-not (Test-Path (Join-Path $Root ".garagiste\HAZARDS.md"))) { Run { Copy-Item "$Here\team\HAZARDS.md" (Join-Path $Root ".garagiste\HAZARDS.md") } "HAZARDS" }
+# 설치본의 판(L3 Q11): 어느 GARAGISTE 커밋의 team/인가 — 날짜는 적지 않는다(같은 판의 재설치가 diff를 만들지 않게; 날짜는 커밋이 안다)
+$VersionFile = Join-Path $Root ".garagiste\VERSION"
+$PrevSha = ""; if (Test-Path $VersionFile) { try { $PrevSha = [string](((ReadText $VersionFile) | ConvertFrom-Json).garagiste) } catch { $PrevSha = "" } }
+$g1 = Invoke-Git -C $Here rev-parse HEAD; $GSha = $(if ($g1.Code -eq 0 -and $g1.Out) { $g1.Out.Trim() } else { "unknown" })
+$g2 = Invoke-Git -C $Here rev-parse "HEAD:team"; $GTree = $(if ($g2.Code -eq 0 -and $g2.Out) { $g2.Out.Trim() } else { "unknown" })
+Run { WriteText $VersionFile ('{ "garagiste": "' + $GSha + '", "team_tree": "' + $GTree + '", "flavor": "' + $Flavor + '" }' + "`n") } "VERSION"
 $team = Join-Path $Root ".garagiste\team.json"
 if (-not (Test-Path $team)) {
   Run { Copy-Item "$Here\team\team.json" $team } "team.json"
@@ -73,16 +84,31 @@ if (-not ((ReadText $gi) -match "GARAGISTE")) { Run { WriteText $gi ((ReadText $
 Run { Invoke-Git -C $Root config core.hooksPath .githooks | Out-Null } "core.hooksPath"
 Run { Invoke-Git -C $Root config core.autocrlf false | Out-Null } "core.autocrlf false" # 게이트 tree 동일성 — 전역 autocrlf의 유령 diff 차단(사고 18)
 if (-not $DryRun) {
+  $ident = @(); if ((Invoke-Git -C $Root config user.name).Code -ne 0) { $ident += @("-c", "user.name=garagiste", "-c", "user.email=garagiste@local") }
   $head = Invoke-Git -C $Root rev-parse --verify -q HEAD
   if ($head.Code -ne 0) {
+    # 첫 커밋이 없으면 설치기가 만든다(첫 커밋은 원장이 있을 수 없어 게이트가 통과시킨다) — 그 뒤 main에 닿는 것은 ship.mjs뿐
     Invoke-Git -C $Root add -A | Out-Null
     Invoke-Git -C $Root update-index --chmod=+x .githooks/pre-commit | Out-Null   # NTFS엔 실행 비트가 없다 — 인덱스에 100755로 기록해야 맥·리눅스에서 훅이 돈다
     $env:GARAGISTE_SHIP = "1"
-    $ident = @(); if ((Invoke-Git -C $Root config user.name).Code -ne 0) { $ident += @("-c", "user.name=garagiste", "-c", "user.email=garagiste@local") }
-    $commit = Invoke-Git -C $Root @ident commit -q -m "scaffold(team): GARAGISTE install [$Flavor, budget $Budget]"
+    $commit = Invoke-Git -C $Root @ident commit -q -m "scaffold(team): GARAGISTE 증거 팀 설치 [$Flavor, budget $Budget]"
     Remove-Item Env:GARAGISTE_SHIP -ErrorAction SilentlyContinue
     # 사고 19: 첫 커밋 실패를 경고로 삼키면 '전부 스테이징된 채 HEAD 어긋남'으로 설치 성공을 선언한다 — fail-closed
     if ($commit.Code -eq 0) { Write-Host "  첫 커밋: 팀 파일" } else { Write-Host "설치 FAIL — 첫 커밋이 닫히지 않았다:`n$($commit.Out)"; exit 1 }
+  } elseif ($PreHead -and (Invoke-Git -C $Root status --porcelain).Out.Trim()) {
+    # 사고 70(기존 저장소): 설치 전에 깨끗했으면 설치가 남긴 것은 전부 팀 파일이다 — 생성물 차선(SHIP·WIP)으로 커밋. 더러웠으면 사람의 것과 섞이니 손대지 않는다.
+    if ($PreDirty) {
+      Write-Host "  팀 파일은 커밋하지 않았다 — 설치 전에 미커밋 변경이 있었다. 정리한 뒤 git add -A 하고 GARAGISTE_SHIP=1 GARAGISTE_WIP=1 환경으로 커밋하라(규칙집·배선은 생성물 차선 — 첫 ship은 main이 깨끗해야 한다)"
+    } else {
+      $What = "설치"
+      if ($PreInstalled) { if ($PrevSha -and $PrevSha -ne $GSha) { $What = "갱신 $(Short7 $PrevSha)→$(Short7 $GSha)" } else { $What = "갱신(같은 판 $(Short7 $GSha))" } }
+      Invoke-Git -C $Root add -A | Out-Null
+      Invoke-Git -C $Root update-index --chmod=+x .githooks/pre-commit | Out-Null
+      $env:GARAGISTE_SHIP = "1"; $env:GARAGISTE_WIP = "1"
+      $commit = Invoke-Git -C $Root @ident commit -q -m "scaffold(team): GARAGISTE 증거 팀 $What [$Flavor, budget $Budget]"
+      Remove-Item Env:GARAGISTE_SHIP -ErrorAction SilentlyContinue; Remove-Item Env:GARAGISTE_WIP -ErrorAction SilentlyContinue
+      if ($commit.Code -eq 0) { Write-Host "  팀 파일 커밋($What — 기존 저장소, 생성물 차선)" } else { Write-Host "설치 FAIL — 팀 파일 커밋이 닫히지 않았다:`n$($commit.Out)"; exit 1 }
+    }
   }
 }
 Write-Host "---"
@@ -96,4 +122,4 @@ if (-not $DryRun) {
   if ($doc -ne 0) { Write-Host "설치 FAIL — 위 doctor 줄이 이유다. 고치고 다시 설치하라."; exit 1 }
   if ($st -ne 0) { Write-Host "설치 FAIL — selftest. 위 단계 출력이 원인이다."; exit 1 }
 }
-Write-Host "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot)이 스택·명령·스모크·규칙 파일을 채운다."
+Write-Host "다음: 이 폴더에서 세션을 열고(claude) 만들 것을 말하라. 첫 unit(boot — 기존 코드가 있으면 adopt)이 스택·명령·스모크·규칙 파일을 채운다. 사람이 채울 파일은 없다."
