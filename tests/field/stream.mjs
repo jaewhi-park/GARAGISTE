@@ -126,7 +126,7 @@ function run(dir, tag, planPath) {
   let { plan, mtime: planMtime } = loadPlan(planPath);
   const since = new Date().toISOString();
   if (!fs.existsSync(F.in)) fs.writeFileSync(F.in, '');
-  const child = spawn('claude', ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--max-turns', '400'],
+  const child = spawn('claude', ['-p', '--input-format', 'stream-json', '--output-format', 'stream-json', '--verbose', '--permission-mode', 'acceptEdits', '--permission-prompts', 'none'],
     { cwd: dir, env: childEnv(process.env), stdio: ['pipe', 'pipe', 'pipe'] });
   const sent = Object.fromEntries(readLines(F.msgs).filter((m) => m.id !== 'say').map((m) => [m.id, m]));
   const known = backlogSlugs(dir); // 띄울 때의 BACKLOG — 그 밖의 slug는 낮에 생긴 unit(texts['*new'])

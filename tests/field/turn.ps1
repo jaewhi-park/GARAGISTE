@@ -11,7 +11,7 @@ $env:GIT_AUTHOR_NAME = "ceo"; $env:GIT_AUTHOR_EMAIL = "ceo@field"; $env:GIT_COMM
 # 부모 세션의 CLAUDE* 변수가 새면 세션이 합쳐진다 — 인증에 필요한 것만 두고 걷는다(turn.sh와 같은 목록)
 $Keep = @('CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST', 'CLAUDE_CODE_PROXY_RESOLVES_HOSTS', 'CLAUDE_SESSION_INGRESS_TOKEN_FILE', 'CLAUDE_CODE_ACCOUNT_UUID', 'CLAUDE_CODE_ORGANIZATION_UUID', 'CLAUDE_CODE_USER_EMAIL')
 Get-ChildItem Env: | Where-Object { $_.Name -match '^(CLAUDE[A-Z_]*|CLAUDECODE)$' -and ($Keep -notcontains $_.Name) } | ForEach-Object { Remove-Item ("Env:" + $_.Name) }
-$CliArgs = @('-p', $Msg, '--output-format', 'json', '--max-turns', '400'); if ($Sid) { $CliArgs += @('--resume', $Sid) }
+$CliArgs = @('-p', $Msg, '--output-format', 'json', '--permission-mode', 'acceptEdits', '--permission-prompts', 'none'); if ($Sid) { $CliArgs += @('--resume', $Sid) }
 Push-Location $Dir
 try {
   $prev = $ErrorActionPreference; $ErrorActionPreference = 'Continue'   # claude의 stderr가 예외가 되지 않게
