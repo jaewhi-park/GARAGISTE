@@ -93,5 +93,6 @@
     "human_os": []
   },
   "require_attack": true,
+  "ship_reverify": true,
   "system_attack": true
 }
