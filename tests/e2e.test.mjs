@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 // 사고 18(원격 클론 검증): URL.pathname은 win32에서 /C:/… 를 내놓아 경로가 깨진다 — fileURLToPath가 정본
@@ -87,7 +87,7 @@ test('탄생 시험: 한 마디 → red 주장 → green → 공격 → 7조건 
   write(wt, 'tests/acceptance/hello.test.mjs', `// @claim 이름을 주면 "hello <이름>"을 출력한다
 // @milestone M1
 // @sensor machine@linux
-import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';
+import test from 'node:test'; import assert from 'node:assert/strict'; import { spawn, spawnSync } from 'node:child_process';
 test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 'Ada'], { encoding: 'utf8' }); assert.equal(r.status, 0); assert.equal(r.stdout.trim(), 'hello Ada'); });
 `);
   write(wt, 'docs/units/hello/try.md', '명령: `node src/cli.mjs Ada`\n기대: `hello Ada`\n');
@@ -131,7 +131,7 @@ test('hello Ada', () => { const r = spawnSync(process.execPath, ['src/cli.mjs', 
   assert.match(script('brief', ['attack', 'hello'], repo).out, /^PACK .*model=sonnet/);
   assert.match(nx(), /^NEXT spawn attack hello /);
   assert.match(script('work', ['spawned', 'hello', 'attack'], repo).out, /^SPAWN hello attack/);
-  write(wt, 'tests/adversary/hello-1.test.mjs', `import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';
+  write(wt, 'tests/adversary/hello-1.test.mjs', `import test from 'node:test'; import assert from 'node:assert/strict'; import { spawn, spawnSync } from 'node:child_process';
 test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }); assert.equal(r.stdout, 'hello\\n'); });
 `);
   assert.match(script('verify', ['attack', 'hello'], repo).out, /^ATTACK hello red 1\/1/, '사고 9: attack도 메인에서 불러도 worktree가 뿌리');
@@ -832,7 +832,7 @@ test('빈 폴더 → install 한 줄 → 첫 커밋 자동 → boot unit이 스�
   write(wt, 'package.json', '{ "name": "memo", "type": "module", "private": true }\n');
   write(wt, '.node-version', '22\n');
   write(wt, 'src/cli.mjs', "process.stdout.write('memo 0.0.0\\n');\n");
-  write(wt, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('진입점이 뜬다', () => { assert.equal(spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }).status, 0); });\n");
+  write(wt, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawn, spawnSync } from 'node:child_process';\ntest('진입점이 뜬다', () => { assert.equal(spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }).status, 0); });\n");
   assert.match(script('work', ['commands', 'quick=node --test "tests/unit/**/*.test.mjs"', 'full=node --test "tests/**/*.test.mjs"', 'test_file=node --test {file}', 'run=node src/cli.mjs', `setup=node -e "require('fs').writeFileSync('.garagiste/session/setup-ran','x')"`], wt).out, /^COMMANDS quick=/); // 마커는 gitignore된 session/ 안 — 실전의 setup 산출물(node_modules)처럼 main을 더럽히지 않는다
   assert.match(script('work', ['rules', 'project=memo', 'one_line=터미널 메모 도구'], wt).out, /^RULES CLAUDE\.md 자리 전부 채움/);
   assert.match(fs.readFileSync(path.join(wt, 'CLAUDE.md'), 'utf8'), /^# memo\n터미널 메모 도구\n[\s\S]*- quick: node --test/);
@@ -1201,7 +1201,7 @@ test('adopt 탄생: 기존 코드 → intake 팩이 「저장소 상태: 코드 
   for (const f of ['lib/greet.js', 'bin/greet.js', 'test/greet.test.js', 'package.json', 'src/new.js']) assert.match(hook(f), /adopt 팩의 쓰기 경계 밖/, f);
   for (const f of ['tests/unit/adopt-greet.test.mjs', 'tests/harness/run.mjs', '.gitattributes', '.gitignore', 'docs/units/adopt/notes.md']) assert.equal(hook(f), '', f);
   // adopt 팩이 할 일을 테스트가 대신한다 — 소스는 그대로
-  write(wt, 'tests/unit/adopt-greet.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('특성화: greet Ada → hi Ada', () => { const r = spawnSync(process.execPath, ['bin/greet.js', 'Ada'], { encoding: 'utf8' }); assert.equal(r.status, 0); assert.equal(r.stdout.trim(), 'hi Ada'); });\ntest('특성화: 이름 없음 → hi there', () => { assert.equal(spawnSync(process.execPath, ['bin/greet.js'], { encoding: 'utf8' }).stdout.trim(), 'hi there'); });\n");
+  write(wt, 'tests/unit/adopt-greet.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawn, spawnSync } from 'node:child_process';\ntest('특성화: greet Ada → hi Ada', () => { const r = spawnSync(process.execPath, ['bin/greet.js', 'Ada'], { encoding: 'utf8' }); assert.equal(r.status, 0); assert.equal(r.stdout.trim(), 'hi Ada'); });\ntest('특성화: 이름 없음 → hi there', () => { assert.equal(spawnSync(process.execPath, ['bin/greet.js'], { encoding: 'utf8' }).stdout.trim(), 'hi there'); });\n");
   write(wt, '.gitattributes', '* text=auto eol=lf\n');
   assert.match(script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test tests/unit/*.test.mjs test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install'], wt).out, /^COMMANDS /, 'commands는 adopt의 worktree에서도 열린다');
   assert.match(script('work', ['rules', 'project=greet', 'one_line=인사 CLI'], wt).out, /^RULES CLAUDE\.md/);
@@ -1329,7 +1329,7 @@ const DRIVER = [
   "const { Guard } = await import(pathToFileURL(path.join(repo, '.opencode/plugins/guard.ts')).href);",
   "const { decide, makeCtx } = await import(pathToFileURL(path.join(repo, '.garagiste/scripts/guard-rules.mjs')).href);",
   'const hooks = await Guard({ directory: repo });',
-  "const MAP = { bash: 'Bash', edit: 'Edit', write: 'Write', patch: 'Edit', multiedit: 'MultiEdit' };",
+  "const MAP = { bash: 'Bash', edit: 'Edit', write: 'Write', patch: 'Edit', multiedit: 'MultiEdit', read: 'Read' };",
   'const out = []; let n = 0;',
   "for (const c of JSON.parse(fs.readFileSync(casesPath, 'utf8'))) {",
   "  const callID = 'c' + (++n); let plugin = null;",
@@ -1364,6 +1364,8 @@ test('opencode 가드 플러그인(실행): 원장·규칙집·배선 쓰기 · 
     { name: 'bash read ledger', deny: false, tool: 'bash', args: { command: 'grep -c ship .garagiste/ledger/evidence.jsonl' } },
     { name: 'write temp outside', deny: false, tool: 'write', args: { filePath: path.join(other, 'fixture.json'), content: '{}' } },
     { name: 'read tool', deny: false, tool: 'read', args: { filePath: ledger } },
+    { name: 'read secret', deny: true, tool: 'read', args: { filePath: path.join(repo, '.env') } }, // 6라운드: 읽기는 경계가 아니다 — 비밀만
+    { name: 'bash cat secret', deny: true, tool: 'bash', args: { command: 'cat .env' } },
     { name: 'task build', deny: false, tool: 'task', args: { description: 'build', prompt: '.garagiste/session/packs/x.md', subagent_type: 'build' } },
   ];
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-driver-'));
@@ -1381,4 +1383,40 @@ test('opencode 가드 플러그인(실행): 원장·규칙집·배선 쓰기 · 
   const L = ledgerOf(repo);
   assert.equal(L.filter((e) => e.kind === 'guard').length, cases.filter((c) => c.deny).length, '거부마다 원장 guard 줄');
   assert.ok(L.some((e) => e.kind === 'spawn_stop' && e.pack === 'build'), 'task가 끝나면 spawn_stop에 팩 이름 — Claude SubagentStop(agent_type)과 같은 꼴');
+});
+// 6라운드(2026-10-04) — 고아 팩 측정: 드라이버를 SIGKILL하면 팩은 산다(spawnSync 시절엔 다음 드라이버가 죽은 잠금을 갈아 끼우고 같은 unit의 팩을 또 띄웠다 — 둘이 한 worktree에).
+// 비동기 spawn + 잠금의 child pid로 다음 conduct·check·STATUS가 「팩이 아직 돈다」로 서고, 팩이 끝나면(여기선 끊는다) 이어서 돈다. 드라이버의 SIGTERM은 팩에 넘기고 잠금을 정리한다.
+test('conduct 안전벨트(6라운드): 드라이버가 죽어도 팩은 산다 — 잠금의 child pid로 다음 conduct·check·STATUS가 「고아 팩」으로 서고, 팩이 끝나면 이어서 돈다 · SIGTERM은 팩에 넘기고 잠금 정리·원장 stop signal', { timeout: 120000 }, async (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const lockPath = path.join(repo, '.garagiste/session/conduct.json');
+  const start = () => { const d = spawn(process.execPath, [path.join(repo, '.garagiste/scripts/conduct.mjs'), '--spawner', `node ${FAKE}`, '--max-steps', '3'], { cwd: repo, env: { ...ENV, GARAGISTE_FAKE_MODE: 'hang' }, stdio: ['ignore', 'pipe', 'pipe'] }); d.stdout.resume(); d.stderr.resume(); return d; };
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const readLock = () => (fs.existsSync(lockPath) ? JSON.parse(fs.readFileSync(lockPath, 'utf8')) : null);
+  const waitLock = async (pred) => { for (let i = 0; i < 150; i++) { const l = readLock(); if (l && pred(l)) return l; await sleep(200); } throw new Error('잠금 대기 초과: ' + JSON.stringify(readLock())); };
+  const alive = (pid) => { try { process.kill(pid, 0); return true; } catch (e) { return e.code === 'EPERM'; } };
+  // 1) 드라이버 SIGKILL — 팩(가짜, hang 20초)은 산다 → 다음 드라이버·check·STATUS가 선다
+  const d1 = start();
+  const lock = await waitLock((l) => l.step === 'spawn' && l.child);
+  assert.equal(lock.pid, d1.pid); assert.ok(alive(lock.child), '팩 pid가 잠금에, 살아 있다');
+  d1.kill('SIGKILL'); await new Promise((r) => d1.once('close', r));
+  assert.ok(alive(lock.child), '드라이버가 죽어도 팩은 산다 — 고아');
+  const again = conduct(repo, ['--max-steps', '1']);
+  assert.equal(again.status, 1, again.out);
+  assert.match(again.out, new RegExp(`^FAIL conduct: 앞 드라이버\\(pid ${d1.pid}\\)는 죽었는데 그 팩 프로세스\\(pid ${lock.child} · hello spec\\)가 아직 돈다 — 끝나길 기다리거나 kill ${lock.child} 뒤 다시`));
+  assert.match(script('conduct', ['check', '--spawner', 'x'], repo).out, /^FAIL conduct check 1\n- 고아 팩 — 앞 드라이버\(pid \d+\)는 죽었는데/);
+  script('state', [], repo);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /- conduct는 죽었는데 팩 프로세스가 돈다\(고아 팩\) — pid \d+ · hello spec · 끝나길 기다리거나 kill \d+ 뒤 conduct/);
+  // 2) 팩이 끝나면 이어서 돈다
+  process.kill(lock.child, 'SIGKILL'); for (let i = 0; i < 50 && alive(lock.child); i++) await sleep(100);
+  const resume = conduct(repo, ['--max-steps', '1']);
+  assert.equal(resume.status, 5, resume.out);
+  // 3) SIGTERM은 팩에 넘긴다 — 종료 코드 cap(5), 잠금 정리, 원장 conduct stop signal, 팩 죽음
+  const d2 = start();
+  const lock2 = await waitLock((l) => l.step === 'spawn' && l.child && l.pid === d2.pid);
+  d2.kill('SIGTERM'); const code = await new Promise((r) => d2.once('close', r));
+  assert.equal(code, 5, 'signal 멈춤은 cap(5) — 다시 돌리면 이어서');
+  for (let i = 0; i < 50 && alive(lock2.child); i++) await sleep(100);
+  assert.ok(!alive(lock2.child), '팩에 SIGTERM이 전달됐다');
+  assert.ok(!fs.existsSync(lockPath), '잠금 정리');
+  assert.ok(ledgerOf(repo).some((e) => e.kind === 'conduct' && e.event === 'stop' && e.stop === 'signal' && /SIGTERM — 팩\(pid \d+\)에 SIGTERM/.test(e.text)), '원장 stop signal');
 });

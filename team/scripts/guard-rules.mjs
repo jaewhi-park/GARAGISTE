@@ -7,7 +7,19 @@ const GIT = String.raw`\bgit(?:\s+(?:-C|-c)\s+\S+|\s+--(?:git-dir|work-tree|name
 const DESTRUCTIVE = new RegExp(GIT + String.raw`(reset\s+--hard|clean\s+-\S*f|checkout\s+--\s+\.|stash\b|rebase\b|merge\b|branch\s+-D|push\s+(\S+\s+)?(-f\b|--force)|push\s+\S+\s+(main|master)\b|commit\s+(.*\s)?(--no-verify|-n)\b)`);
 // 명령 한 번짜리 훅 경로 변경은 커밋 게이트(.githooks)를 끈다 — --no-verify와 같은 우회다
 const HOOK_BYPASS = /\bgit\b[^;&|\n]*\s-c\s+core\.hookspath\s*=/i;
-const SECRET = /(^|[\\/])\.env(\.|$)|\.pem$|\.key$|credentials\.json$/i;
+const SECRET = /(^|[\\/])\.env(\.(?!example$|sample$|template$|dist$)[^\\/]*)?$|\.(pem|key|p12|pfx)$|(^|[\\/])(credentials\.json|\.netrc|id_rsa|id_ed25519|id_ecdsa)$/i;
+// 비밀 파일은 읽기도 경계다(6라운드 2026-10-04, 측정: 규칙 문구는 「읽지도 쓰지도」였는데 파일 도구의 쓰기만 막았다 — cat .env·Read 도구가 통과했다).
+// 명령의 토큰(따옴표·=·리다이렉트·괄호 경계로 자른 것) 중 비밀 경로 꼴이 하나라도 있으면 거부 — 읽기 verb를 가리지 않는다(source·python open·base64…). echo·printf의 인자는 파일이 아니다(`echo .env >> .gitignore`).
+export function secretTargets(command) {
+  const out = [];
+  for (const part of String(command || '').split(/[;|&\n]+/)) {
+    const words = part.trim().split(/\s+/);
+    if (/^(echo|printf)$/.test(words[0] || '')) continue;
+    for (const t of part.split(/[\s'"`;|&<>()=,]+/)) if (t && SECRET.test(t.replace(/^\.\//, ''))) out.push(t);
+  }
+  return out;
+}
+const SECRET_WHY = (p) => `비밀 파일(${p})은 읽지도 쓰지도 않는다 — .env·*.pem·*.key·credentials·id_rsa: 값이 필요하면 CEO가 환경변수로 준다(.env.example은 자유).`;
 // 규칙집 = 팀 정본(.garagiste) + 하네스 배선(.claude settings·hooks·agents / opencode.json·.opencode agents·plugins / .githooks)
 const RULEBOOK = /(^|[\\/])(\.garagiste[\\/](team\.json|HAZARDS\.md|VERSION|scripts[\\/]|packs[\\/]|ledger[\\/]|units[\\/])|\.claude[\\/](settings\.json|hooks[\\/]|agents[\\/])|opencode\.json|\.opencode[\\/](agents|plugins)[\\/]|\.githooks[\\/])/;
 // 원장·unit 상태 — 향하는 쓰기만 거부한다(L2 1일차: 같은 줄의 sed -n·2>/dev/null까지 쓰기로 읽어 conductor의 표 산출이 막혔다 — 규칙집 읽기 오탐과 같은 수리)
@@ -168,6 +180,8 @@ export function decide(input, ctx) {
   if (tool === 'Bash' || tool === 'PowerShell') {
     const c = expandAssignments(expandTemp(String(ti.command || ''), ctx.env)); // 사고 67: 같은 명령의 단순 대입($W=…)을 먼저 푼다 · 임시 폴더 표현(mktemp·TMPDIR)은 그 전에
     const cq = stripQuoted(c); // 쓰기·파괴 판정은 따옴표 밖 텍스트로만
+    const secrets = secretTargets(c); // 비밀 경로는 따옴표 안이어도 경로다
+    if (secrets.length) return SECRET_WHY(secrets[0]);
     if (DESTRUCTIVE.test(cq)) return '파괴적 git — stash·rebase·merge·reset --hard·force push·보호 브랜치 push·--no-verify는 없다. 머지는 ship.mjs만.';
     // DESTRUCTIVE의 push 정규식은 main|master 고정 — 보호 브랜치가 다른 이름이면 여기서 막는다 (L0 부검의 발견)
     const pb = ctx.protectedBranch;
@@ -198,11 +212,12 @@ export function decide(input, ctx) {
     }
     return null;
   }
+  if (tool === 'Read') { const p = ti.file_path || ti.path || ''; return p && SECRET.test(path.resolve(cwd, p)) ? SECRET_WHY(p) : null; } // 읽기는 경계가 아니다 — 비밀만 빼고
   if (['Edit', 'Write', 'MultiEdit', 'NotebookEdit'].includes(tool)) {
     const p = ti.file_path || ti.notebook_path || ti.path || '';
     if (!p) return null;
     const abs = path.resolve(cwd, p);
-    if (SECRET.test(abs)) return '비밀 파일(.env·*.pem·*.key·credentials)은 읽지도 쓰지도 않는다.';
+    if (SECRET.test(abs)) return SECRET_WHY(p);
     if (!admin && MEMORY.test(norm(abs))) return '메모리 파일은 쓰지 않는다 — 상태의 정본은 원장(.garagiste/ledger)과 docs/STATUS.md다(둘째 사본은 검토 없이 드리프트한다).';
     if (!admin && RULEBOOK.test(norm(abs))) return '규칙집·원장·unit 상태는 스크립트가 쓴다. 바꾸려면 hard 결정 → CEO가 GARAGISTE_ADMIN=1.';
     // 임시 폴더는 저장소 밖 — 팩의 fixture·임시 HOME 자리. 저장소 자체가 임시 폴더 아래에 살 수 있다(벤치·테스트) — 저장소 안이면 면제가 아니다
