@@ -95,18 +95,22 @@ export function specReturn(text) {
   const lines = String(text || '').trim().split('\n').slice(-5).reverse();
   // 사고 73(16라운드 운영 둘째 날): 모델은 `spec:` 줄을 백틱·불릿·굵게로 감싼다(넷째·다섯째 run의 system-1 build 32회 중 6회 — 그 반려는 읽히지 않아 「빈손」으로 세어져 build가 다시 떴다). 포장은 벗기고 읽는다 — 감싼 줄만 꼬리의 포장도 벗긴다.
   for (const l of lines) {
-    const m = /^([\s`*_>"'-]*)spec:[\s*_`]*(.+?)\s*$/.exec(l); if (!m) continue;
-    return m[1].trim() ? m[2].replace(/[`*_"']+$/, '').trim() : m[2];
+    const m = /^([\s`*_>"'-]*)spec:[\s*_`]*(.+?)\s*$/.exec(l); if (!m || mention(l, 'spec')) continue;
+    const r = m[1].trim() ? m[2].replace(/[`*_"']+$/, '').trim() : m[2];
+    if (!NONE.test(r)) return r;
   }
   return null;
 }
+// 사고 76(16라운드 운영 둘째 날 stage C): 포장을 벗기자 build의 「`spec:` 줄 없음.」이 반려 「줄 없음.」으로 읽혀 가짜 둘째 반려 → hold가 났다 — 코드 토큰(`spec:`)으로 낱말을 가리킨 줄과 「없음」은 반려가 아니다.
+const NONE = /^(줄 )?(없음|없다|none|n\/a)[.。]?$/i;
+const mention = (line, word) => new RegExp('^[\\s*_>"\x27-]*`' + word + ':`').test(line);
 // 16라운드(둘의 규칙 — 14라운드 관찰 14 「공격이 diff 밖 결함을 글로만 남겼다」 · 15라운드 관찰 21 「intake가 진짜 결함을 unit이 아니라 질문으로 올렸다」): 팩이 남긴 `defect:` 줄은 BACKLOG 후보가 된다(work.mjs found). 마지막 열 줄 안, 포장은 spec:과 같이 벗긴다.
 export function defectLines(text) {
   const out = [];
   for (const l of String(text || '').trim().split('\n').slice(-10)) {
-    const m = /^([\s`*_>"'-]*)defect:[\s*_`]*(.+?)\s*$/.exec(l); if (!m) continue;
+    const m = /^([\s`*_>"'-]*)defect:[\s*_`]*(.+?)\s*$/.exec(l); if (!m || mention(l, 'defect')) continue;
     const d = m[1].trim() ? m[2].replace(/[`*_"']+$/, '').trim() : m[2];
-    if (d && !out.includes(d)) out.push(d);
+    if (d && !NONE.test(d) && !out.includes(d)) out.push(d);
   }
   return out;
 }

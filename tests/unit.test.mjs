@@ -1202,6 +1202,11 @@ test('conduct: 반려 줄·FAIL 열쇠·hold 안내·진전 없음', () => {
   assert.equal(specReturn('> spec: 인용 줄'), '인용 줄');
   assert.equal(specReturn('spec: 끝에 코드 `x`'), '끝에 코드 `x`', '감싸지 않은 줄의 꼬리는 그대로');
   assert.equal(specReturn('respec: 아니다'), null, '다른 낱말의 꼬리는 아니다');
+  // 사고 76(16라운드 stage C): build가 「`spec:` 줄 없음.」이라 쓴 것이 반려 「줄 없음.」으로 읽혀 가짜 둘째 반려 → hold — 코드 토큰으로 낱말을 가리킨 줄과 「없음」은 반려가 아니다(실제 줄)
+  assert.equal(specReturn('커밋 1개(Step 2).\nverify full PASS, attack red 0/2, redproof PASS.\n`spec:` 줄 없음.'), null, '낱말을 가리킨 코드 토큰');
+  assert.equal(specReturn('spec: 없음'), null); assert.equal(specReturn('spec: 줄 없음.'), null); assert.equal(specReturn('**spec:** none'), null);
+  assert.equal(specReturn('`spec: 진짜 반려 — 카드가 어긋난다`'), '진짜 반려 — 카드가 어긋난다', '코드 span 안에 내용이 있으면 반려다');
+  assert.deepEqual(defectLines('`defect:` 없음\ndefect: 없음'), []);
   // 16라운드: 이 diff 밖 결함의 집 — defect: 줄(여럿·포장·중복)
   assert.deepEqual(defectLines('테스트 9 · red 0\ndefect: tags가 문자열이면 /export.csv가 응답 도중 죽는다\n- `defect: 빈 이름을 add하면 500`\ndefect: tags가 문자열이면 /export.csv가 응답 도중 죽는다'), ['tags가 문자열이면 /export.csv가 응답 도중 죽는다', '빈 이름을 add하면 500']);
   assert.deepEqual(defectLines('spec: 반려만'), []);
