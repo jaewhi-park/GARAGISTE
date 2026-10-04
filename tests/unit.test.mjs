@@ -18,7 +18,7 @@ import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/
 import { acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { nextStep, render } from '../team/scripts/next.mjs';
-import { DEFAULTS as CONDUCT_DEFAULTS, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
+import { DEFAULTS as CONDUCT_DEFAULTS, defectLines, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
 import { versionLine } from '../team/scripts/doctor.mjs';
 import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
 import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
@@ -1202,6 +1202,9 @@ test('conduct: 반려 줄·FAIL 열쇠·hold 안내·진전 없음', () => {
   assert.equal(specReturn('> spec: 인용 줄'), '인용 줄');
   assert.equal(specReturn('spec: 끝에 코드 `x`'), '끝에 코드 `x`', '감싸지 않은 줄의 꼬리는 그대로');
   assert.equal(specReturn('respec: 아니다'), null, '다른 낱말의 꼬리는 아니다');
+  // 16라운드: 이 diff 밖 결함의 집 — defect: 줄(여럿·포장·중복)
+  assert.deepEqual(defectLines('테스트 9 · red 0\ndefect: tags가 문자열이면 /export.csv가 응답 도중 죽는다\n- `defect: 빈 이름을 add하면 500`\ndefect: tags가 문자열이면 /export.csv가 응답 도중 죽는다'), ['tags가 문자열이면 /export.csv가 응답 도중 죽는다', '빈 이름을 add하면 500']);
+  assert.deepEqual(defectLines('spec: 반려만'), []);
   assert.equal(failKey('PASS gate\nFAIL ship hello 1/8\n- attack: 기록 없음\n- x'), 'FAIL ship hello 1/8 | - attack: 기록 없음', 'ship은 둘째 줄(조건)이 열쇠를 가른다');
   assert.equal(failKey('ATTACK hello red 1/1'), null, 'FAIL 줄이 없으면 열쇠 없음 — 되풀이로 세지 않는다');
   // 사고 71(15라운드 넷째 run): 반려 전달의 FAIL은 run 걸음의 FAIL과 같은 열쇠 — 실제 줄(system-1 build 30회가 전부 이 FAIL)

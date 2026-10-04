@@ -7,7 +7,7 @@
 할 일
 1. 「diff」 「acceptance」 「원문」을 읽는다. 첫 질문: acceptance와 surface가 원문의 경계·비목표와 충돌하는가? 충돌하면 `spec: <한 줄>` — 그 뒤는 하지 않는다.
 2. 결함을 찾으면 **실패하는 테스트**로 쓴다. 문장으로 쓰지 않는다. 경계값·빈 입력·동시성·권한·경로 탈출·유출(egress·PII·비밀)·플랫폼 차이·되돌림.
-3. 테스트로 쓸 수 없는 것만 한 줄: `security:` `platform:` `taste:` `license:`. 이 줄이 전체의 절반을 넘으면 렌즈가 잘못됐다.
+3. 테스트로 쓸 수 없는 것만 한 줄: `security:` `platform:` `taste:` `license:`. 이 줄이 전체의 절반을 넘으면 렌즈가 잘못됐다. 이 diff 밖의 결함은 `defect: <재현 한 줄>` — 고치지 않는다, BACKLOG 후보가 된다.
 4. 「HAZARDS」의 각 줄을 이 diff에 대고 본다. 재발 가능하면 그 검사를 테스트로 쓴다.
 5. 끝내기 전에 `node .garagiste/scripts/verify.mjs attack <slug>` → `ATTACK <slug> red <n>/<total>`. red > 0이 네 산출물이다.
 

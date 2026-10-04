@@ -1,6 +1,6 @@
 // 가짜 팩 — 모델 0으로 팩이 할 일을 그대로 한다(conduct.mjs의 --spawner 시험용). 환경: GARAGISTE_PACK·GARAGISTE_SLUG·GARAGISTE_WORKTREE(conduct가 준다).
 // 출력은 `claude -p --output-format json`의 꼴(result·usage·duration_ms·total_cost_usd·num_turns·subtype) — 드라이버가 토큰·분·비용을 읽는 길이 같다.
-// GARAGISTE_FAKE_MODE: normal(기본) · idle(아무것도 하지 않는다 — 진전 없음·FAIL 되풀이 재현) · return(build가 `spec:` 반려 줄을 남긴다 — system unit이면 공격 카드가 어긋난다는 줄, 사고 71) · crash(exit 1·is_error) · hang(20초 멈춤) · break(refactor build가 동작을 바꾼다)
+// GARAGISTE_FAKE_MODE: normal(기본) · defect(attack이 이 diff 밖 결함을 `defect:` 줄로 남긴다 — 16라운드) · idle(아무것도 하지 않는다 — 진전 없음·FAIL 되풀이 재현) · return(build가 `spec:` 반려 줄을 남긴다 — system unit이면 공격 카드가 어긋난다는 줄, 사고 71) · crash(exit 1·is_error) · hang(20초 멈춤) · break(refactor build가 동작을 바꾼다)
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -54,6 +54,7 @@ if (refactor && pack === 'spec') {
 } else if (pack === 'attack') {
   write(`tests/adversary/${slug}-1.test.mjs`, `import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }); assert.equal(r.stdout, 'hello\\n'); });\n`);
   lines.push(commit(`test(${slug}): adversary`), script('verify', ['attack', slug]).stdout.trim(), '테스트 1 · red 1 · 이름 없을 때 끝 공백');
+  if (mode === 'defect') lines.push('defect: 이름이 1만 자면 표가 깨진다 — 이 diff 밖(adopt 전 코드)', '`defect: 이름이 1만 자면 표가 깨진다 — 이 diff 밖(adopt 전 코드)`'); // 같은 결함을 두 줄로(하나는 포장) — 후보는 하나
 } else if (pack === 'adopt') {
   // 기존 코드(bin/greet.js)의 현재 동작을 특성화 테스트로 — 소스는 건드리지 않는다
   write('tests/unit/adopt-greet.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('특성화: greet Ada → hi Ada', () => { const r = spawnSync(process.execPath, ['bin/greet.js', 'Ada'], { encoding: 'utf8' }); assert.equal(r.status, 0); assert.equal(r.stdout.trim(), 'hi Ada'); });\n");

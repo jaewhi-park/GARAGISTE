@@ -1114,6 +1114,24 @@ test('conduct + 예산: unit 토큰 상한(L2 2판 윈도우 진동 16배의 장
   assert.match(r.out, /ATTACK hello red 1\/1[\s\S]*STOP ceo [^\n]*unit hello 토큰 4K ≥ 상한 3K — CEO 결정: node \.garagiste\/scripts\/work\.mjs budget hello[^\n]*hello는 attack 뒤에 서 있다\(상한은 걸음마다 — 진동 안에서도, 사고 72\)/, '세 팩 3600 토큰 — 공격 red 1인데 build를 띄우지 않고 선다(넷째 run: system-1이 진동으로 2.2M을 쓰는 동안 서지 않았다)');
   assert.equal(ledgerOf(repo).filter((e) => e.kind === 'spawn').length, 3, '상한을 넘긴 팩 뒤의 걸음에서 선다');
   assert.doesNotMatch(r.out, /SHIPPED/);
+// 16라운드(둘의 규칙 — 14라운드 관찰 14 · 15라운드 관찰 21): 공격이 이 diff 밖에서 찍은 결함은 글로만 남아 사라졌다 — defect: 줄 → work.mjs found → BACKLOG 후보(<slug>-f<n> · M? · needs <slug>)
+test('conduct: attack의 defect: 줄은 BACKLOG 후보가 된다(work.mjs found — 포장·중복은 하나로) — 출하는 그대로, CEO가 scope에 넣으면 팀 자발 unit으로 열린다', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const r = conduct(repo, [], { GARAGISTE_FAKE_MODE: 'defect' });
+  assert.equal(r.status, 2, r.out);
+  assert.match(r.out, /FOUND hello-f1 — BACKLOG 후보\(M\? · needs hello\): 범위에 넣으면 node \.garagiste\/scripts\/work\.mjs scope hello-f1[\s\S]*SHIPPED hello/, r.out);
+  assert.equal((r.out.match(/FOUND hello-f1/g) || []).length, 1, '같은 결함 두 줄(하나는 포장) → found 한 번(defectLines가 하나로)');
+  assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /^- \[ \] hello-f1 · M\? · needs: hello · "이름이 1만 자면 표가 깨진다 — 이 diff 밖\(adopt 전 코드\)" · 인수: -$/m);
+  assert.deepEqual(ledgerOf(repo).filter((e) => e.kind === 'found').map((e) => [e.slug, e.candidate]), [['hello', 'hello-f1']], '같은 결함 두 줄(하나는 포장)에 후보는 하나');
+  assert.match(script('work', ['list'], repo).out, /hello-f1 +backlog +M\? +needs=hello/);
+  assert.match(script('work', ['found', 'hello', '빈 이름을 add하면 500'], repo).out, /^FOUND hello-f2 — BACKLOG 후보/);
+  assert.match(script('work', ['found', 'hello', '이름이 1만 자면 표가 깨진다 — 이 diff 밖(adopt 전 코드)'], repo).out, /^FOUND 이미 있음 hello-f1/, '같은 줄은 한 후보');
+  assert.match(script('work', ['found', 'nope', 'x'], repo).out, /^FAIL/, '없는 unit의 후보는 없다');
+  assert.match(script('work', ['scope', 'hello-f1'], repo).out, /^SCOPE 요청 1/);
+  assert.match(script('work', ['seed'], repo).out, /^UNIT hello-f1 spec/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/hello-f1.json'), 'utf8')).origin_kind, 'seed', 'CEO가 scope에 넣어 열렸다 — 그 scope가 CEO 접점(seed 경유)');
+});
+
   assert.match(script('work', ['budget', 'hello', '10K'], repo).out, /^PASS budget hello 토큰 상한 3000 → 10000/);
   assert.match(script('work', ['budget', 'hello', 'x'], repo).out, /^사용법: work\.mjs budget/);
   const again = conduct(repo);

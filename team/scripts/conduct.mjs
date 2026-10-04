@@ -100,6 +100,16 @@ export function specReturn(text) {
   }
   return null;
 }
+// 16라운드(둘의 규칙 — 14라운드 관찰 14 「공격이 diff 밖 결함을 글로만 남겼다」 · 15라운드 관찰 21 「intake가 진짜 결함을 unit이 아니라 질문으로 올렸다」): 팩이 남긴 `defect:` 줄은 BACKLOG 후보가 된다(work.mjs found). 마지막 열 줄 안, 포장은 spec:과 같이 벗긴다.
+export function defectLines(text) {
+  const out = [];
+  for (const l of String(text || '').trim().split('\n').slice(-10)) {
+    const m = /^([\s`*_>"'-]*)defect:[\s*_`]*(.+?)\s*$/.exec(l); if (!m) continue;
+    const d = m[1].trim() ? m[2].replace(/[`*_"']+$/, '').trim() : m[2];
+    if (d && !out.includes(d)) out.push(d);
+  }
+  return out;
+}
 // 같은 FAIL의 열쇠 — 첫 FAIL 줄과 그 다음 줄(ship은 「FAIL ship x 1/8」 아래 줄이 조건이다). state.mjs repeatedFails와 같은 뜻(되풀이 = 2).
 export function failKey(output) {
   const lines = String(output || '').split('\n').filter((l) => l.trim());
@@ -270,9 +280,13 @@ export async function spawnPack(c, { pack, slug, path: packPath }, o, { spawner 
   if (tail.trim()) out(tail);
   const ok = status === 0 && !p.isError && !r.error;
   const returned = ok && (pack === 'build' || pack === 'attack') ? specReturn(p.text) : null; // 반려는 정당한 「빈손」 — 진전 없음으로 세지 않는다
+  const defects = ok && (pack === 'attack' || pack === 'adopt') ? defectLines(p.text) : []; // 이 diff 밖의 결함 — BACKLOG 후보(16라운드)
   let held = false; let returnFail = null;
   if (!ok) out(timedOut ? `  팩 시간 상한 ${o.packMinutes}분 — 끊었다(SIGTERM)${log ? ` · ${log}` : ''}` : `  팩 종료 비정상 — exit ${status}${p.reason ? ` · ${p.reason}` : p.isError ? ' · is_error' : ''}${r.error ? ` · ${r.error}` : ''}${log ? ` · ${log}` : ''}`);
-  else if (returned) { const rc = runCmd(c, `${S}/brief.mjs spec ${slug} --return ${q(returned)}`); held = rc.held; returnFail = handOffKey(rc); } // system unit이면 brief가 attack 팩으로 돌린다(사고 71)
+  else {
+    if (returned) { const rc = runCmd(c, `${S}/brief.mjs spec ${slug} --return ${q(returned)}`); held = rc.held; returnFail = handOffKey(rc); } // system unit이면 brief가 attack 팩으로 돌린다(사고 71)
+    for (const d of defects) runCmd(c, `${S}/work.mjs found ${slug} ${q(d)}`); // 후보 등록의 FAIL은 되풀이로 세지 않는다 — 팩은 끝났고 다음 걸음은 next가 낸다
+  }
   return { ok, text: p.text, tokens: p.tokens, minutes: p.minutes ?? wall, cost: Number(p.cost) || 0, status, log, returned: !!returned, held, returnFail, timedOut };
 }
 let USD = 0;
