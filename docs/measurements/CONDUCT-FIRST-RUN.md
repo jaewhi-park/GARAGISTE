@@ -129,6 +129,13 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 15. adopt의 **군질문**(Q2 — BACKLOG가 이미 답) — 질문 하나가 unit을 세운다(STOP wait). 관찰.
 16. pin unit의 build 팩이 429K 토큰(가장 큼) — 감시자 기반 핀 테스트의 경합(기동 로그 vs listen 관측)을 고치느라. 공격 팩 7건이 네트워크 감시자를 만들었다 — pin의 공격은 「주장이 깨지는 입력」이라 제약형엔 환경(인터페이스·경로)으로 간다.
 
+## 넷째 run — 대규모 레거시(Node, 15라운드 2026-10-04) · 비용 상한 실발동
+테스트 베드 `biglegacy2`(scratchpad, 생성기 `r15/gen.mjs` — 결정론적): `erp-lite 2.3.0` — **파일 138 · JS 948줄** · 도메인 10(order·customer·product·invoice·shipment·payment·discount·tax·warehouse·supplier) × 모듈 6(model·validate·repo·rules·service·format) = 60 · HTTP 라우트 10 + router·server·respond · CLI 명령 모듈 10 + `bin/cli.js`(`<domain> list|get|add|rm`) · lib 8 · scripts 4 · 시드 데이터 10 · 기존 테스트 38 중 **빨간 것 2**(2024년을 박은 것 · CI의 PORT=9999를 가정한 것) · `npm test`는 `node --test test/`(node 22에서 깨진 꼴) · 원격 bare. 생성 코드지만 동작은 진짜다(검증·규칙·JSON 저장·표·CSV). 원문: 「erp-lite 서비스(도메인 10의 HTTP API·CLI·export-all)는 그대로 둔다. 더할 것 하나: 주문 상태 필터 — GET /orders?status=<s> … CLI order list --status <s> … 목록에 없는 상태면 빈 목록 … 외부 네트워크는 쓰지 않는다」.
+
+질문 둘: (a) adopt 팩 하나가 파일 138·표면 20(라우트 10·명령 10)을 어디까지 특성화하는가 — 토큰·시간·팩 상한·unit 토큰 상한(1M)에 닿는가 (b) `--max-usd 1`의 비용 상한 정지가 실제로 서는가(지금까지 탐침·e2e만).
+
+(채운다)
+
 ## 비용 합계 (세 run)
 | 무엇 | $ |
 |---|---|
