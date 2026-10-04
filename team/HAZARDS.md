@@ -7,7 +7,7 @@
 - `**/subprocess*` `**/child_process*` `**/*spawn*` · 네트워크 0 규칙이 자식 프로세스에서 세 번 재발했다 — 가드 없는 자식은 트래픽을 시도하지 않아 센서가 침묵했다 · 검사: 이 줄이 팩에 뜨면 attack이 자식 프로세스 양성 캐너리(막히지 않으면 red)를 tests/adversary에 남긴다(attack 팩 4)
 - `**/session*` `**/persist*` · 세션 영속화가 홈 디렉터리에 썼다 · 검사: 이 줄이 팩에 뜨면 attack이 홈 디렉터리 쓰기 부정 테스트를 남긴다(attack 팩 4) + verify 로그의 산출 경로 확인
 - `docs/**` `**/*.md` · 문서만 고친 커밋이 main을 빨갛게 했다(무검증 커밋) · 검사: 커밋 게이트 — 모든 커밋 tree↔quick PASS(verify.mjs gate)
-- `tests/**` `.garagiste/ledger/**` · 초록을 만들기 위해 테스트·설정·원장을 고쳤다 · 검사: ship redproof(base red·head green, tree 단위) + 커밋 게이트 tree↔원장 대조 + guard의 원장·규칙집·commands·마커 쓰기 거부
+- `tests/**` `.garagiste/ledger/**` · 초록을 만들기 위해 테스트·설정·원장을 고쳤다 · 검사: ship redproof(base red·head green, tree 단위) + 커밋 게이트 tree↔원장 대조 + guard의 원장·규칙집·commands·마커 쓰기 거부 + ship이 통합 tree에서 full·redproof·attack을 스스로 다시 돈다(원장 줄은 증거이지 증명이 아니다 — 4라운드 L0 측정) + guard의 인라인 코드 쓰기 거부
 - `**/*install*` `**/*bundle*` · 출하물의 설치 형태가 조용한 기본값으로 정해졌다 · 검사: boundary 키워드 → spike 필수 행 default + `work.mjs default` → 「팀이 정한 것」
 - `**` · 리눅스 관측이 Windows 기동을 대신 통과시켰다 · 검사: 원장 platform 필드 + `@sensor human@win32` 주장은 tried 전까지 참이 아니다(claims.mjs)
 - `**` · 19시간 무인 실행이 규칙집을 완화해 드리프트했다 · 검사: guard `.garagiste/**` 쓰기 거부 + 무인 출하 예산 + CEO 접점 없는 unit 연속 상한(ship.mjs)

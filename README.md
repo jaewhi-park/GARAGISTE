@@ -61,13 +61,13 @@ Agents receive one pack file and never talk to each other. Build has never met a
 | script | does |
 |---|---|
 | `next` | the loop's next step, one line: run · spawn · ceo · wait · done — the conductor follows this line only (seed → spec → redproof → build → attack → ship; re-spec, late spike, conflict, one unit at a time) |
-| `conduct` | runs Flow 4 as a script — executes next's line verbatim (run = that command; spawn = the pack as a headless `claude -p --agent <pack>` session), records spawned (measured tokens · minutes · cost) · spawn_stop · checkpoint per pack, forwards `spec:` returns, parks a unit via `ask --hold` when a FAIL asks for a CEO decision. The stops are exit codes (0 done · 2 ceo · 3 wait · 4 framework FAIL · 5 cap) · safety belts (per-pack time cap · run cost cap · lock/heartbeat) · `intake` · other harnesses via `--spawner` |
+| `conduct` | runs Flow 4 as a script — executes next's line verbatim (run = that command; spawn = the pack as a headless `claude -p --agent <pack>` session), records spawned (measured tokens · minutes · cost) · spawn_stop · checkpoint per pack, forwards `spec:` returns, parks a unit via `ask --hold` when a FAIL asks for a CEO decision. The stops are exit codes (0 done · 2 ceo · 3 wait · 4 framework FAIL · 5 cap) · safety belts (per-pack time cap · run cost cap · lock/heartbeat) · `check` (preflight before a real run) · `intake` · other harnesses via `--spawner` |
 | `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · system (seam attack at the end of a scope) · new · ask (`--assumed`) · decide · default · tried · list · models (one place) · spawned (ledger) |
 | `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
 | `redproof` | proves acceptance tests are red on base and green on head |
 | `boundary` | dependency · workflow · IPC · permission · egress keywords → spike required |
-| `ship` | 8 fail-closed conditions → ff merge · docs/LEDGER.md · STATUS (rolls the merge back if main quick fails) |
+| `ship` | 8 fail-closed conditions → re-runs full · redproof · attack itself on the integrated tree, then ff merge · docs/LEDGER.md · STATUS (rolls the merge back if main quick fails) |
 | `claims` | the claim graph: true · false · unsensed · unknown, sensor coverage, next |
 | `state` | generates docs/STATUS.md (first line is everything) · unattended stop budgets · `report`: one page at SCOPE DONE (built · proven · decided · unseen · to try) |
 | `doctor` | differential diagnosis — detects the harness, says what died and what to fix |

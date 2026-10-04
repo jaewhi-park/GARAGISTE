@@ -20,6 +20,12 @@ const MEMORY = /\/\.claude\/(?:.*\/)?memory\/|\/MEMORY\.md$/i;
 const RULEBOOK_PATHS = '(\\.garagiste[\\\\/](team\\.json|HAZARDS\\.md|VERSION|scripts|packs)|\\.claude[\\\\/](settings\\.json|hooks|agents)|opencode\\.json|\\.opencode[\\\\/](agents|plugins)|\\.githooks)';
 const RULEBOOK_SHELL = new RegExp(`(^|[\\s;&|])(rm|mv|cp|tee|truncate|sed\\s+(-\\S+\\s+)*-i\\S*)\\b[^;&|]*${RULEBOOK_PATHS}`);
 const RULEBOOK_REDIR = new RegExp(`>{1,2}\\s*("[^"]*|'[^']*|[^\\s;&|<>]*)?${RULEBOOK_PATHS}`);
+// 인라인 코드(4라운드 2026-10-04 — v1 「초록을 만들기 위해 원장을 고쳤다」의 L0 재현): node -e·python -c·sh -c 안의 프로그램은 따옴표라 stripQuoted가 데이터로 본다 —
+// 그 안에 규칙집·원장 경로와 쓰기 동작이 함께 있으면 거부한다. 읽기(cat·grep·sed -n, 또는 인라인 코드의 readFileSync)는 그대로 — L2 1일차의 표 산출 오탐을 되풀이하지 않는다.
+const INLINE_CODE = /\b(?:node|deno|bun|python3?|py|sh|bash|zsh|dash|perl|ruby|php)\s+(?:-[a-zA-Z]*\s+)*(?:-e|-c|-p|eval)\b/;
+const INLINE_PATHS = /\.garagiste[\\/](?:ledger|units|team\.json|scripts|packs|HAZARDS\.md|VERSION|session[\\/]ceo-touch)|\.claude[\\/](?:settings\.json|hooks|agents)|opencode\.json|\.opencode[\\/](?:agents|plugins)|\.githooks/;
+const INLINE_WRITE = /writeFile|appendFile|truncate|unlink|rmSync|rm\(|renameSync|rename\(|copyFile|mkdirSync|createWriteStream|open\([^)]*['"][wax]|os\.remove|os\.rename|shutil\.|Path\([^)]*\)\.(?:write|unlink|rename)|write_text|\btee\b|\bsed\s+-i|\brm\b|\bmv\b|\bcp\b|>>?\s*["']?\S*\.(?:garagiste|claude|opencode|githooks)/;
+export function inlineCodeWrite(command) { const c = String(command || ''); return INLINE_CODE.test(c) && INLINE_PATHS.test(c) && INLINE_WRITE.test(c); }
 // 게이트 우회 접두 — SHIP·WIP·ADMIN은 스크립트 내부(ship·checkpoint)와 CEO 세션만 쓴다. LARGE_STEP은 게이트가 받는 정상 경로라 막지 않는다.
 const ENV_BYPASS = /(^|[\s;&|])(env\s+)?GARAGISTE_(SHIP|WIP|ADMIN)=/;
 // conductor 전용 명령 — tried·decide는 CEO 접점(팩이 부르면 상한 자가 리셋), drop은 방향전환(팩이 자기를 버리지 않는다), needs는 선행 재배선(팩이 자기 WAIT를 풀지 않는다 — 사고 23)
@@ -170,6 +176,7 @@ export function decide(input, ctx) {
     if (!admin && ENV_BYPASS.test(c)) return '게이트 우회 금지 — GARAGISTE_SHIP·WIP·ADMIN 접두는 스크립트 내부와 CEO(ADMIN 세션)만 쓴다.';
     if (!admin && HOOK_BYPASS.test(cq)) return '게이트 우회 금지 — git -c core.hooksPath=…는 커밋 게이트(.githooks)를 끈다.';
     if (LEDGER_SHELL.test(cq) || LEDGER_REDIR.test(cq)) return '원장·unit 상태는 스크립트만 쓴다.';
+    if (!admin && inlineCodeWrite(c)) return '인라인 코드(node -e·python -c·sh -c …)로 규칙집·원장을 쓰지 않는다 — 읽기는 cat·grep·sed -n, 쓰기는 스크립트(work.mjs …)만. 원장은 증거다.';
     if (!admin && (RULEBOOK_SHELL.test(cq) || RULEBOOK_REDIR.test(cq))) return '규칙집(.garagiste 정본·하네스 배선)은 hard 결정 뒤 CEO가 GARAGISTE_ADMIN=1로만 바꾼다. (읽기는 자유 — Read 툴이나 cat은 막지 않는다)';
     const w = worktreeOf(path.resolve(cwd), ctx.worktreesDir) || worktreeFromCommand(c, ctx.worktreesDir);
     if (w) {

@@ -229,14 +229,17 @@ function main() {
     fail(conflictFail(c.team.protected_branch, files, slug, pk));
   }
   const newTree = headTree(wt);
-  if (newTree !== tree) {
+  // 4라운드(2026-10-04, L0 속임수 측정): 원장의 PASS 줄은 증거이지 증명이 아니다 — 훅이 죽은 환경에서 위조한 verify·redproof·attack 줄이 게이트와 8조건을 지나갔다(v1 「초록을 만들기 위해 원장을 고쳤다」의 L0 재현).
+  // ship은 머지 직전 통합 tree에서 full·redproof·attack을 스스로 다시 돈다 — main이 움직였을 때만이 아니라 언제나(team.json ship_reverify=false로만 끈다).
+  const reverify = c.team.ship_reverify !== false;
+  if (newTree !== tree || reverify) {
     // 통합 tree는 자기 자신의 명령으로 검증한다 — boot의 commands는 머지 전 main엔 없다(사고 7에서 노출: main의 빈 full로 crash)
     const wtCmds = readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands || {};
     const fullCmd = wtCmds.full || c.team.commands.full;
     if (!fullCmd) fail('FAIL ship: 통합 tree 재검증 불가 — commands.full 비어 있음');
     const r = fullRun({ main: c.main, team: c.team, root: wt, cmd: fullCmd, testFile: wtCmds.test_file || c.team.commands.test_file }); // 사고 44: 통합 tree의 full도 「전부」
-    appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true });
-    if (r.status) fail(`FAIL ship: 통합 tree에서 full FAIL — main이 움직였다, build 재spawn\n${r.tail}`);
+    appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true, reverify: newTree === tree });
+    if (r.status) fail(`FAIL ship: 통합 tree에서 full FAIL — ${newTree !== tree ? 'main이 움직였다, build 재spawn' : '원장의 PASS 줄과 다르다(원장은 증거이지 증명이 아니다 — 환경이 다르거나 줄이 위조됐다): build 재spawn, 되풀이면 정비 채널'}\n${r.tail}`);
     // 사고 22(3차 실기): full만 재기록하면 롤백 뒤 재-ship이 「redproof·attack이 이전 tree」 핑퐁에 빠지고,
     // 새 base 위 공격 회귀는 머지 전 검사를 빠져나간다 — 세 증거 전부를 새 tree에 다시 묶는다(순수 기계 일).
     if (unit.kind !== 'scaffold' && unit.kind !== 'adopt') {

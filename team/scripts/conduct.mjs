@@ -3,10 +3,12 @@
 // 규율 이탈은 전부 모델이 Flow 산문의 빈칸을 읽는 자리에서 났고, 수리는 매번 그 빈칸을 next.mjs로 옮기는 것이었다 — 남은 자리(한 줄을 읽고 그대로 실행하는 것)도 스크립트로.
 // 헤드리스엔 SubagentStop 훅이 없다 — 팩이 끝나면 드라이버가 체크포인트·spawn_stop·spawned(실측 토큰·분·비용)를 남긴다(끊긴 spawn의 원장 꼴 — L2 6판 (7)).
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { appendLedger, CONDUCT_LOCK, ctx, fail, headSha, isMain, out, pidAlive, readJson, shell, stamp, worktreeDir, writeJson } from './lib.mjs';
 import { computeNext, doctorGate, render } from './next.mjs';
+import { blocking, diagnose, versionLine } from './doctor.mjs';
 import { spawnStop } from './checkpoint.mjs';
 
 const S = 'node .garagiste/scripts';
@@ -25,10 +27,11 @@ export const TODO = {
 };
 
 export function parseArgs(argv) {
-  const o = { ...DEFAULTS, once: false, intake: false };
+  const o = { ...DEFAULTS, once: false, intake: false, check: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === 'intake') o.intake = true;
+    else if (a === 'check') o.check = true;
     else if (a === '--once') o.once = true;
     else if (a === '--max-steps') o.maxSteps = Number(argv[++i]);
     else if (a === '--max-minutes') o.maxMinutes = Number(argv[++i]);
@@ -98,6 +101,30 @@ export function holdCommand(text) {
 export function lockAlive(lock, { isAlive = pidAlive } = {}) { return !!(lock && lock.pid && isAlive(lock.pid)); }
 function writeLock(main, started, data = {}) { writeJson(path.join(main, CONDUCT_LOCK), { pid: process.pid, started, at: new Date().toISOString(), ...data }); }
 function clearLock(main) { try { fs.rmSync(path.join(main, CONDUCT_LOCK), { force: true }); } catch { /* 없음 */ } }
+// 실전 전 preflight(4라운드 2026-10-04): 헤드리스 spawner의 전제를 한 줄씩 — 모델 없이 확인할 수 있는 것은 전부 여기서. 실패는 fail-closed(exit 1), 고칠 길과 함께.
+export function preflight(root, { env = process.env, home = os.homedir(), spawn = spawnSync, team = null, customSpawner = false } = {}) {
+  const probs = []; const ok = [];
+  const d = blocking(diagnose(root));
+  if (d.length) probs.push(...d.map((x) => `doctor: ${x}`)); else ok.push('doctor OK');
+  ok.push(versionLine(root).startsWith('VERSION garagiste') ? versionLine(root).replace(/^VERSION garagiste (\S{7})\S* .*$/, 'VERSION $1') : 'VERSION 없음(옛 설치본 — install.sh 다시)');
+  const lock = readJson(path.join(root, CONDUCT_LOCK), null);
+  if (lock && lock.pid && pidAlive(lock.pid)) probs.push(`이미 돌고 있다 — pid ${lock.pid} · ${[lock.step, lock.slug, lock.pack].filter(Boolean).join(' ')} · ${lock.at} (한 저장소에 드라이버 하나)`); else ok.push('잠금 없음');
+  if (customSpawner) { ok.push('spawner 사용자 지정 — claude CLI·신뢰 검사 생략'); return { probs, ok }; }
+  const v = spawn('claude', ['--version'], { encoding: 'utf8', env });
+  if (v.error || v.status !== 0) probs.push('claude CLI 없음(PATH) — 기본 spawner는 `claude -p --agent`다: Claude Code를 설치하거나 --spawner "<명령 템플릿>"');
+  else ok.push(`claude ${(v.stdout || '').trim().split(/\s+/)[0] || '?'}`);
+  const agents = ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt'].filter((a) => !fs.existsSync(path.join(root, '.claude', 'agents', `${a}.md`)));
+  if (agents.length) probs.push(`.claude/agents 없음: ${agents.join(', ')} — install.sh claude 다시(--agent <팩>이 읽는 파일)`); else ok.push('agents 7');
+  const settings = readJson(path.join(root, '.claude', 'settings.json'), null);
+  if (!settings || !(settings.permissions?.allow || []).some((x) => /^Bash\(node/.test(x))) probs.push('.claude/settings.json allow에 Bash(node…) 없음 — 헤드리스엔 승인 대화가 없어 팩의 스크립트 호출이 전부 막힌다: team/claude/settings.json으로'); else ok.push('allow node');
+  // 신뢰 안 된 작업 공간은 프로젝트 허용 목록을 무시한다(하네스 메모 — tests/field/setup.sh가 같은 이유로 켠다)
+  const cj = readJson(path.join(home, '.claude.json'), null);
+  const keys = cj && cj.projects ? Object.keys(cj.projects) : [];
+  const real = (() => { try { return fs.realpathSync.native(root); } catch { return root; } })();
+  const trusted = keys.some((k) => { try { return (k === root || k === real || fs.realpathSync.native(k) === real) && cj.projects[k]?.hasTrustDialogAccepted === true; } catch { return false; } });
+  if (!trusted) probs.push(`작업 공간 신뢰 없음(${path.join(home, '.claude.json')} projects[${root}].hasTrustDialogAccepted) — 그 폴더에서 대화형 claude를 한 번 열어 신뢰하라(헤드리스엔 신뢰 대화가 없다)`); else ok.push('신뢰 ok');
+  return { probs, ok };
+}
 export function stopLine(kind, text, at = new Date().toISOString()) { return `STOP ${kind} ${at} — ${String(text).split('\n')[0]}\nCEO: ${TODO[kind]}`; }
 
 function runCmd(c, cmd, { hold = true } = {}) {
@@ -167,9 +194,14 @@ function intake(c, o) {
 }
 function main() {
   const o = parseArgs(process.argv.slice(2));
-  if (o.error) fail(`FAIL conduct: ${o.error} — 사용법: conduct.mjs [intake] [--once] [--max-steps N] [--max-minutes M] [--max-usd D] [--pack-minutes P] [--turns T] [--spawner "<템플릿 {path} {pack} {slug} {model} {turns}>"]`);
+  if (o.error) fail(`FAIL conduct: ${o.error} — 사용법: conduct.mjs [check|intake] [--once] [--max-steps N] [--max-minutes M] [--max-usd D] [--pack-minutes P] [--turns T] [--spawner "<템플릿 {path} {pack} {slug} {model} {turns}>"]`);
   let c = ctx();
   if (c.root !== c.main) fail('FAIL conduct는 메인 저장소에서만 — worktree 안에서 돌리지 않는다');
+  if (o.check) {
+    const r = preflight(c.main, { customSpawner: !!o.spawner });
+    if (r.probs.length) fail(`FAIL conduct check ${r.probs.length}\n${r.probs.map((x) => `- ${x}`).join('\n')}${r.ok.length ? `\n(ok: ${r.ok.join(' · ')})` : ''}`);
+    return out(`PASS conduct check — ${r.ok.join(' · ')}`);
+  }
   doctorGate(c);
   o.packMinutes ??= Number(c.team.budgets.pack_minutes_max ?? 60);
   o.maxUsd ??= Number(c.team.budgets.run_usd_max ?? 0);

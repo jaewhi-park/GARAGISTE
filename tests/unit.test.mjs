@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { cdBase, decide, expandAssignments, expandTemp, isTempPath, makeCtx, stripQuoted, worktreeFromCommand, writeTargets } from '../team/scripts/guard-rules.mjs';
+import { cdBase, decide, expandAssignments, expandTemp, inlineCodeWrite, isTempPath, makeCtx, stripQuoted, worktreeFromCommand, writeTargets } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, gateDecision, gateFailLine, logicLines, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
@@ -1102,9 +1102,10 @@ test('work: 사고 66(L2 6판 결함 1 — Q1 「예」의 래퍼 둘이 어느 
 
 // conduct — Flow 4의 conductor를 모델 밖으로(R&D 2026-10-04): 한 줄을 읽고 그대로 실행하는 자리의 순수 함수들
 test('conduct: 인자 — 기본값·상한·spawner 템플릿·intake·모르는 인자는 FAIL 사유', () => {
-  assert.deepEqual(conductArgs([]), { ...CONDUCT_DEFAULTS, once: false, intake: false });
+  assert.deepEqual(conductArgs([]), { ...CONDUCT_DEFAULTS, once: false, intake: false, check: false });
   const o = conductArgs(['intake', '--once', '--max-steps', '3', '--max-minutes', '90', '--turns', '50', '--spawner', 'node fake.mjs', '--pack-minutes', '45', '--max-usd', '12.5']);
-  assert.deepEqual(o, { maxSteps: 3, maxMinutes: 90, turns: 50, spawner: 'node fake.mjs', packMinutes: 45, maxUsd: 12.5, once: true, intake: true });
+  assert.deepEqual(o, { maxSteps: 3, maxMinutes: 90, turns: 50, spawner: 'node fake.mjs', packMinutes: 45, maxUsd: 12.5, once: true, intake: true, check: false });
+  assert.equal(conductArgs(['check', '--spawner', 'x']).check, true, 'check — 실전 전 preflight');
   assert.deepEqual([conductArgs([]).packMinutes, conductArgs([]).maxUsd], [null, null], 'null이면 team.json budgets(pack_minutes_max · run_usd_max)에서');
   assert.match(conductArgs(['--max-usd', '-1']).error, /maxUsd/);
   assert.match(conductArgs(['--bogus']).error, /알 수 없는 인자 --bogus/);
@@ -1227,4 +1228,21 @@ test('guard: adopt 팩의 경계 — 특성화 테스트·하네스·위생 파�
   assert.equal(decide(bash('node .garagiste/scripts/work.mjs commands quick="node --test tests/unit/*.test.mjs"', wt), gctx('adopt')), null, '명령 등록은 스크립트로');
   assert.deepEqual([TIERS.low.adopt, TIERS.medium.adopt, TIERS.high.adopt], ['haiku', 'sonnet', 'sonnet'], 'adopt의 모델은 boot과 같다(판단보다 실행)');
   assert.equal(team.models.adopt, 'sonnet');
+});
+
+// 4라운드(2026-10-04) — 인라인 코드로 규칙집·원장을 쓰는 길(v1 「초록을 만들기 위해 원장을 고쳤다」의 L0 재현)은 막고, 읽기는 그대로
+test('guard: 인라인 코드(node -e·python -c·sh -c)가 규칙집·원장 경로와 쓰기 동작을 품으면 거부 — 읽기·다른 경로·ADMIN은 그대로', () => {
+  const deny = /인라인 코드/;
+  assert.match(decide(bash("node -e \"require('fs').appendFileSync('.garagiste/ledger/evidence.jsonl', JSON.stringify({kind:'verify',exit:0})+'\\n')\""), gctx(null)) || '', deny, '원장 위조');
+  assert.match(decide(bash("python3 -c \"open('.garagiste/team.json','w').write('{}')\""), gctx(null)) || '', deny, 'team.json');
+  assert.match(decide(bash("sh -c 'echo x > .garagiste/ledger/evidence.jsonl'"), gctx(null)) || '', deny, '셸 -c 안의 리다이렉트');
+  assert.match(decide(bash("node -e \"require('fs').writeFileSync('.claude/settings.json','{}')\""), gctx(null)) || '', deny, '배선');
+  assert.match(decide(bash("bash -c \"rm .garagiste/units/hello.json\""), gctx(null)) || '', deny, 'unit 상태');
+  assert.match(decide(bash("node -e \"require('fs').writeFileSync('.garagiste/session/ceo-touch', new Date().toISOString())\""), gctx(null)) || '', deny, 'CEO 접점 위조(무인 출하 카운터 리셋)');
+  assert.equal(decide(bash("node -e \"console.log(require('fs').readFileSync('.garagiste/ledger/evidence.jsonl','utf8').split('\\n').length)\""), gctx(null)), null, '읽기는 자유 — L2 1일차 표 산출 오탐을 되풀이하지 않는다');
+  assert.equal(decide(bash("grep -c '\"kind\":\"ship\"' .garagiste/ledger/evidence.jsonl"), gctx(null)), null);
+  assert.equal(decide(bash("node -e \"require('fs').writeFileSync('/tmp/x.json','{}')\""), gctx(null)), null, '다른 경로는 이 규칙의 일이 아니다');
+  assert.equal(decide(bash("node .garagiste/scripts/work.mjs decide 1 '예'"), gctx(null)), null, '스크립트 호출은 인라인 코드가 아니다');
+  assert.equal(decide(bash("node -e \"require('fs').writeFileSync('.garagiste/team.json','{}')\""), { ...gctx(null), env: { GARAGISTE_ADMIN: '1' } }), null, 'CEO(ADMIN)는 자유');
+  assert.ok(inlineCodeWrite("python -c \"import shutil; shutil.copy('x', '.garagiste/packs/build.md')\"") && !inlineCodeWrite("python -c \"print(open('.garagiste/team.json').read())\""));
 });

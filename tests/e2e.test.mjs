@@ -1228,3 +1228,79 @@ test('adopt + conduct: 가짜 팩 adopt로 기존 코드의 첫 unit이 끝까�
   assert.match(r.out, /NEXT run node \.garagiste\/scripts\/work\.mjs seed[\s\S]*UNIT adopt adopt[\s\S]*NEXT run node \.garagiste\/scripts\/brief\.mjs adopt adopt[\s\S]*NEXT spawn adopt adopt[\s\S]*SPAWN adopt adopt haiku 1200 tok[\s\S]*NEXT run node \.garagiste\/scripts\/ship\.mjs adopt — adopt가 끝났다[\s\S]*SHIPPED adopt[\s\S]*REPORT docs\/REPORT\.md[\s\S]*STOP done [^\n]*SCOPE DONE/);
   assert.match(fs.readFileSync(path.join(repo, 'docs/REPORT.md'), 'utf8'), /adopt: 쓰던 명령이 그대로 도는가\(특성화\)/);
 });
+
+// 4라운드(2026-10-04) — L0 속임수 셋(Q8 검사): 훅이 없는 환경(이 e2e가 그것이다)에서 테스트 약화 · 원장 없는 커밋 · 원장 위조 중 무엇이 막히는가.
+// 둘은 L0(게이트·redproof)가 막는다. 셋째(위조한 PASS 줄)는 게이트와 8조건을 지나간다 — ship의 재검증(통합 tree에서 full·redproof·attack을 스스로)이 막는다.
+test('L0 속임수 셋: 테스트 약화는 redproof가, 원장 없는 커밋은 게이트가, 원장 위조는 ship의 재검증이 막는다(team.json ship_reverify=false면 뚫린다 — 기록)', { timeout: 180000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const stop = conduct(repo, ['--max-steps', '8']); // 가짜 팩으로 spec → build → attack → build(red 0)까지 여덟 걸음 — ship(아홉째) 직전에 선다
+  assert.equal(stop.status, 5, stop.out);
+  assert.match(stop.out, /ATTACK hello red 0\/1[\s\S]*STOP cap [^\n]*걸음 상한 8/, 'ship 직전에 섰다');
+  const wt = path.join(repo, '.worktrees', 'hello');
+  const ledgerPath = path.join(repo, '.garagiste/ledger/evidence.jsonl');
+  const forge = (o) => fs.appendFileSync(ledgerPath, JSON.stringify({ ts: new Date().toISOString(), ...o }) + '\n');
+  // (1) 테스트 약화 — 인수 테스트를 base에서도 초록인 것으로 바꾸면 redproof가 거부한다
+  const accPath = path.join(wt, 'tests/acceptance/hello.test.mjs'); const accOrig = fs.readFileSync(accPath, 'utf8');
+  fs.writeFileSync(accPath, "import test from 'node:test'; test('약화', () => {});\n");
+  assert.match(script('redproof', ['hello'], repo).out, /^FAIL redproof hello[\s\S]*base에서 green/, '(1) 약화된 주장은 base에서도 초록 — 테스트가 아니다');
+  fs.writeFileSync(accPath, accOrig);
+  // (2) 원장 없는 커밋 — 로직을 바꾸고 quick 없이 커밋하면 게이트가 거부한다
+  const cli = path.join(wt, 'src/cli.mjs'); const cliOrig = fs.readFileSync(cli, 'utf8');
+  fs.writeFileSync(cli, "const n = process.argv[2]; process.stdout.write(n ? `hello ${n}!\\n` : 'hello\\n');\n"); // 인수(hello Ada)는 깨지고 스모크(tests/unit)는 산다
+  git(['add', '-A'], wt);
+  const c1 = git(['commit', '-q', '-m', 'feat(hello): 느낌표\n\nUnit: hello\nStep: 3'], wt);
+  assert.equal(c1.status, 1, '(2) 게이트: ' + c1.out); assert.match(c1.out, /원장에 이 tree[^\n]*quick PASS 없음/);
+  // (3) 원장 위조 — 지금 tree의 quick PASS 줄을 적으면 게이트는 지나간다(L0 게이트는 원장을 믿는다 — 기록)
+  const work = git(['write-tree'], wt).out.trim();
+  forge({ kind: 'verify', mode: 'quick', tree: work, head: null, exit: 0, platform: process.platform, where: '.worktrees/hello', forged: true });
+  const c2 = git(['commit', '-q', '-m', 'feat(hello): 느낌표\n\nUnit: hello\nStep: 3'], wt);
+  assert.equal(c2.status, 0, '(3) 위조한 quick 줄로 게이트가 열렸다 — L0의 한계: ' + c2.out);
+  const head = git(['rev-parse', 'HEAD'], wt).out.trim(); const tree = git(['rev-parse', 'HEAD^{tree}'], wt).out.trim();
+  forge({ kind: 'verify', mode: 'full', tree, head, exit: 0, platform: process.platform, where: '.worktrees/hello', forged: true });
+  forge({ kind: 'redproof', slug: 'hello', tree, head, base: 'x', base_red: true, head_green: true, files: 1, forged: true });
+  forge({ kind: 'attack', slug: 'hello', tree, red: 0, total: 1, files: ['tests/adversary/hello-1.test.mjs'], forged: true });
+  const ship = script('ship', ['hello'], repo);
+  assert.match(ship.out, /^FAIL ship: 통합 tree에서 full FAIL — 원장의 PASS 줄과 다르다\(원장은 증거이지 증명이 아니다/, '(3) 8조건은 위조 줄에 속았지만 ship이 통합 tree에서 스스로 돈 full이 빨갛다: ' + ship.out);
+  assert.doesNotMatch(ship.out, /SHIPPED/);
+  assert.ok(!fs.existsSync(path.join(repo, 'src/cli.mjs')) || !/!/.test(fs.readFileSync(path.join(repo, 'src/cli.mjs'), 'utf8')), 'main엔 느낌표가 없다');
+  const L = ledgerOf(repo);
+  assert.ok(L.some((e) => e.kind === 'verify' && e.integration && e.reverify === true && e.exit !== 0), '재검증 full의 원장 줄(integration·reverify·exit≠0)');
+  // 기록: 재검증을 끄면(ship_reverify=false) 위조 줄이 그대로 main에 닿는다 — 기본을 켜 두는 이유. 끄는 커밋으로 main이 움직이니 첫 ship은 사고 22 경로(main이 움직였다)의 full에 걸리고,
+  // 그 rebase가 남긴 통합 tree에 다시 위조 줄을 적은 둘째 ship이 빨간 인수 테스트를 그대로 머지한다(main quick은 스모크만 돌아 초록).
+  const teamPath = path.join(repo, '.garagiste', 'team.json'); const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  fs.writeFileSync(teamPath, JSON.stringify({ ...team, ship_reverify: false }, null, 2) + '\n');
+  git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'docs: reverify off'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
+  const moved = script('ship', ['hello'], repo);
+  assert.match(moved.out, /^FAIL ship: 통합 tree에서 full FAIL — main이 움직였다/, '꺼도 main이 움직인 ship은 전처럼 재실행한다: ' + moved.out);
+  const tree2 = git(['rev-parse', 'HEAD^{tree}'], wt).out.trim(); const head2 = git(['rev-parse', 'HEAD'], wt).out.trim();
+  assert.notEqual(tree2, tree, 'rebase가 남은 통합 tree');
+  forge({ kind: 'verify', mode: 'full', tree: tree2, head: head2, exit: 0, platform: process.platform, where: '.worktrees/hello', forged: true });
+  forge({ kind: 'redproof', slug: 'hello', tree: tree2, head: head2, base: 'x', base_red: true, head_green: true, files: 1, forged: true });
+  forge({ kind: 'attack', slug: 'hello', tree: tree2, red: 0, total: 1, files: ['tests/adversary/hello-1.test.mjs'], forged: true });
+  const pierced = script('ship', ['hello'], repo);
+  assert.match(pierced.out, /^SHIPPED hello [0-9a-f]{7}/, '재검증을 끄면 위조 줄이 main에 닿는다(기록): ' + pierced.out);
+  assert.match(fs.readFileSync(path.join(repo, 'src/cli.mjs'), 'utf8'), /!/, '빨간 코드가 main에 있다');
+  assert.notEqual(run(process.execPath, ['--test', 'tests/acceptance/hello.test.mjs'], repo).status, 0, 'main의 인수 테스트가 빨갛다 — ship_reverify=false의 값');
+});
+test('conduct check: 실전 전 preflight — claude CLI·작업 공간 신뢰·agents·allow·doctor·VERSION·잠금을 한 줄씩, 사용자 spawner면 CLI·신뢰는 생략', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-home-'));
+  const bin = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-bin-'));
+  const env = { HOME: home, PATH: `${bin}:/usr/bin:/bin` }; // 이 컨테이너엔 진짜 claude가 있다(/opt/…) — git만 남긴 PATH로 「CLI 없음」을 재현
+  const bare = script('conduct', ['check'], repo, env);
+  assert.equal(bare.status, 1, bare.out);
+  assert.match(bare.out, /^FAIL conduct check 2\n- claude CLI 없음\(PATH\)[^\n]*\n- 작업 공간 신뢰 없음\([^\n]*\.claude\.json projects\[[^\n]*hasTrustDialogAccepted\)[^\n]*\n\(ok: doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · agents 7 · allow node\)/, bare.out);
+  fs.writeFileSync(path.join(bin, 'claude'), '#!/bin/sh\necho "2.1.289 (Claude Code)"\n'); fs.chmodSync(path.join(bin, 'claude'), 0o755);
+  fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ projects: { [repo]: { hasTrustDialogAccepted: false } } }));
+  const untrusted = script('conduct', ['check'], repo, env);
+  assert.equal(untrusted.status, 1); assert.match(untrusted.out, /^FAIL conduct check 1\n- 작업 공간 신뢰 없음/);
+  fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ projects: { [fs.realpathSync(repo)]: { hasTrustDialogAccepted: true } } }));
+  const pass = script('conduct', ['check'], repo, env);
+  assert.equal(pass.status, 0, pass.out);
+  assert.match(pass.out, /^PASS conduct check — doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · claude 2\.1\.289 · agents 7 · allow node · 신뢰 ok$/m);
+  const custom = script('conduct', ['check', '--spawner', 'node x.mjs'], repo, { HOME: home });
+  assert.match(custom.out, /^PASS conduct check — doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · spawner 사용자 지정/, custom.out);
+  fs.mkdirSync(path.join(repo, '.garagiste/session'), { recursive: true });
+  fs.writeFileSync(path.join(repo, '.garagiste/session/conduct.json'), JSON.stringify({ pid: process.pid, step: 'run', at: 'now' }));
+  assert.match(script('conduct', ['check'], repo, env).out, /^FAIL conduct check 1\n- 이미 돌고 있다 — pid \d+/);
+});
