@@ -46,7 +46,7 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 
 ## L4 — 영역 확장(웹 → 데스크톱 → 게임·슈퍼앱). 확장 축은 검증 가능성.
 
-- **Q14. 사람-증거 레인.** `@sensor human`을 일급으로: 스크린샷·녹화·플레이 빌드가 원장 증거, STATUS의 「안 본 것」과 별도 집계(`state.mjs:31`에 싹 있음). claims의 미태그 기본값(machine, `claims.mjs:8`)을 unknown으로 바꿔 누락이 보이게. 검사: human 센서 unit이 CEO 판정 전 done으로 집계되지 않음.
+- **Q14. 사람-증거 레인.** `@sensor human`을 일급으로: 스크린샷·녹화·플레이 빌드가 원장 증거, STATUS의 「안 본 것」과 별도 집계(`state.mjs:31`에 싹 있음). claims의 미태그 기본값(machine, `claims.mjs:8`)을 unknown으로 바꿔 누락이 보이게. 검사: human 센서 unit이 CEO 판정 전 done으로 집계되지 않음. **→ 첫 조각 2026-10-04(R&D 8라운드)**: `tried --evidence <파일,…>` — docs/units/<slug>/evidence/ + docs 차선 커밋 + 원장 tried.evidence + STATUS 「사람 증거」·REPORT 「증거 n」. 남은 것: 「안 본 것」과 별도 집계 · @sensor human 주장과 증거의 연결.
 - **Q15. 플랫폼 센서 일반화 — 센서 없는 플랫폼엔 주장도 없다.** 대상 플랫폼 목록(신규 설계 — 옛 `machine_os`는 검증 platform의 허용 목록이라 이 일을 못 했고 win32 오탐으로 2026-09-29 제거됨)에 대해, 대상 플랫폼의 verify 기록 없으면 ship FAIL(tacit의 Linux 계획·AX 0046 존재하지 않는 zip의 재발 방지). 재료는 원장의 `platform` 필드. 검사: Windows 타깃 unit이 linux full만으로 ship 시도 시 FAIL.
 - **Q16. 멀티모달 능력 매트릭스.** provider별 입력 능력(이미지 등)을 team.json에 — 불가 provider에서 디자인 자산 unit은 사람 주석을 요구하고 그렇게 말한다. 검사: 온프렘 프로파일에서 이미지 첨부 intake가 명시적 안내 출력.
 
@@ -112,3 +112,4 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **채용(R&D 5라운드 2026-10-04)**: opencode 레인 패리티 — 가드 플러그인 실행 테스트 · task spawn_stop 팩 이름 · conductor task 허용 adopt · 팩 목록 하나(unit) · conduct spawnerGap · selftest L1 거부 1건. Q8 검사 완료, L3 게이트 후반.
 - **채용(R&D 6라운드 2026-10-04)**: 고아 팩(측정 → conduct 비동기 spawn · 잠금 child pid · 신호 전달) · 비밀 파일 읽기 거부(측정 → Bash 토큰·Read 매처·opencode read). 둘 다 「무인 안전벨트」(DEVICES 4.6)와 가드의 약속을 코드로.
 - **채용(R&D 7라운드 2026-10-04)**: kind refactor(Q13 둘째 조각 — 뒤집힌 red 증명 = 핀) · next의 attack 뒤 redproof·full 한 걸음(드라이버 틈) · verify.mjs quick|full [<slug>].
+- **채용(R&D 8라운드 2026-10-04)**: install.ps1 패리티(VERSION · 기존 저장소 커밋 · 정적 패리티 unit) · Q14 첫 조각(tried --evidence).

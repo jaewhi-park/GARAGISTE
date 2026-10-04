@@ -33,7 +33,7 @@ session-start 훅이 첫 줄에 `GARAGISTE 증거 팀 — 이 세션은 conducto
 2. **"개발해."** conductor가 `brief.mjs intake` → intake 팩 spawn. 결과: docs/BACKLOG.md에 unit 줄(코드가 없으면 첫 줄은 `boot` · kind scaffold — 스택·명령·스모크·규칙 파일을 채우는 unit), docs/DECISIONS.md에 예/아니오 질문. 질문에는 `node .garagiste/scripts/work.mjs decide <n> "<답>"`으로 답한다(또는 말로 — conductor가 대신 친다).
 3. **범위.** "M1 전부" 또는 "add와 list만". conductor가 `work.mjs scope …`를 치고 SCOPE 줄(요청 n · 선행 m · 순서)을 보여 준다. 받으면 "가".
 4. **루프.** conductor는 `next.mjs`가 내는 한 걸음씩 돈다 — boot는 boot 팩 하나 → ship, 다음 unit은 spec → redproof → build → attack → verify attack → ship. 범위가 끝나면 이음새 공격 한 바퀴(`work.mjs system`)와 출하 보고(docs/REPORT.md)가 따른다. 네가 볼 것은 docs/STATUS.md 첫 줄과 「써볼 것」뿐이다.
-5. **써봤다.** STATUS의 try 카드대로 명령을 쳐 보고 `node .garagiste/scripts/work.mjs tried <slug> ok|fail "<메모>"`.
+5. **써봤다.** STATUS의 try 카드대로 명령을 쳐 보고 `node .garagiste/scripts/work.mjs tried <slug> ok|fail "<메모>"`. 스크린샷·녹화·빌드가 있으면 `--evidence <파일,…>` — `docs/units/<slug>/evidence/`에 복사되고 docs 차선으로 커밋돼 원장 tried 줄이 가리킨다(STATUS 「사람 증거」, REPORT 「증거 n」).
 
 ## 5. 무엇을 재나 (판정선)
 `.garagiste/ledger/evidence.jsonl`이 전부 기록한다. 판정선은 docs/BIRTH.md의 표(첫 3 unit 뒤)이고, 등록·실측은 docs/measurements/(L1·L2 시험 · 필드 벤치)에 남긴다 — 표는 손이 아니라 `tests/field/table.mjs`·`day.mjs`가 원장에서 낸다.
