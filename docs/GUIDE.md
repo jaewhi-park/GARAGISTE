@@ -89,7 +89,7 @@ node .garagiste/scripts/conduct.mjs --max-usd 15 --pack-minutes 45 --pack-usd 3 
 - 팩 비용 상한(`--pack-usd`·`pack_usd_max`)은 **첫 턴 뒤에** 걸린다(측정 2026-10-04: 상한 $0.05에 $0.43 — 시스템 프롬프트 캐시 생성이 한 턴). 팩 하나의 실측(12라운드, 작은 Node 저장소): intake opus $0.10 · adopt sonnet $0.14 · spec opus $0.27~0.33 · build sonnet $0.11~0.12 · attack opus $0.27~0.32 — 상한은 그 몇 배로(기본 끔). 설치→SCOPE DONE(unit 2 출하 · 이음새 공격 · REPORT)이 $1.66 · 기계 ≈6분 — `docs/measurements/CONDUCT-FIRST-RUN.md`.
 - 팩의 Bash: 무인 세션은 `cd <worktree> && cat|ls|git …` 묶음을 승인 요청으로 보고 거부한다(`cd … && node …`는 통과 — 측정) — agents 파일이 그렇게 말하고, 거부는 한 턴을 잃을 뿐 멈추지 않는다. 검증 명령은 등록 때 탐침을 지난다(full은 인수·공격 자리까지, quick은 unit만 — 아니면 `FAIL commands — 눈먼 명령`).
 - CEO 결정만 요구하는 FAIL(두 번째 spec 반려 · 팩 상한 2배 · 이미 충족)은 안내 끝의 `work.mjs ask … --hold`를 드라이버가 그대로 실행해 그 unit만 세운다 — 답은 저녁에 `decide`.
-- 멈춘 팩은 `--pack-minutes`(기본 60)에 SIGTERM으로 끊긴다 — 비정상 종료 둘이면 프레임워크 FAIL로 멈춘다(밤새 걸리지 않는다). 돌아와서 STATUS 「진행 중」을 보면 살아 있는 conduct의 걸음·slug·팩·비용이 한 줄로 있다.
+- 멈춘 팩은 `--pack-minutes`(기본 60)에 SIGTERM으로 끊긴다(측정 2026-10-04: 진짜 claude는 1.9초 뒤 exit 143 — stdout JSON이 없어 그 팩의 비용·토큰은 원장에 남지 않는다, `--max-usd` 합계는 그만큼 느슨하다 · SIGTERM을 무시하면 5초 뒤 SIGKILL) — 비정상 종료 둘이면 프레임워크 FAIL로 멈춘다(밤새 걸리지 않는다). 돌아와서 STATUS 「진행 중」을 보면 살아 있는 conduct의 걸음·slug·팩·비용이 한 줄로 있다.
 - 대화형 conductor와 같은 저장소에서 동시에 돌리지 않는다 — unit은 한 번에 하나다(잠금이 막는다 — 11라운드부터 대화형 conductor의 brief·ship·seed도 conduct가 도는 동안 「conduct가 돌고 있다」로 선다). Windows: npm으로 깐 claude는 셸 심이라 conduct가 셸로 띄우고 taskkill /T로 끊는다 — 첫 실전 run에서 `conduct check`의 「claude <판> · 깃발 ok」가 그 수리의 검증이다. 다른 하네스·시험은 `--spawner "<명령 템플릿 {path} {pack} {slug} {model} {turns}>"`(모델 0 가짜 팩은 `tests/fakes/pack.mjs`).
 - **opencode 설치본**: `.claude/agents`가 없어 기본 spawner가 서지 않는다 — `conduct.mjs check`와 본 실행이 잠금 전에 한 줄로 선다. `--spawner 'opencode run --agent {pack} "$(cat {path})"'` 꼴의 템플릿을 설치된 opencode 판에 맞춰 적는다(이 예는 모델 0 환경에서 검증되지 않았다 — 첫 실전 run이 검증이다). JSON이 아닌 출력은 토큰·비용 0으로 기록되니 예산 정지는 걸음·시간 상한으로 건다. 가드 플러그인·L0는 같은 법이다 — e2e가 같은 속임수 셋과 13 케이스 패리티로 묶는다(CHANGELOG 「R&D 5라운드」).
 
@@ -100,12 +100,13 @@ node .garagiste/scripts/conduct.mjs --max-usd 15 --pack-minutes 45 --pack-usd 3 
 | L1 — guard 훅·플러그인 | 규칙집·원장·배선 쓰기 거부(파일 도구·셸 리다이렉트·in-place verb·인라인 코드), 팩의 쓰기 경계, 파괴적 git, 게이트 우회 접두, 비밀 파일(.env·*.pem·*.key·credentials·id_rsa)은 읽기도(6라운드) | 정규식 — 최선 노력. 읽기는 막지 않는다(의도). OS 샌드박스는 백로그 후보 |
 | L2 — 팩 산문 | 할 일·하지 않는 것 | 조언 — 모델이 따를 때만 |
 
-## 10. unit의 정체(kind)와 증명 (2026-10-04 7라운드)
+## 10. unit의 정체(kind)와 증명 (2026-10-04 7라운드 · pin 13라운드)
 | kind | 언제 | 증명(ship 조건 redproof) | 팩 |
 |---|---|---|---|
 | feature(기본) | 새 동작 | 인수 테스트가 base에서 red · head에서 green | spec → build → attack |
 | scaffold | 빈 저장소의 첫 unit(`boot`) | 러너 자신의 red(깨진 탐침이 exit≠0) | boot 하나 |
 | adopt | 기존 코드의 첫 unit | 특성화 테스트의 quick·full(소스 불변) | adopt 하나 |
 | **refactor** | 동작 그대로 구조만 | **핀**(현재 동작)이 base에서도 head에서도 green — base red면 feature다, head red면 동작이 바뀌었다 | spec(핀) → build(구조) → attack(바뀐 동작) |
+| **pin** | 이미 참인 주장 — 제약형 요구(「쓰지 않는다」·「그대로다」) 또는 앞 unit이 이미 만든 것(redproof 「base에서 green」) | **핀**(이미 참인 주장)이 base에서도 head에서도 green — 주장 파일이 main의 회귀 지킴이 된다 | spec(핀) → attack(깨지는 입력) → (red면 build) |
 | system | 범위 끝의 이음새 공격 | 공격 발견 ≥1(red였던 공격 파일) | attack → (build) |
-`work.mjs add|new <slug> "<원문>" --kind refactor` — intake가 「동작 그대로 구조만」인 요청에 쓴다. 팩 산문은 kind를 모른다 — brief.mjs가 refactor 절을 코드로 넣는다.
+`work.mjs add|new <slug> "<원문>" --kind refactor|pin` — intake가 「동작 그대로 구조만」엔 refactor, 「이미 참」엔 pin을 쓴다. 진행 중 feature의 redproof가 「base에서 green」이면 길은 둘: `work.mjs drop <slug> "<사유>" --forget`(닫는다 — 주장 파일은 dropped 브랜치로) 또는 **`work.mjs pin <slug>`**(회귀 증거로 고정해 출하 — 13라운드, 근거: 필드 시험 2의 web persist·browser-check · 파이썬 no-network · 12라운드 실전 run의 discount-reject). 팩 산문은 kind를 모른다 — brief.mjs가 refactor·pin 절을 코드로 넣는다.

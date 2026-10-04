@@ -1,4 +1,4 @@
-# conduct 실전 첫 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드)
+# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python)
 
 ## 왜
 1~11라운드의 드라이버(`conduct.mjs`)·헤드리스 spawner(`claude -p <팩> --agent <팩> …`)는 가짜 팩(`tests/fakes/pack.mjs`)과 `--help` 텍스트로만 검증됐다 — 9라운드(`--max-turns` 없음)·11라운드(Windows 셸 심)의 벽은 둘 다 **읽어서** 찾은 것이고, 실제 CLI가 실제로 어떻게 끝나는지(JSON 꼴 · 권한 · 모델 선택 · 훅)는 한 번도 보지 않았다. 12라운드는 그 자리를 **측정**으로 채운다: 정비 자리(리눅스 컨테이너)에 설치된 claude 2.1.289로 기존 코드가 있는 저장소에 설치 → intake → conduct 끝까지. 테스트는 그대로 모델 0 · 네트워크 0 — 이 문서는 측정 기록이다(HANDOFF 「장치는 사고·측정에서만」).
@@ -17,10 +17,10 @@
 
 탐침이 바꾼 것(코드): `conduct.mjs trust`(preflight 「신뢰 없음」의 수리 — 그 키를 쓴다, 대화형 claude를 열 수 없는 자리) · preflight 문구를 측정대로(「헤드리스엔 신뢰 대화가 없다」 → 「allow 목록을 버려 Bash가 전부 거부된다」) · `parseResult`가 `usage` 0이면 `modelUsage` 합 · 실측 모델(`spawned --model`) · 비정상 종료 줄에 `subtype: errors`.
 
-## 첫 run — intake
+## 첫 run(Node, 12라운드) — intake
 `conduct.mjs intake --pack-usd 3 --pack-minutes 15`: brief → PACK 4.1KB → intake 팩(opus) 4턴 · 31,928 토큰 · 0.2분 · **$0.099** · 거부 0 → unit 3(adopt · discount · discount-reject, M1, needs adopt) · 질문 0 → `STOP ceo`(exit 2) 14초. 관찰: 인수 줄의 따옴표가 `”`(U+201D) — 팩이 셸 인용을 피해 둥근 따옴표를 썼다(spec이 테스트로 바꿔 쓰니 해롭지 않지만 복붙은 안 된다).
 
-## 첫 run — 루프
+## 첫 run(Node, 12라운드) — 루프
 `work.mjs scope --milestone M1`(adopt → discount → discount-reject) → `conduct.mjs --max-usd 8 --pack-usd 3 --pack-minutes 20`:
 
 | 시각(UTC) | 걸음 | 팩·모델 | 턴 · 토큰 · 분 | $ | 결과 |
@@ -63,19 +63,45 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 | `cd .worktrees/discount && git status --short` | 거부 |
 | `cd lib && ls -a`(worktree가 아닌 폴더) | 거부 |
 
-## 비용 합계
+## 둘째 run — Python (13라운드 2026-10-04 · 둘의 규칙: 둘째 생태계에서 같은 길)
+테스트 베드 `pylegacy`(scratchpad): `ledger-tool 0.2.0` — `ledger/core.py`·`ledger/cli.py`(`python -m ledger.cli '<JSON>'` → 합계) · unittest 1 · pyproject · 원격 bare. 설치(동결 18 b835451 · SELFTEST 21/21) → `conduct trust` → `check` PASS. 원문 한 문단: 「기존 ledger CLI는 그대로 … `--by-category`를 주면 카테고리별 소계를 이름 순으로 … category 없는 항목은 etc … 외부 네트워크는 쓰지 않는다」.
+
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 08:50:15 | intake | opus | 31K · 0.2 | 0.073 | unit 2(adopt · by-category) · 질문 0 · 12초 → `STOP ceo` |
+| 08:50:27 | seed adopt → spawn | adopt · sonnet | 205K · 0.8 | 0.176 | **`FAIL commands — 눈먼 명령 1(저장하지 않았다)`(08:51:01 — 12라운드 탐침이 실제 팩 앞에서 섰다)** → 6초 뒤 하네스 `tests/harness/run_file.py`(하이픈 이름도 경로 그대로 · 0건이면 exit 1)로 quick·full·test_file 등록 → 특성화 10 + 기존 1 · `.gitattributes` · `setup=true`(관찰 — 12라운드와 같다, 둘의 규칙) · 거부 0 |
+| 08:51:20 | ship adopt | — | — | — | SHIPPED 4cbe98f |
+| 08:51:21 | seed by-category → spec | spec · opus | 126K · 0.9 | 0.282 | RED 1/1 · **Q1**(기존 특성화 「--by-category를 무시해 2.00」이 새 요구와 충돌 — `ask --assumed` 「대체된다」) → `STOP wait`(exit 3) · 이 run $0.458 · 1분 48초 |
+| 08:54:57 | 대리 CEO `decide 1 "예"` | — | — | — | RESPEC(답이 진행 중에 — 사고 17) · ACCEPT |
+| 08:54:57 | brief spec(RESPEC) → spawn | spec · opus | 90K · 0.4 | 0.189 | 질문 0(답이 가정과 같다) · RED 1/1 |
+| 08:55:22 | build | build · sonnet | 176K · 0.7 | 0.143 | 구현 · verify full PASS · **`spec:` 반려 1** — 인수 테스트의 기대값 산술 오류(12.50 ≠ 2.5+10+1) → 드라이버가 `brief.mjs spec --return`으로 넘겼다 |
+| 08:56:05 | spec(--return) | spec · opus | 52K · 0.4 | 0.141 | 테스트 수정 · redproof **PASS base_red head_green(re-spec — build가 이미 만들었다)** → next: build 불필요, attack |
+| 08:56:34 | attack | attack · opus | 90K · 0.9 | 0.273 | 공격 1파일 8케이스 · **red 1/1 — 결함 2**(카테고리 이름의 개행 → 가짜 줄 · 숫자 category가 etc로 합쳐짐) |
+| 08:57:26 | build(공격 red) | build · sonnet | 178K · 0.6 | 0.127 | `fix(core)` · attack red 0/1 · redproof PASS · full PASS · 거부 1(`cd … && git reset --soft HEAD~1 && …`) |
+| 08:58:08 | ship by-category | — | — | — | SHIPPED d5c84f4(선발견 1→0/1) |
+| 08:58:08 | `work.mjs system` → attack | attack · opus | 130K · 0.8 | 0.299 | system-1: 공격 1파일 2케이스 · **red 1/1 — 결함 2**(짝 없는 서로게이트 category → `--by-category`에서 UnicodeEncodeError · U+2028/2029·\x0b·\x0c·\x1c 줄 분리) |
+| 08:58:58 | build(system-1) | build · sonnet | 124K · 0.5 | 0.111 | `fix(core)` 비출력 문자 이스케이프 · attack red 0/1 · 거부 1(같은 `git reset --soft`) |
+| 08:59:31 | ship system-1 → REPORT → done | — | — | — | SHIPPED b2983fc · REPORT(출하 2/2 + 이음새 1) → **`STOP done` — SCOPE DONE** · 이 run $1.283 · 4분 35초 |
+
+합계: 팩 10 · 토큰 1.20M · 팩 시간 6.2분 · **run $1.81** · 기계 벽시계 ≈7분 · 프레임워크 FAIL 0 · 사람 접점 1(Q1) · 공격이 찾은 결함 4(전부 수리·출하) · `spec:` 반려 1(산술 오류 — build가 잡았다). main: `ledger tool 0.2.0` → 설치 → adopt → ship(adopt) → fix → ship(by-category) → fix → ship(system-1) → docs(report).
+
+### 관찰 (13라운드)
+8. **`setup=true` 둘째**(Node adopt · Python adopt) → 장치: `work.mjs commands`가 매니페스트(package.json·pyproject·requirements·go.mod·Cargo.toml)가 있는데 setup이 `true`·`:`·`echo`·`exit 0`이면 저장하지 않는다(`setupNoop`).
+9. **거부 3 — 전부 `cd <worktree> && git reset --soft HEAD~1 && …`**(build 팩이 wip 체크포인트 커밋을 풀어 정식 커밋으로 얹으려 했다 — ship의 head 조건이 요구하는 바로 그 일). 12라운드 Node run의 build도 같은 명령 1 → 넷. `git reset --soft`는 allow에 없었다(파괴적 reset --hard만 deny) → `.claude/settings.json` allow에 `Bash(git reset --soft:*)`(기존 설치본은 drift로 보인다 — `settings.garagiste.json`). 12라운드의 agents 한 줄(`cd && node`만) 뒤 Node run 6/8 → Python run 3/10 — 둘러보기 거부는 0이 됐다.
+10. 이미 충족된 주장 → **kind pin**(13라운드 장치, 백로그 2순위 채용): 이 run엔 자리가 없었다(by-category의 re-spec PASS는 build 뒤라 정상). 검사는 e2e(hold 경로 · `--kind pin` 직접).
+
+### 시간 상한 탐침 — SIGTERM (13라운드)
+`claude -p "sleep 90 …" --agent build …`에 8초 뒤 SIGTERM: **1.9초 뒤 종료 · exit 143 · stdout 0바이트(JSON 없음) · stderr 없음**. 뜻: `--pack-minutes`의 SIGTERM은 든다(고아 없음) — 그러나 끊긴 팩의 비용·토큰은 원장에 남지 않는다(spawned 줄은 분만) → `--max-usd` 합계가 끊긴 팩의 지출을 못 본다(상한은 그만큼 느슨하다). SIGTERM을 무시하는 팩은 보지 못했지만 드라이버는 이제 5초 뒤 SIGKILL(runChild killAfterMs — installSignals와 같은 꼴).
+
+## 비용 합계 (두 run)
 | 무엇 | $ |
 |---|---|
-| 계약 탐침 3(1은 fable 기본 모델 — 상한 $0.05에 $0.43) | 0.479 |
-| 권한 탐침 10 | 0.159 |
-| intake | 0.099 |
-| 루프 1(adopt → discount 출하 → discount-reject hold) | 1.242 |
-| 루프 2(system-1 → REPORT → SCOPE DONE) | 0.317 |
-| **합계** | **2.30**(그중 run 1.658 · 팩 8 · 토큰 991K · 팩 시간 5.6분 · 기계 벽시계 ≈6분) |
+| 12라운드 탐침 13 + run(Node, 팩 8) | 2.30 |
+| 13라운드 run(Python, 팩 10) + SIGTERM 탐침 | 1.83 |
+| **합계** | **4.13** — unit 하나(spec·build·attack·수리 포함) ≈ $0.6~0.9 · 이음새 공격 한 바퀴 ≈ $0.3~0.4 |
 
-## 판정
-- **① 신규·기계 검증 가능(CLI·웹·데몬·API) + 리눅스 + `conduct.mjs`: 투입 가능(실측)** — 설치부터 SCOPE DONE까지 사람 접점 1(hold 결정), 프레임워크 FAIL 0, unit당 ≈$0.7(spec·build·attack·수리). 조건: `conduct check`가 PASS일 것(신뢰 없음이면 `conduct trust`) · 팩 비용 상한은 바닥값(시스템 프롬프트 캐시 — sonnet ≈$0.02~0.1 · opus ≈$0.1~0.3)의 몇 배 · hold·ceo 멈춤은 사람이 `decide` 뒤 FAIL의 안내대로(drop --forget 또는 재spawn).
-- **③ 레거시 입구(adopt)**: 첫 측정 통과 — 특성화 8 · 제품 코드 불변 · 공격이 「지금과 똑같다」 위반(TypeError)을 잡아 수리까지. 다만 소규모 Node 하나(파일 3 · 테스트 1). 특성화 대량·관심 영역 지도(큰 레거시)는 미측정.
-- **② UI 중심·DB·마이그레이션·멀티서비스**: 변화 없음 — 아직(Q14 사람-증거 레인 첫 조각만, 하네스 kit 없음).
-- **Windows**: 변화 없음 — CEO PC 검증 대기(install.ps1 · `conduct check` 「claude <판> · 깃발 ok」 · 팩 하나 spawn) + `conduct trust`(대화형을 열 수 없을 때).
-- 이 측정이 못 본 것: 긴 팩(시간 상한) · 비용 상한 정지 · 충돌 rebase · 사람 센서 unit(UI) · opencode 레인 · 이틀 이상의 운영(원장·worktree 누적).
+## 판정 (13라운드 갱신)
+- **① 신규·기계 검증 가능(CLI·웹·데몬·API) + 리눅스 + `conduct.mjs`: 투입 가능(실측 2/2)** — 두 생태계(Node · Python)에서 설치부터 SCOPE DONE까지, 프레임워크 FAIL 0, 사람 접점 run당 1(hold 또는 질문), 공격이 unit마다 결함을 찾아 수리까지(선발견 1·2·2). 조건은 12라운드와 같다(check PASS · trust · 팩 상한은 바닥값의 몇 배 · 멈춤은 `decide` 뒤 FAIL 안내대로).
+- **③ 레거시 입구(adopt)**: 둘째 생태계 통과 — Python에서 12라운드 탐침이 하네스를 강제했다(사고 44·57의 자리가 등록 때 닫힌다). 대규모 레거시(특성화 대량·관심 영역 지도)는 그대로 미측정.
+- **② UI·DB·멀티서비스**: 변화 없음. **Windows**: CEO PC 대기.
+- 이 둘이 못 본 것: 긴 팩의 시간 상한 실발동(탐침만) · 비용 상한 정지 · 충돌 rebase(두 unit이 같은 파일) · 사람 센서 unit · opencode 레인 · 이틀 이상의 운영.

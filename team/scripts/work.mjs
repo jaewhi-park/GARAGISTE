@@ -9,7 +9,7 @@ import { probeCommand, probeNames } from './verify.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt'];
-export const KINDS = ['feature', 'scaffold', 'adopt', 'refactor', 'system']; // unit의 정체 — 증명 방식이 다르다(refactor: 핀, 7라운드)
+export const KINDS = ['feature', 'scaffold', 'adopt', 'refactor', 'pin', 'system']; // unit의 정체 — 증명 방식이 다르다(refactor: 핀, 7라운드 · pin: 이미 충족된 주장의 핀, 13라운드)
 export const TIERS = {
   low: { intake: 'sonnet', spec: 'sonnet', build: 'haiku', attack: 'sonnet', spike: 'haiku', boot: 'haiku', adopt: 'haiku' },
   medium: { intake: 'opus', spec: 'opus', build: 'sonnet', attack: 'opus', spike: 'sonnet', boot: 'sonnet', adopt: 'sonnet' },
@@ -217,7 +217,7 @@ function createUnit(c, slug, origin, opts = {}) {
   linkDeps(c.main, wt);
   const boundary = checkBoundary(c.team, { text: origin });
   const kind = opts.kind || 'feature';
-  if (!KINDS.includes(kind)) fail(`FAIL kind ${kind} — feature(기본)|scaffold|adopt|refactor (system은 work.mjs system이 연다)`);
+  if (!KINDS.includes(kind)) fail(`FAIL kind ${kind} — feature(기본)|scaffold|adopt|refactor|pin (system은 work.mjs system이 연다)`);
   const state0 = kind === 'scaffold' ? 'boot' : kind === 'adopt' ? 'adopt' : kind === 'system' ? 'attack' : boundary.hit ? 'spike' : 'spec'; // system(이음새 공격): spec·spike 없이 attack부터 · adopt(기존 코드): adopt 팩 하나
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), state0);
   const unit = {
@@ -233,6 +233,7 @@ function createUnit(c, slug, origin, opts = {}) {
   if (kind === 'scaffold') out('SCAFFOLD — boot 팩 하나로 끝난다(스택·명령·스모크·규칙 파일), spec·attack 없음');
   else if (kind === 'adopt') out('ADOPT — adopt 팩 하나로 끝난다(특성화 테스트·검증 명령·규칙 파일 — 제품 코드는 바꾸지 않는다), spec·attack 없음');
   else if (kind === 'refactor') out('REFACTOR — 동작 보존: spec은 현재 동작의 핀(base에서도 초록)을 쓰고 redproof는 뒤집힌다(pin_base=green·head_green), build는 구조만 바꾼다, attack은 바뀐 동작을 찾는다');
+  else if (kind === 'pin') out('PIN — 이미 충족된 주장(제약형 요구·앞 unit이 만든 것)을 회귀 증거로: spec은 base에서도 초록인 인수 테스트를 쓰고 redproof는 핀 증명(pin_base=green·head_green), build 없음, attack은 그 주장이 깨지는 입력을 찾는다');
   else if (kind !== 'system' && boundary.hit) out(`HIT ${boundary.reasons.join(', ')} — spike 팩부터`);
 }
 // system-attack(백로그 「system-attack 팩」 · 채용 2026-10-03 — 방아쇠: green 후 CEO 발견 결함이 벤치 파이썬 날짜 ×2 · todo 4일차 · 홀드아웃 library loan-limit로 0이 아니었다):
@@ -379,11 +380,36 @@ function decide(c, n, answer) {
     out(`RESPEC ${slug} — Q${n}의 답이 진행 중에 왔다: spec이 답을 red 수용 테스트로 박는다 → node .garagiste/scripts/brief.mjs spec ${slug} (build·attack·ship은 그 뒤에 열린다)`);
   }
   // 12라운드(실전 첫 run 측정 2026-10-04): hold(사고 59)에 걸린 unit의 답은 re-spec이 아니다 — 답의 길은 그 FAIL의 안내. ACCEPT 줄만 보면 conductor가 spec을 다시 띄운다(실전 run의 Q1이 그 줄을 냈다).
-  for (const u of units) if ((u.holds || []).map(Number).includes(Number(n)) && u.state !== 'shipped' && u.state !== 'dropped') out(`HOLD ${u.slug} — Q${n}의 답이 왔다: re-spec 없음, 답의 길은 그 FAIL의 안내(STATUS 「막힌 것」·원장 fail 줄) — 이미 충족이면 node .garagiste/scripts/work.mjs drop ${u.slug} "<사유>" --forget · 다시 열려면 node .garagiste/scripts/brief.mjs <팩> ${u.slug}`);
+  for (const u of units) if ((u.holds || []).map(Number).includes(Number(n)) && u.state !== 'shipped' && u.state !== 'dropped') out(`HOLD ${u.slug} — Q${n}의 답이 왔다: re-spec 없음, 답의 길은 그 FAIL의 안내(STATUS 「막힌 것」·원장 fail 줄) — 이미 충족이면 node .garagiste/scripts/work.mjs drop ${u.slug} "<사유>" --forget · 회귀 증거로 고정해 출하하면 node .garagiste/scripts/work.mjs pin ${u.slug} · 다시 열려면 node .garagiste/scripts/brief.mjs <팩> ${u.slug}`);
   // 사고 66: 결정은 인수다 — 그 Q를 기다리는 첫 열린 unit의 인수에 잇는다(spec이 red 수용 테스트로 박는다)
   const qt = questionText(updated, Number(n));
   const acc = qt && acceptWithDecision(readText(backlogPath(c)), Number(n), answer, qt.text, qt.who);
   if (acc) { fs.writeFileSync(backlogPath(c), acc.text); syncUnitAccept(c, acc.slug, acc.accept); out(`ACCEPT ${acc.slug} — 결정 Q${n}이 인수에 실렸다(spec이 red 수용 테스트로)`); }
+}
+// kind pin(R&D 13라운드 2026-10-04 — 백로그 「2순위: 이미 충족된 주장 박기」, 근거 셋: 필드 시험 2의 web persist·browser-check · 파이썬 no-network · 12라운드 실전 run의 discount-reject):
+// redproof 「base에서 green」의 유일한 길이 drop이라 주장 파일이 dropped 브랜치로 갔다 — main의 회귀 지킴을 잃는다. 둘째 길: 주장을 회귀 증거로 고정해 출하한다(핀 증명 재사용 · build 없음 · attack 한 바퀴).
+// CEO 접점이다(hold의 decide 뒤 conductor가 돈다) — 팩은 부르지 않는다(메인 전용). 제약형 요구(「쓰지 않는다」·「그대로다」)는 처음부터 --kind pin으로 연다.
+function pin(c, slug) {
+  if (c.root !== c.main) fail('FAIL pin은 메인에서만 — unit의 정체를 바꾸는 것은 CEO 결정 뒤 conductor의 일이다');
+  const u = loadUnit(c.main, c.team, slug);
+  if (u.state === 'shipped' || u.state === 'dropped') fail(`FAIL ${slug}은 ${u.state} — pin은 진행 중 unit에만`);
+  if (u.kind === 'pin') return out(`PIN ${slug} — 이미 pin이다`);
+  if (!['feature', 'refactor'].includes(u.kind)) fail(`FAIL ${slug}의 kind ${u.kind} — pin은 feature(이미 충족된 주장)·refactor에서만`);
+  if (u.state !== 'spec') fail(`FAIL ${slug}의 상태 ${u.state} — pin은 spec 단계(redproof 「base에서 green」 뒤)에서만: build가 돌았으면 이미 충족이 아니다`);
+  const from = u.kind; u.kind = 'pin'; saveUnit(c.main, c.team, u);
+  const p = backlogPath(c); const text = readText(p); // BACKLOG 줄의 kind 표기 — seed·pickReady가 읽는 정본
+  const re = new RegExp(`^(- \\[ \\] ${slug} · \\S+ · needs: \\S+ · "[^"]*" · 인수: .*?)((?: · kind: [a-z]+)?)$`, 'm');
+  if (re.test(text)) fs.writeFileSync(p, text.replace(re, (m, head) => `${head} · kind: pin`));
+  appendLedger(c.main, c.team, { kind: 'rekind', slug, from, to: 'pin' });
+  out(`PIN ${slug} — kind ${from} → pin: 인수 테스트는 base에서도 초록이어야 한다(핀 증명 pin_base=green·head_green), build 없음, attack 한 바퀴 → ship(주장 파일이 main의 회귀 지킴이 된다). 다음: node .garagiste/scripts/next.mjs (redproof.mjs ${slug}가 PIN을 낸다)`);
+}
+// setup 노옵(13라운드 — 둘의 규칙: 12라운드 Node adopt · 13라운드 Python adopt가 둘 다 setup=true를 적었다): boot 팩 4 「의존성 0이어도 생태계의 설치 명령」(사고 34).
+// true·:·echo는 설치가 아니다 — 뒤 unit이 의존성을 더하면 ship의 머지 직후 setup이 아무것도 안 해 main이 깨진다(사고 21). 매니페스트가 있을 때만 — 매니페스트 없는 저장소엔 설치가 없다.
+export function setupNoop(setup, dir) {
+  const s = String(setup || '').trim();
+  if (!s || !/^(true|:|echo\b.*|exit 0)$/.test(s)) return null;
+  const eco = [['package.json', 'npm install(또는 pnpm install · yarn · bun install)'], ['pyproject.toml', 'pip install -e . 또는 uv sync'], ['requirements.txt', 'pip install -r requirements.txt'], ['go.mod', 'go mod download'], ['Cargo.toml', 'cargo fetch']].find(([f]) => fs.existsSync(path.join(dir, f)));
+  return eco ? `setup="${s}"는 설치 명령이 아니다 — ${eco[0]}이 있다: 의존성 0이어도 생태계의 설치 명령으로(${eco[1]}; 사고 34) — 뒤 unit이 의존성을 더하면 ship이 머지 직후 main에서 setup을 돌린다(사고 21)` : null;
 }
 // 방향전환의 원자 연산 — 작업을 버리되 잃지 않는다: wip 커밋 → 브랜치를 dropped/로 개명 → worktree 제거. BACKLOG 줄은 열려 있어 seed가 새로 연다(--forget이면 닫는다).
 function drop(c, slug, reason = '', flags = {}) {
@@ -522,6 +548,7 @@ function commands(c, args) {
     if (m[1] === 'test_file' && !hasFileSlot(m[2])) fail('FAIL test_file에는 {file}(파일 하나) 또는 {files}(여러 파일을 한 번에) 자리표시자가 있어야 한다');
     t.commands[m[1]] = m[2];
   }
+  if (!process.env.GARAGISTE_ADMIN) { const noop = setupNoop(t.commands.setup, c.root); if (noop) fail(`FAIL commands — ${noop}(저장하지 않았다)`); } // 13라운드(둘의 규칙): setup=true
   if (!process.env.GARAGISTE_ADMIN) { const blind = blindCommands(t.commands, c.team.paths, c.root); if (blind.length) fail(`FAIL commands — 눈먼 명령 ${blind.length}(저장하지 않았다)\n${blind.map((x) => `- ${x}`).join('\n')}`); } // CEO(ADMIN)의 손은 판단이다 — 탐침은 팩의 등록에만
   writeJson(teamPath, t);
   appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' });
@@ -629,6 +656,7 @@ function main() {
   if (cmd === 'decide') return decide(c, pos[0], pos[1]);
   if (cmd === 'default') return setDefault(c, pos[0], pos[1]);
   if (cmd === 'drop') return drop(c, pos[0], pos[1], flags);
+  if (cmd === 'pin') return pin(c, pos[0]);
   if (cmd === 'tried') return tried(c, pos[0], pos[1], pos[2], flags);
   if (cmd === 'try') return tryCopy(c, pos[0]);
   if (cmd === 'budget') return budget(c, pos[0], pos[1]);
@@ -639,5 +667,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt|refactor] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] [--evidence <파일,…>] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt|refactor|pin] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · pin <slug> · try <slug> · tried <slug> ok|fail ["<말>"] [--evidence <파일,…>] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();
