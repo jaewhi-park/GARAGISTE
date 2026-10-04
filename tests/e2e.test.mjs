@@ -271,12 +271,22 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(second, /그 unit만 세우고 다음 seed로[\s\S]*work\.mjs ask session "[^"]+" --hold/, '그 unit만 세우는 명령이 있다');
   assert.match(script('brief', ['spec', 'hello'], repo).out, /^FAIL hello은 이미 출하됐다[\s\S]*--revise/, '출하된 unit엔 팩이 없다 — 진행 중 unit의 팩이 고친다고 말한다');
   assert.match(script('brief', ['attack', 'net', '--revise', 'x'], repo).out, /^FAIL --revise는 spec 반려가 CEO에게 간 unit에만/, '기존 공격 테스트를 고치는 것은 CEO 결정의 길뿐(테스트 약화)');
-  assert.match(script('brief', ['build', 'session', '--revise', 'x'], repo).out, /^FAIL --revise는 attack 팩에만/);
+  assert.match(script('brief', ['build', 'session', '--revise', 'x'], repo).out, /^FAIL --revise는 spec·attack 팩에만/);
   const rv = script('brief', ['attack', 'session', '--revise', '예 — hello-1의 끝 공백 단언은 본문 기준으로 고쳐라'], repo);
   assert.match(rv.out, /^PACK .*session-attack-/, rv.out);
   assert.match(fs.readFileSync(path.join(repo, rv.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트[\s\S]*hello-1의 끝 공백 단언[\s\S]*서로 어긋난다/, 'attack 팩이 CEO 말과 충돌의 근거(반려 줄)를 받는다');
   assert.match(fs.readFileSync(path.join(repo, rv.out.split(' ')[1]), 'utf8'), /- test_file: `[^`]*\{file\}` — 증명은 파일 하나씩[^\n]*혼자 돈다[^\n]*다른 테스트 파일의 도우미에 기대지 않는다/, '사고 56: attack 팩도');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"adversary_revise","slug":"session","reason":"예 — hello-1/);
+  // 사고 75(16라운드 운영 둘째 날 M2): 새 원문이 출하된 unit의 인수 테스트와 어긋났을 때 인수를 고칠 손이 없었다 — CEO의 고쳐 쓰기 결정은 spec --revise로 들어가 unit에 실리고, 이어지는 attack 팩이 --revise 없이도 같은 결정으로 공격 테스트를 고친다
+  const sv = script('brief', ['spec', 'session', '--revise', '예 — hello의 기대 표는 새 id 규칙으로 고쳐라'], repo);
+  assert.match(sv.out, /^PACK .*session-spec-/, sv.out);
+  assert.match(fs.readFileSync(path.join(repo, sv.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 인수 테스트\(출하된 unit의 것 포함\)[\s\S]*새 id 규칙[\s\S]*tests\/acceptance 파일\(출하된 unit의 것 포함\)만/, 'spec 팩이 CEO 말과 범위를 받는다');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).revise?.for, 'attack', '결정은 unit에 실려 attack으로 간다');
+  const av = script('brief', ['attack', 'session'], repo);
+  assert.match(av.out, /^PACK .*session-attack-/, av.out);
+  assert.match(fs.readFileSync(path.join(repo, av.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트[\s\S]*새 id 규칙[^\n]*이어서/, '--revise 없이 띄운 attack 팩이 실린 결정을 받는다');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).revise, undefined, '둘이 받으면 지운다');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"acceptance_revise","slug":"session","reason":"예 — hello의 기대 표[\s\S]*"kind":"adversary_revise","slug":"session","reason":"예 — hello의 기대 표[^\n]*"carried":true/);
   assert.match(script('brief', ['build', 'session', '--return', 'x'], repo).out, /^FAIL --return은 spec 팩에만/);
   script('brief', ['build', 'session'], repo);
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"respec","slug":"session","q":3/);
@@ -1104,6 +1114,24 @@ test('conduct: system unit의 build가 spec: 반려를 남기면 반려는 공�
   assert.match(fs.readFileSync(path.join(repo, 'docs/DECISIONS.md'), 'utf8'), /- \[ \] Q1 \(system-1\): spec 반려 두 번째/);
 });
 
+// 16라운드(둘의 규칙 — 14라운드 관찰 14 · 15라운드 관찰 21): 공격이 이 diff 밖에서 찍은 결함은 글로만 남아 사라졌다 — defect: 줄 → work.mjs found → BACKLOG 후보(<slug>-f<n> · M? · needs <slug>)
+test('conduct: attack의 defect: 줄은 BACKLOG 후보가 된다(work.mjs found — 포장·중복은 하나로) — 출하는 그대로, CEO가 scope에 넣으면 팀 자발 unit으로 열린다', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const r = conduct(repo, [], { GARAGISTE_FAKE_MODE: 'defect' });
+  assert.equal(r.status, 2, r.out);
+  assert.match(r.out, /FOUND hello-f1 — BACKLOG 후보\(M\? · needs hello\): 범위에 넣으면 node \.garagiste\/scripts\/work\.mjs scope hello-f1[\s\S]*SHIPPED hello/, r.out);
+  assert.equal((r.out.match(/FOUND hello-f1/g) || []).length, 1, '같은 결함 두 줄(하나는 포장) → found 한 번(defectLines가 하나로)');
+  assert.match(fs.readFileSync(path.join(repo, 'docs/BACKLOG.md'), 'utf8'), /^- \[ \] hello-f1 · M\? · needs: hello · "이름이 1만 자면 표가 깨진다 — 이 diff 밖\(adopt 전 코드\)" · 인수: -$/m);
+  assert.deepEqual(ledgerOf(repo).filter((e) => e.kind === 'found').map((e) => [e.slug, e.candidate]), [['hello', 'hello-f1']], '같은 결함 두 줄(하나는 포장)에 후보는 하나');
+  assert.match(script('work', ['list'], repo).out, /hello-f1 +backlog +M\? +needs=hello/);
+  assert.match(script('work', ['found', 'hello', '빈 이름을 add하면 500'], repo).out, /^FOUND hello-f2 — BACKLOG 후보/);
+  assert.match(script('work', ['found', 'hello', '이름이 1만 자면 표가 깨진다 — 이 diff 밖(adopt 전 코드)'], repo).out, /^FOUND 이미 있음 hello-f1/, '같은 줄은 한 후보');
+  assert.match(script('work', ['found', 'nope', 'x'], repo).out, /^FAIL/, '없는 unit의 후보는 없다');
+  assert.match(script('work', ['scope', 'hello-f1'], repo).out, /^SCOPE 요청 1/);
+  assert.match(script('work', ['seed'], repo).out, /^UNIT hello-f1 spec/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/hello-f1.json'), 'utf8')).origin_kind, 'seed', 'CEO가 scope에 넣어 열렸다 — 그 scope가 CEO 접점(seed 경유)');
+});
+
 test('conduct + 예산: unit 토큰 상한(L2 2판 윈도우 진동 16배의 장치) — 상한에 닿으면 다음 걸음에(진동 안에서도 — 사고 72) ceo로 멈추고, CEO의 work.mjs budget 뒤 다시 돌리면 출하한다', { timeout: 120000 }, (t) => {
   const repo = conductRepo(t); if (!repo) return;
   const teamPath = path.join(repo, '.garagiste', 'team.json');
@@ -1125,7 +1153,7 @@ test('conduct + 예산: unit 토큰 상한(L2 2판 윈도우 진동 16배의 장
 });
 
 // 사고 70(brownfield 테스트 베드를 만들며 발견 — R&D 2026-10-04): 기존 저장소(HEAD 있음)에 설치하면 팀 파일이 미커밋으로 남아 첫 ship이 「메인 worktree에 미커밋 변경」으로 막혔다.
-test('사고 70: 기존 저장소에 설치 — 깨끗했으면 설치가 팀 파일을 커밋한다(생성물 차선), 더러웠으면 손대지 않고 말한다, 재설치는 「갱신」 커밋', { timeout: 120000 }, (t) => {
+test('사고 70·74: 기존 저장소에 설치 — 설치가 쓴 팀 파일만 커밋한다(생성물 차선), 더러워도 팀 파일은 커밋하고 사람의 것은 그대로(사고 74), 재설치는 「갱신」 커밋', { timeout: 120000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-brown-'));
   assert.equal(git(['init', '-q', '-b', 'main'], repo).status, 0);
@@ -1142,12 +1170,15 @@ test('사고 70: 기존 저장소에 설치 — 깨끗했으면 설치가 팀 �
   const ver = JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/VERSION'), 'utf8'));
   assert.deepEqual(ver, { garagiste: git(['rev-parse', 'HEAD'], GARAGISTE).out.trim(), team_tree: git(['rev-parse', 'HEAD:team'], GARAGISTE).out.trim(), flavor: 'claude' }, '판 = GARAGISTE 커밋 · team/ tree · 하네스(날짜 없음 — 같은 판의 재설치가 diff를 만들지 않게)');
   assert.equal(script('doctor', ['--version'], repo).out.trim(), `VERSION garagiste ${ver.garagiste} · team ${ver.team_tree} · claude`);
-  // 더러운 저장소: 사람의 것과 섞이니 손대지 않는다
+  // 더러운 저장소(사고 74 — 16라운드 운영 둘째 날): 사고 70은 「손대지 않는다」였는데 팀의 docs 차선만 더러워도 갱신의 팀 파일이 미커밋으로 남아 다음 ship이 막혔다 — 설치가 쓴 팀 파일만 커밋하고 사람의 것은 그대로
   write(repo, 'src/wip.js', '// 손으로 고치던 것\n');
+  fs.writeFileSync(path.join(repo, '.garagiste/packs/spike.md'), '# 낡은 팩 사본\n'); git(['add', '.garagiste/packs/spike.md'], repo); assert.equal(git(['commit', '-q', '-m', 'docs: stale'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
   const re = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
   assert.equal(re.status, 0, re.out);
-  assert.match(re.out, /팀 파일은 커밋하지 않았다 — 설치 전에 미커밋 변경이 있었다/);
-  assert.equal(git(['rev-list', '--count', 'HEAD'], repo).out.trim(), '2', '커밋이 늘지 않았다');
+  assert.match(re.out, /팀 파일 커밋\(갱신\(같은 판 [0-9a-f]{7}\) — 기존 저장소, 생성물 차선\)\n[^\n]*설치 전의 미커밋 변경은 그대로 두었다\(팀의 것이 아니다\): 1개/, re.out);
+  assert.equal(git(['status', '--porcelain'], repo).out.trim(), '?? src/wip.js', '사람의 것은 그대로 — 팀 파일만 커밋됐다');
+  const shown = git(['show', '--stat', '--format=', 'HEAD'], repo).out; assert.match(shown, /\.garagiste\/packs\/spike\.md/); assert.doesNotMatch(shown, /wip\.js/);
+  assert.equal(git(['rev-list', '--count', 'HEAD'], repo).out.trim(), '4', 'legacy · 설치 · stale · 갱신');
   fs.rmSync(path.join(repo, 'src/wip.js'));
   // 재설치(갱신): 깨끗하면 바뀐 팀 파일만 커밋(scripts·packs·훅·agents는 덮고 team.json·HAZARDS·규칙 파일은 남긴다) — 바뀐 것이 없으면 커밋도 없다
   fs.writeFileSync(path.join(repo, '.garagiste/packs/spike.md'), '# 낡은 팩 사본\n'); // 스크립트를 깨면 게이트 자체가 죽는다 — 산문 사본으로

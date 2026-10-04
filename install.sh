@@ -83,9 +83,9 @@ else
   RULES="$ROOT/AGENTS.md"; TEMPLATE="$HERE/team/opencode/AGENTS.md.template"
 fi
 if [ ! -f "$RULES" ]; then run cp "$TEMPLATE" "$RULES"; fi
-touch "$ROOT/.gitignore"
+GI_WROTE=0; touch "$ROOT/.gitignore"
 if ! grep -q 'GARAGISTE 증거 팀' "$ROOT/.gitignore"; then
-  if [ "$DRY" = 1 ]; then echo "  [dry] .gitignore += team/gitignore.snippet"; else { echo; cat "$HERE/team/gitignore.snippet"; } >> "$ROOT/.gitignore"; fi
+  if [ "$DRY" = 1 ]; then echo "  [dry] .gitignore += team/gitignore.snippet"; else { echo; cat "$HERE/team/gitignore.snippet"; } >> "$ROOT/.gitignore"; GI_WROTE=1; fi
 fi
 run git -C "$ROOT" config core.hooksPath .githooks
 run git -C "$ROOT" config core.autocrlf false # 게이트의 법은 tree 바이트 동일성 — 사용자 전역 개행 변환(win32 autocrlf=true)이 유령 diff를 만든다(사고 18)
@@ -94,15 +94,21 @@ if [ "$DRY" = 0 ] && ! git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1
   git -C "$ROOT" add -A && git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit
   # 사고 19(win32 원격 검증): 첫 커밋 실패를 경고로 삼키면 설치가 '전부 스테이징된 채 HEAD 없음/어긋남'으로 성공을 선언한다 — fail-closed
   if GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]"; then echo "  첫 커밋: 팀 파일"; else echo "설치 FAIL — 첫 커밋이 닫히지 않았다. 위 git 출력이 이유다." >&2; exit 1; fi
-elif [ "$DRY" = 0 ] && [ "$PRE_HEAD" = 1 ] && [ -n "$(git -C "$ROOT" status --porcelain)" ]; then
-  # 기존 저장소: 설치 전에 깨끗했으면 설치가 남긴 것은 전부 팀 파일이다 — 생성물 차선(GARAGISTE_SHIP·WIP — models·commands·report 커밋과 같다)으로 커밋. 더러웠으면 사람의 것과 섞이니 손대지 않는다.
-  if [ "$PRE_DIRTY" = 1 ]; then
-    echo "  팀 파일은 커밋하지 않았다 — 설치 전에 미커밋 변경이 있었다. 정리한 뒤: git add -A && GARAGISTE_SHIP=1 GARAGISTE_WIP=1 git commit -m 'scaffold(team): GARAGISTE 증거 팀 설치' (규칙집·배선은 생성물 차선 — 첫 ship은 main이 깨끗해야 한다)"
-  else
-    WHAT="설치"; if [ "$PRE_INSTALLED" = 1 ]; then if [ -n "$PREV_SHA" ] && [ "$PREV_SHA" != "$GSHA" ]; then WHAT="갱신 ${PREV_SHA:0:7}→${GSHA:0:7}"; else WHAT="갱신(같은 판 ${GSHA:0:7})"; fi; fi
-    git -C "$ROOT" add -A && git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit
-    if GARAGISTE_SHIP=1 GARAGISTE_WIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 $WHAT [$FLAVOR, budget $BUDGET]"; then echo "  팀 파일 커밋($WHAT — 기존 저장소, 생성물 차선)"; else echo "설치 FAIL — 팀 파일 커밋이 닫히지 않았다. 위 git 출력이 이유다." >&2; exit 1; fi
+elif [ "$DRY" = 0 ] && [ "$PRE_HEAD" = 1 ]; then
+  # 기존 저장소: 설치가 쓴 팀 파일만 커밋한다(생성물 차선 GARAGISTE_SHIP·WIP — models·commands·report 커밋과 같다). 사람의 미커밋 변경은 건드리지 않는다.
+  # 사고 70은 「더러우면 손대지 않는다」였다 — 사고 74(16라운드 운영 둘째 날): 팀이 쓰는 docs 차선(STATUS·BACKLOG)만 더러워도 갱신의 팀 파일이 미커밋으로 남아 다음 ship이 「메인 worktree에 미커밋 변경」으로 막혔다(STOP framework).
+  WHAT="설치"; if [ "$PRE_INSTALLED" = 1 ]; then if [ -n "$PREV_SHA" ] && [ "$PREV_SHA" != "$GSHA" ]; then WHAT="갱신 ${PREV_SHA:0:7}→${GSHA:0:7}"; else WHAT="갱신(같은 판 ${GSHA:0:7})"; fi; fi
+  # 설치가 늘 쓰는 경로는 변경을 전부, 첫 설치에만 쓰는 파일(team.json·HAZARDS·규칙 파일·배선 설정)은 아직 추적되지 않을 때만, .gitignore는 이번에 덧붙였을 때만 — 사람이 고친 것을 쓸어 담지 않는다
+  OWNED=(.garagiste/scripts .garagiste/packs .garagiste/VERSION .githooks); FIRST=(.garagiste/team.json .garagiste/HAZARDS.md)
+  if [ "$FLAVOR" = claude ]; then OWNED+=(.claude/hooks .claude/agents .claude/settings.garagiste.json); FIRST+=(.claude/settings.json CLAUDE.md); else OWNED+=(.opencode/agents .opencode/plugins opencode.garagiste.json); FIRST+=(opencode.json AGENTS.md); fi
+  [ "$GI_WROTE" = 1 ] && OWNED+=(.gitignore)
+  for p in "${OWNED[@]}"; do [ -e "$ROOT/$p" ] && git -C "$ROOT" add -A -- "$p"; done
+  for p in "${FIRST[@]}"; do [ -e "$ROOT/$p" ] && [ -z "$(git -C "$ROOT" ls-files -- "$p")" ] && git -C "$ROOT" add -- "$p"; done
+  git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit
+  if ! git -C "$ROOT" diff --cached --quiet; then
+    if GARAGISTE_SHIP=1 GARAGISTE_WIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 $WHAT [$FLAVOR, budget $BUDGET]"; then echo "  팀 파일 커밋($WHAT — 기존 저장소, 생성물 차선)"; else echo "설치 FAIL — 팀 파일 커밋이 닫히지 않았다" >&2; exit 1; fi
   fi
+  if [ "$PRE_DIRTY" = 1 ]; then echo "  설치 전의 미커밋 변경은 그대로 두었다(팀의 것이 아니다): $(git -C "$ROOT" status --porcelain | wc -l | tr -d ' ')개 — docs 차선(STATUS·BACKLOG·DECISIONS·LEDGER·REPORT)은 ship이 싣고, 나머지는 첫 ship 전에 CEO가 치운다"; fi
 fi
 echo "---"
 # fail-closed: 빨간 채로 설치 완료를 선언하지 않는다 — doctor(--fresh: alive·빈 commands는 정상)와 selftest가 PASS여야 설치다

@@ -619,7 +619,7 @@ function spawned(c, slug, pack, flags) {
 const BOOL_FLAGS = new Set(['forget', 'replace', 'hold']);
 // 사고 49(홀드아웃 — Go CLI): 원문·질문은 무엇으로든 시작한다 — `--min-size 1M처럼…`이 플래그로 먹혀 원문이 「M1」, 마일스톤이 M?가 됐다.
 // 명령마다 아는 플래그만 플래그, 한 낱말 플래그 꼴(--milestne)은 오타라 FAIL로(원문은 문장이다), 나머지는 원문.
-export const FLAGS = { add: ['milestone', 'needs', 'accept', 'kind', 'replace'], new: ['milestone', 'needs', 'accept', 'kind', 'from'], ask: ['for', 'hold', 'assumed'], drop: ['forget'], spawned: ['tokens', 'minutes', 'model', 'note'], tried: ['evidence'] };
+export const FLAGS = { add: ['milestone', 'needs', 'accept', 'kind', 'replace'], new: ['milestone', 'needs', 'accept', 'kind', 'from'], ask: ['for', 'hold', 'assumed'], drop: ['forget'], found: [], spawned: ['tokens', 'minutes', 'model', 'note'], tried: ['evidence'] };
 export function parseArgs(raw, cmd) {
   const flags = {}; const pos = []; const unknown = [];
   const known = FLAGS[cmd] || [];
@@ -636,6 +636,21 @@ export function listLines({ units, items }) {
   const lines = units.map((u) => `${u.slug.padEnd(24)} ${u.state.padEnd(8)} ${(u.milestone || 'M?').padEnd(4)} tried=${u.tried ? u.tried.result : '-'}${u.boundary?.hit ? ' HIT' : ''}`);
   for (const i of items) if (!i.done && !live.has(i.slug)) lines.push(`${i.slug.padEnd(24)} ${'backlog'.padEnd(8)} ${(i.milestone || 'M?').padEnd(4)} needs=${i.needs.join(',') || '-'}`);
   return lines.length ? lines : ['unit 없음 · BACKLOG 없음 — work.mjs brief 뒤 intake'];
+}
+// 16라운드(둘의 규칙 — 14라운드 관찰 14 · 15라운드 관찰 21): 공격·adopt가 찾은 「이 diff 밖의 결함」의 집 — BACKLOG 후보 줄(<slug>-f<n> · M? · needs <slug>). CEO가 범위에 넣거나(scope) 지운다(drop --forget).
+// 후보는 CEO가 scope에 넣어야 열린다(그 scope가 CEO 접점 — seed 경유라 origin_kind seed). conductor는 팩의 `defect:` 줄을 이 명령으로 적는다 — 팩은 BACKLOG를 쓰지 않는다.
+function found(c, slug, text) {
+  if (c.root !== c.main) fail('FAIL found는 메인 저장소에서만 — 팩은 마지막 출력에 `defect: <재현 한 줄>`을 남기고 conductor가 적는다');
+  loadUnit(c.main, c.team, slug);
+  if (!text || !text.trim()) fail(`FAIL 결함 한 줄이 없다: work.mjs found ${slug} "<재현 한 줄>"`);
+  const items = parseBacklog(readBacklog(c));
+  const dup = items.find((i) => !i.done && i.origin === text.trim());
+  if (dup) return out(`FOUND 이미 있음 ${dup.slug} — 같은 결함 줄이 BACKLOG에 있다`);
+  const n = items.filter((i) => new RegExp(`^${slug}-f\\d+$`).test(i.slug)).length + 1;
+  const cand = `${slug}-f${n}`;
+  appendBacklog(c, backlogLine({ slug: cand, milestone: 'M?', needs: [slug], origin: text.trim(), accept: '-' }));
+  appendLedger(c.main, c.team, { kind: 'found', slug, candidate: cand, text: text.trim() });
+  out(`FOUND ${cand} — BACKLOG 후보(M? · needs ${slug}): 범위에 넣으면 node .garagiste/scripts/work.mjs scope ${cand} · 아니면 work.mjs drop ${cand} "<사유>" --forget`);
 }
 function list(c) {
   for (const l of listLines({ units: listUnits(c.main, c.team), items: parseBacklog(readBacklog(c)) })) out(l);
@@ -654,6 +669,7 @@ function main() {
   if (cmd === 'system') return system(c);
   if (cmd === 'new') return createUnit(c, pos[0], pos[1], flags);
   if (cmd === 'ask') return ask(c, pos[0], pos[1], flags);
+  if (cmd === 'found') return found(c, pos[0], pos[1]);
   if (cmd === 'needs') return needsCmd(c, pos[0], pos[1]);
   if (cmd === 'decide') return decide(c, pos[0], pos[1]);
   if (cmd === 'default') return setDefault(c, pos[0], pos[1]);
@@ -669,5 +685,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt|refactor|pin] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · pin <slug> · try <slug> · tried <slug> ok|fail ["<말>"] [--evidence <파일,…>] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt|refactor|pin] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · found <slug> "<이 diff 밖 결함 한 줄>" · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · pin <slug> · try <slug> · tried <slug> ok|fail ["<말>"] [--evidence <파일,…>] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();

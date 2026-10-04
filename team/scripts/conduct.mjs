@@ -93,8 +93,26 @@ export function parseResult(stdout) {
 // build·attack의 반려 — 마지막 줄들의 `spec: <한 줄>`(팩 규칙). Flow 4: brief.mjs spec <slug> --return "<그 줄>"
 export function specReturn(text) {
   const lines = String(text || '').trim().split('\n').slice(-5).reverse();
-  for (const l of lines) { const m = /^\s*spec:\s*(.+?)\s*$/.exec(l); if (m) return m[1]; }
+  // 사고 73(16라운드 운영 둘째 날): 모델은 `spec:` 줄을 백틱·불릿·굵게로 감싼다(넷째·다섯째 run의 system-1 build 32회 중 6회 — 그 반려는 읽히지 않아 「빈손」으로 세어져 build가 다시 떴다). 포장은 벗기고 읽는다 — 감싼 줄만 꼬리의 포장도 벗긴다.
+  for (const l of lines) {
+    const m = /^([\s`*_>"'-]*)spec:[\s*_`]*(.+?)\s*$/.exec(l); if (!m || mention(l, 'spec')) continue;
+    const r = m[1].trim() ? m[2].replace(/[`*_"']+$/, '').trim() : m[2];
+    if (!NONE.test(r)) return r;
+  }
   return null;
+}
+// 사고 76(16라운드 운영 둘째 날 stage C): 포장을 벗기자 build의 「`spec:` 줄 없음.」이 반려 「줄 없음.」으로 읽혀 가짜 둘째 반려 → hold가 났다 — 코드 토큰(`spec:`)으로 낱말을 가리킨 줄과 「없음」은 반려가 아니다.
+const NONE = /^(줄 )?(없음|없다|none|n\/a)[.。]?$/i;
+const mention = (line, word) => new RegExp('^[\\s*_>"\x27-]*`' + word + ':`').test(line);
+// 16라운드(둘의 규칙 — 14라운드 관찰 14 「공격이 diff 밖 결함을 글로만 남겼다」 · 15라운드 관찰 21 「intake가 진짜 결함을 unit이 아니라 질문으로 올렸다」): 팩이 남긴 `defect:` 줄은 BACKLOG 후보가 된다(work.mjs found). 마지막 열 줄 안, 포장은 spec:과 같이 벗긴다.
+export function defectLines(text) {
+  const out = [];
+  for (const l of String(text || '').trim().split('\n').slice(-10)) {
+    const m = /^([\s`*_>"'-]*)defect:[\s*_`]*(.+?)\s*$/.exec(l); if (!m || mention(l, 'defect')) continue;
+    const d = m[1].trim() ? m[2].replace(/[`*_"']+$/, '').trim() : m[2];
+    if (d && !NONE.test(d) && !out.includes(d)) out.push(d);
+  }
+  return out;
 }
 // 같은 FAIL의 열쇠 — 첫 FAIL 줄과 그 다음 줄(ship은 「FAIL ship x 1/8」 아래 줄이 조건이다). state.mjs repeatedFails와 같은 뜻(되풀이 = 2).
 export function failKey(output) {
@@ -266,9 +284,13 @@ export async function spawnPack(c, { pack, slug, path: packPath }, o, { spawner 
   if (tail.trim()) out(tail);
   const ok = status === 0 && !p.isError && !r.error;
   const returned = ok && (pack === 'build' || pack === 'attack') ? specReturn(p.text) : null; // 반려는 정당한 「빈손」 — 진전 없음으로 세지 않는다
+  const defects = ok && (pack === 'attack' || pack === 'adopt') ? defectLines(p.text) : []; // 이 diff 밖의 결함 — BACKLOG 후보(16라운드)
   let held = false; let returnFail = null;
   if (!ok) out(timedOut ? `  팩 시간 상한 ${o.packMinutes}분 — 끊었다(SIGTERM)${log ? ` · ${log}` : ''}` : `  팩 종료 비정상 — exit ${status}${p.reason ? ` · ${p.reason}` : p.isError ? ' · is_error' : ''}${r.error ? ` · ${r.error}` : ''}${log ? ` · ${log}` : ''}`);
-  else if (returned) { const rc = runCmd(c, `${S}/brief.mjs spec ${slug} --return ${q(returned)}`); held = rc.held; returnFail = handOffKey(rc); } // system unit이면 brief가 attack 팩으로 돌린다(사고 71)
+  else {
+    if (returned) { const rc = runCmd(c, `${S}/brief.mjs spec ${slug} --return ${q(returned)}`); held = rc.held; returnFail = handOffKey(rc); } // system unit이면 brief가 attack 팩으로 돌린다(사고 71)
+    for (const d of defects) runCmd(c, `${S}/work.mjs found ${slug} ${q(d)}`); // 후보 등록의 FAIL은 되풀이로 세지 않는다 — 팩은 끝났고 다음 걸음은 next가 낸다
+  }
   return { ok, text: p.text, tokens: p.tokens, minutes: p.minutes ?? wall, cost: Number(p.cost) || 0, status, log, returned: !!returned, held, returnFail, timedOut };
 }
 let USD = 0;

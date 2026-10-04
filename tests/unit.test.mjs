@@ -18,7 +18,7 @@ import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/
 import { acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { nextStep, render } from '../team/scripts/next.mjs';
-import { DEFAULTS as CONDUCT_DEFAULTS, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
+import { DEFAULTS as CONDUCT_DEFAULTS, defectLines, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
 import { versionLine } from '../team/scripts/doctor.mjs';
 import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
 import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
@@ -1195,6 +1195,21 @@ test('conduct: 반려 줄·FAIL 열쇠·hold 안내·진전 없음', () => {
   assert.equal(specReturn('커밋 3 · PASS verify:full'), null);
   assert.equal(specReturn(Array.from({ length: 8 }, (_, i) => `줄 ${i}`).join('\n') + '\nspec: 늦은 줄'), '늦은 줄', '마지막 다섯 줄 안에서만 본다');
   assert.equal(specReturn('spec: 이른 줄\n' + Array.from({ length: 8 }, (_, i) => `줄 ${i}`).join('\n')), null);
+  // 사고 73(16라운드 운영 둘째 날): 모델은 spec: 줄을 백틱·불릿·굵게로 감싼다 — 넷째·다섯째 run의 system-1 build 32회 중 6회(그 반려는 읽히지 않아 빈손으로 세어졌다). 실제 줄 둘.
+  assert.equal(specReturn('커밋은 이어받은 937c798 하나이다.\n`spec: 남은 공격 테스트 2건이 product 코드로 풀리지 않는다. 기본 data/에는 이미 paid 주문(total 75)이 있다.`'), '남은 공격 테스트 2건이 product 코드로 풀리지 않는다. 기본 data/에는 이미 paid 주문(total 75)이 있다.');
+  assert.equal(specReturn('- spec: try 카드의 기대가 기본 data와 모순됩니다.'), 'try 카드의 기대가 기본 data와 모순됩니다.');
+  assert.equal(specReturn('**spec:** 인수가 서로 어긋난다'), '인수가 서로 어긋난다');
+  assert.equal(specReturn('> spec: 인용 줄'), '인용 줄');
+  assert.equal(specReturn('spec: 끝에 코드 `x`'), '끝에 코드 `x`', '감싸지 않은 줄의 꼬리는 그대로');
+  assert.equal(specReturn('respec: 아니다'), null, '다른 낱말의 꼬리는 아니다');
+  // 사고 76(16라운드 stage C): build가 「`spec:` 줄 없음.」이라 쓴 것이 반려 「줄 없음.」으로 읽혀 가짜 둘째 반려 → hold — 코드 토큰으로 낱말을 가리킨 줄과 「없음」은 반려가 아니다(실제 줄)
+  assert.equal(specReturn('커밋 1개(Step 2).\nverify full PASS, attack red 0/2, redproof PASS.\n`spec:` 줄 없음.'), null, '낱말을 가리킨 코드 토큰');
+  assert.equal(specReturn('spec: 없음'), null); assert.equal(specReturn('spec: 줄 없음.'), null); assert.equal(specReturn('**spec:** none'), null);
+  assert.equal(specReturn('`spec: 진짜 반려 — 카드가 어긋난다`'), '진짜 반려 — 카드가 어긋난다', '코드 span 안에 내용이 있으면 반려다');
+  assert.deepEqual(defectLines('`defect:` 없음\ndefect: 없음'), []);
+  // 16라운드: 이 diff 밖 결함의 집 — defect: 줄(여럿·포장·중복)
+  assert.deepEqual(defectLines('테스트 9 · red 0\ndefect: tags가 문자열이면 /export.csv가 응답 도중 죽는다\n- `defect: 빈 이름을 add하면 500`\ndefect: tags가 문자열이면 /export.csv가 응답 도중 죽는다'), ['tags가 문자열이면 /export.csv가 응답 도중 죽는다', '빈 이름을 add하면 500']);
+  assert.deepEqual(defectLines('spec: 반려만'), []);
   assert.equal(failKey('PASS gate\nFAIL ship hello 1/8\n- attack: 기록 없음\n- x'), 'FAIL ship hello 1/8 | - attack: 기록 없음', 'ship은 둘째 줄(조건)이 열쇠를 가른다');
   assert.equal(failKey('ATTACK hello red 1/1'), null, 'FAIL 줄이 없으면 열쇠 없음 — 되풀이로 세지 않는다');
   // 사고 71(15라운드 넷째 run): 반려 전달의 FAIL은 run 걸음의 FAIL과 같은 열쇠 — 실제 줄(system-1 build 30회가 전부 이 FAIL)
@@ -1404,7 +1419,7 @@ test('ship(7라운드): kind refactor의 redproof 조건은 refactor 줄의 pin_
 // 8라운드(2026-10-04) — 두 설치기는 같은 일을 한다. pwsh가 없는 자리에선 실행 대신 표지로 본다(install.ps1이 1~2라운드의 VERSION·기존 저장소 커밋을 빠뜨린 채 CEO의 Windows에 갔다).
 test('install.sh ↔ install.ps1 정적 패리티: VERSION · 기존 저장소 커밋(설치/갱신 · 미커밋 변경 안내 · SHIP+WIP) · autocrlf · chmod · doctor --fresh · selftest · SkipSelftest · 배선 파일 · 모델 자리표시자 7', () => {
   const sh = fs.readFileSync(new URL('../install.sh', import.meta.url), 'utf8'); const ps = fs.readFileSync(new URL('../install.ps1', import.meta.url), 'utf8');
-  const pairs = [['.garagiste/VERSION', '.garagiste\\VERSION'], ['"garagiste": "', '"garagiste": "'], ['갱신', '갱신'], ['같은 판', '같은 판'], ['설치 전에 미커밋 변경이 있었다', '설치 전에 미커밋 변경이 있었다'], ['GARAGISTE_SHIP=1 GARAGISTE_WIP=1', '$env:GARAGISTE_SHIP = "1"; $env:GARAGISTE_WIP = "1"'], ['증거 팀 설치 [', '증거 팀 설치 ['], ['core.autocrlf false', 'core.autocrlf false'], ['update-index --chmod=+x .githooks/pre-commit', 'update-index --chmod=+x .githooks/pre-commit'], ['doctor.mjs --fresh', 'doctor.mjs --fresh'], ['selftest.mjs', 'selftest.mjs'], ['SkipSelftest', 'SkipSelftest'], ['guard.ts', 'guard.ts'], ['HAZARDS.md', 'HAZARDS.md'], ['gitignore.snippet', 'gitignore.snippet'], ['core.hooksPath .githooks', 'core.hooksPath .githooks'], ['첫 커밋이 닫히지 않았다', '첫 커밋이 닫히지 않았다'], ['팀 파일 커밋이 닫히지 않았다', '팀 파일 커밋이 닫히지 않았다'], ['기존 코드가 있으면 adopt', '기존 코드가 있으면 adopt'], ['doctor.mjs" --diff', 'doctor.mjs" --diff'], ['team의 것과 다르다', 'team의 것과 다르다'], ['settings.garagiste.json', 'settings.garagiste.json'], ['opencode.garagiste.json', 'opencode.garagiste.json']];
+  const pairs = [['.garagiste/VERSION', '.garagiste\\VERSION'], ['"garagiste": "', '"garagiste": "'], ['갱신', '갱신'], ['같은 판', '같은 판'], ['설치 전의 미커밋 변경은 그대로 두었다', '설치 전의 미커밋 변경은 그대로 두었다'], ['diff --cached --quiet', 'diff --cached --quiet'], ['ls-files -- ', 'ls-files -- '], ['.claude/settings.garagiste.json', '.claude/settings.garagiste.json'], ['GARAGISTE_SHIP=1 GARAGISTE_WIP=1', '$env:GARAGISTE_SHIP = "1"; $env:GARAGISTE_WIP = "1"'], ['증거 팀 설치 [', '증거 팀 설치 ['], ['core.autocrlf false', 'core.autocrlf false'], ['update-index --chmod=+x .githooks/pre-commit', 'update-index --chmod=+x .githooks/pre-commit'], ['doctor.mjs --fresh', 'doctor.mjs --fresh'], ['selftest.mjs', 'selftest.mjs'], ['SkipSelftest', 'SkipSelftest'], ['guard.ts', 'guard.ts'], ['HAZARDS.md', 'HAZARDS.md'], ['gitignore.snippet', 'gitignore.snippet'], ['core.hooksPath .githooks', 'core.hooksPath .githooks'], ['첫 커밋이 닫히지 않았다', '첫 커밋이 닫히지 않았다'], ['팀 파일 커밋이 닫히지 않았다', '팀 파일 커밋이 닫히지 않았다'], ['기존 코드가 있으면 adopt', '기존 코드가 있으면 adopt'], ['doctor.mjs" --diff', 'doctor.mjs" --diff'], ['team의 것과 다르다', 'team의 것과 다르다'], ['settings.garagiste.json', 'settings.garagiste.json'], ['opencode.garagiste.json', 'opencode.garagiste.json']];
   for (const [a, b] of pairs) { assert.ok(sh.includes(a), `install.sh: ${a}`); assert.ok(ps.includes(b), `install.ps1: ${b}`); }
   for (const m of ['BOOT', 'ADOPT', 'INTAKE', 'SPEC', 'BUILD', 'ATTACK', 'SPIKE']) { assert.ok(sh.includes(`{{MODEL_${m}}}`), `sh ${m}`); assert.ok(ps.includes(`{{MODEL_${m}}}`), `ps1 ${m}`); }
   assert.ok(/-SkipSelftest/.test(sh) && /\[switch\]\$SkipSelftest/.test(ps));

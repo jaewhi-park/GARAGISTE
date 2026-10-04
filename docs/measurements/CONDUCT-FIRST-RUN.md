@@ -1,4 +1,4 @@
-# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python · 14라운드 중간 크기 레거시 + conductor 턴 · 15라운드 대규모 레거시 138파일 + 비용 상한 실발동)
+# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python · 14라운드 중간 크기 레거시 + conductor 턴 · 15라운드 대규모 레거시 138파일 + 비용 상한 실발동 · 16라운드 운영 둘째 날 — 갱신·재개·M2)
 
 ## 왜
 1~11라운드의 드라이버(`conduct.mjs`)·헤드리스 spawner(`claude -p <팩> --agent <팩> …`)는 가짜 팩(`tests/fakes/pack.mjs`)과 `--help` 텍스트로만 검증됐다 — 9라운드(`--max-turns` 없음)·11라운드(Windows 셸 심)의 벽은 둘 다 **읽어서** 찾은 것이고, 실제 CLI가 실제로 어떻게 끝나는지(JSON 꼴 · 권한 · 모델 선택 · 훅)는 한 번도 보지 않았다. 12라운드는 그 자리를 **측정**으로 채운다: 정비 자리(리눅스 컨테이너)에 설치된 claude 2.1.289로 기존 코드가 있는 저장소에 설치 → intake → conduct 끝까지. 테스트는 그대로 모델 0 · 네트워크 0 — 이 문서는 측정 기록이다(HANDOFF 「장치는 사고·측정에서만」).
@@ -164,19 +164,75 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 22. **adopt 팩 하나가 파일 138·표면 20을 특성화 88로**: 10.2KB 팩 · 421K 토큰 · 2.3분 · $0.31 — 파일 19(293K · 20)의 1.4배 토큰에 특성화 4.4배. 토큰은 파일 수가 아니라 **표면 수**(라우트 10 + 명령 10 + export)에 비례한다 — Q13 「대규모」 조각은 이 크기까지 측정됨. unit 토큰 상한(1M)엔 멀다.
 23. **이음새 공격이 출하물(try 카드)의 모순을 결함으로 찍었다** — 카드는 CEO 접점의 문서(`docs/units/<slug>/try.md`)라 build가 고칠 수 없었다(반려의 진짜 이유). 반려가 attack에게 가면 attack은 **자기 단언**(tests/adversary)을 바로잡고 진짜 이음새(3번)만 남긴다 — 카드 자체를 고치는 것은 여전히 CEO(`--revise`). 수리 뒤의 실전 모양은 다음 run.
 
-## 비용 합계 (네 run)
+## 다섯째 run — 운영 둘째 날(같은 베드 erp-lite · 16라운드 2026-10-04) · 갱신 설치 → 멈춘 unit 재개 → REPORT → 다음 범위(M2)
+질문 둘: (a) 15라운드가 멈춰 둔 상태(system-1 build 되풀이 뒤 STOP framework · main엔 팀이 쓴 docs 차선 2 파일이 미커밋)에 새 판(동결 21)을 **갱신 설치**하고 이어 돌릴 수 있나 — 갱신·토큰 상한(사고 72)·반려 → attack(사고 71) 장치의 실전 모양 (b) REPORT 뒤 **둘째 범위(M2)** 에서 레거시 동작 변경(id 0 → 증가)이 출하된 unit의 테스트와 어떻게 부딪히나.
+
+### stage A — 갱신 설치(동결 21) → conduct
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 11:28:48 | `install.sh claude`(main 더러움: docs 차선 2) | — | — | — | **UPGRADE 4c126a4 → feac1d9 — 바뀌는 파일 11** 미리보기 · selftest 21/21 · 「팀 파일은 커밋하지 않았다 — 설치 전에 미커밋 변경이 있었다」(→ 사고 74) |
+| 11:28:52 | `conduct check` → `next` → `conduct` | — | — | — | PASS check(VERSION feac1d9) · **`STOP unit system-1 토큰 2207K ≥ 상한 1000K — CEO 결정: … budget …`(exit 2 — 사고 72 장치 첫 실발동, 15라운드엔 보이지 않던 정지)** |
+| 11:28:52 | CEO `budget system-1 4000K` → conduct | — | — | — | PASS budget 1000000 → 4000000 |
+| 11:29:11 | build system-1 | sonnet | 61K · 0.3 | 0.097 | 반려를 백틱으로 감쌌다(`\`spec: …\``) — **읽히지 않았다**(→ 사고 73) → 진전 없음 1 |
+| 11:29:27 | build system-1 → **반려 → attack** | sonnet · opus | 60K · 0.2 / 246K · 1.1 | 0.090 / 0.404 | 반려(plain) → `PACK system-1-attack … · 반려 → attack(system unit엔 spec이 없다 …)` → **attack이 자기 카드 둘의 기대를 바로잡고(red 0/1) 진짜 이음새 단언은 그대로 — 사고 71 장치의 첫 실전, 설계대로** |
+| 11:30:54 | verify full PASS → ship system-1 | — | — | — | **`FAIL ship: 메인 worktree에 미커밋 변경 — .claude/agents/… .garagiste/scripts/… .garagiste/VERSION`** ×2 → `STOP framework 같은 FAIL 되풀이`(exit 4) — 갱신 설치가 커밋하지 않은 팀 파일(→ 사고 74) |
+
+### stage A2 — 사고 73·74 수리 뒤 갱신 → ship → REPORT
+| 시각(UTC) | 걸음 | 결과 |
+|---|---|---|
+| 11:40:57 | `install.sh claude -SkipSelftest`(main 더러움 14 = 팀 파일 12 + docs 2) | **UPGRADE feac1d9 → ab0f62f — 바뀌는 파일 1** · **「팀 파일 커밋(갱신 feac1d9→ab0f62f — 기존 저장소, 생성물 차선)」 + 「설치 전의 미커밋 변경은 그대로 두었다(팀의 것이 아니다): 2개 — docs 차선은 ship이 싣고…」** |
+| 11:40:57 | conduct → ship system-1 → report | SHIPPED system-1 c9ca65e · REPORT 출하 4/4 · 이음새 발견 1 → 고쳐 출하 · **SCOPE DONE**(exit 0) — 15라운드가 멈춘 자리에서 팩 셋·$0.59·12분 만에 범위가 닫혔다 |
+
+### stage B — 다음 범위 M2: 「주문 id는 add마다 1씩 늘어난다 — CLI와 HTTP 둘 다. 기존 데이터의 id는 그대로 둔다.」(adopt가 Q2로 올렸던 진짜 결함을 CEO가 unit으로)
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 11:41:22 | brief → `add order-id --milestone M2 --needs adopt` → `scope --milestone M2` → conduct | — | — | — | SCOPE 요청 1 · UNIT order-id spec — REPORT 뒤의 둘째 범위가 같은 명령으로 열린다 |
+| 11:42:41 | spec order-id | opus | 209K · 1.3 | 0.456 | RED 1/1(CLI·HTTP 모두 max+1 · 기존 id 불변) |
+| 11:44:10 | build → **`spec:` 반려** | sonnet | 266K · 1.5 | 0.178 | `fix(order): add마다 id를 max+1로`(repo.add가 item.id로 nextId를 덮던 것) + **adopt의 특성화 테스트(「프로세스마다 id가 0」) 갱신** → verify full FAIL: **출하된 order-status-cli의 인수 2 + 공격 1이 옛 동작(id 0)의 기대 표** → 반려 |
+| 11:44:50 | re-spec | opus | 136K · 0.6 | 0.270 | 「반려 기각 — order-id 주장은 원문·주장끼리 맞다. 어긋나는 쪽은 order-status-cli 테스트인데 두 파일은 order-id spec이 쓸 수 없는 곳」 · redproof base red·head green → attack 새 바퀴 |
+| 11:45:58 | attack | opus | 191K · 1.1 | 0.389 | 8건 **red 1/1(2건)** — **진짜 결함: repo.add가 파일을 잠그지 않아 동시 add에 id가 겹치고(1,1,1,1,2,2…) 주문이 사라진다(12 중 9 저장)** — adopt·M1 공격이 못 본 것 |
+| 11:46:18 | build → 둘째 반려 | sonnet | 117K · 0.3 | 0.203 | 커밋 0 · 「그 테스트 3건은 내가 고칠 수 없는 경로」 → **`FAIL spec 반려가 두 번째` → Q3 hold → `STOP wait`(exit 3)** — 설계된 종착(CEO). 그런데 안내의 길에 **출하된 unit의 인수를 고칠 손이 없었다**(→ 사고 75) |
+
+### stage C — 사고 75 수리 뒤: CEO 결정 Q3 → `spec --revise` → attack(실린 결정) → build → 가짜 반려(→ 사고 76) → 수리 → ship → REPORT
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 11:57:28 | `install.sh`(갱신 ab0f62f→46e2c75 — 바뀐 파일 6 · main 더러움 4) → `decide 3 "<답>"` → `brief` → **`brief.mjs spec order-id --revise "<답>"`** | — | — | — | 팀 파일만 커밋(둘째 확인) · PASS decide Q3 · PACK spec 13.3KB(「고쳐 쓰기 — CEO가 고치라 한 기존 인수 테스트(출하된 unit의 것 포함)」 절) · `unit.revise` 실림 |
+| 11:58:05 | spec(revise) | opus | 103K · 0.6 | 0.220 | **tests/acceptance/order-status-cli.test.js 하나만 고쳤다**(기준표 → 원본 목록의 그 상태 행 · @claim 새 말 · 6/6 green · order-id 인수는 그대로) · redproof PASS base_red head_green → **`STOP unit order-id 토큰 1023K ≥ 상한 1000K`(exit 2 — 상한이 두 번째로 섰다: 충돌을 겪은 unit은 팩 여섯에 1M을 넘는다)** |
+| 12:01:33 | CEO `budget order-id 2000K` → attack(실린 결정 — `--revise` 없이) | opus | 329K · 1.1 | 0.486 | 팩에 「고쳐 쓰기 — 기존 공격 테스트 … (spec 팩이 같은 결정으로 기존 인수를 고쳤다 — 이어서)」 · **order-status-cli-1 기준표를 Q3대로 고치고(green) 새 공격 21건에 red 3**(동시 add의 id 겹침·주문 유실 · 2^53 id 그대로) · **`defect:` 1줄 → `FOUND order-id-f1`**(id가 문자열("7")인 기존 주문은 `order get 7`로 못 찾는다 — 결함의 집 첫 실전) · `unit.revise` 지워짐 |
+| 12:04:21 | build | sonnet | 323K · 1.6 | 0.197 | `fix(order): add·rm을 프로세스 간 잠금으로 직렬화, 안전 정수 밖 id 거부` · full PASS · attack red 0/2 · redproof PASS · 마지막 줄 「\`spec:\` 줄 없음.」 → **드라이버가 반려 「줄 없음.」으로 읽어 가짜 둘째 반려 → Q4 hold → `STOP wait`**(→ 사고 76) |
+| 12:06:17 | 사고 76 수리 → `install.sh`(갱신 46e2c75→3f654d1 — 1파일) → `decide 4` → conduct | — | — | — | **SHIPPED order-id dd9dfe8** · REPORT(M2 출하 1/1 · 공격 선발견 2) · **SCOPE DONE**(exit 0) — 한 unit의 범위라 이음새 공격은 없다(설계: 둘부터) · BACKLOG에 `- [ ] order-id-f1 · M? · needs: order-id · "…"` 후보 줄 |
+
+합계(둘째 날 전체): 팩 11 · 토큰 2.04M · **$2.99**(system-1 3팩 $0.59 · order-id 8팩 $2.40) · 팩 시간 9.7분 · 벽시계 ≈38분(11:28 → 12:07 — 수리 넷의 시간 포함) · 출하 2(system-1 · order-id) · 공격이 찾은 결함 3(동시 add의 id 겹침·주문 유실 · 2^53 id · try 카드 모순) + 후보 1(`order-id-f1`) · 멈춤 7(ceo 2 · framework 1 · wait 2 · done 2) · 사고 4(73·74·75·76 — 전부 코드로 닫음) · 베드 누계(15·16라운드): 팩 54 · 6.45M · $9.64 · 출하 6.
+
+### 관찰 (16라운드)
+24. **사고 73 — 포장된 반려**: 모델은 `spec:` 줄을 백틱·불릿·굵게로 감싼다(넷째·다섯째 run의 system-1 build 32회 중 6회). 읽히지 않은 반려는 「빈손」으로 세어져 build가 다시 떴다 → `specReturn`이 포장을 벗긴다(unit 테스트는 실제 줄 둘).
+25. **사고 74 — 갱신 설치와 더러운 main**: 사고 70의 「더러우면 손대지 않는다」가 운영 중엔 늘 참이다(팀이 쓰는 STATUS·BACKLOG가 ship 사이에 미커밋으로 남는다) → 갱신의 팀 파일이 미커밋으로 남아 다음 ship이 막혔다(STOP framework). 설치는 **자기가 쓴 팀 파일만** 커밋한다(첫 설치 전용 파일은 untracked일 때만 · .gitignore는 덧붙였을 때만) — install.ps1 패리티 · e2e 사고 70 → 70·74.
+26. **사고 75 — 출하된 unit의 인수를 고칠 손**: 새 원문(id 증가)이 출하된 unit(order-status-cli)의 인수·공격 테스트와 어긋났다. 공격 테스트는 `attack --revise`(사고 42)가 있었지만 인수는 spec 팩이 「자기 slug의 것만」으로 알고 출하된 unit엔 spec이 없다 → CEO의 고쳐 쓰기 결정은 `brief.mjs spec <slug> --revise "<CEO 말>"`로 들어가 unit에 실리고(`unit.revise`), 이어지는 attack 팩이 `--revise` 없이도 같은 결정으로 공격 테스트를 고친다(둘이 받으면 지운다). 둘째 반려 FAIL의 안내에 그 길. 실전 모양은 stage C.
+27. **사고 71·72 장치의 실전**: 토큰 상한은 재개 첫 걸음에 섰다(2207K ≥ 1000K — 15라운드엔 2.2M을 쓰는 동안 안 섰던 것) · 반려 → attack은 한 번에 끝났다(attack $0.40 — 카드 둘을 바로잡고 진짜 단언은 그대로, red 0) → ship. 장치 둘 다 설계대로.
+28. **갱신 설치의 모양**: 미리보기(UPGRADE old → new — 바뀌는 파일 n)가 설치 전에 한 줄로 나오고, VERSION이 바뀌고, 갱신 커밋 제목에 old→new. 같은 판의 재설치는 커밋이 없다.
+29. **REPORT 뒤 M2**: 같은 명령(brief → add → scope → conduct)으로 둘째 범위가 열렸다. adopt가 질문(Q2)으로 올렸던 진짜 결함을 CEO가 unit으로 올리는 데 사람의 손이 셋(brief·add·scope) — 결함의 집 장치(`defect:` → `work.mjs found` → BACKLOG 후보)의 둘째 근거 → 채용.
+30. **레거시 동작 변경은 세 겹에 부딪힌다**: adopt의 특성화 테스트(build가 고친다 — 설계대로) · 출하된 unit의 인수(사고 75) · 출하된 unit의 공격 테스트(사고 42). 셋째 범위에서 또 나올 모양.
+31. **M2 공격이 진짜 동시성 결함을 찍었다**(동시 add → id 겹침·주문 유실) — adopt(특성화)와 M1 공격(상태 필터)이 보지 못한 자리. 레거시 수리 unit의 공격은 그 자리의 다른 결함을 드러낸다 — `defect:` 후보의 자리이기도 하다(stage C에서 실제로 `order-id-f1`이 섰다).
+32. **사고 76 — 수리가 낳은 사고**: 포장을 벗기자 build의 「`` `spec:` 줄 없음. ``」(build.md 마지막 줄 지시 「`spec:` 줄(있으면)」이 부르는 보고 꼴)이 반려 「줄 없음.」으로 읽혀 가짜 둘째 반려 → hold. 코드 토큰으로 낱말을 가리킨 줄과 「없음」은 반려·후보가 아니다(unit은 실제 줄). 둘의 규칙이 아니라 사고 하나로 닫았다 — 원장에 fail·hold 줄이 남았고, 드라이버의 읽기 오류는 CEO를 부르는 비용이다.
+33. **토큰 상한이 둘째 날에 두 번 섰다**(system-1 2207K · order-id 1023K). order-id는 되풀이가 아니라 **충돌 해소의 정상 비용**(spec·build·spec·attack·build·spec 여섯 팩)으로 1M을 넘었다 — 1M은 진동을 잡는 상한이지 충돌을 담는 상한은 아니다. CEO budget 한 마디로 풀렸다 — 기본값은 그대로(관찰).
+34. **결함의 집 첫 실전**: attack이 `defect:` 한 줄을 남겨 conduct가 `FOUND order-id-f1 — BACKLOG 후보(M? · needs order-id)`를 적었다. 범위에 넣기 전엔 unit이 아니다 — 셋째 범위의 후보.
+35. **운영 둘째 날의 사람 접점 7**: budget 2 · decide 2 · brief/add/scope 3(M2 열기) · spec --revise 1 — 전부 한 줄 명령, 전부 STOP 줄의 안내 안에 있었다. 수리 넷(사고 73~76)은 정비 채널의 일이고 베드엔 갱신 설치 셋으로 들어갔다(미리보기 11·1·6·1 파일).
+
+## 비용 합계 (다섯 run)
 | 무엇 | $ |
 |---|---|
 | 12라운드 탐침 13 + run(Node, 팩 8) | 2.30 |
 | 13라운드 run(Python, 팩 10) + SIGTERM 탐침 | 1.83 |
 | 14라운드 conductor 턴 + run(Node 중간 레거시, 팩 13) | 3.88 |
 | 15라운드 run(Node 대규모 레거시 파일 138, 팩 43 — 되풀이 30 포함) | 6.64 |
-| **합계** | **14.65** — unit 하나(spec·build·attack·수리) ≈ $0.6~1.1 · pin unit ≈ $0.9~1.1 · 이음새 공격 한 바퀴 ≈ $0.3~0.6(되풀이 제외) · adopt ≈ $0.14~0.31(파일 3 → 138 — 표면 수에 비례) · 사고 71의 되풀이 $2.87(수리됨 — 다음부턴 되풀이 2에서 선다, 사고 72의 토큰 상한이 먼저 서면 ≈ $1.3) |
+| 16라운드 운영 둘째 날(같은 베드 — 갱신·재개·M2, 팩 11) | 2.99 |
+| **합계** | **17.64** — unit 하나(spec·build·attack·수리) ≈ $0.6~1.1 · pin unit ≈ $0.9~1.1 · 이음새 공격 한 바퀴 ≈ $0.3~0.6(되풀이 제외) · adopt ≈ $0.14~0.31(파일 3 → 138 — 표면 수에 비례) · 사고 71의 되풀이 $2.87(수리됨 — 다음부턴 되풀이 2에서 선다, 사고 72의 토큰 상한이 먼저 서면 ≈ $1.3) |
 
-## 판정 (15라운드 갱신)
+## 판정 (16라운드 갱신)
+- **운영 둘째 날(16라운드)**: 멈춘 베드에 새 판을 갱신 설치하고 이어 돌리는 길이 선다 — 미리보기 → 팀 파일만 커밋(더러운 main에서도) → 재개(토큰 상한이 먼저 선다 → CEO budget) → 반려 → attack → ship → REPORT → 다음 범위. 둘째 날이 드러낸 사고 셋(73 포장된 반려 · 74 갱신과 더러운 main · 75 출하된 인수를 고칠 손)은 전부 코드로 닫았다. **레거시 동작 변경(M2)은 출하된 unit의 테스트와 부딪히는 것이 정상이고, 그 종착은 CEO의 한 마디(spec --revise)다** — 실전 모양은 「다섯째 run」 stage C.
 - **① 신규·기계 검증 가능(CLI·웹·데몬·API) + 리눅스 + `conduct.mjs`: 투입 가능(실측 4/4)** — 네 run이 설치부터 범위 끝(SCOPE DONE 둘 · 무인 출하 상한 하나 · 이음새 공격 직전까지 하나)까지, 공격이 unit마다 결함을 찾아 수리까지(합계 결함 18). 프레임워크 FAIL은 넷째 run의 사고 71 하나(system unit의 반려 — 수리됨: 되풀이 2에서 선다, 반려는 attack에게)와 그 뒤의 사고 72(토큰 상한이 진동 안에서 안 보임 — 수리됨). 사람 접점 run당 1~2(hold·질문·출하 상한·비용 상한 — 전부 설계된 멈춤). 조건은 12라운드와 같다 + 팩은 `cd && node …` 한 줄에 명령 하나(agents) + 끊긴 팩의 비용은 원장 밖 + `--max-usd`는 걸음 사이에서 선다(넘긴 팩 하나의 비용은 든다).
 - **③ 레거시 입구(adopt)**: 네 크기(Node 3파일 · Python 3파일 · Node 19파일 두 표면 · **Node 138파일 표면 20**)에서 선다 — 특성화 8·10·20·**88**, 빨간 기존 테스트는 빼고 묻는다, 진짜 결함은 질문으로 올린다(unit 후보로는 아직 — 관찰 21), 탐침이 눈먼 full·노옵 setup을 등록 때 막는다. adopt 비용은 파일 수가 아니라 **표면 수에 비례**(421K · $0.31 · 2.3분 — 팩 10.2KB/32 · unit 토큰 1M의 42%). **여러 패키지(모노레포)·「관심 영역 지도」는 미측정.**
 - **대화형 conductor(CLAUDE.md Flow)**: Flow 2 한 턴이 배선(Agent 서브에이전트 · SubagentStop 훅 · spawned)을 전부 지났다. 단 서브에이전트가 허용된 명령을 `\`+줄바꿈으로 시작해 거부되자 conductor가 팩의 일을 대신했다 — 무인 세션에선 사람이 모르는 채 결과만 옳다. agents 한 줄이 꼴을 막지만, 「conductor가 팩의 일을 대신한다」는 둘째 근거가 오면 장치.
 - **상한 둘(15라운드 실측)**: 비용 상한(run)은 설계대로 선다 · 토큰 상한(unit)은 진동 안에서 안 섰다 → 걸음마다(사고 72). 둘이 다 선 뒤의 무인 운전 비용 꼴: unit당 $0.6~1.1 · 이음새 한 바퀴 ≤ 1M 토큰(≈ $1.3) 뒤 CEO.
 - **② UI 중심·DB·마이그레이션·멀티서비스**: 변화 없음 — 아직. **Windows**: CEO PC 대기.
-- 네 run이 못 본 것: 충돌 rebase(두 unit이 같은 파일 — 순차 운전에선 docs 차선 외엔 main이 안 움직인다) · **system unit의 반려 → attack 재공격의 실전 모양**(가짜 팩만) · 모노레포 · 사람 센서 unit · opencode 레인 · 이틀 이상의 운영 · REPORT 뒤의 다음 범위(M2).
+- 다섯 run이 못 본 것: 충돌 rebase(두 unit이 같은 파일 — 순차 운전에선 docs 차선 외엔 main이 안 움직인다) · 모노레포 · 사람 센서 unit · opencode 레인 · 사흘 이상의 운영 · 후보(`order-id-f1`)를 범위에 넣어 고치는 셋째 범위 · 둘째 범위에 unit이 둘 이상인 날(이음새 공격 둘째 바퀴).
