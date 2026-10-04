@@ -83,7 +83,7 @@ if ($Flavor -eq "claude") {
 }
 if (-not (Test-Path $Rules)) { Run { Copy-Item $Template $Rules } (Split-Path -Leaf $Rules) }
 $gi = Join-Path $Root ".gitignore"; if (-not (Test-Path $gi)) { WriteText $gi "" }
-if (-not ((ReadText $gi) -match "GARAGISTE")) { Run { WriteText $gi ((ReadText $gi) + "`n" + (ReadText "$Here\team\gitignore.snippet")) } ".gitignore" }
+$GiWrote = $false; if (-not ((ReadText $gi) -match "GARAGISTE")) { Run { WriteText $gi ((ReadText $gi) + "`n" + (ReadText "$Here\team\gitignore.snippet")) } ".gitignore"; $GiWrote = $true }
 Run { Invoke-Git -C $Root config core.hooksPath .githooks | Out-Null } "core.hooksPath"
 Run { Invoke-Git -C $Root config core.autocrlf false | Out-Null } "core.autocrlf false" # 게이트 tree 동일성 — 전역 autocrlf의 유령 diff 차단(사고 18)
 if (-not $DryRun) {
@@ -98,20 +98,25 @@ if (-not $DryRun) {
     Remove-Item Env:GARAGISTE_SHIP -ErrorAction SilentlyContinue
     # 사고 19: 첫 커밋 실패를 경고로 삼키면 '전부 스테이징된 채 HEAD 어긋남'으로 설치 성공을 선언한다 — fail-closed
     if ($commit.Code -eq 0) { Write-Host "  첫 커밋: 팀 파일" } else { Write-Host "설치 FAIL — 첫 커밋이 닫히지 않았다:`n$($commit.Out)"; exit 1 }
-  } elseif ($PreHead -and (Invoke-Git -C $Root status --porcelain).Out.Trim()) {
-    # 사고 70(기존 저장소): 설치 전에 깨끗했으면 설치가 남긴 것은 전부 팀 파일이다 — 생성물 차선(SHIP·WIP)으로 커밋. 더러웠으면 사람의 것과 섞이니 손대지 않는다.
-    if ($PreDirty) {
-      Write-Host "  팀 파일은 커밋하지 않았다 — 설치 전에 미커밋 변경이 있었다. 정리한 뒤 git add -A 하고 GARAGISTE_SHIP=1 GARAGISTE_WIP=1 환경으로 커밋하라(규칙집·배선은 생성물 차선 — 첫 ship은 main이 깨끗해야 한다)"
-    } else {
-      $What = "설치"
-      if ($PreInstalled) { if ($PrevSha -and $PrevSha -ne $GSha) { $What = "갱신 $(Short7 $PrevSha)→$(Short7 $GSha)" } else { $What = "갱신(같은 판 $(Short7 $GSha))" } }
-      Invoke-Git -C $Root add -A | Out-Null
-      Invoke-Git -C $Root update-index --chmod=+x .githooks/pre-commit | Out-Null
+  } elseif ($PreHead) {
+    # 기존 저장소: 설치가 쓴 팀 파일만 커밋한다(생성물 차선 SHIP·WIP). 사람의 미커밋 변경은 건드리지 않는다.
+    # 사고 70은 「더러우면 손대지 않는다」였다 — 사고 74(16라운드 운영 둘째 날): 팀이 쓰는 docs 차선(STATUS·BACKLOG)만 더러워도 갱신의 팀 파일이 미커밋으로 남아 다음 ship이 「메인 worktree에 미커밋 변경」으로 막혔다(STOP framework).
+    $What = "설치"
+    if ($PreInstalled) { if ($PrevSha -and $PrevSha -ne $GSha) { $What = "갱신 $(Short7 $PrevSha)→$(Short7 $GSha)" } else { $What = "갱신(같은 판 $(Short7 $GSha))" } }
+    # 설치가 늘 쓰는 경로는 변경을 전부, 첫 설치에만 쓰는 파일은 아직 추적되지 않을 때만, .gitignore는 이번에 덧붙였을 때만
+    $Owned = @(".garagiste/scripts", ".garagiste/packs", ".garagiste/VERSION", ".githooks"); $First = @(".garagiste/team.json", ".garagiste/HAZARDS.md")
+    if ($Flavor -eq "claude") { $Owned += @(".claude/hooks", ".claude/agents", ".claude/settings.garagiste.json"); $First += @(".claude/settings.json", "CLAUDE.md") } else { $Owned += @(".opencode/agents", ".opencode/plugins", "opencode.garagiste.json"); $First += @("opencode.json", "AGENTS.md") }
+    if ($GiWrote) { $Owned += @(".gitignore") }
+    foreach ($p in $Owned) { if (Test-Path (Join-Path $Root $p)) { Invoke-Git -C $Root add -A -- $p | Out-Null } }
+    foreach ($p in $First) { if ((Test-Path (Join-Path $Root $p)) -and -not (Invoke-Git -C $Root ls-files -- $p).Out.Trim()) { Invoke-Git -C $Root add -- $p | Out-Null } }
+    Invoke-Git -C $Root update-index --chmod=+x .githooks/pre-commit | Out-Null
+    if ((Invoke-Git -C $Root diff --cached --quiet).Code -ne 0) {
       $env:GARAGISTE_SHIP = "1"; $env:GARAGISTE_WIP = "1"
       $commit = Invoke-Git -C $Root @ident commit -q -m "scaffold(team): GARAGISTE 증거 팀 $What [$Flavor, budget $Budget]"
       Remove-Item Env:GARAGISTE_SHIP -ErrorAction SilentlyContinue; Remove-Item Env:GARAGISTE_WIP -ErrorAction SilentlyContinue
       if ($commit.Code -eq 0) { Write-Host "  팀 파일 커밋($What — 기존 저장소, 생성물 차선)" } else { Write-Host "설치 FAIL — 팀 파일 커밋이 닫히지 않았다:`n$($commit.Out)"; exit 1 }
     }
+    if ($PreDirty) { $n = @((Invoke-Git -C $Root status --porcelain).Out -split "`n" | Where-Object { $_ }).Count; Write-Host "  설치 전의 미커밋 변경은 그대로 두었다(팀의 것이 아니다): ${n}개 — docs 차선(STATUS·BACKLOG·DECISIONS·LEDGER·REPORT)은 ship이 싣고, 나머지는 첫 ship 전에 CEO가 치운다" }
   }
 }
 Write-Host "---"

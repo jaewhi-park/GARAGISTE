@@ -1125,7 +1125,7 @@ test('conduct + 예산: unit 토큰 상한(L2 2판 윈도우 진동 16배의 장
 });
 
 // 사고 70(brownfield 테스트 베드를 만들며 발견 — R&D 2026-10-04): 기존 저장소(HEAD 있음)에 설치하면 팀 파일이 미커밋으로 남아 첫 ship이 「메인 worktree에 미커밋 변경」으로 막혔다.
-test('사고 70: 기존 저장소에 설치 — 깨끗했으면 설치가 팀 파일을 커밋한다(생성물 차선), 더러웠으면 손대지 않고 말한다, 재설치는 「갱신」 커밋', { timeout: 120000 }, (t) => {
+test('사고 70·74: 기존 저장소에 설치 — 설치가 쓴 팀 파일만 커밋한다(생성물 차선), 더러워도 팀 파일은 커밋하고 사람의 것은 그대로(사고 74), 재설치는 「갱신」 커밋', { timeout: 120000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-brown-'));
   assert.equal(git(['init', '-q', '-b', 'main'], repo).status, 0);
@@ -1142,12 +1142,15 @@ test('사고 70: 기존 저장소에 설치 — 깨끗했으면 설치가 팀 �
   const ver = JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/VERSION'), 'utf8'));
   assert.deepEqual(ver, { garagiste: git(['rev-parse', 'HEAD'], GARAGISTE).out.trim(), team_tree: git(['rev-parse', 'HEAD:team'], GARAGISTE).out.trim(), flavor: 'claude' }, '판 = GARAGISTE 커밋 · team/ tree · 하네스(날짜 없음 — 같은 판의 재설치가 diff를 만들지 않게)');
   assert.equal(script('doctor', ['--version'], repo).out.trim(), `VERSION garagiste ${ver.garagiste} · team ${ver.team_tree} · claude`);
-  // 더러운 저장소: 사람의 것과 섞이니 손대지 않는다
+  // 더러운 저장소(사고 74 — 16라운드 운영 둘째 날): 사고 70은 「손대지 않는다」였는데 팀의 docs 차선만 더러워도 갱신의 팀 파일이 미커밋으로 남아 다음 ship이 막혔다 — 설치가 쓴 팀 파일만 커밋하고 사람의 것은 그대로
   write(repo, 'src/wip.js', '// 손으로 고치던 것\n');
+  fs.writeFileSync(path.join(repo, '.garagiste/packs/spike.md'), '# 낡은 팩 사본\n'); git(['add', '.garagiste/packs/spike.md'], repo); assert.equal(git(['commit', '-q', '-m', 'docs: stale'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
   const re = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
   assert.equal(re.status, 0, re.out);
-  assert.match(re.out, /팀 파일은 커밋하지 않았다 — 설치 전에 미커밋 변경이 있었다/);
-  assert.equal(git(['rev-list', '--count', 'HEAD'], repo).out.trim(), '2', '커밋이 늘지 않았다');
+  assert.match(re.out, /팀 파일 커밋\(갱신\(같은 판 [0-9a-f]{7}\) — 기존 저장소, 생성물 차선\)\n[^\n]*설치 전의 미커밋 변경은 그대로 두었다\(팀의 것이 아니다\): 1개/, re.out);
+  assert.equal(git(['status', '--porcelain'], repo).out.trim(), '?? src/wip.js', '사람의 것은 그대로 — 팀 파일만 커밋됐다');
+  const shown = git(['show', '--stat', '--format=', 'HEAD'], repo).out; assert.match(shown, /\.garagiste\/packs\/spike\.md/); assert.doesNotMatch(shown, /wip\.js/);
+  assert.equal(git(['rev-list', '--count', 'HEAD'], repo).out.trim(), '4', 'legacy · 설치 · stale · 갱신');
   fs.rmSync(path.join(repo, 'src/wip.js'));
   // 재설치(갱신): 깨끗하면 바뀐 팀 파일만 커밋(scripts·packs·훅·agents는 덮고 team.json·HAZARDS·규칙 파일은 남긴다) — 바뀐 것이 없으면 커밋도 없다
   fs.writeFileSync(path.join(repo, '.garagiste/packs/spike.md'), '# 낡은 팩 사본\n'); // 스크립트를 깨면 게이트 자체가 죽는다 — 산문 사본으로
