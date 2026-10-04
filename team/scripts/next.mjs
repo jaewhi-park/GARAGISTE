@@ -2,7 +2,7 @@
 // L2 2판 윈도우(고칠 때마다 attack 팩을 새로 띄워 28·20바퀴)·3판(CEO의 「다 ok」를 Q10의 「예」로 · 부재 선언 뒤 루프 재개): 규율 이탈은 전부 Flow 4~7 산문의 빈칸에서 났다 — 빈칸을 코드로.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ceoTouch, ctx, fail, isMain, listUnits, out, readJson, readLedger, readText, rebaseInProgress, unmergedFiles, worktreeDir } from './lib.mjs';
+import { ceoTouch, ctx, fail, isMain, listUnits, out, readJson, readLedger, readText, rebaseInProgress, unmergedFiles, workTree, worktreeDir } from './lib.mjs';
 import { blocking, diagnose } from './doctor.mjs';
 import { budgetStatus } from './state.mjs';
 import { attackRoundUsed } from './brief.mjs';
@@ -69,7 +69,11 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   if (st === 'spike') return specPack ? run(`ship.mjs ${slug}`, '늦은 spike(출하 때 diff-HIT)가 끝났다 — ship 다시') : brief('spec', 'spike 측정이 끝났다 — 다음은 spec');
   if (st === 'spec') {
     const rp = last(mine, (e) => e.kind === 'redproof' && since(e, P.ts));
-    if (!rp) return run(`redproof.mjs ${slug}`, 'spec이 끝났다 — RED 증명');
+    if (!rp) return run(`redproof.mjs ${slug}`, u.kind === 'refactor' ? 'spec이 끝났다 — PIN 증명(핀은 base에서 초록)' : 'spec이 끝났다 — RED 증명');
+    if (u.kind === 'refactor') { // 동작 보존(7라운드): 핀이 base에서 초록이면 build — 구조만 바꾼다. re-spec(이미 충족) 분기는 refactor엔 없다(핀은 본래 충족이다)
+      if (rp.pin_base !== 'green') return run(`redproof.mjs ${slug}`, '마지막 redproof가 FAIL(핀이 base에서 red 또는 눈먼 test_file) — 그 줄의 안내대로(CEO 결정이면 ask --hold)');
+      return brief('build', 'PIN — 현재 동작이 고정됐다, 구조만 바꾼다(동작 보존)');
+    }
     if (!rp.base_red) return run(`redproof.mjs ${slug}`, '마지막 redproof가 FAIL(base에서 green 또는 눈먼 test_file) — 그 줄의 안내대로(CEO 결정이면 ask --hold)');
     if (rp.head_green === true) return brief('attack', 're-spec: 기존 코드가 새 주장을 이미 만족한다 — build 불필요, attack은 새 바퀴');
     return brief('build', 'RED — red를 green으로');
@@ -82,6 +86,11 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     // 사고 64(L2 5판 리눅스 4라운드): red 0인데 예산 정지(미검수 3)면 ship이 budget 조건으로 거부한다 — 예산 정지의 ceo는 seed 자리에만 있어 next가 ship을 계속 냈고
     // conductor가 ship의 FAIL 줄을 읽어 스스로 멈췄다. ship 직전에도 같은 ceo — 그 unit은 red 0으로 서 있고 CEO가 써봐야 출하가 열린다.
     if (stops.length) return { kind: 'ceo', text: `STOP ${stops.join('; ')} — 예산 정지: ${slug}는 red 0으로 ship 직전에 서 있다 — CEO에게 docs/STATUS.md 「써볼 것」·「정해 주세요」` };
+    // 7라운드(refactor e2e가 드러냄): attack이 red 0으로 끝나면 공격 파일만 더해진 tree엔 redproof·full PASS가 없다 — ship이 「이전 tree의 것」·「full 없음」으로 서고 드라이버는 같은 FAIL 둘로 멈췄을 것(대화형 conductor는 FAIL 안내를 따랐다). 판단 없는 한 걸음씩.
+    const tree = wt.tree || null; // computeNext의 wtOf가 센다 — nextStep은 조립된 입력만 받는다(판단 없음·순수)
+    const proven = (e) => e.kind === 'redproof' && e.slug === slug && e.tree === tree && e.head_green === true && (u.kind === 'refactor' ? e.refactor && e.pin_base === 'green' : e.base_red);
+    if (tree && u.kind !== 'system' && !ledger.some(proven)) return run(`redproof.mjs ${slug}`, 'red 0 — 공격 파일이 더해져 tree가 움직였다: 이 tree의 redproof(ship 조건은 tree 단위)');
+    if (tree && !ledger.some((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === tree)) return run(`verify.mjs full ${slug}`, 'red 0 — 이 tree의 full PASS가 원장에 없다(공격 파일만 더해진 tree): ship 조건');
     return run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
   };
   if (st === 'build') {
@@ -109,7 +118,7 @@ export function computeNext(c) {
     const f = fs.existsSync(packsDir) ? fs.readdirSync(packsDir).filter((x) => x.startsWith(`${slug}-${pack}-`) && x.endsWith('.md')).sort().pop() : null;
     return f ? path.relative(c.main, path.join(packsDir, f)).replace(/\\/g, '/') : `(팩 파일 없음 — ${S}/brief.mjs ${pack} ${slug})`;
   };
-  const wtOf = (u) => { const d = worktreeDir(c.main, c.team, u.slug); const exists = fs.existsSync(d); const rebase = exists && rebaseInProgress(d); return { exists, rebase, unmerged: rebase ? unmergedFiles(d) : [] }; };
+  const wtOf = (u) => { const d = worktreeDir(c.main, c.team, u.slug); const exists = fs.existsSync(d); const rebase = exists && rebaseInProgress(d); return { exists, rebase, unmerged: rebase ? unmergedFiles(d) : [], tree: exists && !rebase ? workTree(d) : null }; };
   return nextStep({
     units, ledger, decisionsText: readText(path.join(c.main, c.team.paths.decisions)), scope: readJson(path.join(c.main, '.garagiste', 'scope.json'), null),
     backlog: parseBacklog(readText(path.join(c.main, c.team.paths.backlog))), stops: budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) }).stops, systemAttack: c.team.system_attack !== false, wtOf, packPath,

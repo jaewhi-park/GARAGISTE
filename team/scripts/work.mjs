@@ -8,6 +8,7 @@ import { budgetStatus } from './state.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt'];
+export const KINDS = ['feature', 'scaffold', 'adopt', 'refactor', 'system']; // unit의 정체 — 증명 방식이 다르다(refactor: 핀, 7라운드)
 export const TIERS = {
   low: { intake: 'sonnet', spec: 'sonnet', build: 'haiku', attack: 'sonnet', spike: 'haiku', boot: 'haiku', adopt: 'haiku' },
   medium: { intake: 'opus', spec: 'opus', build: 'sonnet', attack: 'opus', spike: 'sonnet', boot: 'sonnet', adopt: 'sonnet' },
@@ -213,6 +214,7 @@ function createUnit(c, slug, origin, opts = {}) {
   linkDeps(c.main, wt);
   const boundary = checkBoundary(c.team, { text: origin });
   const kind = opts.kind || 'feature';
+  if (!KINDS.includes(kind)) fail(`FAIL kind ${kind} — feature(기본)|scaffold|adopt|refactor (system은 work.mjs system이 연다)`);
   const state0 = kind === 'scaffold' ? 'boot' : kind === 'adopt' ? 'adopt' : kind === 'system' ? 'attack' : boundary.hit ? 'spike' : 'spec'; // system(이음새 공격): spec·spike 없이 attack부터 · adopt(기존 코드): adopt 팩 하나
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), state0);
   const unit = {
@@ -227,6 +229,7 @@ function createUnit(c, slug, origin, opts = {}) {
   out(`UNIT ${slug} ${unit.state} ${unit.worktree}`);
   if (kind === 'scaffold') out('SCAFFOLD — boot 팩 하나로 끝난다(스택·명령·스모크·규칙 파일), spec·attack 없음');
   else if (kind === 'adopt') out('ADOPT — adopt 팩 하나로 끝난다(특성화 테스트·검증 명령·규칙 파일 — 제품 코드는 바꾸지 않는다), spec·attack 없음');
+  else if (kind === 'refactor') out('REFACTOR — 동작 보존: spec은 현재 동작의 핀(base에서도 초록)을 쓰고 redproof는 뒤집힌다(pin_base=green·head_green), build는 구조만 바꾼다, attack은 바뀐 동작을 찾는다');
   else if (kind !== 'system' && boundary.hit) out(`HIT ${boundary.reasons.join(', ')} — spike 팩부터`);
 }
 // system-attack(백로그 「system-attack 팩」 · 채용 2026-10-03 — 방아쇠: green 후 CEO 발견 결함이 벤치 파이썬 날짜 ×2 · todo 4일차 · 홀드아웃 library loan-limit로 0이 아니었다):
@@ -603,5 +606,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt|refactor] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();

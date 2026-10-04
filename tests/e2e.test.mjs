@@ -1420,3 +1420,43 @@ test('conduct 안전벨트(6라운드): 드라이버가 죽어도 팩은 산다 
   assert.ok(!fs.existsSync(lockPath), '잠금 정리');
   assert.ok(ledgerOf(repo).some((e) => e.kind === 'conduct' && e.event === 'stop' && e.stop === 'signal' && /SIGTERM — 팩\(pid \d+\)에 SIGTERM/.test(e.text)), '원장 stop signal');
 });
+// kind refactor — R&D 7라운드(2026-10-04, 백로그 Q13 「동작 보존 증명」): 레거시의 일상은 「동작 그대로 구조만」이다. red 증명이 뒤집힌다 — 핀은 base에서도 초록.
+// 덤으로 드러난 드라이버 틈: attack이 red 0으로 끝나면 공격 파일만 더해진 tree엔 redproof·full이 없어 ship이 섰다 — next가 그 tree의 redproof·full을 한 걸음씩 시킨다.
+test('kind refactor: 핀(현재 동작, base에서 초록) → PIN → build(구조만) → PASS pin_base=green head_green → attack(바뀐 동작 0) → tree의 redproof·full → ship(LEDGER 열 pin) · 동작이 바뀐 build는 redproof·ship이 거부 · base에서 red인 핀은 FAIL+hold(feature다) · 모르는 kind는 FAIL', { timeout: 180000 }, (t) => {
+  const repo = legacyRepo(t); if (!repo) return;
+  const teamPath = path.join(repo, '.garagiste/team.json'); const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'node --test test/*.test.js', full: 'node --test test/*.test.js "tests/**/*.test.mjs"', test_file: 'node --test {files}', run: 'node bin/greet.js', setup: 'npm install' };
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2) + '\n');
+  git(['add', '-A'], repo); assert.match(script('verify', ['quick'], repo).out, /^PASS verify:quick/);
+  const sc = git(['commit', '-q', '-m', 'scaffold: commands'], repo, { GARAGISTE_SHIP: '1' }); assert.equal(sc.status, 0, sc.out);
+  assert.match(script('work', ['new', 'bogus-kind', 'y', '--kind', 'bogus'], repo).out, /^FAIL kind bogus — feature\(기본\)\|scaffold\|adopt\|refactor/);
+  assert.match(script('work', ['new', 'greet-fn', 'greet를 함수 선언으로 — 동작 그대로', '--kind', 'refactor'], repo).out, /^UNIT greet-fn spec[\s\S]*REFACTOR — 동작 보존/);
+  const r = conduct(repo);
+  assert.equal(r.status, 2, r.out);
+  assert.match(r.out, /SPAWN greet-fn spec[\s\S]*│ PIN greet-fn 1\/1 — 현재 동작이 고정됐다[\s\S]*NEXT run node \.garagiste\/scripts\/brief\.mjs build greet-fn — PIN — 현재 동작이 고정됐다, 구조만 바꾼다[\s\S]*SPAWN greet-fn build[\s\S]*│ PASS redproof greet-fn pin_base=green head_green — 동작 보존\(핀 1\)[\s\S]*SPAWN greet-fn attack[\s\S]*ATTACK greet-fn red 0\/1[\s\S]*NEXT run node \.garagiste\/scripts\/redproof\.mjs greet-fn — red 0 — 공격 파일이 더해져 tree가 움직였다[\s\S]*PASS redproof greet-fn pin_base=green head_green[\s\S]*NEXT run node \.garagiste\/scripts\/verify\.mjs full greet-fn — red 0 — 이 tree의 full PASS가 원장에 없다[\s\S]*PASS verify:full[\s\S]*SHIPPED greet-fn [0-9a-f]{7}/, r.out);
+  assert.ok(ledgerOf(repo).filter((e) => e.kind === 'redproof' && e.slug === 'greet-fn' && e.refactor && e.pin_base === 'green').length >= 3, '원장 redproof 줄에 refactor·pin_base');
+  assert.match(fs.readFileSync(path.join(repo, 'docs/LEDGER.md'), 'utf8'), /\| greet-fn \| [0-9a-f]{7} \| [0-9a-f]{7} \| PASS \| pin_base=green head_green \|/);
+  assert.match(fs.readFileSync(path.join(repo, 'lib/greet.js'), 'utf8'), /function greet\(n\)/, '구조는 바뀌었다');
+  assert.equal(run(process.execPath, ['bin/greet.js'], repo).out, 'hi there\n', '동작은 그대로');
+  const packs = fs.readdirSync(path.join(repo, '.garagiste/session/packs'));
+  const specPack = fs.readFileSync(path.join(repo, '.garagiste/session/packs', packs.find((f) => f.startsWith('greet-fn-spec-'))), 'utf8');
+  assert.match(specPack, /## refactor — 동작 보존[\s\S]*「현재 동작의 핀」[\s\S]*pin_base=green·head_green/, '팩에 refactor 절(코드 — 산문 상한 밖)');
+  // 부정 1: 동작이 바뀐 build(break) — redproof FAIL(동작이 바뀌었다) · ship FAIL(동작 보존 증명 없음) · main은 그대로
+  assert.match(script('work', ['new', 'greet-default', 'greet 기본값 조립을 상수로 — 동작 그대로', '--kind', 'refactor'], repo).out, /^UNIT greet-default spec/);
+  const broken = conduct(repo, ['--max-steps', '4'], { GARAGISTE_FAKE_MODE: 'break' });
+  assert.equal(broken.status, 5, broken.out);
+  const red = script('redproof', ['greet-default'], repo);
+  assert.equal(red.status, 1); assert.match(red.out, /^FAIL redproof greet-default: 동작이 바뀌었다 — 핀이 head에서 red: tests\/acceptance\/greet-default\.test\.mjs \(base에서는 초록\)\. refactor는 동작을 바꾸지 않는다 → build가 되돌린다/);
+  const ship = script('ship', ['greet-default'], repo);
+  assert.match(ship.out, /^FAIL ship greet-default \d\/8[\s\S]*- redproof: 동작 보존 증명 없음\(핀 base·head 초록 — kind refactor\)/, ship.out);
+  assert.equal(run(process.execPath, ['bin/greet.js'], repo).out, 'hi there\n', 'main엔 닿지 않았다');
+  // 부정 2: base에서 red인 핀 — 현재 동작이 아니다(feature다), hold 안내
+  assert.match(script('work', ['drop', 'greet-default', '시험 끝', '--forget'], repo).out, /^DROPPED/);
+  assert.match(script('work', ['new', 'greet-shout', 'greet를 대문자로(동작 그대로라고 잘못 적음)', '--kind', 'refactor'], repo).out, /^UNIT greet-shout spec/);
+  const wt = path.join(repo, '.worktrees', 'greet-shout');
+  write(wt, 'tests/acceptance/greet-shout.test.mjs', "// @claim 현재 동작: greet Ada → HI ADA\n// @milestone M1\n// @sensor machine@linux\nimport test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('핀?', () => assert.equal(spawnSync(process.execPath, ['bin/greet.js', 'Ada'], { encoding: 'utf8' }).stdout, 'HI ADA\\n'));\n");
+  git(['add', '-A'], wt); assert.match(script('verify', ['quick'], wt).out, /^PASS verify:quick/);
+  assert.equal(git(['commit', '-q', '-m', 'test(greet-shout): 핀?\n\nUnit: greet-shout\nStep: 1'], wt).status, 0);
+  const pinRed = script('redproof', ['greet-shout'], repo);
+  assert.equal(pinRed.status, 1); assert.match(pinRed.out, /^FAIL redproof greet-shout: 핀이 base에서 red — tests\/acceptance\/greet-shout\.test\.mjs — 현재 동작이 아니다[\s\S]*work\.mjs ask greet-shout "핀이 base에서 red[^"]*" --hold/);
+});
