@@ -1,7 +1,7 @@
 // brief — 팩 조립. 에이전트가 받는 유일한 입력. ≤ pack_kb_max, 외부 텍스트는 데이터 펜스, 이어받기 절 포함.
 import fs from 'node:fs';
 import path from 'node:path';
-import { acceptanceFiles, appendLedger, ctx, fail, git, holdAsk, isMain, listFiles, listUnits, loadUnit, mergeBase, out, readLedger, readText, rebaseAdvice, rebaseInProgress, saveUnit, stamp, unmergedFiles, worktreeDir } from './lib.mjs';
+import { acceptanceFiles, appendLedger, ctx, fail, git, holdAsk, isMain, listFiles, listUnits, loadUnit, mergeBase, out, readLedger, readText, rebaseAdvice, rebaseInProgress, saveUnit, stamp, unmergedFiles, worktreeDir, conductBusyLine, conductRunning } from './lib.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { backlogLine, parseBacklog } from './work.mjs';
 
@@ -171,6 +171,7 @@ function intake(c, args) {
   out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=. model=${c.team.models.intake}`);
 }
 function main() {
+  { const busy = conductRunning(ctx().main); if (busy) fail(conductBusyLine(busy)); } // 11라운드: conduct가 도는 동안 대화형 conductor의 팩 조립은 선다
   const [pack, slug] = process.argv.slice(2);
   if (pack === 'intake') return intake(ctx(), process.argv.slice(3));
   if (!PACKS.includes(pack) || !slug) fail(`사용법: brief.mjs <spec|build|attack|spike|boot|adopt> <slug> [--return "<spec: 줄>" | --met "<CEO 말>"] [--large "<이유>"] | intake`);

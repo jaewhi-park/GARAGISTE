@@ -31,7 +31,7 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **Q9. opencode 어댑터 — 스폰 방법 + guard 플러그인 + agents 6파일만.** **→ 부분 채용 2026-10-04(R&D 5라운드)**: guard 플러그인 실행 패리티(e2e 13 케이스 · task→spawn_stop 팩 이름) · conductor task 허용 = 팩 전부(adopt 누락 수리 — 패리티병의 재발을 unit이 막는다) · conduct는 .claude/agents 없는 설치본에서 --spawner 없이 서지 않는다(한 줄) · selftest가 두 하네스의 L1 거부 1건을 돈다. 남은 것: 실제 opencode CLI로 spawner 템플릿 검증(모델 0 환경 밖).
   guard-rules는 이미 하네스 중립(`guard-rules.mjs:1`), models도 .opencode 경로 인지(`work.mjs:255`). 금지 조항: 커맨드·스킬 트리 복제 없음 — v1 패리티병(두 flavor 손 동기화, parity-check가 그 증상)의 재발 금지. AX의 가짜 끝점·replay 인프라를 하네스 테스트에 재사용(네트워크 0, 비용 0).
   검사: opencode 환경에서 selftest + L0 속임수 시나리오 재현.
-- **Q10. provider-per-pack.** models 개념을 provider까지 확장 — 집: spec/attack=최강 모델, 회사: spec=온프렘+CEO 서명 강화(약한 모델은 「잘 고정된 스펙의 실행자」, 판단은 사람이 더 잡는다). 검사: team.json 프로파일 한 줄로 두 환경 전환.
+- **Q10. provider-per-pack.** models 개념을 provider까지 확장 — 집: spec/attack=최강 모델, 회사: spec=온프렘+CEO 서명 강화(약한 모델은 「잘 고정된 스펙의 실행자」, 판단은 사람이 더 잡는다). 검사: team.json 프로파일 한 줄로 두 환경 전환. **→ 채용 2026-10-04(R&D 11라운드)**: `team.json profiles` + `work.mjs models <이름>`(tier와 같은 자리). 검사(한 줄로 두 환경 전환)는 unit.
 - **Q11. 버전 고정.** 제품 레포에 설치된 v2 버전 기록, 업그레이드는 diff를 보이는 명시적 unit — 자동 재설치 금지. 검사: 업그레이드 회귀 테스트(R15와 공유). **→ 부분 채용 2026-10-04(R&D 2라운드)**: `.garagiste/VERSION`(garagiste sha · team tree · flavor) + 갱신 커밋 제목의 old→new + `doctor.mjs --version`; 업그레이드의 unit화는 남았다. **→ 10라운드**: 갱신 미리보기 `doctor.mjs --diff`(바뀌는 파일 한 줄) + 설치기가 복사 전에 보인다 · 배선 설정은 덮지 않되 다르면 옆에 두고 알린다. 남은 것: 업그레이드 회귀 테스트(R15와 공유)는 e2e 「갱신 미리보기」·「사고 70」이 절반.
 - **Q12. 포트폴리오 — CEO 주의력이 전 제품의 스케줄링 자원.**
   전역 미검수 상한 + 제품 관통 인박스(각 레포 STATUS 첫 줄 수집) + 공유 HAZARDS(프레임워크 제공 + 제품 오버레이 — 이미 그 구조). 제품 2개 이상일 때만 구현.
@@ -115,3 +115,4 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **채용(R&D 8라운드 2026-10-04)**: install.ps1 패리티(VERSION · 기존 저장소 커밋 · 정적 패리티 unit) · Q14 첫 조각(tried --evidence).
 - **채용(R&D 9라운드 2026-10-04)**: 기본 spawner에서 --max-turns 제거(측정: claude 2.1.289에 없다) · `pack_usd_max`(claude --max-budget-usd) · `conduct check`의 깃발 검사(--help) · doctor의 agents {{MODEL_}} 잔재 검사 · 원장 깨진 줄 건너뛰기를 unit으로 잠금.
 - **채용(R&D 10라운드 2026-10-04)**: Q11 「diff를 보이는 명시적 갱신」 — `doctor.mjs --diff`(소스에서) + 설치기 미리보기 · 배선 설정 드리프트(settings.garagiste.json + doctor Read 매처 경고) · 기본 spawner --permission-prompts none.
+- **채용(R&D 11라운드 2026-10-04)**: Windows spawn(shell)·kill(taskkill /T) · 대화형/무인 상호배제(conductRunning · GARAGISTE_CONDUCT) · Q10 프로파일.

@@ -123,11 +123,11 @@ export function preflight(root, { env = process.env, home = os.homedir(), spawn 
   const gap = spawnerGap(root, customSpawner);
   if (gap) { probs.push(gap); return { probs, ok }; }
   if (customSpawner) { ok.push(`spawner 사용자 지정(${harnesses(root).join('+') || '배선 없음'}) — claude CLI·신뢰 검사 생략`); return { probs, ok }; }
-  const v = spawn('claude', ['--version'], { encoding: 'utf8', env });
+  const v = spawn('claude', ['--version'], spawnOpts({ encoding: 'utf8', env }));
   if (v.error || v.status !== 0) probs.push('claude CLI 없음(PATH) — 기본 spawner는 `claude -p --agent`다: Claude Code를 설치하거나 --spawner "<명령 템플릿>"');
   else ok.push(`claude ${(v.stdout || '').trim().split(/\s+/)[0] || '?'}`);
   if (!v.error && v.status === 0) {
-    const h = spawn('claude', ['--help'], { encoding: 'utf8', env });
+    const h = spawn('claude', ['--help'], spawnOpts({ encoding: 'utf8', env }));
     const help = `${h.stdout || ''}${h.stderr || ''}`;
     const argv = spawnerCommand({ pack: 'build', slug: 'x', packPath: 'p.md', model: '', turns: 0, packUsd: Number(team?.budgets?.pack_usd_max ?? 0) }).argv; // 기본 spawner의 깃발 그대로
     const miss = missingFlags(help, argv);
@@ -175,14 +175,22 @@ function logSpawn(c, slug, pack, record) {
 }
 // 팩 프로세스 하나 — 비동기 spawn(6라운드 2026-10-04, 고아 팩 측정): spawnSync로 띄운 팩은 드라이버가 죽어도(SIGKILL·OOM) 살아 남고, 다음 드라이버는 죽은 잠금을 갈아 끼우고 같은 unit의 팩을 또 띄웠다 —
 // 둘이 한 worktree에 쓴다(사고 26 꼴의 충돌·원장 귀속 어긋남). 비동기로 띄워 child pid를 잠금에 적고(onSpawn), 드라이버의 SIGINT/SIGTERM은 팩에 넘긴다(installSignals).
+// Windows(11라운드 2026-10-04 — CEO의 환경): npm으로 깐 Claude Code는 claude.cmd 셸 심이다 — Node의 spawn()은 셸 없이 .cmd를 못 찾는다(ENOENT → 「claude CLI 없음」 거짓 음성, 팩 spawn 전부 실패).
+// win32는 shell: true로 띄운다(인자에 공백·메타문자가 없다 — 팩 경로·깃발뿐). 그러면 자식은 cmd.exe라 kill이 셸만 죽이고 팩이 고아가 된다 — 종료는 taskkill /T(트리)로.
+export function spawnOpts(opts, platform = process.platform) { return platform === 'win32' ? { ...opts, shell: true } : opts; }
+export function killPlan(pid, platform = process.platform, signal = 'SIGTERM') { return platform === 'win32' ? { cmd: 'taskkill', args: ['/pid', String(pid), '/T', '/F'] } : { signal }; }
+function killChild(child, signal = 'SIGTERM') {
+  const k = killPlan(child.pid, process.platform, signal);
+  if (k.cmd) { try { spawnSync(k.cmd, k.args, { stdio: 'ignore' }); } catch { /* 이미 끝났다 */ } } else { try { child.kill(k.signal); } catch { /* 이미 끝났다 */ } }
+}
 let CHILD = null;
 export function runChild(cmd, { cwd, env, timeoutMs = 0, onSpawn = null, spawner = spawn } = {}) {
   return new Promise((resolve) => {
     const opts = { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] };
-    const child = cmd.argv ? spawner(cmd.argv[0], cmd.argv.slice(1), opts) : spawner(cmd.shell, { ...opts, shell: true });
+    const child = cmd.argv ? spawner(cmd.argv[0], cmd.argv.slice(1), spawnOpts(opts)) : spawner(cmd.shell, { ...opts, shell: true });
     let stdout = ''; let stderr = ''; let error = null; let timedOut = false; let settled = false; let timer = null;
     const done = (status, signal) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); if (CHILD === child) CHILD = null; resolve({ status, signal, stdout, stderr, error, timedOut, pid: child.pid ?? null }); };
-    if (timeoutMs > 0) timer = setTimeout(() => { timedOut = true; try { child.kill('SIGTERM'); } catch { /* 이미 끝났다 */ } }, timeoutMs);
+    if (timeoutMs > 0) timer = setTimeout(() => { timedOut = true; killChild(child, 'SIGTERM'); }, timeoutMs);
     const cap = 64 * 1024 * 1024;
     if (child.stdout) { child.stdout.setEncoding('utf8'); child.stdout.on('data', (d) => { if (stdout.length < cap) stdout += d; }); }
     if (child.stderr) { child.stderr.setEncoding('utf8'); child.stderr.on('data', (d) => { if (stderr.length < cap) stderr += d; }); }
@@ -204,8 +212,8 @@ function installSignals(c) {
     clearLock(c.main);
     out(`STOP signal ${new Date().toISOString()} — ${sig}${child ? ` → 팩 pid ${child.pid}에 SIGTERM, 끝나면 나간다` : ''}\nCEO: ${TODO.cap}`);
     if (!child) process.exit(EXIT.cap);
-    try { child.kill('SIGTERM'); } catch { process.exit(EXIT.cap); }
-    const t = setTimeout(() => { try { child.kill('SIGKILL'); } catch { /* 끝났다 */ } process.exit(EXIT.cap); }, 5000);
+    killChild(child, 'SIGTERM');
+    const t = setTimeout(() => { killChild(child, 'SIGKILL'); process.exit(EXIT.cap); }, 5000);
     child.once('close', () => { clearTimeout(t); process.exit(EXIT.cap); });
   });
 }
@@ -276,6 +284,7 @@ async function main() {
   if (lockAlive(lock)) fail(`FAIL conduct: 이미 돌고 있다 — pid ${lock.pid} · ${[lock.step, lock.slug, lock.pack].filter(Boolean).join(' ')} · ${lock.at} (한 저장소에 드라이버 하나 — unit은 한 번에 하나다. 정말 죽었으면 ${CONDUCT_LOCK}을 지운다)`);
   const startedAt = new Date().toISOString(); o.startedAt = startedAt;
   writeLock(c.main, startedAt, { step: 'start' });
+  process.env.GARAGISTE_CONDUCT = String(process.pid); // 11라운드: 내 자식(runCmd의 스크립트·팩)은 잠금을 지나간다 — 밖의 대화형 conductor는 선다(lib.conductRunning)
   installSignals(c);
   appendLedger(c.main, c.team, { kind: 'conduct', event: 'start', spawner: o.spawner ? 'custom' : 'claude', max_steps: o.maxSteps, max_minutes: o.maxMinutes, pack_minutes: o.packMinutes, max_usd: o.maxUsd, pack_usd: o.packUsd });
   if (o.intake) { writeLock(c.main, startedAt, { step: 'intake' }); return await intake(c, o); }

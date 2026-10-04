@@ -23,8 +23,8 @@ import { versionLine } from '../team/scripts/doctor.mjs';
 import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
 import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
 import { PACKS as CP_PACKS } from '../team/scripts/checkpoint.mjs';
-import { missingFlags, orphanOf, runChild, spawnerGap } from '../team/scripts/conduct.mjs';
-import { readLedger } from '../team/scripts/lib.mjs';
+import { killPlan, missingFlags, orphanOf, runChild, spawnOpts, spawnerGap } from '../team/scripts/conduct.mjs';
+import { conductBusyLine, conductRunning, readLedger } from '../team/scripts/lib.mjs';
 import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
 import { FLAGS, KINDS } from '../team/scripts/work.mjs';
@@ -1377,4 +1377,38 @@ test('lib(9라운드): 원장의 깨진 줄(SIGKILL이 자른 마지막 줄)은 
   fs.writeFileSync(path.join(tmp, 'evidence.jsonl'), '{"ts":"1","kind":"verify","exit":0}\n{"ts":"2","kind":"ver');
   assert.deepEqual(readLedger(tmp, { paths: { ledger: 'evidence.jsonl' } }).map((e) => e.ts), ['1']);
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+// 11라운드(2026-10-04) — CEO의 Windows: npm 셸 심(claude.cmd)은 spawn()이 못 찾는다, cmd.exe만 죽이면 팩이 고아다. 실행은 못 하니 결정 함수를 잠근다.
+test('conduct(11라운드): Windows — spawnOpts는 win32에서만 shell: true · killPlan은 win32에서 taskkill /T, 다른 OS는 신호', () => {
+  assert.deepEqual(spawnOpts({ encoding: 'utf8' }, 'win32'), { encoding: 'utf8', shell: true });
+  assert.deepEqual(spawnOpts({ encoding: 'utf8' }, 'linux'), { encoding: 'utf8' });
+  assert.deepEqual(spawnOpts({ encoding: 'utf8' }, 'darwin'), { encoding: 'utf8' });
+  assert.deepEqual(killPlan(123, 'win32'), { cmd: 'taskkill', args: ['/pid', '123', '/T', '/F'] });
+  assert.deepEqual(killPlan(123, 'win32', 'SIGKILL'), { cmd: 'taskkill', args: ['/pid', '123', '/T', '/F'] }, 'Windows엔 신호가 없다 — 트리 강제 종료 하나');
+  assert.deepEqual(killPlan(123, 'darwin', 'SIGKILL'), { signal: 'SIGKILL' });
+  assert.deepEqual(killPlan(123, 'linux'), { signal: 'SIGTERM' });
+});
+test('lib(11라운드): conductRunning — 잠금 pid가 살아 있고 GARAGISTE_CONDUCT와 다르면 잠금(밖의 세션), 같으면 null(conduct의 자식), 잠금 없음·죽은 pid면 null · 가드는 GARAGISTE_CONDUCT= 접두를 우회로 본다', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-mutex-'));
+  const prev = process.env.GARAGISTE_CONDUCT; delete process.env.GARAGISTE_CONDUCT;
+  try {
+    assert.equal(conductRunning(tmp), null, '잠금 없음');
+    fs.mkdirSync(path.join(tmp, '.garagiste', 'session'), { recursive: true });
+    fs.writeFileSync(path.join(tmp, '.garagiste', 'session', 'conduct.json'), JSON.stringify({ pid: process.pid, step: 'spawn', slug: 'x', pack: 'build', at: 'now' }));
+    const l = conductRunning(tmp); assert.ok(l && l.pid === process.pid, '살아 있는 다른 세션의 잠금');
+    assert.match(conductBusyLine(l), /^FAIL conduct가 돌고 있다\(pid \d+ · spawn x build · now\) — 대화형 conductor는 그동안 쉰다/);
+    process.env.GARAGISTE_CONDUCT = String(process.pid); assert.equal(conductRunning(tmp), null, '내 자식은 지나간다');
+    process.env.GARAGISTE_CONDUCT = '1'; assert.ok(conductRunning(tmp), '다른 pid 표식은 밖이다');
+    fs.writeFileSync(path.join(tmp, '.garagiste', 'session', 'conduct.json'), JSON.stringify({ pid: 999999, step: 'spawn' }));
+    delete process.env.GARAGISTE_CONDUCT; assert.equal(conductRunning(tmp), null, '죽은 pid의 잠금은 없는 것');
+  } finally { if (prev === undefined) delete process.env.GARAGISTE_CONDUCT; else process.env.GARAGISTE_CONDUCT = prev; fs.rmSync(tmp, { recursive: true, force: true }); }
+  assert.match(decide(bash('GARAGISTE_CONDUCT=1 node .garagiste/scripts/ship.mjs x'), gctx(null)) || '', /게이트 우회 금지/, '표식을 꾸며 상호배제를 넘지 않는다');
+});
+test('work(11라운드, Q10): models <프로파일 이름> — team.json profiles가 tier와 같은 자리에 선다, 팩이 아닌 키는 버린다, 모르는 이름은 FAIL 사유에 프로파일 목록', () => {
+  const profiles = { company: { spec: 'onprem/qwen', build: 'onprem/qwen', critic: 'x' }, home: TIERS.high };
+  const r = resolveModels(TIERS.medium, ['company'], profiles);
+  assert.deepEqual([r.spec, r.build, r.attack, 'critic' in r], ['onprem/qwen', 'onprem/qwen', 'opus', false]);
+  assert.deepEqual(resolveModels(TIERS.medium, ['home'], profiles), TIERS.high);
+  assert.deepEqual(resolveModels(TIERS.medium, ['low'], profiles), TIERS.low, 'tier는 그대로');
+  assert.throws(() => resolveModels(TIERS.medium, ['office'], profiles), /low\|medium\|high\|company\|home/);
 });

@@ -1514,3 +1514,20 @@ test('갱신 미리보기: 소스의 doctor.mjs --diff <설치본>이 바뀌는 
   assert.ok(fs.existsSync(path.join(repo, '.claude/settings.garagiste.json')), 'team의 설정이 옆에');
   assert.match(diff(), /바뀌는 파일 0 · 배선 설정 다름 1\(덮지 않는다 — 병합\) · 설치본에만 1/, '갱신 뒤엔 배선 설정과 옛 팩만 남는다');
 });
+// 11라운드(2026-10-04): GUIDE의 「동시에 돌리지 않는다 — 잠금이 막는다」는 conduct 둘만 막았다 — 대화형 conductor의 brief·ship·seed는 그대로 돌아 같은 unit을 두 번 띄울 수 있었다(L2 1일차 병렬 seed = 사고 26의 토양).
+test('상호배제(11라운드): conduct가 도는 동안 밖에서 부른 brief·ship·seed는 한 줄로 선다 — GARAGISTE_CONDUCT가 잠금 pid와 같으면(conduct의 자식) 통과, conduct가 끝나면 다시 돈다', { timeout: 120000 }, async (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const lockPath = path.join(repo, '.garagiste/session/conduct.json');
+  const d = spawn(process.execPath, [path.join(repo, '.garagiste/scripts/conduct.mjs'), '--spawner', `node ${FAKE}`, '--max-steps', '3'], { cwd: repo, env: { ...ENV, GARAGISTE_FAKE_MODE: 'hang' }, stdio: ['ignore', 'pipe', 'pipe'] }); d.stdout.resume(); d.stderr.resume();
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  let lock = null; for (let i = 0; i < 150 && !(lock && lock.step === 'spawn'); i++) { await sleep(200); try { lock = JSON.parse(fs.readFileSync(lockPath, 'utf8')); } catch { lock = null; } }
+  assert.ok(lock && lock.step === 'spawn', '팩이 도는 중: ' + JSON.stringify(lock));
+  const busy = /^FAIL conduct가 돌고 있다\(pid \d+ · spawn hello spec · [^)]+\) — 대화형 conductor는 그동안 쉰다/;
+  assert.match(script('brief', ['build', 'hello'], repo).out, busy, 'brief');
+  assert.match(script('ship', ['hello'], repo).out, busy, 'ship');
+  assert.match(script('work', ['seed'], repo).out, busy, 'seed');
+  assert.doesNotMatch(script('brief', ['build', 'hello'], repo, { GARAGISTE_CONDUCT: String(lock.pid) }).out, /conduct가 돌고 있다/, 'conduct의 자식(env 일치)은 지나간다');
+  d.kill('SIGTERM'); await new Promise((r) => d.once('close', r));
+  assert.ok(!fs.existsSync(lockPath), '잠금 정리');
+  assert.doesNotMatch(script('work', ['seed'], repo).out, /conduct가 돌고 있다/, '끝나면 다시 돈다');
+});
