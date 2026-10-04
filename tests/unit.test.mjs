@@ -1195,6 +1195,13 @@ test('conduct: 반려 줄·FAIL 열쇠·hold 안내·진전 없음', () => {
   assert.equal(specReturn('커밋 3 · PASS verify:full'), null);
   assert.equal(specReturn(Array.from({ length: 8 }, (_, i) => `줄 ${i}`).join('\n') + '\nspec: 늦은 줄'), '늦은 줄', '마지막 다섯 줄 안에서만 본다');
   assert.equal(specReturn('spec: 이른 줄\n' + Array.from({ length: 8 }, (_, i) => `줄 ${i}`).join('\n')), null);
+  // 사고 73(16라운드 운영 둘째 날): 모델은 spec: 줄을 백틱·불릿·굵게로 감싼다 — 넷째·다섯째 run의 system-1 build 32회 중 6회(그 반려는 읽히지 않아 빈손으로 세어졌다). 실제 줄 둘.
+  assert.equal(specReturn('커밋은 이어받은 937c798 하나이다.\n`spec: 남은 공격 테스트 2건이 product 코드로 풀리지 않는다. 기본 data/에는 이미 paid 주문(total 75)이 있다.`'), '남은 공격 테스트 2건이 product 코드로 풀리지 않는다. 기본 data/에는 이미 paid 주문(total 75)이 있다.');
+  assert.equal(specReturn('- spec: try 카드의 기대가 기본 data와 모순됩니다.'), 'try 카드의 기대가 기본 data와 모순됩니다.');
+  assert.equal(specReturn('**spec:** 인수가 서로 어긋난다'), '인수가 서로 어긋난다');
+  assert.equal(specReturn('> spec: 인용 줄'), '인용 줄');
+  assert.equal(specReturn('spec: 끝에 코드 `x`'), '끝에 코드 `x`', '감싸지 않은 줄의 꼬리는 그대로');
+  assert.equal(specReturn('respec: 아니다'), null, '다른 낱말의 꼬리는 아니다');
   assert.equal(failKey('PASS gate\nFAIL ship hello 1/8\n- attack: 기록 없음\n- x'), 'FAIL ship hello 1/8 | - attack: 기록 없음', 'ship은 둘째 줄(조건)이 열쇠를 가른다');
   assert.equal(failKey('ATTACK hello red 1/1'), null, 'FAIL 줄이 없으면 열쇠 없음 — 되풀이로 세지 않는다');
   // 사고 71(15라운드 넷째 run): 반려 전달의 FAIL은 run 걸음의 FAIL과 같은 열쇠 — 실제 줄(system-1 build 30회가 전부 이 FAIL)

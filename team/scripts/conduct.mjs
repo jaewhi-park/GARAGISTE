@@ -93,7 +93,11 @@ export function parseResult(stdout) {
 // build·attack의 반려 — 마지막 줄들의 `spec: <한 줄>`(팩 규칙). Flow 4: brief.mjs spec <slug> --return "<그 줄>"
 export function specReturn(text) {
   const lines = String(text || '').trim().split('\n').slice(-5).reverse();
-  for (const l of lines) { const m = /^\s*spec:\s*(.+?)\s*$/.exec(l); if (m) return m[1]; }
+  // 사고 73(16라운드 운영 둘째 날): 모델은 `spec:` 줄을 백틱·불릿·굵게로 감싼다(넷째·다섯째 run의 system-1 build 32회 중 6회 — 그 반려는 읽히지 않아 「빈손」으로 세어져 build가 다시 떴다). 포장은 벗기고 읽는다 — 감싼 줄만 꼬리의 포장도 벗긴다.
+  for (const l of lines) {
+    const m = /^([\s`*_>"'-]*)spec:[\s*_`]*(.+?)\s*$/.exec(l); if (!m) continue;
+    return m[1].trim() ? m[2].replace(/[`*_"']+$/, '').trim() : m[2];
+  }
   return null;
 }
 // 같은 FAIL의 열쇠 — 첫 FAIL 줄과 그 다음 줄(ship은 「FAIL ship x 1/8」 아래 줄이 조건이다). state.mjs repeatedFails와 같은 뜻(되풀이 = 2).
