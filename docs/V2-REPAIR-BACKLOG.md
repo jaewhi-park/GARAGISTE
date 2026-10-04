@@ -110,3 +110,4 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **채용(R&D 3라운드 2026-10-04)**: Q13의 입구 — adopt 팩. 투입 판정(HANDOFF 「2026-10-04 R&D 3라운드」): 신규(기계 검증 가능)만 가능, 레거시는 입구가 생겼을 뿐 — 첫 측정 전.
 - **채용(R&D 4라운드 2026-10-04)**: ship 재검증(`ship_reverify` 기본 true) · 가드 인라인 코드 쓰기 거부 · `conduct.mjs check`. Q8 검사의 리눅스 몫.
 - **채용(R&D 5라운드 2026-10-04)**: opencode 레인 패리티 — 가드 플러그인 실행 테스트 · task spawn_stop 팩 이름 · conductor task 허용 adopt · 팩 목록 하나(unit) · conduct spawnerGap · selftest L1 거부 1건. Q8 검사 완료, L3 게이트 후반.
+- **채용(R&D 6라운드 2026-10-04)**: 고아 팩(측정 → conduct 비동기 spawn · 잠금 child pid · 신호 전달) · 비밀 파일 읽기 거부(측정 → Bash 토큰·Read 매처·opencode read). 둘 다 「무인 안전벨트」(DEVICES 4.6)와 가드의 약속을 코드로.

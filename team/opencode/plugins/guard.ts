@@ -7,7 +7,7 @@ import { decide, makeCtx } from "../../.garagiste/scripts/guard-rules.mjs"
 // @ts-ignore
 import { spawnStop } from "../../.garagiste/scripts/checkpoint.mjs"
 
-const TOOL: Record<string, string> = { bash: "Bash", edit: "Edit", write: "Write", patch: "Edit", multiedit: "MultiEdit" }
+const TOOL: Record<string, string> = { bash: "Bash", edit: "Edit", write: "Write", patch: "Edit", multiedit: "MultiEdit", read: "Read" } // read는 비밀 파일만 거부한다(guard-rules SECRET)
 
 export const Guard: Plugin = async ({ directory }) => {
   // task의 after엔 인자가 없다 — before에서 callID로 subagent_type을 적어 두고 after에서 Claude SubagentStop의 agent_type과 같은 꼴로 넘긴다(5라운드 2026-10-04, Q9 패리티: 원장 spawn_stop에 팩 이름)

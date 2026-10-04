@@ -46,7 +46,7 @@
       { "hooks": [ { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.mjs\"" } ] }
     ],
     "PreToolUse": [
-      { "matcher": "Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit",
+      { "matcher": "Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit|Read",
         "hooks": [ { "type": "command", "command": "node \"${CLAUDE_PROJECT_DIR}/.claude/hooks/guard.mjs\"" } ] }
     ],
     "SubagentStop": [

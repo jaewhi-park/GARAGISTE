@@ -23,7 +23,8 @@ import { versionLine } from '../team/scripts/doctor.mjs';
 import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
 import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
 import { PACKS as CP_PACKS } from '../team/scripts/checkpoint.mjs';
-import { spawnerGap } from '../team/scripts/conduct.mjs';
+import { orphanOf, runChild, spawnerGap } from '../team/scripts/conduct.mjs';
+import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
@@ -1275,4 +1276,35 @@ test('conduct: spawner 틈 — claude 배선이 없으면(opencode만 · 배선 
   fs.mkdirSync(path.join(tmp, '.claude')); fs.writeFileSync(path.join(tmp, '.claude', 'settings.json'), '{}');
   assert.equal(spawnerGap(tmp, false), null, 'claude 배선이 있으면 기본 spawner');
   fs.rmSync(tmp, { recursive: true, force: true });
+});
+// 6라운드(2026-10-04) — 고아 팩: 드라이버는 죽고 팩은 살았다. 잠금 한 줄이 가른다.
+test('conduct(6라운드): 고아 팩 — 잠금의 드라이버는 죽고 child는 살면 한 줄, 드라이버가 살았거나 child가 죽었거나 없으면 없음', () => {
+  const isAlive = (pid) => pid === 200;
+  assert.match(orphanOf({ pid: 100, child: 200, slug: 'hello', pack: 'spec' }, { isAlive }) || '', /^앞 드라이버\(pid 100\)는 죽었는데 그 팩 프로세스\(pid 200 · hello spec\)가 아직 돈다 — 끝나길 기다리거나 kill 200 뒤 다시/);
+  assert.equal(orphanOf({ pid: 200, child: 300 }, { isAlive }), null, '드라이버가 살았으면 「이미 돌고 있다」의 몫');
+  assert.equal(orphanOf({ pid: 100, child: 300 }, { isAlive }), null, 'child도 죽었으면 죽은 잠금 — 갈아 끼운다');
+  assert.equal(orphanOf({ pid: 100 }, { isAlive }), null); assert.equal(orphanOf(null, { isAlive }), null);
+});
+test('conduct(6라운드): runChild — 비동기 spawn의 결과 꼴(status·stdout·pid), 시간 상한이면 SIGTERM으로 끊고 timedOut, onSpawn에 pid, 없는 명령은 error', async () => {
+  const r = await runChild({ argv: [process.execPath, '-e', 'process.stdout.write("hi"); process.exit(3)'] }, { cwd: process.cwd(), env: process.env });
+  assert.deepEqual([r.status, r.stdout, r.timedOut, typeof r.pid], [3, 'hi', false, 'number']);
+  let seen = null;
+  const h = await runChild({ argv: [process.execPath, '-e', 'setTimeout(() => {}, 20000)'] }, { cwd: process.cwd(), env: process.env, timeoutMs: 300, onSpawn: (pid) => { seen = pid; } });
+  assert.ok(h.timedOut && h.status === null && h.signal === 'SIGTERM' && seen === h.pid, JSON.stringify(h));
+  const e = await runChild({ argv: ['definitely-not-a-command-xyz'] }, { cwd: process.cwd(), env: process.env });
+  assert.ok(e.error && e.status === null, '없는 명령은 error');
+});
+// 6라운드(2026-10-04) — 가드의 약속 「읽지도 쓰지도」는 파일 도구의 쓰기만 막았다(측정: cat .env·Read 통과). 읽기도 경계 — 비밀만.
+test('guard(6라운드): 비밀 파일은 읽기도 경계 — Bash의 cat·grep·source·python open·base64·cp·id_rsa·.netrc, Read 도구는 거부 · .env.example·--key 플래그·echo .env >> .gitignore·dotenv 모듈·key.test.mjs는 비밀 규칙에 걸리지 않는다', () => {
+  const deny = /^비밀 파일\(/;
+  for (const cmd of ['cat .env', 'grep -n KEY ./.env', 'source .env && node x.mjs', "python3 -c \"print(open('.env').read())\"", 'base64 config/.env.production', 'cat ~/.ssh/id_rsa', 'cat certs/server.pem', 'less .netrc', 'cp .env /tmp/x', 'node -e "console.log(require(\'fs\').readFileSync(\'.env.local\',\'utf8\'))"']) assert.match(decide(bash(cmd), gctx('build')) || '', deny, cmd);
+  const read = (file_path) => ({ tool_name: 'Read', tool_input: { file_path }, cwd: root });
+  assert.match(decide(read('/repo/.env'), gctx(null)) || '', deny, 'Read 도구 — 매처에 Read');
+  assert.match(decide(read('/repo/certs/server.key'), gctx(null)) || '', deny);
+  assert.equal(decide(read('/repo/src/env.mjs'), gctx(null)), null, '읽기는 경계가 아니다 — 비밀만');
+  assert.equal(decide(read('/repo/.env.example'), gctx(null)), null);
+  for (const cmd of ['cat .env.example', 'cp .env.example .env.sample', 'node x.mjs --key abc', 'echo .env >> .gitignore', 'printf ".env\\n" >> .gitignore', 'node --test tests/unit/key.test.mjs', 'node -r dotenv/config src/x.mjs', 'git add .env.example', 'cat src/env.mjs']) assert.doesNotMatch(decide(bash(cmd), gctx('build')) || '', deny, cmd);
+  assert.deepEqual(secretTargets('cat .env && grep x secrets/credentials.json'), ['.env', 'secrets/credentials.json']);
+  assert.match(fs.readFileSync(new URL('../team/claude/settings.json', import.meta.url), 'utf8'), /"matcher": "Bash\|PowerShell\|Edit\|Write\|MultiEdit\|NotebookEdit\|Read"/, 'Claude 훅 매처에 Read — 없으면 Read 분기는 죽은 코드다');
+  assert.match(fs.readFileSync(new URL('../team/opencode/plugins/guard.ts', import.meta.url), 'utf8'), /read: "Read"/, 'opencode 플러그인 read 매핑');
 });

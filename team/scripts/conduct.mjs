@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { appendLedger, CONDUCT_LOCK, ctx, fail, headSha, isMain, out, pidAlive, readJson, shell, stamp, worktreeDir, writeJson } from './lib.mjs';
 import { computeNext, doctorGate, render } from './next.mjs';
 import { blocking, diagnose, harnesses, versionLine } from './doctor.mjs';
@@ -108,7 +108,8 @@ export function preflight(root, { env = process.env, home = os.homedir(), spawn 
   if (d.length) probs.push(...d.map((x) => `doctor: ${x}`)); else ok.push('doctor OK');
   ok.push(versionLine(root).startsWith('VERSION garagiste') ? versionLine(root).replace(/^VERSION garagiste (\S{7})\S* .*$/, 'VERSION $1') : 'VERSION 없음(옛 설치본 — install.sh 다시)');
   const lock = readJson(path.join(root, CONDUCT_LOCK), null);
-  if (lock && lock.pid && pidAlive(lock.pid)) probs.push(`이미 돌고 있다 — pid ${lock.pid} · ${[lock.step, lock.slug, lock.pack].filter(Boolean).join(' ')} · ${lock.at} (한 저장소에 드라이버 하나)`); else ok.push('잠금 없음');
+  if (lock && lock.pid && pidAlive(lock.pid)) probs.push(`이미 돌고 있다 — pid ${lock.pid} · ${[lock.step, lock.slug, lock.pack].filter(Boolean).join(' ')} · ${lock.at} (한 저장소에 드라이버 하나)`);
+  else { const orphan = orphanOf(lock); if (orphan) probs.push(`고아 팩 — ${orphan}`); else ok.push('잠금 없음'); }
   const gap = spawnerGap(root, customSpawner);
   if (gap) { probs.push(gap); return { probs, ok }; }
   if (customSpawner) { ok.push(`spawner 사용자 지정(${harnesses(root).join('+') || '배선 없음'}) — claude CLI·신뢰 검사 생략`); return { probs, ok }; }
@@ -153,22 +154,55 @@ function logSpawn(c, slug, pack, record) {
     return path.relative(c.main, f).replace(/\\/g, '/');
   } catch { return null; }
 }
+// 팩 프로세스 하나 — 비동기 spawn(6라운드 2026-10-04, 고아 팩 측정): spawnSync로 띄운 팩은 드라이버가 죽어도(SIGKILL·OOM) 살아 남고, 다음 드라이버는 죽은 잠금을 갈아 끼우고 같은 unit의 팩을 또 띄웠다 —
+// 둘이 한 worktree에 쓴다(사고 26 꼴의 충돌·원장 귀속 어긋남). 비동기로 띄워 child pid를 잠금에 적고(onSpawn), 드라이버의 SIGINT/SIGTERM은 팩에 넘긴다(installSignals).
+let CHILD = null;
+export function runChild(cmd, { cwd, env, timeoutMs = 0, onSpawn = null, spawner = spawn } = {}) {
+  return new Promise((resolve) => {
+    const opts = { cwd, env, stdio: ['ignore', 'pipe', 'pipe'] };
+    const child = cmd.argv ? spawner(cmd.argv[0], cmd.argv.slice(1), opts) : spawner(cmd.shell, { ...opts, shell: true });
+    let stdout = ''; let stderr = ''; let error = null; let timedOut = false; let settled = false; let timer = null;
+    const done = (status, signal) => { if (settled) return; settled = true; if (timer) clearTimeout(timer); if (CHILD === child) CHILD = null; resolve({ status, signal, stdout, stderr, error, timedOut, pid: child.pid ?? null }); };
+    if (timeoutMs > 0) timer = setTimeout(() => { timedOut = true; try { child.kill('SIGTERM'); } catch { /* 이미 끝났다 */ } }, timeoutMs);
+    const cap = 64 * 1024 * 1024;
+    if (child.stdout) { child.stdout.setEncoding('utf8'); child.stdout.on('data', (d) => { if (stdout.length < cap) stdout += d; }); }
+    if (child.stderr) { child.stderr.setEncoding('utf8'); child.stderr.on('data', (d) => { if (stderr.length < cap) stderr += d; }); }
+    child.on('error', (e) => { error = e; done(null, null); });
+    child.on('close', (status, signal) => done(status, signal));
+    CHILD = child;
+    if (child.pid && onSpawn) onSpawn(child.pid);
+  });
+}
+// 고아 팩: 앞 드라이버는 죽었는데(잠금 pid 죽음) 그 팩 프로세스(잠금 child)가 아직 돈다 — 끝나길 기다리거나 CEO가 끊는다. 다음 드라이버는 그 자리에서 선다.
+export function orphanOf(lock, { isAlive = pidAlive } = {}) {
+  if (!lock || !lock.child || (lock.pid && isAlive(lock.pid)) || !isAlive(lock.child)) return null;
+  return `앞 드라이버(pid ${lock.pid})는 죽었는데 그 팩 프로세스(pid ${lock.child} · ${[lock.slug, lock.pack].filter(Boolean).join(' ')})가 아직 돈다 — 끝나길 기다리거나 kill ${lock.child} 뒤 다시(둘이 같은 worktree에 쓰면 충돌·원장 귀속이 어긋난다)`;
+}
+function installSignals(c) {
+  for (const sig of ['SIGINT', 'SIGTERM']) process.on(sig, () => {
+    const child = CHILD;
+    try { appendLedger(c.main, c.team, { kind: 'conduct', event: 'stop', stop: 'signal', usd: Math.round(USD * 1000) / 1000, text: `${sig}${child ? ` — 팩(pid ${child.pid})에 SIGTERM` : ''}` }); } catch { /* 원장 없음 */ }
+    clearLock(c.main);
+    out(`STOP signal ${new Date().toISOString()} — ${sig}${child ? ` → 팩 pid ${child.pid}에 SIGTERM, 끝나면 나간다` : ''}\nCEO: ${TODO.cap}`);
+    if (!child) process.exit(EXIT.cap);
+    try { child.kill('SIGTERM'); } catch { process.exit(EXIT.cap); }
+    const t = setTimeout(() => { try { child.kill('SIGKILL'); } catch { /* 끝났다 */ } process.exit(EXIT.cap); }, 5000);
+    child.once('close', () => { clearTimeout(t); process.exit(EXIT.cap); });
+  });
+}
 // 팩을 띄우고 끝까지 기다린다 → 체크포인트·spawn_stop → spawned(실측) → 반려 전달. 반환: { ok, text, tokens, minutes }
-export function spawnPack(c, { pack, slug, path: packPath }, o, { spawner = spawnSync } = {}) {
+export async function spawnPack(c, { pack, slug, path: packPath }, o, { spawner = spawn, onSpawn = null } = {}) {
   const wt = slug === 'intake' ? c.main : worktreeDir(c.main, c.team, slug);
   const model = c.team.models[pack] || '';
   const cmd = spawnerCommand({ template: o.spawner, pack, slug, packPath, model, turns: o.turns });
   const env = headlessEnv(process.env, { GARAGISTE_PACK: pack, GARAGISTE_SLUG: slug, GARAGISTE_PACK_PATH: packPath, GARAGISTE_WORKTREE: wt, GARAGISTE_MODEL: model });
   const t0 = Date.now();
-  const limit = o.packMinutes > 0 ? { timeout: Math.round(o.packMinutes * 60000), killSignal: 'SIGTERM' } : {};
-  const r = cmd.argv
-    ? spawner(cmd.argv[0], cmd.argv.slice(1), { cwd: c.main, encoding: 'utf8', env, maxBuffer: 64 * 1024 * 1024, ...limit })
-    : spawner(cmd.shell, { shell: true, cwd: c.main, encoding: 'utf8', env, maxBuffer: 64 * 1024 * 1024, ...limit });
-  const timedOut = !!(r.error && r.error.code === 'ETIMEDOUT') || (r.signal === 'SIGTERM' && limit.timeout && Date.now() - t0 >= limit.timeout - 50);
+  const r = await runChild(cmd, { cwd: c.main, env, timeoutMs: o.packMinutes > 0 ? Math.round(o.packMinutes * 60000) : 0, onSpawn, spawner });
+  const timedOut = r.timedOut;
   const wall = Math.round((Date.now() - t0) / 6000) / 10;
   const p = parseResult(r.stdout);
   const status = r.status ?? 1;
-  const log = logSpawn(c, slug, pack, { cmd: cmd.argv || cmd.shell, status, timed_out: timedOut, error: r.error ? String(r.error) : null, stdout: r.stdout || '', stderr: r.stderr || '' });
+  const log = logSpawn(c, slug, pack, { cmd: cmd.argv || cmd.shell, pid: r.pid, status, signal: r.signal, timed_out: timedOut, error: r.error ? String(r.error) : null, stdout: r.stdout || '', stderr: r.stderr || '' });
   spawnStop(c.main, { agent_type: pack }); // 헤드리스엔 SubagentStop 훅이 없다 — 더러운 worktree는 wip로, 원장엔 spawn_stop
   const flags = [p.tokens ? `--tokens ${p.tokens}` : '', `--minutes ${p.minutes ?? wall}`, model ? `--model ${model}` : '', `--note ${q(`conduct${p.cost != null ? ` $${p.cost}` : ''}${p.turns != null ? ` turns ${p.turns}` : ''} exit ${status}${log ? ` log ${log}` : ''}`)}`].filter(Boolean).join(' ');
   runCmd(c, `${S}/work.mjs spawned ${slug} ${pack} ${flags}`);
@@ -190,18 +224,18 @@ function stop(c, kind, text) {
   if (st.stdout.trim()) out(`STATUS: ${st.stdout.trim().split('\n')[0]}`);
   process.exit(EXIT[kind]);
 }
-function intake(c, o) {
+async function intake(c, o) {
   const b = runCmd(c, `${S}/brief.mjs intake`);
   if (b.status) return stop(c, 'framework', failKey(b.text) || 'brief intake FAIL');
   const packPath = (/^PACK (\S+)/m.exec(b.text) || [])[1];
   if (!packPath) return stop(c, 'framework', `PACK 줄 없음 — ${b.text.split('\n')[0]}`);
-  const r = spawnPack(c, { pack: 'intake', slug: 'intake', path: packPath }, o);
+  const r = await spawnPack(c, { pack: 'intake', slug: 'intake', path: packPath }, o, { onSpawn: (pid) => writeLock(c.main, o.startedAt, { step: 'spawn', slug: 'intake', pack: 'intake', child: pid }) });
   USD += r.cost || 0;
   if (!r.ok) return stop(c, 'framework', `intake 팩 비정상 종료 — exit ${r.status}${r.log ? ` · ${r.log}` : ''}`);
   runCmd(c, `${S}/work.mjs list`);
   return stop(c, 'ceo', 'intake 끝 — docs/BACKLOG.md의 unit 줄과 docs/DECISIONS.md 「정해 주세요」를 CEO에게 한 줄씩(예/아니오) → work.mjs decide → work.mjs scope → 「가」 = conduct');
 }
-function main() {
+async function main() {
   const o = parseArgs(process.argv.slice(2));
   if (o.error) fail(`FAIL conduct: ${o.error} — 사용법: conduct.mjs [check|intake] [--once] [--max-steps N] [--max-minutes M] [--max-usd D] [--pack-minutes P] [--turns T] [--spawner "<템플릿 {path} {pack} {slug} {model} {turns}>"]`);
   let c = ctx();
@@ -217,11 +251,14 @@ function main() {
   o.packMinutes ??= Number(c.team.budgets.pack_minutes_max ?? 60);
   o.maxUsd ??= Number(c.team.budgets.run_usd_max ?? 0);
   const lock = readJson(path.join(c.main, CONDUCT_LOCK), null);
+  const orphan = orphanOf(lock);
+  if (orphan) fail(`FAIL conduct: ${orphan}`);
   if (lockAlive(lock)) fail(`FAIL conduct: 이미 돌고 있다 — pid ${lock.pid} · ${[lock.step, lock.slug, lock.pack].filter(Boolean).join(' ')} · ${lock.at} (한 저장소에 드라이버 하나 — unit은 한 번에 하나다. 정말 죽었으면 ${CONDUCT_LOCK}을 지운다)`);
-  const startedAt = new Date().toISOString();
+  const startedAt = new Date().toISOString(); o.startedAt = startedAt;
   writeLock(c.main, startedAt, { step: 'start' });
+  installSignals(c);
   appendLedger(c.main, c.team, { kind: 'conduct', event: 'start', spawner: o.spawner ? 'custom' : 'claude', max_steps: o.maxSteps, max_minutes: o.maxMinutes, pack_minutes: o.packMinutes, max_usd: o.maxUsd });
-  if (o.intake) { writeLock(c.main, startedAt, { step: 'intake' }); return intake(c, o); }
+  if (o.intake) { writeLock(c.main, startedAt, { step: 'intake' }); return await intake(c, o); }
   const started = Date.now();
   const fails = new Map(); const history = new Map();
   for (let steps = 0; ; steps++) {
@@ -240,7 +277,7 @@ function main() {
     } else if (r.kind === 'spawn') {
       const wt = worktreeDir(c.main, c.team, r.slug);
       const before = fs.existsSync(wt) ? headSha(wt) : null;
-      const x = spawnPack(c, r, o);
+      const x = await spawnPack(c, r, o, { onSpawn: (pid) => writeLock(c.main, startedAt, { step: 'spawn', slug: r.slug, pack: r.pack, steps, usd: Math.round(USD * 1000) / 1000, child: pid }) });
       USD += x.cost || 0;
       const after = fs.existsSync(wt) ? headSha(wt) : null;
       if (!x.ok) { const key = `spawn ${r.slug} ${r.pack}`; const n = (fails.get(key) || 0) + 1; fails.set(key, n); if (n >= 2) return stop(c, 'framework', `팩이 두 번 비정상 종료 — ${key}(exit ${x.status})${x.log ? ` · ${x.log}` : ''}`); }
@@ -249,4 +286,4 @@ function main() {
     if (o.once) return stop(c, 'cap', '--once');
   }
 }
-if (isMain(import.meta.url)) main();
+if (isMain(import.meta.url)) main().catch((e) => fail(`FAIL conduct: ${(e && e.stack) || e}`));
