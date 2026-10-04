@@ -71,6 +71,7 @@ Flow 4(루프)는 모델이 아니라 스크립트가 돌 수 있다. conductor 
 ```bash
 cd ~/work/f1
 node .garagiste/scripts/conduct.mjs check             # 실전 전 preflight: claude CLI와 그 깃발(--help) · 작업 공간 신뢰 · agents · allow · doctor · VERSION · 잠금 — FAIL이면 고칠 길이 줄마다
+node .garagiste/scripts/conduct.mjs trust             # 「작업 공간 신뢰 없음」의 수리 — ~/.claude.json projects[이 폴더].hasTrustDialogAccepted를 켠다(대화형 claude를 열 수 없는 서버·WSL·cron에서; 12라운드 측정 — 아래 「전제」)
 node .garagiste/scripts/conduct.mjs intake          # Flow 2: brief.mjs intake → intake 팩 → work.mjs list (질문은 CEO가 work.mjs decide)
 node .garagiste/scripts/work.mjs scope --milestone M1
 node .garagiste/scripts/conduct.mjs                 # Flow 4: 멈출 때까지 — 「아침」 절의 멈춤과 같고 종료 코드가 멈춤이다
@@ -84,7 +85,9 @@ node .garagiste/scripts/conduct.mjs --max-usd 15 --pack-minutes 45 --pack-usd 3 
 | 4 | 프레임워크 FAIL — 같은 FAIL 되풀이 · 팩 비정상 종료 2회 · worktree가 그대로인 팩 재spawn 2회 | 그 줄 전문을 정비 채널로(우회·스크립트 편집 없음), STATUS 「막힌 것」에 남는다 |
 | 5 | 상한 — `--max-steps`(기본 200) · `--max-minutes` · `--max-usd` · `--once` | 다시 돌리면 이어서 |
 | 1 | 이미 돌고 있다(잠금 `.garagiste/session/conduct.json`의 pid가 살아 있음) · **고아 팩**(앞 드라이버는 죽었는데 그 팩 프로세스가 돈다 — 6라운드) 또는 인자·doctor FAIL | 한 저장소에 드라이버 하나 — 기다리거나, 정말 죽었으면 잠금 파일을 지운다 · 고아 팩은 끝나길 기다리거나 `kill <pid>` 뒤 다시(Ctrl-C·SIGTERM으로 끊은 드라이버는 팩에도 넘기고 잠금을 정리한다) |
-- 전제: 그 폴더에서 대화형 `claude`를 한 번 열어 작업 공간을 신뢰했을 것(헤드리스엔 신뢰 대화가 없다 — `conduct.mjs check`가 본다). 팩마다 `.garagiste/session/logs/conduct-<slug>-<팩>-<시각>.json`에 stdout·stderr가 남고, 원장 spawn 줄에 실측 토큰·분·비용이 적힌다(`work.mjs spawned`와 같은 줄).
+- 전제: 작업 공간 신뢰 — 그 폴더에서 대화형 `claude`를 한 번 열었거나 `conduct.mjs trust`. 측정(2026-10-04 12라운드, claude 2.1.289): `-p`는 신뢰 대화를 **건너뛰지만**, 신뢰 없는 폴더에선 `.claude/settings.json`의 allow 목록을 버린다(stderr 「Ignoring 66 permissions.allow entries … not been trusted」) — `--permission-prompts none` 아래 팩의 Bash가 전부 거부돼 스크립트 하나도 못 돈다. `conduct.mjs check`가 이 조건을 본다. 팩마다 `.garagiste/session/logs/conduct-<slug>-<팩>-<시각>.json`에 stdout·stderr가 남고, 원장 spawn 줄에 실측 토큰·분·비용이 적힌다(`work.mjs spawned`와 같은 줄).
+- 팩 비용 상한(`--pack-usd`·`pack_usd_max`)은 **첫 턴 뒤에** 걸린다(측정 2026-10-04: 상한 $0.05에 $0.43 — 시스템 프롬프트 캐시 생성이 한 턴). 팩 하나의 실측(12라운드, 작은 Node 저장소): intake opus $0.10 · adopt sonnet $0.14 · spec opus $0.27~0.33 · build sonnet $0.11~0.12 · attack opus $0.27~0.32 — 상한은 그 몇 배로(기본 끔). 설치→SCOPE DONE(unit 2 출하 · 이음새 공격 · REPORT)이 $1.66 · 기계 ≈6분 — `docs/measurements/CONDUCT-FIRST-RUN.md`.
+- 팩의 Bash: 무인 세션은 `cd <worktree> && cat|ls|git …` 묶음을 승인 요청으로 보고 거부한다(`cd … && node …`는 통과 — 측정) — agents 파일이 그렇게 말하고, 거부는 한 턴을 잃을 뿐 멈추지 않는다. 검증 명령은 등록 때 탐침을 지난다(full은 인수·공격 자리까지, quick은 unit만 — 아니면 `FAIL commands — 눈먼 명령`).
 - CEO 결정만 요구하는 FAIL(두 번째 spec 반려 · 팩 상한 2배 · 이미 충족)은 안내 끝의 `work.mjs ask … --hold`를 드라이버가 그대로 실행해 그 unit만 세운다 — 답은 저녁에 `decide`.
 - 멈춘 팩은 `--pack-minutes`(기본 60)에 SIGTERM으로 끊긴다 — 비정상 종료 둘이면 프레임워크 FAIL로 멈춘다(밤새 걸리지 않는다). 돌아와서 STATUS 「진행 중」을 보면 살아 있는 conduct의 걸음·slug·팩·비용이 한 줄로 있다.
 - 대화형 conductor와 같은 저장소에서 동시에 돌리지 않는다 — unit은 한 번에 하나다(잠금이 막는다 — 11라운드부터 대화형 conductor의 brief·ship·seed도 conduct가 도는 동안 「conduct가 돌고 있다」로 선다). Windows: npm으로 깐 claude는 셸 심이라 conduct가 셸로 띄우고 taskkill /T로 끊는다 — 첫 실전 run에서 `conduct check`의 「claude <판> · 깃발 ok」가 그 수리의 검증이다. 다른 하네스·시험은 `--spawner "<명령 템플릿 {path} {pack} {slug} {model} {turns}>"`(모델 0 가짜 팩은 `tests/fakes/pack.mjs`).
