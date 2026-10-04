@@ -1087,6 +1087,9 @@ test('brief: 사고 68(L2 6판 팩 상한 FAIL 7/7이 build의 인수+공격 테
   assert.equal(autoLane([{ key: 'unit', text: big(36 * KB) }], 36 * KB, 32), '', '테스트가 아닌 몫의 초과는 자동이 아니다 — 이유를 묻는다');
   assert.equal(autoLane([{ key: 'unit', text: big(33 * KB) }, { key: 'acceptance', text: big(2 * KB) }], 35 * KB, 32), '', '테스트를 빼도 상한을 넘으면 자동이 아니다');
   assert.equal(autoLane([{ key: 'acceptance', text: big(70 * KB) }], 70 * KB, 32), '', '2배 벽은 자동으로 넘지 않는다 — CEO 결정');
+  // 사고 81(20라운드 여섯째 날): system-5 attack 팩이 출하 14의 표면·카드로 32KB를 넘어 brief가 이유를 물었고 conduct는 같은 FAIL 둘로 섰다 — 출하 unit 절도 법(이음새 공격의 표면)
+  assert.match(autoLane([{ key: 'system', text: big(3 * KB) }, { key: 'units', text: big(31 * KB) }], 34 * KB, 32), /^자동: 인수 테스트 0\.0KB \+ 공격 테스트 0\.0KB \+ 출하 unit 표면·카드 31\.0KB — 그 밖 3\.0KB ≤ 32KB$/, 'system 공격 팩의 출하 unit 몫은 자동 이유');
+  assert.equal(autoLane([{ key: 'system', text: big(33 * KB) }, { key: 'units', text: big(2 * KB) }], 35 * KB, 32), '', '출하 unit 몫을 빼도 넘으면 이유를 묻는다');
 });
 test('verify: 사고 69(L2 6판 안내 없는 FAIL gate 줄 2) — FAIL gate 첫 줄에 첫 이유가 든다(원장 fail 줄은 첫 줄 300자만 남는다), 나머지 이유는 아래 줄', () => {
   const l = gateFailLine(['원장에 이 tree(abc1234)의 quick PASS 없음 — node .garagiste/scripts/verify.mjs quick', '로직 변경에 테스트 파일이 없다 — red 테스트가 먼저다']);
@@ -1272,7 +1275,7 @@ test('budget: 진행 중 unit의 spawn 토큰 합이 상한이면 멈춤 — uni
   assert.equal(budgetStatus({ units: [{ ...units[0], tokens_max: 10000 }, units[1]], ledger: [spawn('add', 5000)], team: cap, ceoTouchTs: null }).stops.length, 0, 'unit의 상한(budget)이 team.json보다 먼저');
   assert.equal(budgetStatus({ units, ledger: [spawn('add', 5000000)], team: { ...team, budgets: { ...team.budgets, unit_tokens_max: 0 } }, ceoTouchTs: null }).stops.length, 0, '0이면 끈다');
   assert.equal(budgetStatus({ units, ledger: [spawn('add', 5000000)], team: { ...team, budgets: { ...team.budgets, unit_tokens_max: undefined } }, ceoTouchTs: null }).stops.length, 0, '옛 team.json(키 없음)도 끈 것');
-  assert.equal(team.budgets.unit_tokens_max, 1500000, '기본 1.5M(18라운드 — 실전 여섯 run: 재spec 하나 + 큰 공격의 정상 unit이 1.01~1.02M(둘째·넷째 날), 진동(system-1)은 2.2M — 둘의 규칙으로 1M → 1.5M; 1M은 둘째 날 L2 6판 unit 최대 185K의 5배였다)');
+  assert.equal(team.budgets.unit_tokens_max, 2500000, '기본 2.5M(21라운드 — 셋째 근거: 정상 unit이 1023K/1M · 1014K/1M · 1521K/1.5M로 올릴 때마다 조금 넘었다 — 재spec + 큰 공격의 모양, 진동은 사고 71 뒤로 없다; 상한은 비용 천장)');
   assert.match(decide(bash('node .garagiste/scripts/work.mjs budget add 2000000', `${root}/.worktrees/add`), gctx('build')), /budget\(토큰 상한\)/, '팩은 자기 상한을 올리지 못한다');
 });
 // doctor — 끊긴 worktree(2026-10-01 관찰: 폴더를 옮기면 verify가 FAIL 줄 대신 스택을 냈다)

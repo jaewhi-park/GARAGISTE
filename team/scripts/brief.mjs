@@ -107,9 +107,12 @@ export function autoLane(sections, bytes, capKb) {
   if (bytes <= cap || bytes > 2 * cap) return '';
   const size = (k) => sections.filter((s) => s.key === k).reduce((n, s) => n + Buffer.byteLength(s.text), 0);
   const acc = size('acceptance'); const adv = size('adversary');
-  if (!(acc + adv) || bytes - acc - adv > cap) return '';
+  // 사고 81(20라운드 여섯째 날): system 공격 팩의 「출하된 unit — 표면·카드」 절은 제품이 자라는 만큼 자란다(+2.2KB/unit — 출하 14에서 32KB) — 그것도 법(이음새 공격의 표면)이다: 테스트 절처럼 자동 이유.
+  const units = size('units');
+  const law = acc + adv + units;
+  if (!law || bytes - law > cap) return '';
   const kb = (n) => (Math.round(n / 102.4) / 10).toFixed(1);
-  return `자동: 인수 테스트 ${kb(acc)}KB + 공격 테스트 ${kb(adv)}KB — 그 밖 ${kb(bytes - acc - adv)}KB ≤ ${capKb}KB`;
+  return `자동: 인수 테스트 ${kb(acc)}KB + 공격 테스트 ${kb(adv)}KB${units ? ` + 출하 unit 표면·카드 ${kb(units)}KB` : ''} — 그 밖 ${kb(bytes - law)}KB ≤ ${capKb}KB`;
 }
 export function laneAdvice({ capKb, again }) {
   return `- 상한의 2배(${2 * capKb}KB) 안이다 — CEO 결정이 아니다. 위 절별에서 무엇이 커졌는지 이유 한 줄과 함께 같은 명령을 다시: node .garagiste/scripts/brief.mjs ${again} --large "<이유 — 예: 공격 테스트 7개가 실렸다>" (원장에 남는다)`;
