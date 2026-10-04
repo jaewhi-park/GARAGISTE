@@ -34,7 +34,8 @@ export function headlessNote(wt) {
 export function revisePaths(slug) {
   return [
     `- CEO가 수용(인수) 쪽을 바꾸라면: node .garagiste/scripts/work.mjs brief "<CEO 말 그대로>" → node .garagiste/scripts/brief.mjs spec ${slug} (반려 없이 재spawn)`,
-    `- CEO가 기존 공격 테스트(tests/adversary — 출하된 unit의 것 포함)를 고치라면: node .garagiste/scripts/work.mjs brief "<CEO 말 그대로>" → node .garagiste/scripts/brief.mjs attack ${slug} --revise "<CEO 말 그대로>" → 팩 spawn → verify.mjs attack ${slug} → (red면 build) → ship`,
+    `- CEO가 기존 인수 테스트(tests/acceptance — 출하된 unit의 것 포함)를 새 말대로 고치라면: node .garagiste/scripts/work.mjs brief "<CEO 말 그대로>" → node .garagiste/scripts/brief.mjs spec ${slug} --revise "<CEO 말 그대로>" → 팩 spawn → redproof — 결정은 unit에 실려 이어지는 attack 팩이 기존 공격 테스트도 같은 말만큼 고친다(사고 75)`,
+    `- CEO가 기존 공격 테스트(tests/adversary — 출하된 unit의 것 포함)만 고치라면: node .garagiste/scripts/work.mjs brief "<CEO 말 그대로>" → node .garagiste/scripts/brief.mjs attack ${slug} --revise "<CEO 말 그대로>" → 팩 spawn → verify.mjs attack ${slug} → (red면 build) → ship`,
   ].join('\n');
 }
 // L2 2판 윈도우 1일차(백로그 1순위): conductor가 고칠 때마다 attack 팩을 새로 띄워 add 28·add-due-tag 20바퀴 — 바퀴마다 고침이 만든 반대 결함을 짚었다(토큰 16배의 거의 전부).
@@ -198,7 +199,7 @@ function main() {
   if (ri > 0 && (pack !== 'spec' || !returned)) fail('FAIL --return은 spec 팩에만, build·attack이 남긴 spec: 줄 그대로 — brief.mjs spec <slug> --return "<그 줄>"');
   const vi = process.argv.indexOf('--revise');
   const revise = vi > 0 ? (process.argv[vi + 1] || '').trim() : '';
-  if (vi > 0 && (pack !== 'attack' || !revise)) fail('FAIL --revise는 attack 팩에만, CEO가 고치라 한 말 그대로 — brief.mjs attack <slug> --revise "<CEO 말>"');
+  if (vi > 0 && (!['spec', 'attack'].includes(pack) || !revise)) fail('FAIL --revise는 spec·attack 팩에만, CEO가 고치라 한 말 그대로 — brief.mjs spec|attack <slug> --revise "<CEO 말>"(spec은 기존 인수, attack은 기존 공격 테스트 — spec에 준 결정은 unit에 실려 attack까지 간다)');
   const mi = process.argv.indexOf('--met');
   const met = mi > 0 ? (process.argv[mi + 1] || '').trim() : '';
   if (mi > 0 && (pack !== 'spec' || !met)) fail('FAIL --met는 spec 팩에만, CEO가 이미 충족이라 한 말 그대로 — brief.mjs spec <slug> --met "<CEO 말>"');
@@ -208,9 +209,13 @@ function main() {
   const metRp = met ? [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'redproof' && e.slug === slug && e.ts >= unit.created) : null;
   if (met && !metRp?.base_green?.length) fail(`FAIL --met는 redproof가 부분 충족을 낸 unit에만 — 마지막 redproof의 base green 목록이 근거다: node .garagiste/scripts/redproof.mjs ${slug} 먼저(전부 충족이면 그 FAIL의 drop 길)`);
   // 사고 42(필드 벤치 2 웹 정비): 충돌이 출하된 unit의 테스트에 있을 때 conductor가 그 unit의 spec을 다시 열려다 「worktree 없음」에서 멈췄다 — 고치는 것은 진행 중 unit의 팩이다
-  if (unit.state === 'shipped') fail(`FAIL ${slug}은 이미 출하됐다 — 출하된 unit엔 팩(worktree)이 없다. 그 unit의 테스트가 진행 중 unit과 어긋나면 진행 중 unit의 팩이 고친다: 기존 공격 테스트는 CEO 결정으로 node .garagiste/scripts/brief.mjs attack <진행 중 slug> --revise "<CEO 말 그대로>", 동작을 바꾸는 일이면 node .garagiste/scripts/work.mjs new <slug>-fix "<CEO 말>"`);
-  const returns = revise ? readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created) : [];
-  if (revise && !returns.length) fail('FAIL --revise는 spec 반려가 CEO에게 간 unit에만 — 기존 공격 테스트를 고치는 것은 CEO 결정이다(테스트 약화의 길): 반려가 두 번째면 그 FAIL의 두 줄을 CEO에게');
+  if (unit.state === 'shipped') fail(`FAIL ${slug}은 이미 출하됐다 — 출하된 unit엔 팩(worktree)이 없다. 그 unit의 테스트가 진행 중 unit과 어긋나면 진행 중 unit의 팩이 고친다: 기존 인수 테스트는 CEO 결정으로 node .garagiste/scripts/brief.mjs spec <진행 중 slug> --revise "<CEO 말 그대로>"(결정은 이어지는 attack 팩까지 간다 — 사고 75), 기존 공격 테스트만이면 node .garagiste/scripts/brief.mjs attack <진행 중 slug> --revise "<CEO 말 그대로>", 동작을 바꾸는 일이면 node .garagiste/scripts/work.mjs new <slug>-fix "<CEO 말>"`);
+  // 사고 75(16라운드 운영 둘째 날 M2): 새 원문(id 증가)이 출하된 unit(order-status-cli)의 인수·공격 테스트와 어긋나 반려 둘 → CEO. 인수를 고칠 손이 없었다 — spec 팩은 자기 slug의 인수만 쓴다고 알고, 출하된 unit엔 spec이 없다.
+  // CEO의 고쳐 쓰기 결정은 spec --revise로 들어가 unit에 실리고(unit.revise), 이어지는 attack 팩이 --revise 없이도 같은 결정으로 공격 테스트를 고친다 — 둘이 받으면 지운다. attack --revise(사고 42)는 그대로 한 번.
+  const carried = !revise && pack === 'attack' && unit.revise?.for === 'attack' ? String(unit.revise.text) : '';
+  const reviseText = revise || carried;
+  const returns = reviseText ? readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created) : [];
+  if (revise && !returns.length) fail('FAIL --revise는 spec 반려가 CEO에게 간 unit에만 — 기존 테스트(인수·공격)를 고치는 것은 CEO 결정이다(테스트 약화의 길): 반려가 두 번째면 그 FAIL의 두 줄을 CEO에게');
   if (pack === 'boot' && unit.kind !== 'scaffold') fail(`FAIL boot 팩은 kind scaffold unit에만 — ${slug}은 ${unit.kind}`);
   if (pack !== 'boot' && unit.kind === 'scaffold') fail(`FAIL scaffold unit(${slug})은 boot 팩 하나로 끝난다 — spec·build·attack 없음`);
   // adopt(기존 코드의 첫 unit — R&D 3라운드 2026-10-04): boot과 같은 생애(팩 하나 → ship), 다른 경계(소스·기존 테스트·매니페스트를 쓰지 않는다)
@@ -224,7 +229,7 @@ function main() {
   // 사고 17(2차 실기): 진행 중에 닫힌 질문의 답은 spec이 먼저 받는다 — 닫힘은 반영이 아니다(Q11이 build 뒤 닫혀 미구현 출하)
   const respec = unit.respec || [];
   if (respec.length && (pack === 'build' || pack === 'attack')) fail(`FAIL ${pack} 팩: ${respec.map((r) => `Q${r.q}`).join('·')}의 답이 진행 중에 왔다 — spec이 먼저(답을 red 수용 테스트로): node .garagiste/scripts/brief.mjs spec ${slug}`);
-  const usedAt = pack === 'attack' && !revise && !returned ? attackRoundUsed(readLedger(c.main, c.team), slug, unit.created) : null; // CEO의 --revise·build의 반려(system unit, 사고 71)는 바퀴가 아니라 결정이다
+  const usedAt = pack === 'attack' && !reviseText && !returned ? attackRoundUsed(readLedger(c.main, c.team), slug, unit.created) : null; // CEO의 --revise·build의 반려(system unit, 사고 71)는 바퀴가 아니라 결정이다
   if (usedAt) fail(`FAIL attack 팩: ${slug}은 이번 spec 뒤 이미 공격받았다(${usedAt.slice(0, 16)}) — attack은 spec 뒤 한 바퀴다(고칠 때마다 다시 띄우면 고침이 만든 반대 결함을 짚어 끝이 없다: 윈도우 L2 28·20바퀴). 고친 뒤엔 기존 공격 테스트만: node .garagiste/scripts/verify.mjs attack ${slug} → red 0이면 node .garagiste/scripts/ship.mjs ${slug} · red가 남으면 node .garagiste/scripts/brief.mjs build ${slug}`);
   const wt = worktreeDir(c.main, c.team, slug);
   if (!fs.existsSync(wt)) fail(`FAIL worktree 없음: ${unit.worktree}`);
@@ -290,12 +295,20 @@ function main() {
     sec('return', redirected ? `반려 — ${returnedFrom} 팩이 남긴 줄 (system unit엔 spec이 없다: 공격 카드가 곧 주장 — 서로·기본 data와 어긋나는 카드의 기대를 바로잡는다, 결함을 잡는 단언은 그대로 · 끝은 verify.mjs attack ${slug})` : `반려 — ${returnedFrom} 팩이 남긴 줄 (그 주장들이 서로·원문과 어긋나는지부터)`, returned);
   }
   // 사고 42: 기존 공격 테스트(출하된 unit의 것 포함)를 고치는 것은 테스트 약화의 길 — spec 반려가 CEO에게 간 unit에서, CEO 말 그대로만 연다
-  if (revise) {
+  if (reviseText && pack === 'attack') {
     sec('revise', '고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트', [
-      `CEO 결정(그대로): ${revise}`,
+      `CEO 결정(그대로): ${reviseText}${carried ? ' (spec 팩이 같은 결정으로 기존 인수를 고쳤다 — 이어서)' : ''}`,
       '충돌의 근거(반려 줄):', ...returns.map((r) => `- ${r.reason}`), '',
       '- 이 결정이 가리키는 기존 tests/adversary 파일(출하된 unit의 것 포함)만, 결정의 범위만큼 고친다 — 지우지 않는다, 결함을 잡는 나머지 단언은 그대로 둔다.',
       `- 고친 파일을 이 worktree에서 돌려 green인지 본 뒤 평소의 공격(${slug}-<n>)을 잇는다. 끝은 verify.mjs attack ${slug}.`,
+    ].join('\n'));
+  }
+  if (reviseText && pack === 'spec') {
+    sec('revise', '고쳐 쓰기 — CEO가 고치라 한 기존 인수 테스트(출하된 unit의 것 포함)', [
+      `CEO 결정(그대로): ${reviseText}`,
+      '충돌의 근거(반려 줄):', ...returns.map((r) => `- ${r.reason}`), '',
+      `- 이 결정이 가리키는 기존 tests/acceptance 파일(출하된 unit의 것 포함)만, 결정의 범위만큼 고친다 — 주장을 지우지 않는다, 기대를 새 동작으로 바꾼다(@claim 줄도 새 말로). 이 unit(${slug})의 인수는 그대로 둔다.`,
+      `- 고친 파일을 이 worktree에서 돌려 green인지 본 뒤 끝은 node .garagiste/scripts/redproof.mjs ${slug}. 기존 공격 테스트는 다음 attack 팩이 같은 결정으로 고친다 — 네가 건드리지 않는다(훅이 거부한다).`,
     ].join('\n'));
   }
   if (met) sec('met', '이미 충족 — CEO가 빼라고 한 주장 (기존 코드가 base에서 이미 만족)', [
@@ -347,9 +360,12 @@ function main() {
   fs.writeFileSync(path.join(wt, '.garagiste-pack'), pack); // 표시용 — 가드의 정본은 unit 상태다
   const consumed = pack === 'spec' && respec.length > 0; // spec 팩이 답을 실었다 — build·attack·ship이 다시 열린다
   if (consumed) unit.respec = [];
-  if (unit.state !== pack || consumed) { unit.state = pack; saveUnit(c.main, c.team, unit); }
+  let reviseTouched = false;
+  if (revise && pack === 'spec') { unit.revise = { text: revise, at: stamp(), for: 'attack' }; reviseTouched = true; } // 결정은 unit에 실려 attack까지 간다(사고 75)
+  else if (carried) { delete unit.revise; reviseTouched = true; } // 둘이 받았다
+  if (unit.state !== pack || consumed || reviseTouched) { unit.state = pack; saveUnit(c.main, c.team, unit); }
   if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned, ...(redirected ? { to: 'attack' } : {}) });
-  if (revise) appendLedger(c.main, c.team, { kind: 'adversary_revise', slug, reason: revise });
+  if (reviseText) appendLedger(c.main, c.team, { kind: pack === 'spec' ? 'acceptance_revise' : 'adversary_revise', slug, reason: reviseText, ...(carried ? { carried: true } : {}) });
   if (met) appendLedger(c.main, c.team, { kind: 'claims_met', slug, files: metRp.base_green, reason: met });
   appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes, ...(lane === 'lane' ? { large: reason, cap_kb: capKb } : {}) });
   const note = `${lane === 'lane' ? ` · 이유-차선(상한 ${capKb}KB): ${reason}` : large ? ' · --large 불필요(상한 안 — 원장에 남기지 않았다)' : ''}${redirected ? ' · 반려 → attack(system unit엔 spec이 없다 — 공격 카드가 곧 주장, 어긋난 카드는 attack이 고친다)' : ''}`;

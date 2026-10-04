@@ -271,12 +271,22 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(second, /그 unit만 세우고 다음 seed로[\s\S]*work\.mjs ask session "[^"]+" --hold/, '그 unit만 세우는 명령이 있다');
   assert.match(script('brief', ['spec', 'hello'], repo).out, /^FAIL hello은 이미 출하됐다[\s\S]*--revise/, '출하된 unit엔 팩이 없다 — 진행 중 unit의 팩이 고친다고 말한다');
   assert.match(script('brief', ['attack', 'net', '--revise', 'x'], repo).out, /^FAIL --revise는 spec 반려가 CEO에게 간 unit에만/, '기존 공격 테스트를 고치는 것은 CEO 결정의 길뿐(테스트 약화)');
-  assert.match(script('brief', ['build', 'session', '--revise', 'x'], repo).out, /^FAIL --revise는 attack 팩에만/);
+  assert.match(script('brief', ['build', 'session', '--revise', 'x'], repo).out, /^FAIL --revise는 spec·attack 팩에만/);
   const rv = script('brief', ['attack', 'session', '--revise', '예 — hello-1의 끝 공백 단언은 본문 기준으로 고쳐라'], repo);
   assert.match(rv.out, /^PACK .*session-attack-/, rv.out);
   assert.match(fs.readFileSync(path.join(repo, rv.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트[\s\S]*hello-1의 끝 공백 단언[\s\S]*서로 어긋난다/, 'attack 팩이 CEO 말과 충돌의 근거(반려 줄)를 받는다');
   assert.match(fs.readFileSync(path.join(repo, rv.out.split(' ')[1]), 'utf8'), /- test_file: `[^`]*\{file\}` — 증명은 파일 하나씩[^\n]*혼자 돈다[^\n]*다른 테스트 파일의 도우미에 기대지 않는다/, '사고 56: attack 팩도');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"adversary_revise","slug":"session","reason":"예 — hello-1/);
+  // 사고 75(16라운드 운영 둘째 날 M2): 새 원문이 출하된 unit의 인수 테스트와 어긋났을 때 인수를 고칠 손이 없었다 — CEO의 고쳐 쓰기 결정은 spec --revise로 들어가 unit에 실리고, 이어지는 attack 팩이 --revise 없이도 같은 결정으로 공격 테스트를 고친다
+  const sv = script('brief', ['spec', 'session', '--revise', '예 — hello의 기대 표는 새 id 규칙으로 고쳐라'], repo);
+  assert.match(sv.out, /^PACK .*session-spec-/, sv.out);
+  assert.match(fs.readFileSync(path.join(repo, sv.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 인수 테스트\(출하된 unit의 것 포함\)[\s\S]*새 id 규칙[\s\S]*tests\/acceptance 파일\(출하된 unit의 것 포함\)만/, 'spec 팩이 CEO 말과 범위를 받는다');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).revise?.for, 'attack', '결정은 unit에 실려 attack으로 간다');
+  const av = script('brief', ['attack', 'session'], repo);
+  assert.match(av.out, /^PACK .*session-attack-/, av.out);
+  assert.match(fs.readFileSync(path.join(repo, av.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트[\s\S]*새 id 규칙[^\n]*이어서/, '--revise 없이 띄운 attack 팩이 실린 결정을 받는다');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).revise, undefined, '둘이 받으면 지운다');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"acceptance_revise","slug":"session","reason":"예 — hello의 기대 표[\s\S]*"kind":"adversary_revise","slug":"session","reason":"예 — hello의 기대 표[^\n]*"carried":true/);
   assert.match(script('brief', ['build', 'session', '--return', 'x'], repo).out, /^FAIL --return은 spec 팩에만/);
   script('brief', ['build', 'session'], repo);
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"respec","slug":"session","q":3/);
