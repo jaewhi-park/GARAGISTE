@@ -67,11 +67,11 @@ opencode는 기본 provider/model을 상속한다. 팩별로 바꾸려면 같은
 Flow 4(루프)는 모델이 아니라 스크립트가 돌 수 있다. conductor 세션이 `next.mjs`의 한 줄을 읽고 실행하던 자리를 `conduct.mjs`가 대신한다 — 팩은 헤드리스 세션(`claude -p <팩 경로> --agent <팩>`)으로 뜨고 `.claude/agents/<팩>.md`가 모델·도구·정체를, 훅이 경계를, 게이트가 증거를 그대로 지킨다. Flow 1~3·7(구상·답·범위·끼어들기)은 대화다.
 ```bash
 cd ~/work/f1
-node .garagiste/scripts/conduct.mjs check             # 실전 전 preflight: claude CLI · 작업 공간 신뢰 · agents · allow · doctor · VERSION · 잠금 — FAIL이면 고칠 길이 줄마다
+node .garagiste/scripts/conduct.mjs check             # 실전 전 preflight: claude CLI와 그 깃발(--help) · 작업 공간 신뢰 · agents · allow · doctor · VERSION · 잠금 — FAIL이면 고칠 길이 줄마다
 node .garagiste/scripts/conduct.mjs intake          # Flow 2: brief.mjs intake → intake 팩 → work.mjs list (질문은 CEO가 work.mjs decide)
 node .garagiste/scripts/work.mjs scope --milestone M1
 node .garagiste/scripts/conduct.mjs                 # Flow 4: 멈출 때까지 — 「아침」 절의 멈춤과 같고 종료 코드가 멈춤이다
-node .garagiste/scripts/conduct.mjs --max-usd 15 --pack-minutes 45   # 이 실행의 비용 상한 · 팩 하나의 시간 상한(기본 team.json budgets: run_usd_max 0=끔 · pack_minutes_max 60)
+node .garagiste/scripts/conduct.mjs --max-usd 15 --pack-minutes 45 --pack-usd 3   # 이 실행의 비용 상한 · 팩 하나의 시간 상한 · 팩 하나의 비용 상한(claude --max-budget-usd; 기본 team.json budgets: run_usd_max 0=끔 · pack_minutes_max 60 · pack_usd_max 0=끔)
 ```
 | 종료 코드 | 멈춤 | CEO가 할 일 |
 |---|---|---|

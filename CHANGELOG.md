@@ -20,6 +20,14 @@ v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 �
 - 설치 한 줄: 빈 폴더면 `git init` + 첫 커밋(게이트는 HEAD 없는 첫 커밋을 통과시킨다). 첫 unit `boot`(kind scaffold, boot 팩 하나)가 스택·검증 명령(`work commands`)·스모크·규칙 파일 자리(`work rules`)를 채우고 redproof·attack 없이 ship — 사람이 채울 파일은 없다. BACKLOG 줄에 `kind:`.
 - `work models <tier>|<팩>=<모델>`: team.json이 정본, 두 하네스의 에이전트 `model:`을 재생성. `work spawned`·brief의 `pack` 원장 줄로 spawn 모델·토큰을 기록. ship은 diff 파일로도 boundary를 봐 spike를 요구한다. `.garagiste/env.local`(기계별 실행 환경). docs/GUIDE.md(로컬 테스트 가이드).
 
+### Added — 2026-10-04 R&D 9라운드(CEO 「9라운드 진행」): 실전 첫 run의 마지막 벽 — 기본 spawner의 깃발이 설치된 claude에 없었다 (team/ 변경 — 머지가 동결 15)
+- **측정**: 이 정비 자리의 claude 2.1.289 `--help`에 **`--max-turns`가 없다**. 기본 spawner(`claude -p <팩> --agent <팩> --output-format json --permission-mode acceptEdits --max-turns 200`)는 첫 spawn마다 unknown option으로 죽고, 드라이버는 「팩이 두 번 비정상 종료」로 멈췄을 것(exit 4). 가짜 spawner로 돈 e2e 33개는 이걸 볼 수 없었다 — 깃발은 모델 없이도 `--help` 텍스트로 찍어 볼 수 있다.
+- **수리**: 기본 argv에서 `--max-turns` 제거. 팩 하나의 상한은 시간(`--pack-minutes`)과 **비용**으로 — CLI의 `--max-budget-usd`를 `team.json budgets.pack_usd_max`(기본 0=끔) · `--pack-usd D`로 건다(무인 안전벨트 넷째 — DEVICES 4.6). `{turns}`는 `--spawner` 템플릿 자리표시자로 남는다.
+- **preflight(`conduct check`)가 깃발을 본다**: 설치된 claude의 `--help`에서 기본 argv의 깃발 전부(`missingFlags`)와 `acceptEdits` 선택지를 확인 — 없으면 「claude에 없는 깃발: … — GARAGISTE 갱신 또는 --spawner」로 선다. 검사: unit(2.1.289 재현 — 옛 argv는 --max-turns가 빠짐, 새 argv는 전부 있음) · e2e(가짜 claude --help: 깃발 ok / --agent 없는 판 FAIL).
+- **doctor**: `.claude/agents/*.md`의 `{{MODEL_…}}` 잔재(모델 치환 실패 — `--agent <팩>`이 서지 않는다)와 `model:` 줄 없음을 한 줄씩.
+- **측정으로 잠근 것**: 원장의 깨진 줄(SIGKILL이 자른 마지막 줄 — 6라운드 시나리오)은 `readLedger`가 건너뛴다 — unit이 그 성질을 잠근다.
+- 8라운드 머지 = **동결 14 `ca6b8b266a91a8867a3af5e7c1f424a0eb3c0544`**(PR #116). 검사: unit 117 · e2e 33 · field 23.
+
 ### Added — 2026-10-04 R&D 8라운드(CEO 「8라운드 진행」): CEO의 자리 둘 — Windows 설치기 패리티 · 사람-증거 레인 첫 조각(Q14) (team/·install 변경 — 머지가 동결 14)
 - **install.ps1 패리티(수리 — CEO의 환경은 Windows)**: 1~2라운드가 install.sh에만 들어갔다 — Windows 설치본엔 `.garagiste/VERSION`이 없어 `conduct check`·`doctor --version`이 「옛 설치본」을 냈고, 기존 저장소에 설치하면 팀 파일이 미커밋으로 남아 첫 ship이 「미커밋 변경」으로 섰을 것(사고 70의 Windows 재현). install.ps1에 설치 전 상태(HEAD·더러움·설치 여부) · VERSION(garagiste sha · team tree · flavor) · 기존 저장소 팀 파일 커밋(설치/갱신 old→new/같은 판, SHIP+WIP 차선, 더러웠으면 안내만) · 첫 커밋 메시지·마지막 안내 정렬. pwsh가 없는 정비 자리라 실행 검사는 못 한다 — **정적 패리티 unit**(두 설치기가 같은 표지 19 + 모델 자리표시자 7을 품는가)이 다음 누락을 잡는다. 실행 검증은 CEO의 PC(설치 → `doctor --version` → 기존 저장소 재설치 커밋 메시지).
 - **Q14 사람-증거 레인 첫 조각**: `work.mjs tried <slug> ok|fail "<메모>" --evidence <파일,…>` — 스크린샷·녹화·빌드를 `docs/units/<slug>/evidence/`로 복사하고 docs 차선(SHIP·WIP)으로 커밋(main을 더럽히지 않는다 — 다음 ship의 「미커밋 변경」 FAIL을 만들지 않게), 원장 tried 줄과 unit 상태에 `evidence`, STATUS 「사람 증거」 절, REPORT 줄에 「증거 n」. 없는 파일은 아무것도 남기지 않고 FAIL(fail-closed). 근거: 윈도우 M1 관찰 「사람 확인 집계 1/9 — tried ok는 사람 센서로 세지 않는다」 — 말은 집계가 안 되지만 파일은 된다. 남은 Q14: 「안 본 것」과 별도 집계 · `@sensor human` 주장과 증거의 연결(claims).

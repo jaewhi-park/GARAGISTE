@@ -113,3 +113,4 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **채용(R&D 6라운드 2026-10-04)**: 고아 팩(측정 → conduct 비동기 spawn · 잠금 child pid · 신호 전달) · 비밀 파일 읽기 거부(측정 → Bash 토큰·Read 매처·opencode read). 둘 다 「무인 안전벨트」(DEVICES 4.6)와 가드의 약속을 코드로.
 - **채용(R&D 7라운드 2026-10-04)**: kind refactor(Q13 둘째 조각 — 뒤집힌 red 증명 = 핀) · next의 attack 뒤 redproof·full 한 걸음(드라이버 틈) · verify.mjs quick|full [<slug>].
 - **채용(R&D 8라운드 2026-10-04)**: install.ps1 패리티(VERSION · 기존 저장소 커밋 · 정적 패리티 unit) · Q14 첫 조각(tried --evidence).
+- **채용(R&D 9라운드 2026-10-04)**: 기본 spawner에서 --max-turns 제거(측정: claude 2.1.289에 없다) · `pack_usd_max`(claude --max-budget-usd) · `conduct check`의 깃발 검사(--help) · doctor의 agents {{MODEL_}} 잔재 검사 · 원장 깨진 줄 건너뛰기를 unit으로 잠금.
