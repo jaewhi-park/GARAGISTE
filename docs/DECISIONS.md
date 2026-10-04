@@ -12,3 +12,6 @@
 - 2026-09-29 · **선행은 관례가 아니라 간선이다.** BACKLOG 줄의 `needs`는 주장 그래프의 의존 간선이고, `work scope`가 닫힘을 계산해 "요청 n · 선행 m · 순서"로 역제안한다. CEO의 답은 둘뿐: 받는다(`seed`) · 선행을 뺀다(`--no-needs`, 원장 기록). hard 결정에 기대는 unit은 `needs: Q<n>`으로 답이 올 때까지 WAIT.
 - 2026-09-29 · **설치 뒤 사람이 채우는 파일은 없다.** CEO가 "설치 과정에도 할 게 많다"고 짚었다 — v1 kickoff를 손으로 옮긴 꼴이었다. 설치기는 git init·첫 커밋까지 하고, 스택·명령·스모크·규칙 파일은 첫 unit `boot`(kind scaffold)가 채운다. scaffold는 redproof·attack을 면제받는 대신 쓰기 경계가 매니페스트·src 진입점·유닛 스모크·규칙 파일 자리로 좁다.
 - 2026-09-29 · **conductor는 쓰지 않는다 — 훅이 강제한다.** `.worktrees/` 밖 Edit/Write는 거부. 메인 worktree의 문서는 스크립트(work.mjs)만 쓴다. 일반 편집 세션은 `GARAGISTE_ADMIN=1`. 산문 규칙이었던 것을 코드로 옮긴 첫 사례.
+- 2026-10-04 · **순정 A/B는 건너뛴다.** CEO: 개인 프로젝트이고 비교할 코드베이스가 없다. 범용성 점수는 홀드아웃 첫 측정 줄로만(FIELD-BENCH 「홀드아웃」) — 백로그 L1 게이트의 「순정 Claude Code A/B 3지표」는 닫는다.
+- 2026-10-04 · **R&D 위임 — 「완성형에 가깝게」.** 첫 손: conductor를 모델 밖으로(`conduct.mjs` — Flow 4의 정본 실행기, 대화형 conductor는 Flow 1~3·7의 자리에 남는다) + 기록된 관찰에서 장치 셋(임시 폴더 · unit 토큰 상한 · 끊긴 worktree) + brownfield 테스트 베드(측정 장치) + 사고 70. 장치는 여전히 사고·측정에서만(BIRTH) — 종이에서 난 것(OS 샌드박스 · PR ship · 병렬 seed)은 백로그 후보로만 적는다.
+- 2026-10-04 · **brownfield(L3 Q13)는 측정 장치 먼저.** seed(parcel-desk)와 `setup-seed.sh`는 만들었고, 원문의 서명(candidates → `holdout-parcel-desk.md`)과 첫 측정은 CEO가 — 레거시 팩·특성화 인수는 그 멈춘 자리에서 태어난다.

@@ -129,3 +129,6 @@ CEO가 며칠 없다. 이 세션엔 아침·저녁 창이 없고, 첫 말 뒤로
 - spec 팩은 저장 형식의 안쪽(키·필드)을 묻지 않고 `work.mjs default`로 정한다(「팀이 정한 것」에 뜬다 — 저녁 창에서 뒤집으려면 한 마디) · boot는 `.gitattributes`(`* text=auto eol=lf`)를 만든다 — 규칙집 드리프트가 아니다(boot의 첫 commands와 같은 자리).
 - 정비 채널의 표(`tests/field/day.mjs`)는 5판 칸을 더 센다(미검수 사람 셈 · 원장 fail/guard 줄 · kept · 이음새 공격·보고) — conductor 몫이 아니다(위 「정비 채널의 표 스크립트」 절 그대로).
 - CEO-분은 기계가 센다 — `work.mjs try`가 원장 `try` 줄을 남기고(카드 시간의 시작), 창의 벽시계와 말 수는 세션 기록(턴 기록·스트림·전사)에서 day.mjs가 읽는다(정의 L2-TRIAL-5 「CEO-분」). conductor는 적지 않는다. 저녁 창 시작의 정의는 「첫 try 또는 tried」(위 「저녁」 2).
+
+## 2026-10-04 — conduct.mjs (R&D)
+「아침」 절은 `node .garagiste/scripts/conduct.mjs` 한 번과 같다 — 멈춤 여섯이 종료 코드(0 SCOPE DONE · 2 ceo · 3 wait · 4 프레임워크 FAIL · 5 상한)이고, 멈출 때 STATUS를 다시 내고 마지막 줄에 CEO가 할 일을 적는다. 「저녁」은 그대로 CEO 창(카드·질문·표). conduct로 돈 라운드는 표의 「구성」에 ③(스크립트 conductor)으로 적어 모델 conductor의 판과 섞지 않는다.
