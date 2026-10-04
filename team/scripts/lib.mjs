@@ -238,20 +238,60 @@ export function depDirs(root, depth = 3) {
   return found.sort();
 }
 // 사본을 지우기 전에 의존성 링크를 먼저 끊는다 — Windows의 정션을 지우는 도구가 링크를 따라가면 main의 의존성이 지워진다(링크 자리만, 실물은 건드리지 않는다)
+// 사고 82: workspaces의 node_modules는 링크의 디렉터리다 — 안의 링크를 하나씩 끊고 빈 디렉터리만 지운다(팩이 npm install로 채운 실물은 남긴다 — worktree 제거가 가져간다)
+function unlinkTree(p) {
+  for (const e of fs.readdirSync(p, { withFileTypes: true })) {
+    const q = path.join(p, e.name);
+    if (e.isSymbolicLink()) { try { fs.unlinkSync(q); } catch { /* 남긴다 */ } } else if (e.isDirectory()) unlinkTree(q);
+  }
+  try { fs.rmdirSync(p); } catch { /* 실물이 남았다 — 그대로 */ }
+}
 export function unlinkDeps(root, dest) {
   for (const rel of depDirs(root)) {
     const p = path.join(dest, rel);
     let st; try { st = fs.lstatSync(p); } catch { continue; }
-    if (!st.isSymbolicLink()) continue;
-    try { fs.unlinkSync(p); } catch { try { fs.rmdirSync(p); } catch { /* 남긴다 — 아래 정리가 링크로 지운다 */ } }
+    if (st.isSymbolicLink()) { try { fs.unlinkSync(p); } catch { try { fs.rmdirSync(p); } catch { /* 남긴다 — 아래 정리가 링크로 지운다 */ } } continue; }
+    if (st.isDirectory() && rel === 'node_modules' && workspacePackages(root).size) unlinkTree(p);
+  }
+}
+// 사고 82(23라운드 모노레포 둘째 날): worktree에 걸어 준 main의 node_modules(링크 하나)는 npm workspaces의 자매 패키지 링크(node_modules/@s/pkg → ../../packages/pkg)를 main 자리에서 푼다 —
+// worktree의 shared를 고쳐도 api·cli(와 공격 테스트의 자식 프로세스)는 main의 shared를 봤고, build는 green을 못 만들어 반려했고 attack은 테스트의 실행 방식을 비틀어 통과시켰다(system-2 · 22라운드 탐침이 예고).
+// workspaces 저장소면 node_modules를 통째로 링크하지 않고 디렉터리를 만들어 항목마다 링크한다 — 바깥 의존은 main의 것으로, 자매 패키지는 worktree의 것으로(Node는 realpath로 푼다).
+export function workspacePackages(root) {
+  const pkg = readJson(path.join(root, 'package.json'), null);
+  const ws = Array.isArray(pkg?.workspaces) ? pkg.workspaces : Array.isArray(pkg?.workspaces?.packages) ? pkg.workspaces.packages : [];
+  const out = new Map(); // 패키지 이름 → 디렉터리(root 기준, /)
+  for (const pat of ws) {
+    const base = String(pat).replace(/\/\*\*?$/, '').replace(/\/$/, '');
+    const dirs = /\/\*\*?$/.test(pat)
+      ? (fs.existsSync(path.join(root, base)) ? fs.readdirSync(path.join(root, base), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => `${base}/${e.name}`) : [])
+      : [base];
+    for (const d of dirs) { const p = readJson(path.join(root, d, 'package.json'), null); if (p?.name) out.set(p.name, d.replace(/\\/g, '/')); }
+  }
+  return out;
+}
+function linkEntries(src, dst, dest, ws, scope = '') {
+  fs.mkdirSync(dst, { recursive: true });
+  for (const e of fs.readdirSync(src, { withFileTypes: true })) {
+    const name = scope ? `${scope}/${e.name}` : e.name;
+    const to = path.join(dst, e.name);
+    try { fs.lstatSync(to); continue; } catch { /* 없다 — 건다 */ }
+    if (!scope && e.name.startsWith('@') && e.isDirectory()) { linkEntries(path.join(src, e.name), to, dest, ws, e.name); continue; }
+    if (ws.has(name)) fs.symlinkSync(path.relative(path.dirname(to), path.join(dest, ws.get(name))), to, 'junction');
+    else fs.symlinkSync(path.join(src, e.name), to, 'junction');
   }
 }
 export function linkDeps(root, dest) {
   const linked = [];
+  const ws = workspacePackages(root);
   for (const rel of depDirs(root)) {
     const src = path.join(root, rel); const dst = path.join(dest, rel);
     if (fs.existsSync(dst)) continue;
-    try { fs.mkdirSync(path.dirname(dst), { recursive: true }); fs.symlinkSync(src, dst, 'junction'); linked.push(rel); } catch { /* 링크 불가 — 프로젝트가 설치한다 */ }
+    try {
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      if (ws.size && rel === 'node_modules') linkEntries(src, dst, dest, ws); else fs.symlinkSync(src, dst, 'junction'); // 사고 82: workspaces는 항목마다
+      linked.push(rel);
+    } catch { /* 링크 불가 — 프로젝트가 설치한다 */ }
   }
   // 사고 35(필드 시험 2): 링크는 디렉터리가 아니라 `.gitignore`의 `node_modules/`에 안 걸린다 — 미추적으로 보여 체크포인트(git add -A)가 이 기계의 경로를 커밋했다.
   // 링크는 프레임워크의 것: 저장소 규칙을 고치지 않고 로컬 제외(info/exclude — 모든 worktree 공용, 커밋 안 됨)에 둔다.

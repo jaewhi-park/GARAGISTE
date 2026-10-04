@@ -29,7 +29,7 @@ import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
 import { FLAGS, KINDS, setupNoop, parseBudgetValue, TEAM_BUDGET } from '../team/scripts/work.mjs';
 import { PIN_NOTE, REFACTOR_NOTE } from '../team/scripts/brief.mjs';
-import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
+import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, workspacePackages, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
 const root = '/repo';
@@ -1553,4 +1553,28 @@ test('next(19라운드, 사고 79): slug 없는 spawn_stop(훅)은 직전에 조
   assert.equal(r.pack, 'build');
   assert.match(step([...L, { ts: T(8), kind: 'spawn_stop', pack: 'build', slug: 'x' }]).cmd, /brief\.mjs attack x$/, 'slug가 붙은 spawn_stop(conduct)은 그대로 X의 것');
   assert.match(step([...L, { ts: T(8), kind: 'pack', slug: 'x', pack: 'build' }, { ts: T(9), kind: 'spawn_stop', pack: 'build' }]).cmd, /brief\.mjs attack x$/, 'slug 없는 spawn_stop도 직전 build 팩이 X의 것이면 X의 것(훅의 기계 기록)');
+});
+
+test('lib(23라운드, 사고 82): npm workspaces 저장소의 node_modules는 worktree에 항목마다 링크 — 자매 패키지는 worktree의 것으로, 바깥 의존은 main의 것으로 · unlinkDeps가 링크만 끊는다(통째 링크면 main의 shared를 봤다 — system-2 반려)', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-ws-')); const wt = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-wswt-'));
+  const w = (p, s) => { fs.mkdirSync(path.dirname(path.join(root, p)), { recursive: true }); fs.writeFileSync(path.join(root, p), s); };
+  w('package.json', JSON.stringify({ name: 'mono', workspaces: ['packages/*'] }));
+  w('packages/shared/package.json', JSON.stringify({ name: '@s/shared' })); w('packages/shared/index.js', 'module.exports = "main";');
+  w('packages/api/package.json', JSON.stringify({ name: '@s/api' })); w('packages/api/index.js', 'module.exports = require("@s/shared");');
+  w('node_modules/ext/index.js', 'module.exports = "ext";'); fs.mkdirSync(path.join(root, 'node_modules', '.bin'));
+  fs.mkdirSync(path.join(root, 'node_modules', '@s')); fs.symlinkSync('../../packages/shared', path.join(root, 'node_modules', '@s', 'shared'), 'junction'); fs.symlinkSync('../../packages/api', path.join(root, 'node_modules', '@s', 'api'), 'junction');
+  assert.deepEqual([...workspacePackages(root)], [['@s/api', 'packages/api'], ['@s/shared', 'packages/shared']], '이름 → 디렉터리(readdir 순)');
+  assert.equal(workspacePackages(wt).size, 0, 'package.json 없으면 workspaces 없음');
+  fs.cpSync(path.join(root, 'packages'), path.join(wt, 'packages'), { recursive: true }); fs.writeFileSync(path.join(wt, 'packages/shared/index.js'), 'module.exports = "worktree";'); fs.copyFileSync(path.join(root, 'package.json'), path.join(wt, 'package.json'));
+  assert.deepEqual(linkDeps(root, wt), ['node_modules']);
+  const nm = path.join(wt, 'node_modules');
+  assert.ok(fs.lstatSync(nm).isDirectory() && !fs.lstatSync(nm).isSymbolicLink(), 'workspaces면 node_modules는 링크의 디렉터리');
+  assert.equal(fs.realpathSync(path.join(nm, '@s', 'shared')), fs.realpathSync(path.join(wt, 'packages', 'shared')), '자매 패키지는 worktree의 것');
+  assert.equal(fs.realpathSync(path.join(nm, 'ext')), fs.realpathSync(path.join(root, 'node_modules', 'ext')), '바깥 의존은 main의 것');
+  assert.ok(fs.lstatSync(path.join(nm, '.bin')).isSymbolicLink(), '.bin 같은 나머지 항목도 main으로 링크');
+  assert.equal(spawnSync(process.execPath, ['-e', 'console.log(require("./packages/api"))'], { cwd: wt, encoding: 'utf8' }).stdout.trim(), 'worktree', 'api가 worktree의 shared를 본다 — 사고 82의 반대');
+  assert.deepEqual(linkDeps(root, wt), [], '두 번째는 아무것도 안 한다');
+  unlinkDeps(root, wt);
+  assert.ok(!fs.existsSync(nm), '링크를 끊고 빈 디렉터리를 지웠다');
+  assert.ok(fs.existsSync(path.join(root, 'node_modules', 'ext', 'index.js')) && fs.existsSync(path.join(wt, 'packages', 'shared', 'index.js')), 'main의 실물과 worktree의 패키지는 그대로');
 });
