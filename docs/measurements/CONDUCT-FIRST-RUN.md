@@ -193,7 +193,16 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 | 11:45:58 | attack | opus | 191K · 1.1 | 0.389 | 8건 **red 1/1(2건)** — **진짜 결함: repo.add가 파일을 잠그지 않아 동시 add에 id가 겹치고(1,1,1,1,2,2…) 주문이 사라진다(12 중 9 저장)** — adopt·M1 공격이 못 본 것 |
 | 11:46:18 | build → 둘째 반려 | sonnet | 117K · 0.3 | 0.203 | 커밋 0 · 「그 테스트 3건은 내가 고칠 수 없는 경로」 → **`FAIL spec 반려가 두 번째` → Q3 hold → `STOP wait`(exit 3)** — 설계된 종착(CEO). 그런데 안내의 길에 **출하된 unit의 인수를 고칠 손이 없었다**(→ 사고 75) |
 
-<!-- STAGE-C -->
+### stage C — 사고 75 수리 뒤: CEO 결정 Q3 → `spec --revise` → attack(실린 결정) → build → 가짜 반려(→ 사고 76) → 수리 → ship → REPORT
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 11:57:28 | `install.sh`(갱신 ab0f62f→46e2c75 — 바뀐 파일 6 · main 더러움 4) → `decide 3 "<답>"` → `brief` → **`brief.mjs spec order-id --revise "<답>"`** | — | — | — | 팀 파일만 커밋(둘째 확인) · PASS decide Q3 · PACK spec 13.3KB(「고쳐 쓰기 — CEO가 고치라 한 기존 인수 테스트(출하된 unit의 것 포함)」 절) · `unit.revise` 실림 |
+| 11:58:05 | spec(revise) | opus | 103K · 0.6 | 0.220 | **tests/acceptance/order-status-cli.test.js 하나만 고쳤다**(기준표 → 원본 목록의 그 상태 행 · @claim 새 말 · 6/6 green · order-id 인수는 그대로) · redproof PASS base_red head_green → **`STOP unit order-id 토큰 1023K ≥ 상한 1000K`(exit 2 — 상한이 두 번째로 섰다: 충돌을 겪은 unit은 팩 여섯에 1M을 넘는다)** |
+| 12:01:33 | CEO `budget order-id 2000K` → attack(실린 결정 — `--revise` 없이) | opus | 329K · 1.1 | 0.486 | 팩에 「고쳐 쓰기 — 기존 공격 테스트 … (spec 팩이 같은 결정으로 기존 인수를 고쳤다 — 이어서)」 · **order-status-cli-1 기준표를 Q3대로 고치고(green) 새 공격 21건에 red 3**(동시 add의 id 겹침·주문 유실 · 2^53 id 그대로) · **`defect:` 1줄 → `FOUND order-id-f1`**(id가 문자열("7")인 기존 주문은 `order get 7`로 못 찾는다 — 결함의 집 첫 실전) · `unit.revise` 지워짐 |
+| 12:04:21 | build | sonnet | 323K · 1.6 | 0.197 | `fix(order): add·rm을 프로세스 간 잠금으로 직렬화, 안전 정수 밖 id 거부` · full PASS · attack red 0/2 · redproof PASS · 마지막 줄 「\`spec:\` 줄 없음.」 → **드라이버가 반려 「줄 없음.」으로 읽어 가짜 둘째 반려 → Q4 hold → `STOP wait`**(→ 사고 76) |
+| 12:06:17 | 사고 76 수리 → `install.sh`(갱신 46e2c75→3f654d1 — 1파일) → `decide 4` → conduct | — | — | — | **SHIPPED order-id dd9dfe8** · REPORT(M2 출하 1/1 · 공격 선발견 2) · **SCOPE DONE**(exit 0) — 한 unit의 범위라 이음새 공격은 없다(설계: 둘부터) · BACKLOG에 `- [ ] order-id-f1 · M? · needs: order-id · "…"` 후보 줄 |
+
+합계(둘째 날 전체): 팩 11 · 토큰 2.04M · **$2.99**(system-1 3팩 $0.59 · order-id 8팩 $2.40) · 팩 시간 9.7분 · 벽시계 ≈38분(11:28 → 12:07 — 수리 넷의 시간 포함) · 출하 2(system-1 · order-id) · 공격이 찾은 결함 3(동시 add의 id 겹침·주문 유실 · 2^53 id · try 카드 모순) + 후보 1(`order-id-f1`) · 멈춤 7(ceo 2 · framework 1 · wait 2 · done 2) · 사고 4(73·74·75·76 — 전부 코드로 닫음) · 베드 누계(15·16라운드): 팩 54 · 6.45M · $9.64 · 출하 6.
 
 ### 관찰 (16라운드)
 24. **사고 73 — 포장된 반려**: 모델은 `spec:` 줄을 백틱·불릿·굵게로 감싼다(넷째·다섯째 run의 system-1 build 32회 중 6회). 읽히지 않은 반려는 「빈손」으로 세어져 build가 다시 떴다 → `specReturn`이 포장을 벗긴다(unit 테스트는 실제 줄 둘).
@@ -203,7 +212,11 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 28. **갱신 설치의 모양**: 미리보기(UPGRADE old → new — 바뀌는 파일 n)가 설치 전에 한 줄로 나오고, VERSION이 바뀌고, 갱신 커밋 제목에 old→new. 같은 판의 재설치는 커밋이 없다.
 29. **REPORT 뒤 M2**: 같은 명령(brief → add → scope → conduct)으로 둘째 범위가 열렸다. adopt가 질문(Q2)으로 올렸던 진짜 결함을 CEO가 unit으로 올리는 데 사람의 손이 셋(brief·add·scope) — 결함의 집 장치(`defect:` → `work.mjs found` → BACKLOG 후보)의 둘째 근거 → 채용.
 30. **레거시 동작 변경은 세 겹에 부딪힌다**: adopt의 특성화 테스트(build가 고친다 — 설계대로) · 출하된 unit의 인수(사고 75) · 출하된 unit의 공격 테스트(사고 42). 셋째 범위에서 또 나올 모양.
-31. **M2 공격이 진짜 동시성 결함을 찍었다**(동시 add → id 겹침·주문 유실) — adopt(특성화)와 M1 공격(상태 필터)이 보지 못한 자리. 레거시 수리 unit의 공격은 그 자리의 다른 결함을 드러낸다 — `defect:` 후보의 자리이기도 하다.
+31. **M2 공격이 진짜 동시성 결함을 찍었다**(동시 add → id 겹침·주문 유실) — adopt(특성화)와 M1 공격(상태 필터)이 보지 못한 자리. 레거시 수리 unit의 공격은 그 자리의 다른 결함을 드러낸다 — `defect:` 후보의 자리이기도 하다(stage C에서 실제로 `order-id-f1`이 섰다).
+32. **사고 76 — 수리가 낳은 사고**: 포장을 벗기자 build의 「`` `spec:` 줄 없음. ``」(build.md 마지막 줄 지시 「`spec:` 줄(있으면)」이 부르는 보고 꼴)이 반려 「줄 없음.」으로 읽혀 가짜 둘째 반려 → hold. 코드 토큰으로 낱말을 가리킨 줄과 「없음」은 반려·후보가 아니다(unit은 실제 줄). 둘의 규칙이 아니라 사고 하나로 닫았다 — 원장에 fail·hold 줄이 남았고, 드라이버의 읽기 오류는 CEO를 부르는 비용이다.
+33. **토큰 상한이 둘째 날에 두 번 섰다**(system-1 2207K · order-id 1023K). order-id는 되풀이가 아니라 **충돌 해소의 정상 비용**(spec·build·spec·attack·build·spec 여섯 팩)으로 1M을 넘었다 — 1M은 진동을 잡는 상한이지 충돌을 담는 상한은 아니다. CEO budget 한 마디로 풀렸다 — 기본값은 그대로(관찰).
+34. **결함의 집 첫 실전**: attack이 `defect:` 한 줄을 남겨 conduct가 `FOUND order-id-f1 — BACKLOG 후보(M? · needs order-id)`를 적었다. 범위에 넣기 전엔 unit이 아니다 — 셋째 범위의 후보.
+35. **운영 둘째 날의 사람 접점 7**: budget 2 · decide 2 · brief/add/scope 3(M2 열기) · spec --revise 1 — 전부 한 줄 명령, 전부 STOP 줄의 안내 안에 있었다. 수리 넷(사고 73~76)은 정비 채널의 일이고 베드엔 갱신 설치 셋으로 들어갔다(미리보기 11·1·6·1 파일).
 
 ## 비용 합계 (다섯 run)
 | 무엇 | $ |
@@ -212,8 +225,8 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 | 13라운드 run(Python, 팩 10) + SIGTERM 탐침 | 1.83 |
 | 14라운드 conductor 턴 + run(Node 중간 레거시, 팩 13) | 3.88 |
 | 15라운드 run(Node 대규모 레거시 파일 138, 팩 43 — 되풀이 30 포함) | 6.64 |
-| 16라운드 운영 둘째 날(같은 베드 — 갱신·재개·M2, 팩 <!-- STAGE-C-N -->) | <!-- STAGE-C-USD --> |
-| **합계** | **<!-- STAGE-C-TOTAL -->** — unit 하나(spec·build·attack·수리) ≈ $0.6~1.1 · pin unit ≈ $0.9~1.1 · 이음새 공격 한 바퀴 ≈ $0.3~0.6(되풀이 제외) · adopt ≈ $0.14~0.31(파일 3 → 138 — 표면 수에 비례) · 사고 71의 되풀이 $2.87(수리됨 — 다음부턴 되풀이 2에서 선다, 사고 72의 토큰 상한이 먼저 서면 ≈ $1.3) |
+| 16라운드 운영 둘째 날(같은 베드 — 갱신·재개·M2, 팩 11) | 2.99 |
+| **합계** | **17.64** — unit 하나(spec·build·attack·수리) ≈ $0.6~1.1 · pin unit ≈ $0.9~1.1 · 이음새 공격 한 바퀴 ≈ $0.3~0.6(되풀이 제외) · adopt ≈ $0.14~0.31(파일 3 → 138 — 표면 수에 비례) · 사고 71의 되풀이 $2.87(수리됨 — 다음부턴 되풀이 2에서 선다, 사고 72의 토큰 상한이 먼저 서면 ≈ $1.3) |
 
 ## 판정 (16라운드 갱신)
 - **운영 둘째 날(16라운드)**: 멈춘 베드에 새 판을 갱신 설치하고 이어 돌리는 길이 선다 — 미리보기 → 팀 파일만 커밋(더러운 main에서도) → 재개(토큰 상한이 먼저 선다 → CEO budget) → 반려 → attack → ship → REPORT → 다음 범위. 둘째 날이 드러낸 사고 셋(73 포장된 반려 · 74 갱신과 더러운 main · 75 출하된 인수를 고칠 손)은 전부 코드로 닫았다. **레거시 동작 변경(M2)은 출하된 unit의 테스트와 부딪히는 것이 정상이고, 그 종착은 CEO의 한 마디(spec --revise)다** — 실전 모양은 「다섯째 run」 stage C.
@@ -222,4 +235,4 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 - **대화형 conductor(CLAUDE.md Flow)**: Flow 2 한 턴이 배선(Agent 서브에이전트 · SubagentStop 훅 · spawned)을 전부 지났다. 단 서브에이전트가 허용된 명령을 `\`+줄바꿈으로 시작해 거부되자 conductor가 팩의 일을 대신했다 — 무인 세션에선 사람이 모르는 채 결과만 옳다. agents 한 줄이 꼴을 막지만, 「conductor가 팩의 일을 대신한다」는 둘째 근거가 오면 장치.
 - **상한 둘(15라운드 실측)**: 비용 상한(run)은 설계대로 선다 · 토큰 상한(unit)은 진동 안에서 안 섰다 → 걸음마다(사고 72). 둘이 다 선 뒤의 무인 운전 비용 꼴: unit당 $0.6~1.1 · 이음새 한 바퀴 ≤ 1M 토큰(≈ $1.3) 뒤 CEO.
 - **② UI 중심·DB·마이그레이션·멀티서비스**: 변화 없음 — 아직. **Windows**: CEO PC 대기.
-- 다섯 run이 못 본 것: 충돌 rebase(두 unit이 같은 파일 — 순차 운전에선 docs 차선 외엔 main이 안 움직인다) · 모노레포 · 사람 센서 unit · opencode 레인 · 사흘 이상의 운영 · `defect:` 후보가 실전에서 올라오는 모양(가짜 팩만) <!-- STAGE-C-UNSEEN -->.
+- 다섯 run이 못 본 것: 충돌 rebase(두 unit이 같은 파일 — 순차 운전에선 docs 차선 외엔 main이 안 움직인다) · 모노레포 · 사람 센서 unit · opencode 레인 · 사흘 이상의 운영 · 후보(`order-id-f1`)를 범위에 넣어 고치는 셋째 범위 · 둘째 범위에 unit이 둘 이상인 날(이음새 공격 둘째 바퀴).
