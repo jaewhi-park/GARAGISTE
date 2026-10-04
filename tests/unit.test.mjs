@@ -1529,3 +1529,22 @@ test('work(19라운드, 사고 78): budget budgets.<키> — 팀 기본값의 �
   assert.equal(parseBudgetValue('unit_tokens_max', ''), null);
   assert.equal(parseBudgetValue('run_usd_max', '-1'), null);
 });
+
+test('next(19라운드, 사고 79): slug 없는 spawn_stop(훅)은 직전에 조립된 같은 팩의 주인에게만 — 세워 둔 X의 build 팩 뒤에 Y의 build가 돌아도 X의 build는 끝난 것이 아니다(다섯째 날: attack이 안 지은 tree를 공격했다)', () => {
+  const T = (m) => `2026-10-04T13:${String(m).padStart(2, '0')}:00.000Z`;
+  const X = { slug: 'x', kind: 'feature', state: 'build', created: T(0), questions: [], holds: [], needs: [], respec: [] };
+  const Y = { slug: 'y', kind: 'feature', state: 'shipped', created: T(1), shipped: T(9), questions: [], holds: [], needs: [], respec: [] };
+  const backlog = [{ slug: 'x', milestone: 'M5', needs: [], done: false }, { slug: 'y', milestone: 'M5', needs: [], done: false }];
+  const scope = { order: ['x', 'y'], requested: ['x', 'y'], required: [], missing: [], report_for: 'x,y' };
+  const step = (ledger) => nextStep({ units: [X, Y], ledger, decisionsText: '', scope, backlog, stops: [], wtOf: () => ({ exists: true, rebase: false, unmerged: [] }), packPath: (s, p) => `${s}-${p}.md` });
+  const L = [
+    { ts: T(1), kind: 'pack', slug: 'x', pack: 'spec' }, { ts: T(2), kind: 'spawn', slug: 'x', pack: 'spec' }, { ts: T(3), kind: 'redproof', slug: 'x', base_red: true, head_green: null },
+    { ts: T(4), kind: 'pack', slug: 'x', pack: 'build' }, // X의 build 팩 — 띄우기 전에 CEO가 X를 세웠다(ask --hold)
+    { ts: T(5), kind: 'pack', slug: 'y', pack: 'build' }, { ts: T(6), kind: 'spawn_stop', pack: 'build' }, { ts: T(7), kind: 'spawn', slug: 'y', pack: 'build' }, // Y의 build — 훅의 spawn_stop엔 slug가 없다
+  ];
+  const r = step(L);
+  assert.equal(r.kind, 'spawn', 'X의 build 팩은 아직 안 띄웠다 — Y의 spawn_stop은 Y의 것');
+  assert.equal(r.pack, 'build');
+  assert.match(step([...L, { ts: T(8), kind: 'spawn_stop', pack: 'build', slug: 'x' }]).cmd, /brief\.mjs attack x$/, 'slug가 붙은 spawn_stop(conduct)은 그대로 X의 것');
+  assert.match(step([...L, { ts: T(8), kind: 'pack', slug: 'x', pack: 'build' }, { ts: T(9), kind: 'spawn_stop', pack: 'build' }]).cmd, /brief\.mjs attack x$/, 'slug 없는 spawn_stop도 직전 build 팩이 X의 것이면 X의 것(훅의 기계 기록)');
+});

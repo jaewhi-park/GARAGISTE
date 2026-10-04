@@ -41,7 +41,7 @@ export function spawnStop(root, input = {}) {
   const pack = PACKS.includes(t) ? t : null;
   const checkpointed = checkpoint(root);
   if (!pack && !checkpointed.length) return null;
-  const entry = { ts: new Date().toISOString(), kind: 'spawn_stop', pack, checkpointed };
+  const entry = { ts: new Date().toISOString(), kind: 'spawn_stop', pack, checkpointed, ...(input.slug ? { slug: String(input.slug) } : {}) }; // slug는 conduct만 안다(사고 79) — 훅은 agent_type뿐
   try {
     const ledger = path.join(root, '.garagiste', 'ledger', 'evidence.jsonl');
     fs.mkdirSync(path.dirname(ledger), { recursive: true });

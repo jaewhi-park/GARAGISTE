@@ -277,7 +277,7 @@ export async function spawnPack(c, { pack, slug, path: packPath }, o, { spawner 
   const p = parseResult(r.stdout);
   const status = r.status ?? 1;
   const log = logSpawn(c, slug, pack, { cmd: cmd.argv || cmd.shell, pid: r.pid, status, signal: r.signal, timed_out: timedOut, error: r.error ? String(r.error) : null, stdout: r.stdout || '', stderr: r.stderr || '' });
-  spawnStop(c.main, { agent_type: pack }); // 헤드리스엔 SubagentStop 훅이 없다 — 더러운 worktree는 wip로, 원장엔 spawn_stop
+  spawnStop(c.main, { agent_type: pack, slug }); // 헤드리스엔 SubagentStop 훅이 없다 — 더러운 worktree는 wip로, 원장엔 spawn_stop(slug까지 — 사고 79: 세워 둔 unit의 팩과 섞이지 않게)
   const flags = [p.tokens ? `--tokens ${p.tokens}` : '', `--minutes ${p.minutes ?? wall}`, (p.model || model) ? `--model ${p.model || model}` : '', `--note ${q(`conduct${p.cost != null ? ` $${p.cost}` : ''}${p.turns != null ? ` turns ${p.turns}` : ''} exit ${status}${p.reason ? ` ${p.reason}` : ''}${log ? ` log ${log}` : ''}`)}`].filter(Boolean).join(' ');
   runCmd(c, `${S}/work.mjs spawned ${slug} ${pack} ${flags}`);
   const tail = p.text.trim().split('\n').slice(-3).map((l) => `  │ ${l}`).join('\n');

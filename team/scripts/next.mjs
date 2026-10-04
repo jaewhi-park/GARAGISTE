@@ -44,7 +44,10 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   const slug = u.slug;
   const mine = ledger.filter((e) => e.slug === slug && since(e, u.created)); // 이 생애(drop 전은 세지 않는다)
   const packOf = (p) => last(mine, (e) => e.kind === 'pack' && e.pack === p);
-  const doneAfter = (p, ts) => last(ledger, (e) => since(e, ts) && ((e.kind === 'spawn' && e.slug === slug && e.pack === p) || (e.kind === 'spawn_stop' && e.pack === p)));
+  // 사고 79(19라운드 다섯째 날): 훅의 spawn_stop엔 slug가 없다(agent_type만 안다) — CEO가 세워 둔 X의 build 팩 뒤에 Y의 build가 돌자 X의 build가 「끝난 것」이 돼 attack이 안 지은 tree를 공격했다(공격이 스스로 「diff는 문서뿐」이라 적었다).
+  // slug 없는 spawn_stop은 그 직전에 조립된 같은 팩(원장 pack 줄)의 주인이 이 unit일 때만 이 unit의 것 — conduct의 spawn_stop은 slug를 적는다.
+  const stopIsMine = (e, p) => (e.slug ? e.slug === slug : last(ledger, (x) => x.kind === 'pack' && x.pack === p && (x.ts || '') <= (e.ts || ''))?.slug === slug);
+  const doneAfter = (p, ts) => last(ledger, (e) => since(e, ts) && ((e.kind === 'spawn' && e.slug === slug && e.pack === p) || (e.kind === 'spawn_stop' && e.pack === p && stopIsMine(e, p))));
   const brief = (p, why) => run(`brief.mjs ${p} ${slug}`, why);
   const spawn = (p, why) => ({ kind: 'spawn', pack: p, slug, path: packPath(slug, p), why });
   // 사고 72(15라운드 넷째 run · erp-lite): unit 토큰 상한(1M)은 seed와 ship 직전(red 0)에만 보였다 — system-1이 attack↔build 진동으로 2.2M을 쓰는 동안 한 번도 서지 않았다(장치가 겨눈 바로 그 진동 — 선 것은 되풀이 규칙이었다). 걸음마다 그 unit의 상한을 본다: 팩을 띄우는 길은 전부 여기를 지난다.
