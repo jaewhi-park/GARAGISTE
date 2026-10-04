@@ -18,7 +18,7 @@ import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/
 import { acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { nextStep, render } from '../team/scripts/next.mjs';
-import { DEFAULTS as CONDUCT_DEFAULTS, EXIT, failKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
+import { DEFAULTS as CONDUCT_DEFAULTS, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
 import { versionLine } from '../team/scripts/doctor.mjs';
 import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
 import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
@@ -931,6 +931,11 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   assert.match(step([u({ state: 'attack' })], L).cmd, /verify\.mjs attack add$/, 'attack이 verify를 안 남겼으면 센다');
   push({ ts: T(8), kind: 'attack', slug: 'add', total: 2, red: 1 });
   assert.match(step([u({ state: 'attack' })], L).cmd, /brief\.mjs build add$/, 'red가 남으면 build 다시');
+  // 사고 72(15라운드 넷째 run): 토큰 상한은 걸음마다 — red가 남아도 상한이면 build를 띄우지 않는다(system-1이 진동으로 2.2M을 쓰는 동안 서지 않았다)
+  const overAdd = { slug: 'add', used: 3600, cap: 3000, text: 'unit add 토큰 4K ≥ 상한 3K — CEO 결정: node .garagiste/scripts/work.mjs budget add <새 상한> 또는 work.mjs drop add "<사유>"' };
+  const stopped = step([u({ state: 'attack' })], L, { tokenStops: [overAdd] });
+  assert.equal(stopped.kind, 'ceo'); assert.match(stopped.text, /^STOP unit add 토큰 4K ≥ 상한 3K[^\n]*예산 정지: add는 attack 뒤에 서 있다\(상한은 걸음마다 — 진동 안에서도, 사고 72\)/, stopped.text);
+  assert.match(step([u({ state: 'attack' })], L, { tokenStops: [{ ...overAdd, slug: 'list' }] }).cmd, /brief\.mjs build add$/, '다른 unit의 상한은 이 unit을 세우지 않는다');
   push({ ts: T(9), kind: 'pack', slug: 'add', pack: 'build' }); push({ ts: T(10), kind: 'spawn', slug: 'add', pack: 'build' });
   assert.match(step([u({ state: 'build' })], L).cmd, /verify\.mjs attack add$/, '고친 뒤엔 attack 팩을 새로 띄우지 않고 기존 공격 테스트만(한 바퀴)');
   push({ ts: T(11), kind: 'attack', slug: 'add', total: 2, red: 0 });
@@ -1192,6 +1197,12 @@ test('conduct: 반려 줄·FAIL 열쇠·hold 안내·진전 없음', () => {
   assert.equal(specReturn('spec: 이른 줄\n' + Array.from({ length: 8 }, (_, i) => `줄 ${i}`).join('\n')), null);
   assert.equal(failKey('PASS gate\nFAIL ship hello 1/8\n- attack: 기록 없음\n- x'), 'FAIL ship hello 1/8 | - attack: 기록 없음', 'ship은 둘째 줄(조건)이 열쇠를 가른다');
   assert.equal(failKey('ATTACK hello red 1/1'), null, 'FAIL 줄이 없으면 열쇠 없음 — 되풀이로 세지 않는다');
+  // 사고 71(15라운드 넷째 run): 반려 전달의 FAIL은 run 걸음의 FAIL과 같은 열쇠 — 실제 줄(system-1 build 30회가 전부 이 FAIL)
+  const sysFail = 'FAIL 시스템 공격 unit은 attack·build 팩만 — system-1은 spec·spike 없이 공격부터(발견이 곧 red 주장)';
+  assert.equal(handOffKey({ status: 1, held: false, text: sysFail }), sysFail);
+  assert.equal(handOffKey({ status: 0, held: false, text: 'PACK .garagiste/session/packs/system-1-attack-x.md 3KB · 반려 → attack' }), null, '받았다(PACK) — 열쇠 없음');
+  assert.equal(handOffKey({ status: 1, held: true, text: 'FAIL spec 반려가 두 번째 — …' }), null, 'held — CEO에게 간 것, 되풀이가 아니다');
+  assert.equal(handOffKey({ status: 1, held: false, text: 'TypeError: boom' }), 'brief spec --return 비정상 종료(FAIL 줄 없음)', 'FAIL 줄 없는 비정상 종료도 열쇠 하나');
   const h = holdCommand('FAIL spec 반려가 두 번째 …\n- 그 unit만 세우고 다음 seed로: node .garagiste/scripts/work.mjs ask hello "spec 반려 두 번째 — 두 줄은 이 FAIL 그대로" --hold — CEO의 답은 …');
   assert.deepEqual({ slug: h.slug, question: h.question }, { slug: 'hello', question: 'spec 반려 두 번째 — 두 줄은 이 FAIL 그대로' });
   assert.match(h.cmd, /^node \.garagiste\/scripts\/work\.mjs ask hello '[^']+' --hold$/, '셸 인자는 작은따옴표 — 큰따옴표 안의 \$·백틱은 셸이 푼다');
@@ -1237,6 +1248,7 @@ test('budget: 진행 중 unit의 spawn 토큰 합이 상한이면 멈춤 — uni
   assert.equal(budgetStatus({ units, ledger: [spawn('add', 1200), spawn('add', 1200)], team: cap, ceoTouchTs: null }).stops.length, 0, '2400 < 3000');
   const b = budgetStatus({ units, ledger: [spawn('add', 1200), spawn('add', 1200), spawn('add', 1200)], team: cap, ceoTouchTs: null });
   assert.match(b.stops.join(), /^unit add 토큰 4K ≥ 상한 3K — CEO 결정: node \.garagiste\/scripts\/work\.mjs budget add <새 상한> 또는 work\.mjs drop add/);
+  assert.deepEqual(b.tokenStops.map((t) => [t.slug, t.used, t.cap]), [['add', 3600, 3000]], '사고 72: unit별 정지는 next가 걸음마다 그 unit의 것만 본다');
   assert.equal(budgetStatus({ units, ledger: [spawn('old', 99999)], team: cap, ceoTouchTs: null }).stops.length, 0, '출하된 unit은 세지 않는다');
   assert.equal(budgetStatus({ units, ledger: [spawn('add', 99999, '2026-10-02T00:00:00Z')], team: cap, ceoTouchTs: null }).stops.length, 0, '앞 생애(drop 전)의 토큰은 세지 않는다');
   assert.equal(budgetStatus({ units: [{ ...units[0], tokens_max: 10000 }, units[1]], ledger: [spawn('add', 5000)], team: cap, ceoTouchTs: null }).stops.length, 0, 'unit의 상한(budget)이 team.json보다 먼저');
@@ -1313,7 +1325,7 @@ test('팩 목록 하나: work·brief·checkpoint PACKS 동일 · 두 하네스 a
   const TEAM = fileURLToPath(new URL('../team/', import.meta.url));
   for (const p of P) for (const f of [`claude/agents/${p}.md`, `opencode/agents/${p}.md`, `packs/${p}.md`]) assert.ok(fs.existsSync(path.join(TEAM, f)), `${f} 없음`);
   // 측정이 넣은 agents 한 줄들(12·14라운드 — 무인 세션의 승인 거부 꼴): 셸은 cd && node만(worktree 팩 6) · 명령은 node로 시작하는 한 줄(7) — 산문 편집이 지우지 않게 잠근다
-  for (const p of P) { const t = fs.readFileSync(path.join(TEAM, `claude/agents/${p}.md`), 'utf8'); assert.match(t, /명령은 `node …`로 시작하는 \*\*한 줄\*\*로/, `${p}: 한 줄 명령(14라운드)`); if (p !== 'intake') assert.match(t, /`cd <작업 디렉터리> && node …` 꼴만/, `${p}: cd && node(12라운드)`); }
+  for (const p of P) { const t = fs.readFileSync(path.join(TEAM, `claude/agents/${p}.md`), 'utf8'); assert.match(t, /명령은 `node …`로 시작하는 \*\*한 줄\*\*로/, `${p}: 한 줄 명령(14라운드)`); assert.match(t, /한 줄에 명령 하나 — `;`·`\|`로 다른 명령을 잇지 않는다/, `${p}: 명령 하나(15라운드 — unwip; git … | head 거부 5건)`); if (p !== 'intake') assert.match(t, /`cd <작업 디렉터리> && node …` 꼴만/, `${p}: cd && node(12라운드)`); }
   const conductor = fs.readFileSync(path.join(TEAM, 'opencode/agents/conductor.md'), 'utf8');
   const allow = [...conductor.matchAll(/^\s+"([a-z]+)":\s*allow\s*$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(allow, P, 'opencode conductor가 task로 띄울 수 있는 팩 = 팩 전부');

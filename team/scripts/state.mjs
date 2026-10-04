@@ -42,14 +42,15 @@ export function budgetStatus({ units, ledger, team, ceoTouchTs }) {
   if (trailing >= team.budgets.no_ceo_units_max) stops.push(`팀이 스스로 뜬 unit 연속 ${trailing} ≥ ${team.budgets.no_ceo_units_max}`);
   // unit 토큰 상한(L2 2판 윈도우 1일차: attack↔build 진동이 같은 몫에 토큰 16배 · 6판 unit당 ≈140K): 진행 중 unit의 spawn 토큰 합이 상한이면 멈춘다 — 무인 폭주는 예산으로.
   // 상한은 unit의 것(work.mjs budget — CEO 접점)이 team.json(unit_tokens_max)보다 먼저, 0이면 끈다. 토큰은 원장 spawn 줄(conduct의 실측 또는 conductor의 spawned 보고)만 센다.
+  const tokenStops = []; // 사고 72(15라운드 넷째 run): unit별 토큰 정지 — next가 걸음마다 그 unit의 것만 본다(다른 정지는 seed·ship의 문)
   for (const u of units) {
     if (u.state === 'shipped' || u.state === 'dropped') continue;
     const cap = Number(u.tokens_max ?? team.budgets.unit_tokens_max ?? 0);
     if (!(cap > 0)) continue;
     const used = ledger.filter((e) => e.kind === 'spawn' && e.slug === u.slug && (e.ts || '') >= (u.created || '') && Number(e.tokens) > 0).reduce((a, e) => a + Number(e.tokens), 0);
-    if (used >= cap) stops.push(`unit ${u.slug} 토큰 ${Math.round(used / 1000)}K ≥ 상한 ${Math.round(cap / 1000)}K — CEO 결정: node .garagiste/scripts/work.mjs budget ${u.slug} <새 상한> 또는 work.mjs drop ${u.slug} "<사유>"`);
+    if (used >= cap) { const text = `unit ${u.slug} 토큰 ${Math.round(used / 1000)}K ≥ 상한 ${Math.round(cap / 1000)}K — CEO 결정: node .garagiste/scripts/work.mjs budget ${u.slug} <새 상한> 또는 work.mjs drop ${u.slug} "<사유>"`; stops.push(text); tokenStops.push({ slug: u.slug, used, cap, text }); }
   }
-  return { stops, unseen: unseen.length, untried: untried.length, unattended };
+  return { stops, tokenStops, unseen: unseen.length, untried: untried.length, unattended };
 }
 export function openQuestions(decisionsText) { return [...decisionsText.matchAll(/^- \[ \] Q\d+.*$/gm)].map((m) => m[0]); }
 export function render(c) {

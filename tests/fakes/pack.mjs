@@ -1,6 +1,6 @@
 // 가짜 팩 — 모델 0으로 팩이 할 일을 그대로 한다(conduct.mjs의 --spawner 시험용). 환경: GARAGISTE_PACK·GARAGISTE_SLUG·GARAGISTE_WORKTREE(conduct가 준다).
 // 출력은 `claude -p --output-format json`의 꼴(result·usage·duration_ms·total_cost_usd·num_turns·subtype) — 드라이버가 토큰·분·비용을 읽는 길이 같다.
-// GARAGISTE_FAKE_MODE: normal(기본) · idle(아무것도 하지 않는다 — 진전 없음·FAIL 되풀이 재현) · return(build가 `spec:` 반려 줄을 남긴다) · crash(exit 1·is_error) · hang(20초 멈춤) · break(refactor build가 동작을 바꾼다)
+// GARAGISTE_FAKE_MODE: normal(기본) · idle(아무것도 하지 않는다 — 진전 없음·FAIL 되풀이 재현) · return(build가 `spec:` 반려 줄을 남긴다 — system unit이면 공격 카드가 어긋난다는 줄, 사고 71) · crash(exit 1·is_error) · hang(20초 멈춤) · break(refactor build가 동작을 바꾼다)
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -46,7 +46,7 @@ if (refactor && pack === 'spec') {
   lines.push(commit(`test(${slug}): red 주장`), script('redproof', [slug]).stdout.trim(), '쓴 파일 3 · 주장 1 · human 0 · 질문 0');
 } else if (pack === 'build') {
   const adversary = fs.existsSync(path.join(wt, 'tests', 'adversary', `${slug}-1.test.mjs`));
-  if (mode === 'return' && !adversary) { emit(`커밋 0 · verify full 안 돌림\nspec: 인수 테스트가 서로 어긋난다 — 이름 없는 경우의 출력이 정해지지 않았다`); process.exit(0); }
+  if (mode === 'return' && (!adversary || unit?.kind === 'system')) { emit(`커밋 0 · verify full 안 돌림\nspec: ${unit?.kind === 'system' ? '공격 카드가 서로 어긋난다 — 같은 입력에 기대가 둘(사고 71)' : '인수 테스트가 서로 어긋난다 — 이름 없는 경우의 출력이 정해지지 않았다'}`); process.exit(0); }
   write('src/cli.mjs', adversary ? "const n = process.argv[2]; process.stdout.write(n ? `hello ${n}\\n` : 'hello\\n');\n" : "process.stdout.write(`hello ${process.argv[2] ?? ''}\\n`);\n");
   lines.push(commit(`${adversary ? 'fix' : 'feat'}(${slug}): ${adversary ? '이름 없을 때' : '인사'}\n\nUnit: ${slug}\nStep: ${adversary ? 2 : 1}\nProven: hello Ada`));
   if (adversary) lines.push(script('verify', ['attack', slug]).stdout.trim());

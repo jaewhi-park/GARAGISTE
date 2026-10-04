@@ -115,6 +115,9 @@ export function holdCommand(text) {
   const m = /node \.garagiste\/scripts\/work\.mjs ask (\S+) "((?:[^"\\]|\\.)*)" --hold/.exec(String(text || ''));
   return m ? { slug: m[1], question: m[2], cmd: `${S}/work.mjs ask ${m[1]} ${q(m[2])} --hold` } : null;
 }
+// 사고 71(15라운드 넷째 run): 반려 전달(brief.mjs spec --return)이 FAIL이면(system unit — spec이 없다) 팩은 「빈손 + 반려」로 정당해 보여 진전 없음에도 되풀이에도 안 세어졌다 — build 30회·$2.87.
+// 그 FAIL은 run 걸음의 FAIL과 같은 열쇠(failKey)로 센다(되풀이 = 2). held는 CEO에게 간 것(열쇠 없음) · FAIL 줄 없는 비정상 종료도 열쇠 하나.
+export function handOffKey(rc) { return rc && rc.status && !rc.held ? (failKey(rc.text) || 'brief spec --return 비정상 종료(FAIL 줄 없음)') : null; }
 // 잠금 = heartbeat: 한 저장소에 드라이버 하나(unit은 한 번에 하나 — 둘이면 같은 unit을 두 번 띄우거나 ship이 겹친다). 살아 있는 pid면 거부, 죽은 pid의 잠금은 그 자리에서 교체.
 export function lockAlive(lock, { isAlive = pidAlive } = {}) { return !!(lock && lock.pid && isAlive(lock.pid)); }
 function writeLock(main, started, data = {}) { writeJson(path.join(main, CONDUCT_LOCK), { pid: process.pid, started, at: new Date().toISOString(), ...data }); }
@@ -263,10 +266,10 @@ export async function spawnPack(c, { pack, slug, path: packPath }, o, { spawner 
   if (tail.trim()) out(tail);
   const ok = status === 0 && !p.isError && !r.error;
   const returned = ok && (pack === 'build' || pack === 'attack') ? specReturn(p.text) : null; // 반려는 정당한 「빈손」 — 진전 없음으로 세지 않는다
-  let held = false;
+  let held = false; let returnFail = null;
   if (!ok) out(timedOut ? `  팩 시간 상한 ${o.packMinutes}분 — 끊었다(SIGTERM)${log ? ` · ${log}` : ''}` : `  팩 종료 비정상 — exit ${status}${p.reason ? ` · ${p.reason}` : p.isError ? ' · is_error' : ''}${r.error ? ` · ${r.error}` : ''}${log ? ` · ${log}` : ''}`);
-  else if (returned) held = runCmd(c, `${S}/brief.mjs spec ${slug} --return ${q(returned)}`).held;
-  return { ok, text: p.text, tokens: p.tokens, minutes: p.minutes ?? wall, cost: Number(p.cost) || 0, status, log, returned: !!returned, held, timedOut };
+  else if (returned) { const rc = runCmd(c, `${S}/brief.mjs spec ${slug} --return ${q(returned)}`); held = rc.held; returnFail = handOffKey(rc); } // system unit이면 brief가 attack 팩으로 돌린다(사고 71)
+  return { ok, text: p.text, tokens: p.tokens, minutes: p.minutes ?? wall, cost: Number(p.cost) || 0, status, log, returned: !!returned, held, returnFail, timedOut };
 }
 let USD = 0;
 function stop(c, kind, text) {
@@ -341,6 +344,7 @@ async function main() {
       USD += x.cost || 0;
       const after = fs.existsSync(wt) ? headSha(wt) : null;
       if (!x.ok) { const key = `spawn ${r.slug} ${r.pack}`; const n = (fails.get(key) || 0) + 1; fails.set(key, n); if (n >= 2) return stop(c, 'framework', `팩이 두 번 비정상 종료 — ${key}(exit ${x.status})${x.log ? ` · ${x.log}` : ''}`); }
+      else if (x.returnFail) { const n = (fails.get(x.returnFail) || 0) + 1; fails.set(x.returnFail, n); if (n >= 2) return stop(c, 'framework', `반려를 받을 길이 없다(사고 71) — 같은 FAIL 되풀이: ${x.returnFail}`); } // 반려 전달의 FAIL — run 걸음의 FAIL과 같은 열쇠·규칙
       else if (!x.returned && noProgress(history, { slug: r.slug, pack: r.pack, before, after }) >= 2) return stop(c, 'framework', `${r.pack} 팩이 ${r.slug}에서 두 번 돌았는데 worktree가 그대로다(HEAD ${(after || '').slice(0, 7)}) — 팩 로그 ${x.log || '없음'}`);
     } else return stop(c, 'framework', `모르는 걸음 ${r.kind} — ${render(r)}`);
     if (o.once) return stop(c, 'cap', '--once');

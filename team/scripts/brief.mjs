@@ -186,7 +186,7 @@ function intake(c, args) {
 }
 function main() {
   { const busy = conductRunning(ctx().main); if (busy) fail(conductBusyLine(busy)); } // 11라운드: conduct가 도는 동안 대화형 conductor의 팩 조립은 선다
-  const [pack, slug] = process.argv.slice(2);
+  let [pack, slug] = process.argv.slice(2); // pack은 system unit의 반려(--return)에서 attack으로 바뀐다(사고 71)
   if (pack === 'intake') return intake(ctx(), process.argv.slice(3));
   if (!PACKS.includes(pack) || !slug) fail(`사용법: brief.mjs <spec|build|attack|spike|boot|adopt> <slug> [--return "<spec: 줄>" | --met "<CEO 말>"] [--large "<이유>"] | intake`);
   const li = process.argv.indexOf('--large');
@@ -217,11 +217,14 @@ function main() {
   if (pack === 'adopt' && unit.kind !== 'adopt') fail(`FAIL adopt 팩은 kind adopt unit에만 — ${slug}은 ${unit.kind}`);
   if (pack !== 'adopt' && unit.kind === 'adopt') fail(`FAIL adopt unit(${slug})은 adopt 팩 하나로 끝난다 — spec·build·attack 없음(증명은 특성화 테스트의 quick·full)`);
   const system = unit.kind === 'system'; // 이음새 공격(work.mjs system): spec·spike 없이 attack → (red면 build) → ship
+  // 사고 71(15라운드 넷째 run · erp-lite 138파일): system unit의 build가 `spec:` 반려를 남겼다(공격 카드가 서로·기본 data와 어긋남) — spec이 없는 unit이라 반려를 받을 길이 없었고(아래 FAIL) conduct는 build를 30번 다시 띄웠다($2.87). 카드를 쓴 attack이 받는다 — 둘째 반려는 spec과 같이 CEO(아래 두 번째 반려 FAIL).
+  const redirected = system && !!returned && pack === 'spec';
+  if (redirected) pack = 'attack';
   if (system && !['attack', 'build'].includes(pack)) fail(`FAIL 시스템 공격 unit은 attack·build 팩만 — ${slug}은 spec·spike 없이 공격부터(발견이 곧 red 주장)`);
   // 사고 17(2차 실기): 진행 중에 닫힌 질문의 답은 spec이 먼저 받는다 — 닫힘은 반영이 아니다(Q11이 build 뒤 닫혀 미구현 출하)
   const respec = unit.respec || [];
   if (respec.length && (pack === 'build' || pack === 'attack')) fail(`FAIL ${pack} 팩: ${respec.map((r) => `Q${r.q}`).join('·')}의 답이 진행 중에 왔다 — spec이 먼저(답을 red 수용 테스트로): node .garagiste/scripts/brief.mjs spec ${slug}`);
-  const usedAt = pack === 'attack' && !revise ? attackRoundUsed(readLedger(c.main, c.team), slug, unit.created) : null; // CEO의 --revise는 바퀴가 아니라 결정이다
+  const usedAt = pack === 'attack' && !revise && !returned ? attackRoundUsed(readLedger(c.main, c.team), slug, unit.created) : null; // CEO의 --revise·build의 반려(system unit, 사고 71)는 바퀴가 아니라 결정이다
   if (usedAt) fail(`FAIL attack 팩: ${slug}은 이번 spec 뒤 이미 공격받았다(${usedAt.slice(0, 16)}) — attack은 spec 뒤 한 바퀴다(고칠 때마다 다시 띄우면 고침이 만든 반대 결함을 짚어 끝이 없다: 윈도우 L2 28·20바퀴). 고친 뒤엔 기존 공격 테스트만: node .garagiste/scripts/verify.mjs attack ${slug} → red 0이면 node .garagiste/scripts/ship.mjs ${slug} · red가 남으면 node .garagiste/scripts/brief.mjs build ${slug}`);
   const wt = worktreeDir(c.main, c.team, slug);
   if (!fs.existsSync(wt)) fail(`FAIL worktree 없음: ${unit.worktree}`);
@@ -284,7 +287,7 @@ function main() {
   if (returned) {
     const prior = readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created);
     if (prior.length) fail(`FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다: 두 줄을 CEO에게 그대로 보여 준다(hard 질문 — 그 unit만 멈춘다)\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}\n${revisePaths(slug)}\n- ${holdAsk(slug, 'spec 반려 두 번째 — 두 줄은 이 FAIL 그대로')}`);
-    sec('return', `반려 — ${returnedFrom} 팩이 남긴 줄 (그 주장들이 서로·원문과 어긋나는지부터)`, returned);
+    sec('return', redirected ? `반려 — ${returnedFrom} 팩이 남긴 줄 (system unit엔 spec이 없다: 공격 카드가 곧 주장 — 서로·기본 data와 어긋나는 카드의 기대를 바로잡는다, 결함을 잡는 단언은 그대로 · 끝은 verify.mjs attack ${slug})` : `반려 — ${returnedFrom} 팩이 남긴 줄 (그 주장들이 서로·원문과 어긋나는지부터)`, returned);
   }
   // 사고 42: 기존 공격 테스트(출하된 unit의 것 포함)를 고치는 것은 테스트 약화의 길 — spec 반려가 CEO에게 간 unit에서, CEO 말 그대로만 연다
   if (revise) {
@@ -345,11 +348,11 @@ function main() {
   const consumed = pack === 'spec' && respec.length > 0; // spec 팩이 답을 실었다 — build·attack·ship이 다시 열린다
   if (consumed) unit.respec = [];
   if (unit.state !== pack || consumed) { unit.state = pack; saveUnit(c.main, c.team, unit); }
-  if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned });
+  if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned, ...(redirected ? { to: 'attack' } : {}) });
   if (revise) appendLedger(c.main, c.team, { kind: 'adversary_revise', slug, reason: revise });
   if (met) appendLedger(c.main, c.team, { kind: 'claims_met', slug, files: metRp.base_green, reason: met });
   appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes, ...(lane === 'lane' ? { large: reason, cap_kb: capKb } : {}) });
-  const note = lane === 'lane' ? ` · 이유-차선(상한 ${capKb}KB): ${reason}` : large ? ' · --large 불필요(상한 안 — 원장에 남기지 않았다)' : '';
+  const note = `${lane === 'lane' ? ` · 이유-차선(상한 ${capKb}KB): ${reason}` : large ? ' · --large 불필요(상한 안 — 원장에 남기지 않았다)' : ''}${redirected ? ' · 반려 → attack(system unit엔 spec이 없다 — 공격 카드가 곧 주장, 어긋난 카드는 attack이 고친다)' : ''}`;
   out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}${note}`);
 }
 if (isMain(import.meta.url)) main();
