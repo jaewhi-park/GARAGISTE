@@ -1,4 +1,5 @@
 // guard-rules — 하네스 중립 경계 규칙. Claude 훅(.claude/hooks/guard.mjs)과 opencode 플러그인(.opencode/plugins/guard.ts)이 같은 함수를 부른다.
+import os from 'node:os';
 import path from 'node:path';
 
 // git 전역 옵션(-C <경로>·-c <키=값>·--git-dir= 등)은 하위 명령 앞에 끼어든다 — 필드 시험: `git -C x reset --hard`·`--no-verify`가 붙은 형태만 보던 검사를 빠져나갔다
@@ -22,7 +23,7 @@ const RULEBOOK_REDIR = new RegExp(`>{1,2}\\s*("[^"]*|'[^']*|[^\\s;&|<>]*)?${RULE
 // 게이트 우회 접두 — SHIP·WIP·ADMIN은 스크립트 내부(ship·checkpoint)와 CEO 세션만 쓴다. LARGE_STEP은 게이트가 받는 정상 경로라 막지 않는다.
 const ENV_BYPASS = /(^|[\s;&|])(env\s+)?GARAGISTE_(SHIP|WIP|ADMIN)=/;
 // conductor 전용 명령 — tried·decide는 CEO 접점(팩이 부르면 상한 자가 리셋), drop은 방향전환(팩이 자기를 버리지 않는다), needs는 선행 재배선(팩이 자기 WAIT를 풀지 않는다 — 사고 23)
-const CEO_CMDS = /\bwork\.mjs\s+(tried|decide|drop|needs)\b/;
+const CEO_CMDS = /\bwork\.mjs\s+(tried|decide|drop|needs|budget)\b/;
 
 export const PACK_RULES = {
   spec: { allow: [/^tests\/acceptance\//, /^docs\/units\/[^/]+\//] },
@@ -33,6 +34,22 @@ export const PACK_RULES = {
   boot: { allow: [/^(package\.json|pnpm-workspace\.yaml|pnpm-lock\.yaml|package-lock\.json|pyproject\.toml|uv\.lock|requirements[^/]*\.txt|Cargo\.toml|go\.mod|\.node-version|\.python-version|\.nvmrc|\.tool-versions|\.gitignore|\.gitattributes|README(\.[a-z]{2})?\.md|CLAUDE\.md|AGENTS\.md|tsconfig[^/]*\.json|[^/]*\.config\.[a-z]+)$/, /^src\//, /^tests\/unit\//, /^tests\/harness\//, /^docs\/units\/[^/]+\//] },
 };
 const norm = (p) => p.replace(/\\/g, '/');
+// 임시 폴더는 저장소 밖이다 — 팩이 fixture·임시 HOME·비교 파일을 두는 자리(5판 관찰 b · L2 6판 가드 거부 누적 6: /tmp 직접 쓰기 · \`T=$(mktemp -d)\`가 풀리지 않아 저장소 안 상대 경로로 읽혀 거부됐고, 팩은 매번 다른 길로 끝냈다).
+// OS 임시 폴더(os.tmpdir() · TMPDIR)와 흔한 자리(/tmp · /var/tmp · /private/tmp)만 — 홈 디렉터리는 아니다(HAZARDS 「세션 영속화가 홈에 썼다」는 그대로).
+export function tempDirs(env = process.env) {
+  return [...new Set([os.tmpdir(), env.TMPDIR, env.TMP, env.TEMP, '/tmp', '/var/tmp', '/private/tmp'].filter(Boolean).map((d) => norm(path.resolve(d))))];
+}
+export function isTempPath(abs, env = process.env) {
+  const a = norm(path.resolve(abs));
+  return tempDirs(env).some((d) => a === d || a.startsWith(d.endsWith('/') ? d : d + '/'));
+}
+// 셸 명령 속의 임시 폴더 표현을 OS 임시 폴더로 — \`$(mktemp …)\`·백틱 mktemp는 그 안의 새 경로, $TMPDIR·${TMPDIR:-/tmp}·$TMP·$TEMP는 그 폴더. 저장소 안 경로로 오독되지 않게 쓰기 판정 전에 푼다.
+export function expandTemp(command, env = process.env) {
+  const tmp = norm(path.resolve(env.TMPDIR || os.tmpdir()));
+  return String(command)
+    .replace(/\$\(\s*mktemp\b[^)]*\)|\`\s*mktemp\b[^\`]*\`/g, `${tmp}/garagiste-mktemp`)
+    .replace(/\$\{(TMPDIR|TMP|TEMP)(?::-[^}]*)?\}|\$(TMPDIR|TMP|TEMP)\b/g, tmp);
+}
 // 따옴표 안 텍스트는 셸에선 데이터다 — 커밋 메시지의 트레일러(`<noreply@…>`)·경로 언급이 리다이렉트·쓰기 verb로 오탐됐다(첫 Windows 실기).
 // 큰따옴표 안에서도 $()·백틱은 실행되므로 그 내용만 남긴다. 우회 접두(ENV_BYPASS)·worktree 경로 추론은 따옴표로도 효력이 있어 원문을 본다.
 export function stripQuoted(command) {
@@ -102,6 +119,7 @@ export function expandAssignments(command) {
   const re = /(?:^|[;&|\n]|\s)(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=(?:"([^"\n]*)"|'([^'\n]*)'|([^\s;&|'"]+))/g;
   let m;
   while ((m = re.exec(src))) { const v = m[2] ?? m[3] ?? m[4]; if (/[`$]/.test(v)) vars.delete(m[1]); else vars.set(m[1], v); }
+  // (mktemp·TMPDIR은 expandTemp가 먼저 풀어 여기 올 때는 경로다)
   if (!vars.size) return src;
   return src.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g, (all, a, b) => (vars.has(a ?? b) ? vars.get(a ?? b) : all));
 }
@@ -140,7 +158,7 @@ export function decide(input, ctx) {
   const cwd = input.cwd || ctx.cwd || process.cwd();
   const admin = !!ctx.env.GARAGISTE_ADMIN;
   if (tool === 'Bash' || tool === 'PowerShell') {
-    const c = expandAssignments(String(ti.command || '')); // 사고 67: 같은 명령의 단순 대입($W=…)을 먼저 푼다
+    const c = expandAssignments(expandTemp(String(ti.command || ''), ctx.env)); // 사고 67: 같은 명령의 단순 대입($W=…)을 먼저 푼다 · 임시 폴더 표현(mktemp·TMPDIR)은 그 전에
     const cq = stripQuoted(c); // 쓰기·파괴 판정은 따옴표 밖 텍스트로만
     if (DESTRUCTIVE.test(cq)) return '파괴적 git — stash·rebase·merge·reset --hard·force push·보호 브랜치 push·--no-verify는 없다. 머지는 ship.mjs만.';
     // DESTRUCTIVE의 push 정규식은 main|master 고정 — 보호 브랜치가 다른 이름이면 여기서 막는다 (L0 부검의 발견)
@@ -154,7 +172,7 @@ export function decide(input, ctx) {
     const w = worktreeOf(path.resolve(cwd), ctx.worktreesDir) || worktreeFromCommand(c, ctx.worktreesDir);
     if (w) {
       if (new RegExp(GIT + 'push\\b').test(c)) return 'worktree에서 push하지 않는다 — ship.mjs가 main으로 올린다.';
-      if (CEO_CMDS.test(c)) return 'tried·decide(CEO 접점)·drop(방향전환)·needs(선행 재배선)는 conductor의 일이다 — 팩은 부르지 않는다. conductor가 CEO의 말을 받아 메인에서 돌린다.';
+      if (CEO_CMDS.test(c)) return 'tried·decide(CEO 접점)·drop(방향전환)·needs(선행 재배선)·budget(토큰 상한)는 conductor의 일이다 — 팩은 부르지 않는다. conductor가 CEO의 말을 받아 메인에서 돌린다.';
       if (ctx.readMarker(w.dir) === 'spike' && new RegExp(GIT + 'commit\\b').test(c)) return 'spike는 커밋하지 않는다 — 측정 파일만 남긴다.';
     }
     const base = cdBase(c, cwd);
@@ -178,6 +196,8 @@ export function decide(input, ctx) {
     if (SECRET.test(abs)) return '비밀 파일(.env·*.pem·*.key·credentials)은 읽지도 쓰지도 않는다.';
     if (!admin && MEMORY.test(norm(abs))) return '메모리 파일은 쓰지 않는다 — 상태의 정본은 원장(.garagiste/ledger)과 docs/STATUS.md다(둘째 사본은 검토 없이 드리프트한다).';
     if (!admin && RULEBOOK.test(norm(abs))) return '규칙집·원장·unit 상태는 스크립트가 쓴다. 바꾸려면 hard 결정 → CEO가 GARAGISTE_ADMIN=1.';
+    // 임시 폴더는 저장소 밖 — 팩의 fixture·임시 HOME 자리. 저장소 자체가 임시 폴더 아래에 살 수 있다(벤치·테스트) — 저장소 안이면 면제가 아니다
+    if (isTempPath(abs, ctx.env) && (!ctx.root || norm(path.relative(ctx.root, abs)).startsWith('..'))) return null;
     const w = worktreeOf(abs, ctx.worktreesDir);
     if (!w) return admin ? null : 'conductor는 쓰지 않는다 — 쓰기는 worktree 안의 팩과 스크립트(work.mjs brief|add)만. 일반 편집 세션은 GARAGISTE_ADMIN=1.';
     return packWriteReason(ctx.readMarker(w.dir), norm(w.rel));

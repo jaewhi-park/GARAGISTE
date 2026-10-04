@@ -2,7 +2,7 @@
 
 > Coding is making claims true. Claims are tests, probes and invariants; the team is a scheduler over that graph; the human supplies direction, reality and accountability — and keeps the windows.
 
-GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), fourteen judgment-free scripts, a boundary hook or plugin, and a ledger.
+GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are six packs that hand off only through files (boot · intake · spec · build · attack · spike), fifteen judgment-free scripts, a boundary hook or plugin, and a ledger.
 
 - **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
 - **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all eight conditions hold.
@@ -42,6 +42,7 @@ scope        ─▶ work.mjs scope login share | --milestone M1 | --range a..b
                 - prerequisites: db (needed by session) · session (needed by login)
                 - order: db → session → login → share
 loop         ─▶ work.mjs seed → UNIT | WAIT <slug> needs … | SCOPE DONE
+               (unattended: conduct.mjs runs this loop until a stop — no conductor session, the exit code is the stop)
 ```
 `needs` is not a human-team convention; it is an edge in the claim graph. "This needs that first" is the output of `closure()`, not a meeting, and the CEO either accepts (`seed`) or drops the prerequisites (`--no-needs`, recorded in the ledger).
 
@@ -60,6 +61,7 @@ Agents receive one pack file and never talk to each other. Build has never met a
 | script | does |
 |---|---|
 | `next` | the loop's next step, one line: run · spawn · ceo · wait · done — the conductor follows this line only (seed → spec → redproof → build → attack → ship; re-spec, late spike, conflict, one unit at a time) |
+| `conduct` | runs Flow 4 as a script — executes next's line verbatim (run = that command; spawn = the pack as a headless `claude -p --agent <pack>` session), records spawned (measured tokens · minutes · cost) · spawn_stop · checkpoint per pack, forwards `spec:` returns, parks a unit via `ask --hold` when a FAIL asks for a CEO decision. The stops are exit codes (0 done · 2 ceo · 3 wait · 4 framework FAIL · 5 cap) · `intake` · other harnesses via `--spawner` |
 | `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · system (seam attack at the end of a scope) · new · ask (`--assumed`) · decide · default · tried · list · models (one place) · spawned (ledger) |
 | `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
 | `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |

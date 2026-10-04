@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { REQUIRED_TEAM_KEYS, git, hasFileSlot, isMain, out, readJson, readText, scriptRoot } from './lib.mjs';
 
-export const SCRIPTS = ['lib', 'verify', 'redproof', 'work', 'brief', 'boundary', 'ship', 'state', 'claims', 'doctor', 'guard-rules', 'checkpoint', 'selftest', 'next'];
+export const SCRIPTS = ['lib', 'verify', 'redproof', 'work', 'brief', 'boundary', 'ship', 'state', 'claims', 'doctor', 'guard-rules', 'checkpoint', 'selftest', 'next', 'conduct'];
 // 갓 설치된 저장소에서 정상인 항목 — 이것만 빼고 전부가 설치(--fresh)·seed·ship을 fail-closed로 막는다(훅 침묵사 계열이 여기 들어오면 안 된다)
 export const FRESH_OK = [/alive 마커 없음/, /commands\.(quick|full|test_file) 비어 있음/];
 export function blocking(problems) { return problems.filter((p) => !FRESH_OK.some((re) => re.test(p))); }
@@ -52,6 +52,9 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
   if (!fs.existsSync(path.join(root, '.githooks', 'pre-commit'))) p.push('.githooks/pre-commit 없음 → install.sh 다시');
   else { const mode = git(['ls-files', '-s', '.githooks/pre-commit'], root).stdout.split(' ')[0]; if (mode && mode !== '100755') p.push(`.githooks/pre-commit이 인덱스에 ${mode}(실행 비트 없음) → git update-index --chmod=+x .githooks/pre-commit — 맥·리눅스에서 게이트가 조용히 무시된다`); }
   if (team && git(['rev-parse', '--verify', '-q', team.protected_branch], root).status) p.push(`보호 브랜치 ${team.protected_branch} 없음 → 첫 커밋을 만들어라`);
+  // 끊긴 worktree(2026-10-01 관찰 — 프로젝트 폴더를 옮기거나 unit 폴더를 손으로 지우면 링크가 깨지고 verify는 FAIL 줄 대신 스택을 냈다)
+  const wl = git(['worktree', 'list', '--porcelain'], root);
+  if (!wl.status) for (const block of wl.stdout.split(/\n\s*\n/)) if (/^prunable/m.test(block)) p.push(`worktree ${(/^worktree (.+)$/m.exec(block) || [])[1] || '?'} 끊김(prunable — 폴더가 없거나 링크가 깨졌다) → git worktree prune 뒤 .garagiste/units의 그 unit 상태를 확인(진행 중이면 work.mjs drop 뒤 다시 new)`);
   const gi = readText(path.join(root, '.gitignore'));
   for (const l of ['/.garagiste/ledger/', '/.garagiste/units/', '/.garagiste/session/', '/.garagiste/scope.json', '/.worktrees/', '.garagiste-pack']) if (!gi.includes(l)) p.push(`.gitignore에 ${l} 없음 → team/gitignore.snippet 추가`);
   const hz = readText(path.join(root, '.garagiste', 'HAZARDS.md'));

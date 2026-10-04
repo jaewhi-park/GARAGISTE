@@ -2,7 +2,7 @@
 
 > 코딩은 주장을 참으로 만드는 일이다. 주장은 테스트·프로브·불변식이고, 팀은 그 그래프 위의 스케줄러이며, 사람은 방향·현실·책임 — 그리고 창이다.
 
-GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 여섯 팩(boot·intake·spec·build·attack·spike), 판단 없는 스크립트 열넷, 경계를 지키는 훅/플러그인, 그리고 원장이다.
+GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**이다. 사람 회사를 흉내 내는 역할(기획자·비평가·리뷰어)이 없다. 있는 것은 파일로만 인수인계하는 여섯 팩(boot·intake·spec·build·attack·spike), 판단 없는 스크립트 열다섯, 경계를 지키는 훅/플러그인, 그리고 원장이다.
 
 - **실행되지 않은 것은 믿지 않는다.** 스펙은 red 인수 테스트, 승인은 exit code, 리뷰의 산출물은 실패하는 테스트.
 - **루프는 기계가 끝낸다.** 커밋 게이트가 원장과 tree를 대조하고, `ship`은 8조건이 전부 참일 때만 main에 닿는다.
@@ -42,6 +42,7 @@ GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**
               - 선행: db (session가 needs) · session (login가 needs)
               - 순서: db → session → login → share
 루프       ─▶ work.mjs seed → UNIT | WAIT <slug> needs … | SCOPE DONE
+           (무인이면 conduct.mjs가 이 루프를 멈춤까지 돈다 — conductor 세션 없이, 종료 코드가 멈춤)
 ```
 `needs`는 인간 관례가 아니라 주장 그래프의 간선이다. "이걸 하려면 저게 먼저"는 회의가 아니라 `closure()`의 출력이고, CEO는 받거나(`seed`) 선행을 빼거나(`--no-needs`, 원장에 남는다) 둘 중 하나만 한다.
 
@@ -60,6 +61,7 @@ CEO 「써봤다」 ─▶ work.mjs tried <slug> ok|fail
 | 스크립트 | 하는 일 |
 |---|---|
 | `next` | 루프의 다음 한 걸음을 한 줄로: run · spawn · ceo · wait · done — conductor는 이 줄만 따른다(seed → spec → redproof → build → attack → ship, re-spec·늦은 spike·충돌·한 번에 하나) |
+| `conduct` | Flow 4를 스크립트가 돈다 — next의 한 줄을 그대로 실행(run은 그 명령, spawn은 팩을 헤드리스 `claude -p --agent <팩>` 세션으로), 팩마다 spawned(실측 토큰·분·비용)·spawn_stop·체크포인트, `spec:` 반려 전달, CEO 결정만 요구하는 FAIL은 `ask --hold`로 그 unit만 세움. 멈춤이 종료 코드(0 done · 2 ceo · 3 wait · 4 프레임워크 FAIL · 5 상한) · `intake` · 다른 하네스는 `--spawner` |
 | `work` | 입구와 unit 생애: brief · add · scope(선행 닫힘) · seed · system(범위 끝의 이음새 공격) · new · ask(`--assumed`) · decide · default · tried · list · models(편성 한 곳) · spawned(원장 기록) |
 | `brief` | 팩 조립 ≤8 KB(intake는 32 KB) — 원문은 데이터 펜스, HAZARDS는 경로 매칭, 이어받기 절, worktree 마커 |
 | `verify` | quick · full · red · attack · **gate**(커밋마다 원장↔tree, 테스트 floor, step 300줄) |

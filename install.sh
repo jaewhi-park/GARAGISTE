@@ -18,6 +18,10 @@ done
 mkdir -p "$PROJECT"
 if ! ROOT="$(cd "$PROJECT" && git rev-parse --show-toplevel 2>/dev/null)"; then git -C "$PROJECT" init -q -b main; ROOT="$(cd "$PROJECT" && pwd)"; echo "git init: $ROOT"; fi
 command -v node >/dev/null || { echo "node가 없다 (20 이상)" >&2; exit 1; }
+# 설치 전의 상태 — 기존 저장소(HEAD 있음)가 깨끗했으면 팀 파일을 설치가 커밋한다(사고 70: brownfield에선 팀 파일이 미커밋으로 남아 첫 ship이 「메인 worktree에 미커밋 변경」으로 막혔다)
+PRE_HEAD=0; PRE_DIRTY=0; PRE_INSTALLED=0
+if git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then PRE_HEAD=1; [ -n "$(git -C "$ROOT" status --porcelain)" ] && PRE_DIRTY=1; fi
+[ -f "$ROOT/.garagiste/team.json" ] && PRE_INSTALLED=1
 run() { if [ "$DRY" = 1 ]; then echo "  [dry] $*"; else "$@"; fi; }
 case "$BUDGET" in
   low)    M_INTAKE=sonnet; M_SPEC=sonnet; M_BUILD=haiku;  M_ATTACK=sonnet; M_SPIKE=haiku;  M_BOOT=haiku ;;
@@ -83,6 +87,15 @@ if [ "$DRY" = 0 ] && ! git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1
   git -C "$ROOT" add -A && git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit
   # 사고 19(win32 원격 검증): 첫 커밋 실패를 경고로 삼키면 설치가 '전부 스테이징된 채 HEAD 없음/어긋남'으로 성공을 선언한다 — fail-closed
   if GARAGISTE_SHIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -m "scaffold(team): GARAGISTE 증거 팀 설치 [$FLAVOR, budget $BUDGET]"; then echo "  첫 커밋: 팀 파일"; else echo "설치 FAIL — 첫 커밋이 닫히지 않았다. 위 git 출력이 이유다." >&2; exit 1; fi
+elif [ "$DRY" = 0 ] && [ "$PRE_HEAD" = 1 ] && [ -n "$(git -C "$ROOT" status --porcelain)" ]; then
+  # 기존 저장소: 설치 전에 깨끗했으면 설치가 남긴 것은 전부 팀 파일이다 — 생성물 차선(GARAGISTE_SHIP·WIP — models·commands·report 커밋과 같다)으로 커밋. 더러웠으면 사람의 것과 섞이니 손대지 않는다.
+  if [ "$PRE_DIRTY" = 1 ]; then
+    echo "  팀 파일은 커밋하지 않았다 — 설치 전에 미커밋 변경이 있었다. 정리한 뒤: git add -A && GARAGISTE_SHIP=1 GARAGISTE_WIP=1 git commit -m 'scaffold(team): GARAGISTE 증거 팀 설치' (규칙집·배선은 생성물 차선 — 첫 ship은 main이 깨끗해야 한다)"
+  else
+    WHAT="설치"; [ "$PRE_INSTALLED" = 1 ] && WHAT="갱신"
+    git -C "$ROOT" add -A && git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit
+    if GARAGISTE_SHIP=1 GARAGISTE_WIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 $WHAT [$FLAVOR, budget $BUDGET]"; then echo "  팀 파일 커밋($WHAT — 기존 저장소, 생성물 차선)"; else echo "설치 FAIL — 팀 파일 커밋이 닫히지 않았다. 위 git 출력이 이유다." >&2; exit 1; fi
+  fi
 fi
 echo "---"
 # fail-closed: 빨간 채로 설치 완료를 선언하지 않는다 — doctor(--fresh: alive·빈 commands는 정상)와 selftest가 PASS여야 설치다

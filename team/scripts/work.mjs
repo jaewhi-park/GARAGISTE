@@ -440,6 +440,19 @@ function removeTry(c, slug) {
   if (git(['worktree', 'remove', '--force', dir], c.main).status) { fs.rmSync(dir, { recursive: true, force: true }); git(['worktree', 'prune'], c.main); }
   return true;
 }
+// unit 토큰 상한(CEO 접점) — 예산 정지 「unit 토큰 ≥ 상한」의 답: 이 unit의 상한을 올린다(원장 budget). 팩이 자기 상한을 올리지 못한다(가드 CEO_CMDS).
+function budget(c, slug, tokens) {
+  if (c.root !== c.main) fail('FAIL budget는 메인 저장소에서만 — 상한은 CEO 접점이다, 팩이 올리지 않는다');
+  const n = Number(String(tokens ?? '').replace(/[,_]/g, '').replace(/[kK]$/, '000'));
+  if (!slug || !Number.isInteger(n) || n <= 0) fail('사용법: work.mjs budget <slug> <토큰 상한 — 예: 1500000 또는 1500K>');
+  const u = loadUnit(c.main, c.team, slug);
+  if (u.state === 'shipped' || u.state === 'dropped') fail(`FAIL ${slug}은 ${u.state} — 상한은 진행 중 unit의 것`);
+  const prev = u.tokens_max ?? c.team.budgets.unit_tokens_max ?? 0;
+  u.tokens_max = n; saveUnit(c.main, c.team, u);
+  touchCeo(c.main);
+  appendLedger(c.main, c.team, { kind: 'budget', slug, tokens_max: n, prev });
+  out(`PASS budget ${slug} 토큰 상한 ${prev} → ${n}`);
+}
 function tryCopy(c, slug) {
   if (c.root !== c.main) fail('FAIL try는 메인 저장소에서만 — 써보는 것은 CEO의 일이다(팩은 자기 unit을 검수하지 않는다)');
   const u = readJson(unitFile(c.main, c.team, slug), null);
@@ -581,6 +594,7 @@ function main() {
   if (cmd === 'drop') return drop(c, pos[0], pos[1], flags);
   if (cmd === 'tried') return tried(c, pos[0], pos[1], pos[2]);
   if (cmd === 'try') return tryCopy(c, pos[0]);
+  if (cmd === 'budget') return budget(c, pos[0], pos[1]);
   if (cmd === 'list') return list(c);
   if (cmd === 'models') return models(c, raw);
   if (cmd === 'commands') return commands(c, raw);
@@ -588,5 +602,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · try <slug> · tried <slug> ok|fail ["<말>"] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();

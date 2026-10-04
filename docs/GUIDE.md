@@ -59,4 +59,24 @@ opencode는 기본 provider/model을 상속한다. 팩별로 바꾸려면 같은
 - **테스트가 root에서 다르게 돈다(컨테이너).** `.garagiste/env.local`(추적 안 함)에 `GARAGISTE_RUNNER=…`를 두면 verify가 그 환경으로 돈다. 맥에선 필요 없다.
 - **pnpm 모노레포.** worktree에 패키지별 node_modules가 링크된다(자동). 안 되면 `pnpm install`을 worktree에서.
 - **ship이 spike를 요구한다.** diff가 package.json·워크플로·설치기 등 boundary 파일을 건드렸다. spike 팩을 돌려 `docs/measurements/spike-<slug>.md`의 필수 행(wire·host·license·default·os·측정)을 채운다.
+- **STOP ceo … unit 토큰 상한.** 그 unit이 spawn 토큰을 상한(team.json `budgets.unit_tokens_max`, 기본 1M)만큼 썼다 — attack↔build 진동의 예산 장치. 계속이면 `node .garagiste/scripts/work.mjs budget <slug> 2000000`, 아니면 `work.mjs drop <slug> "<사유>"`.
 - **에이전트가 경계 밖에 썼다.** 훅이 거부해야 정상이다. 거부 로그가 없는데 파일이 바뀌었으면 훅이 죽은 것이다 → doctor.
+
+## 8. 무인으로 돌리기 — conduct.mjs (2026-10-04)
+Flow 4(루프)는 모델이 아니라 스크립트가 돌 수 있다. conductor 세션이 `next.mjs`의 한 줄을 읽고 실행하던 자리를 `conduct.mjs`가 대신한다 — 팩은 헤드리스 세션(`claude -p <팩 경로> --agent <팩>`)으로 뜨고 `.claude/agents/<팩>.md`가 모델·도구·정체를, 훅이 경계를, 게이트가 증거를 그대로 지킨다. Flow 1~3·7(구상·답·범위·끼어들기)은 대화다.
+```bash
+cd ~/work/f1
+node .garagiste/scripts/conduct.mjs intake          # Flow 2: brief.mjs intake → intake 팩 → work.mjs list (질문은 CEO가 work.mjs decide)
+node .garagiste/scripts/work.mjs scope --milestone M1
+node .garagiste/scripts/conduct.mjs                 # Flow 4: 멈출 때까지 — 「아침」 절의 멈춤과 같고 종료 코드가 멈춤이다
+```
+| 종료 코드 | 멈춤 | CEO가 할 일 |
+|---|---|---|
+| 0 | SCOPE DONE(이음새 공격·REPORT 뒤) | 다음 범위 `work.mjs scope` |
+| 2 | ceo — hard 질문 · 미검수 3 · 무인 출하 5 · unit 토큰 상한 · 범위 없음 | docs/STATUS.md 첫 줄 · 카드(`work.mjs try` → `tried`) · `decide` · `budget` |
+| 3 | wait — 선행 unit 또는 CEO 결정 | `decide` 뒤 다시 |
+| 4 | 프레임워크 FAIL — 같은 FAIL 되풀이 · 팩 비정상 종료 2회 · worktree가 그대로인 팩 재spawn 2회 | 그 줄 전문을 정비 채널로(우회·스크립트 편집 없음), STATUS 「막힌 것」에 남는다 |
+| 5 | 상한 — `--max-steps`(기본 200) · `--max-minutes` · `--once` | 다시 돌리면 이어서 |
+- 전제: 그 폴더에서 대화형 `claude`를 한 번 열어 작업 공간을 신뢰했을 것(헤드리스엔 신뢰 대화가 없다). 팩마다 `.garagiste/session/logs/conduct-<slug>-<팩>-<시각>.json`에 stdout·stderr가 남고, 원장 spawn 줄에 실측 토큰·분·비용이 적힌다(`work.mjs spawned`와 같은 줄).
+- CEO 결정만 요구하는 FAIL(두 번째 spec 반려 · 팩 상한 2배 · 이미 충족)은 안내 끝의 `work.mjs ask … --hold`를 드라이버가 그대로 실행해 그 unit만 세운다 — 답은 저녁에 `decide`.
+- 대화형 conductor와 같은 저장소에서 동시에 돌리지 않는다 — unit은 한 번에 하나다. 다른 하네스·시험은 `--spawner "<명령 템플릿 {path} {pack} {slug} {model} {turns}>"`(모델 0 가짜 팩은 `tests/fakes/pack.mjs`).
