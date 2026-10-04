@@ -1087,6 +1087,9 @@ test('brief: 사고 68(L2 6판 팩 상한 FAIL 7/7이 build의 인수+공격 테
   assert.equal(autoLane([{ key: 'unit', text: big(36 * KB) }], 36 * KB, 32), '', '테스트가 아닌 몫의 초과는 자동이 아니다 — 이유를 묻는다');
   assert.equal(autoLane([{ key: 'unit', text: big(33 * KB) }, { key: 'acceptance', text: big(2 * KB) }], 35 * KB, 32), '', '테스트를 빼도 상한을 넘으면 자동이 아니다');
   assert.equal(autoLane([{ key: 'acceptance', text: big(70 * KB) }], 70 * KB, 32), '', '2배 벽은 자동으로 넘지 않는다 — CEO 결정');
+  // 사고 81(20라운드 여섯째 날): system-5 attack 팩이 출하 14의 표면·카드로 32KB를 넘어 brief가 이유를 물었고 conduct는 같은 FAIL 둘로 섰다 — 출하 unit 절도 법(이음새 공격의 표면)
+  assert.match(autoLane([{ key: 'system', text: big(3 * KB) }, { key: 'units', text: big(31 * KB) }], 34 * KB, 32), /^자동: 인수 테스트 0\.0KB \+ 공격 테스트 0\.0KB \+ 출하 unit 표면·카드 31\.0KB — 그 밖 3\.0KB ≤ 32KB$/, 'system 공격 팩의 출하 unit 몫은 자동 이유');
+  assert.equal(autoLane([{ key: 'system', text: big(33 * KB) }, { key: 'units', text: big(2 * KB) }], 35 * KB, 32), '', '출하 unit 몫을 빼도 넘으면 이유를 묻는다');
 });
 test('verify: 사고 69(L2 6판 안내 없는 FAIL gate 줄 2) — FAIL gate 첫 줄에 첫 이유가 든다(원장 fail 줄은 첫 줄 300자만 남는다), 나머지 이유는 아래 줄', () => {
   const l = gateFailLine(['원장에 이 tree(abc1234)의 quick PASS 없음 — node .garagiste/scripts/verify.mjs quick', '로직 변경에 테스트 파일이 없다 — red 테스트가 먼저다']);
