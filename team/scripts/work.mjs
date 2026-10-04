@@ -5,6 +5,7 @@ import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
 import { appendLedger, ceoTouch, ctx, fail, git, hasFileSlot, isMain, linkDeps, unlinkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson, conductBusyLine, conductRunning } from './lib.mjs';
 import { budgetStatus } from './state.mjs';
+import { probeCommand, probeNames } from './verify.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt'];
@@ -377,6 +378,8 @@ function decide(c, n, answer) {
     appendLedger(c.main, c.team, { kind: 'respec', slug, q: Number(n) });
     out(`RESPEC ${slug} — Q${n}의 답이 진행 중에 왔다: spec이 답을 red 수용 테스트로 박는다 → node .garagiste/scripts/brief.mjs spec ${slug} (build·attack·ship은 그 뒤에 열린다)`);
   }
+  // 12라운드(실전 첫 run 측정 2026-10-04): hold(사고 59)에 걸린 unit의 답은 re-spec이 아니다 — 답의 길은 그 FAIL의 안내. ACCEPT 줄만 보면 conductor가 spec을 다시 띄운다(실전 run의 Q1이 그 줄을 냈다).
+  for (const u of units) if ((u.holds || []).map(Number).includes(Number(n)) && u.state !== 'shipped' && u.state !== 'dropped') out(`HOLD ${u.slug} — Q${n}의 답이 왔다: re-spec 없음, 답의 길은 그 FAIL의 안내(STATUS 「막힌 것」·원장 fail 줄) — 이미 충족이면 node .garagiste/scripts/work.mjs drop ${u.slug} "<사유>" --forget · 다시 열려면 node .garagiste/scripts/brief.mjs <팩> ${u.slug}`);
   // 사고 66: 결정은 인수다 — 그 Q를 기다리는 첫 열린 unit의 인수에 잇는다(spec이 red 수용 테스트로 박는다)
   const qt = questionText(updated, Number(n));
   const acc = qt && acceptWithDecision(readText(backlogPath(c)), Number(n), answer, qt.text, qt.who);
@@ -491,6 +494,17 @@ function tryCopy(c, slug) {
   out(`TRY ${slug} → .worktrees/try-${slug} (main ${head}) — 카드(${c.team.paths.units_docs}/${slug}/try.md)는 이 폴더에서 친다: 만든 파일은 사본에 남고 main은 깨끗하다 · 끝나면 메인에서 node .garagiste/scripts/work.mjs tried ${slug} ok|fail "<말>" (사본은 tried가 지운다)`);
 }
 // boot 팩의 쓰기 경로: team.json commands는 스크립트만 쓴다 — 그리고 boot(scaffold) 컨텍스트만. 다른 팩이 검증 명령을 바꾸는 것은 초록 조작이다.
+// 12라운드(실전 첫 run 측정): adopt 팩이 quick·full을 파일 목록으로 적었다(`node --test tests/unit/x.test.js tests/total.test.js`) — 인수·공격 파일이 full에 안 든다. 등록 때 탐침으로 — 팩이 그 자리에서 고친다(ship 때는 늦다 — adopt는 그 팩 하나로 출하된다).
+export function blindCommands(cmds, paths, dir) {
+  const unitDir = path.join(dir, 'tests', 'unit');
+  const unitFiles = fs.existsSync(unitDir) ? fs.readdirSync(unitDir).filter((f) => { try { return fs.statSync(path.join(unitDir, f)).isFile(); } catch { return false; } }).map((f) => `tests/unit/${f}`) : [];
+  const names = probeNames(paths, unitFiles);
+  if (!names.length) return [];
+  const probs = [];
+  if (cmds.full) { const r = probeCommand(cmds.full, names, dir); if (r.before === 0 && r.after === 0) probs.push(`full이 ${paths.acceptance}·${paths.adversary}의 파일을 돌리지 않는다 — 깨진 탐침(${names.join(' · ')})을 두고도 exit 0: full="${cmds.full}". 인수·공격 파일이 출하 뒤 회귀를 지키지 못한다 → 그 자리까지 도는 꼴로(boot 팩 4 — Node: node --test "tests/**/*.test.mjs" · Python: tests/harness로 전부 · Go: go test ./...)`); }
+  if (cmds.quick) { const r = probeCommand(cmds.quick, names, dir); if (r.before === 0 && r.after !== 0) probs.push(`quick이 ${paths.acceptance}·${paths.adversary}의 파일을 돈다 — 깨진 탐침에 red: quick="${cmds.quick}". 그 자리는 red로 커밋되는 자리라 게이트의 quick이 막힌다 → quick은 tests/unit(과 초록인 기존 테스트)만`); }
+  return probs;
+}
 function commands(c, args) {
   const teamPath = path.join(c.root, '.garagiste', 'team.json');
   const t = readJson(teamPath, null);
@@ -508,6 +522,7 @@ function commands(c, args) {
     if (m[1] === 'test_file' && !hasFileSlot(m[2])) fail('FAIL test_file에는 {file}(파일 하나) 또는 {files}(여러 파일을 한 번에) 자리표시자가 있어야 한다');
     t.commands[m[1]] = m[2];
   }
+  if (!process.env.GARAGISTE_ADMIN) { const blind = blindCommands(t.commands, c.team.paths, c.root); if (blind.length) fail(`FAIL commands — 눈먼 명령 ${blind.length}(저장하지 않았다)\n${blind.map((x) => `- ${x}`).join('\n')}`); } // CEO(ADMIN)의 손은 판단이다 — 탐침은 팩의 등록에만
   writeJson(teamPath, t);
   appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' });
   // 사고 34(필드 시험 2): 메인 루트의 CEO 변경은 boot의 커밋이 없다 — models처럼 스스로 커밋하고(ship이 main dirt로 막히지 않게), 바뀐 설치 명령은 main에서 한 번 돌린다(다음 worktree가 그 의존성을 잇는다)

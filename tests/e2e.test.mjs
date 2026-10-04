@@ -1203,7 +1203,14 @@ test('adopt 탄생: 기존 코드 → intake 팩이 「저장소 상태: 코드 
   // adopt 팩이 할 일을 테스트가 대신한다 — 소스는 그대로
   write(wt, 'tests/unit/adopt-greet.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawn, spawnSync } from 'node:child_process';\ntest('특성화: greet Ada → hi Ada', () => { const r = spawnSync(process.execPath, ['bin/greet.js', 'Ada'], { encoding: 'utf8' }); assert.equal(r.status, 0); assert.equal(r.stdout.trim(), 'hi Ada'); });\ntest('특성화: 이름 없음 → hi there', () => { assert.equal(spawnSync(process.execPath, ['bin/greet.js'], { encoding: 'utf8' }).stdout.trim(), 'hi there'); });\n");
   write(wt, '.gitattributes', '* text=auto eol=lf\n');
-  assert.match(script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test tests/unit/*.test.mjs test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install'], wt).out, /^COMMANDS /, 'commands는 adopt의 worktree에서도 열린다');
+  // 12라운드(실전 첫 run 측정): 파일 목록 full은 인수·공격 자리를 보지 않는다 — 등록 때 탐침이 거부하고 저장하지 않는다(실전의 adopt 팩이 정확히 이 꼴을 적었다)
+  const blind = script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test tests/unit/*.test.mjs test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install'], wt);
+  assert.equal(blind.status, 1); assert.match(blind.out, /^FAIL commands — 눈먼 명령 1\(저장하지 않았다\)\n- full이 tests\/acceptance·tests\/adversary의 파일을 돌리지 않는다 — 깨진 탐침\(tests\/acceptance\/garagiste-probe-adopt-greet\.test\.mjs · tests\/adversary\/garagiste-probe-adopt-greet\.test\.mjs\)을 두고도 exit 0/, blind.out);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(wt, '.garagiste/team.json'), 'utf8')).commands.full, '', '저장하지 않았다');
+  assert.ok(!fs.existsSync(path.join(wt, 'tests/acceptance/garagiste-probe-adopt-greet.test.mjs')), '탐침 파일은 남지 않는다');
+  const wide = script('work', ['commands', 'quick=node --test "tests/**/*.test.mjs" test/*.test.js', 'full=node --test "tests/**/*.test.mjs" test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install'], wt);
+  assert.equal(wide.status, 1); assert.match(wide.out, /^FAIL commands — 눈먼 명령 1\(저장하지 않았다\)\n- quick이 tests\/acceptance·tests\/adversary의 파일을 돈다 — 깨진 탐침에 red/, wide.out);
+  assert.match(script('work', ['commands', 'quick=node --test tests/unit/*.test.mjs test/*.test.js', 'full=node --test "tests/**/*.test.mjs" test/*.test.js', 'test_file=node --test {files}', 'run=node bin/greet.js', 'setup=npm install'], wt).out, /^COMMANDS /, 'commands는 adopt의 worktree에서도 열린다 — full은 인수·공격 자리까지, quick은 unit만');
   assert.match(script('work', ['rules', 'project=greet', 'one_line=인사 CLI'], wt).out, /^RULES CLAUDE\.md/);
   git(['add', '-A'], wt);
   assert.match(script('verify', ['quick'], wt).out, /^PASS verify:quick/);
@@ -1302,7 +1309,11 @@ test('conduct check: 실전 전 preflight — claude CLI·작업 공간 신뢰·
   fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ projects: { [repo]: { hasTrustDialogAccepted: false } } }));
   const untrusted = script('conduct', ['check'], repo, env);
   assert.equal(untrusted.status, 1); assert.match(untrusted.out, /^FAIL conduct check 1\n- 작업 공간 신뢰 없음/);
-  fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ projects: { [fs.realpathSync(repo)]: { hasTrustDialogAccepted: true } } }));
+  assert.match(untrusted.out, /conduct\.mjs trust\(그 키를 쓴다/, '12라운드: 수리 명령이 안내에 있다');
+  const trust = script('conduct', ['trust'], repo, env); // 12라운드: 명령 하나가 그 키를 쓴다(측정: 신뢰 없는 폴더의 -p는 allow를 버려 팩의 Bash가 전부 거부된다) — 다른 키는 그대로
+  assert.equal(trust.status, 0, trust.out); assert.match(trust.out, /^PASS conduct trust — .*hasTrustDialogAccepted=true/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(home, '.claude.json'), 'utf8')).projects[repo].hasTrustDialogAccepted, true);
+  assert.match(script('conduct', ['trust'], repo, env).out, /^PASS conduct trust — 이미 신뢰됨/);
   const pass = script('conduct', ['check'], repo, env);
   assert.equal(pass.status, 0, pass.out);
   assert.match(pass.out, /^PASS conduct check — doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · claude 2\.1\.289 · 깃발 ok · agents 7 · allow node · 신뢰 ok$/m);

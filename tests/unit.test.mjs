@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { cdBase, decide, expandAssignments, expandTemp, inlineCodeWrite, isTempPath, makeCtx, stripQuoted, worktreeFromCommand, writeTargets } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
-import { blindFiles, gateDecision, gateFailLine, logicLines, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
+import { blindFiles, gateDecision, gateFailLine, logicLines, probeCommand, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { againCmd, attackRoundUsed, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
@@ -23,7 +23,7 @@ import { versionLine } from '../team/scripts/doctor.mjs';
 import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
 import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
 import { PACKS as CP_PACKS } from '../team/scripts/checkpoint.mjs';
-import { killPlan, missingFlags, orphanOf, runChild, spawnOpts, spawnerGap } from '../team/scripts/conduct.mjs';
+import { killPlan, missingFlags, orphanOf, runChild, spawnOpts, spawnerGap, trustWorkspace, trustedIn } from '../team/scripts/conduct.mjs';
 import { conductBusyLine, conductRunning, readLedger } from '../team/scripts/lib.mjs';
 import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
@@ -1111,11 +1111,12 @@ test('work: 사고 66(L2 6판 결함 1 — Q1 「예」의 래퍼 둘이 어느 
 
 // conduct — Flow 4의 conductor를 모델 밖으로(R&D 2026-10-04): 한 줄을 읽고 그대로 실행하는 자리의 순수 함수들
 test('conduct: 인자 — 기본값·상한·spawner 템플릿·intake·모르는 인자는 FAIL 사유', () => {
-  assert.deepEqual(conductArgs([]), { ...CONDUCT_DEFAULTS, once: false, intake: false, check: false });
+  assert.deepEqual(conductArgs([]), { ...CONDUCT_DEFAULTS, once: false, intake: false, check: false, trust: false });
   const o = conductArgs(['intake', '--once', '--max-steps', '3', '--max-minutes', '90', '--turns', '50', '--spawner', 'node fake.mjs', '--pack-minutes', '45', '--max-usd', '12.5']);
-  assert.deepEqual(o, { maxSteps: 3, maxMinutes: 90, turns: 50, spawner: 'node fake.mjs', packMinutes: 45, maxUsd: 12.5, packUsd: null, once: true, intake: true, check: false });
+  assert.deepEqual(o, { maxSteps: 3, maxMinutes: 90, turns: 50, spawner: 'node fake.mjs', packMinutes: 45, maxUsd: 12.5, packUsd: null, once: true, intake: true, check: false, trust: false });
   assert.equal(conductArgs(['--pack-usd', '2.5']).packUsd, 2.5, '팩 하나의 비용 상한(claude --max-budget-usd)');
   assert.equal(conductArgs(['check', '--spawner', 'x']).check, true, 'check — 실전 전 preflight');
+  assert.equal(conductArgs(['trust']).trust, true, 'trust — 신뢰 키 하나(12라운드)');
   assert.deepEqual([conductArgs([]).packMinutes, conductArgs([]).maxUsd], [null, null], 'null이면 team.json budgets(pack_minutes_max · run_usd_max)에서');
   assert.match(conductArgs(['--max-usd', '-1']).error, /maxUsd/);
   assert.match(conductArgs(['--bogus']).error, /알 수 없는 인자 --bogus/);
@@ -1134,8 +1135,39 @@ test('conduct: 결과 읽기 — claude -p --output-format json의 토큰·분·
   const r = parseResult(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, duration_ms: 90000, num_turns: 12, total_cost_usd: 0.42, usage: { input_tokens: 1000, output_tokens: 500, cache_creation_input_tokens: 200, cache_read_input_tokens: 300 }, result: '커밋 2\nverify full PASS' }));
   assert.deepEqual({ tokens: r.tokens, minutes: r.minutes, cost: r.cost, turns: r.turns, isError: r.isError, text: r.text }, { tokens: 2000, minutes: 1.5, cost: 0.42, turns: 12, isError: false, text: '커밋 2\nverify full PASS' });
   assert.equal(parseResult(JSON.stringify({ subtype: 'error_max_turns', is_error: false, result: '' })).isError, true, 'success가 아닌 subtype은 오류다');
-  assert.deepEqual(parseResult('그냥 글\n두 줄'), { json: null, text: '그냥 글\n두 줄', tokens: null, minutes: null, cost: null, turns: null, isError: false });
+  assert.deepEqual(parseResult('그냥 글\n두 줄'), { json: null, text: '그냥 글\n두 줄', tokens: null, minutes: null, cost: null, turns: null, isError: false, model: null, reason: null });
   assert.equal(parseResult('앞 잡음\n{"result":"x","usage":{"input_tokens":5}}').tokens, 5, '마지막 JSON 객체를 읽는다');
+  // 12라운드 측정(claude 2.1.289 -p, 2026-10-04): 예산 초과 결과 — usage 전부 0 · modelUsage에만 실측(cacheCreation 21406) · subtype error_max_budget_usd · errors 한 줄 · result 없음
+  const over = parseResult(JSON.stringify({ type: 'result', subtype: 'error_max_budget_usd', is_error: true, num_turns: 1, duration_ms: 4134, total_cost_usd: 0.42834, terminal_reason: 'budget_exhausted', errors: ['Reached maximum budget ($0.05)'], usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 0, cache_read_input_tokens: 0 }, modelUsage: { 'claude-fable-5-1': { inputTokens: 2, outputTokens: 4, cacheReadInputTokens: 0, cacheCreationInputTokens: 21406, costUSD: 0.42834 } } }));
+  assert.deepEqual({ tokens: over.tokens, model: over.model, reason: over.reason, isError: over.isError, text: over.text, cost: over.cost }, { tokens: 21412, model: 'claude-fable-5-1', reason: 'error_max_budget_usd: Reached maximum budget ($0.05)', isError: true, text: '', cost: 0.42834 }, 'usage가 0이면 modelUsage 합 · 실측 모델 · 사유');
+  const okRun = parseResult(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, num_turns: 2, duration_ms: 4153, total_cost_usd: 0.031601, usage: { input_tokens: 4, output_tokens: 390, cache_creation_input_tokens: 6608, cache_read_input_tokens: 6305 }, modelUsage: { 'claude-sonnet-5-5': { inputTokens: 4, outputTokens: 390, cacheCreationInputTokens: 6608, cacheReadInputTokens: 6305, costUSD: 0.031601 } }, result: 'ok' }));
+  assert.deepEqual({ tokens: okRun.tokens, model: okRun.model, reason: okRun.reason }, { tokens: 13307, model: 'claude-sonnet-5-5', reason: null }, '--agent build가 agents 파일의 model: sonnet을 실제로 썼다(측정)');
+});
+test('verify(12라운드): probeCommand — 깨진 탐침을 인수·공격 자리에 두기 전·뒤의 exit(full은 뒤가 red여야 · quick은 뒤도 green이어야), 탐침 파일은 남지 않고 있던 파일은 되돌린다', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-probe-cmd-'));
+  const files = ['tests/acceptance/garagiste-probe-smoke.test.mjs', 'tests/adversary/garagiste-probe-smoke.test.mjs'];
+  fs.mkdirSync(path.join(d, 'tests/adversary'), { recursive: true }); fs.writeFileSync(path.join(d, files[1]), 'kept');
+  const sees = `node -e "process.exit(require('fs').existsSync('${files[0]}') ? 1 : 0)"`; // 그 자리를 보는 full의 모형
+  assert.deepEqual(probeCommand(sees, files, d), { before: 0, after: 1 }, '그 자리를 보는 명령은 탐침에 red');
+  assert.deepEqual(probeCommand('true', files, d), { before: 0, after: 0 }, '안 보는 명령은 탐침에도 green — full이면 눈먼 것, quick이면 옳은 것');
+  assert.deepEqual(probeCommand('false', files, d), { before: 1, after: null }, '탐침 전부터 red면 판단하지 않는다');
+  assert.ok(!fs.existsSync(path.join(d, files[0])), '탐침 파일은 남지 않는다');
+  assert.equal(fs.readFileSync(path.join(d, files[1]), 'utf8'), 'kept', '있던 파일은 되돌린다');
+});
+test('conduct(12라운드): trustWorkspace — ~/.claude.json의 다른 키는 그대로 두고 projects[root].hasTrustDialogAccepted만 켠다 · 파일 없으면 FAIL 사유 · 이미면 already · JSON 아니면 손대지 않는다', () => {
+  const home = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-trust-'));
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-root-'));
+  assert.match(trustWorkspace(root, { home }).error, /\.claude\.json 없음/, '로그인한 기계에서만');
+  fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ oauthAccount: { x: 1 }, numStartups: 3, projects: { '/other': { hasTrustDialogAccepted: true, allowedTools: ['a'] } } }));
+  assert.equal(trustedIn(JSON.parse(fs.readFileSync(path.join(home, '.claude.json'), 'utf8')), root), false);
+  const r = trustWorkspace(root, { home });
+  assert.deepEqual([r.ok, r.already], [true, false]);
+  const cj = JSON.parse(fs.readFileSync(path.join(home, '.claude.json'), 'utf8'));
+  assert.deepEqual({ o: cj.oauthAccount, n: cj.numStartups, other: cj.projects['/other'] }, { o: { x: 1 }, n: 3, other: { hasTrustDialogAccepted: true, allowedTools: ['a'] } }, '다른 키는 그대로');
+  assert.equal(trustedIn(cj, root), true);
+  assert.equal(trustWorkspace(root, { home }).already, true, '두 번째는 already');
+  fs.writeFileSync(path.join(home, '.claude.json'), 'not json');
+  assert.match(trustWorkspace(root, { home }).error, /JSON 아님/);
 });
 test('conduct: 반려 줄·FAIL 열쇠·hold 안내·진전 없음', () => {
   assert.equal(specReturn('커밋 0 · verify full 안 돌림\nspec: 인수가 서로 어긋난다 — -30000 ⊃ 3000'), '인수가 서로 어긋난다 — -30000 ⊃ 3000');

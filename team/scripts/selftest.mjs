@@ -57,7 +57,7 @@ step('conduct --once (한 걸음: brief boot → STOP cap)', () => script('condu
 step('brief boot', () => script('brief', ['boot', 'boot']), (r) => /^PACK/.test(r.out));
 write('.worktrees/boot/src/cli.mjs', "process.stdout.write('hello\\n');\n");
 write('.worktrees/boot/tests/unit/smoke.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('entry starts', () => { assert.equal(spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }).status, 0); });\n");
-step('work commands (worktree)', () => script('work', ['commands', 'quick=node --test tests/unit/smoke.test.mjs', 'full=node --test tests/unit/smoke.test.mjs', 'test_file=node --test {file}', 'run=node src/cli.mjs'], wt), (r) => /^COMMANDS/.test(r.out));
+step('work commands (worktree)', () => script('work', ['commands', 'quick=node --test tests/unit/smoke.test.mjs', 'full=node --test "tests/**/*.test.mjs"', 'test_file=node --test {file}', 'run=node src/cli.mjs'], wt), (r) => /^COMMANDS/.test(r.out));
 step('work rules', () => script('work', ['rules', 'project=selftest', 'one_line=hello 도구'], wt), (r) => /^RULES/.test(r.out));
 step('verify quick (worktree)', () => script('verify', ['quick'], wt), (r) => /^PASS verify:quick/.test(r.out));
 step('커밋 게이트 (원장 ↔ tree)', () => { git(['add', '-A'], wt); return git(['commit', '-q', '-m', 'scaffold(boot): selftest\n\nUnit: boot\nStep: 1'], wt); });
