@@ -36,7 +36,7 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **Q12. 포트폴리오 — CEO 주의력이 전 제품의 스케줄링 자원.**
   전역 미검수 상한 + 제품 관통 인박스(각 레포 STATUS 첫 줄 수집) + 공유 HAZARDS(프레임워크 제공 + 제품 오버레이 — 이미 그 구조). 제품 2개 이상일 때만 구현.
   검사: 전역 상한 도달 시 모든 레포의 seed 정지.
-- **Q13. 레거시 팩 — 회사 투입의 전제.** **→ 입구 채용 2026-10-04(R&D 3라운드)**: adopt 팩(기존 코드의 첫 unit — 특성화·commands·rules, 소스 불변) + intake 「저장소 상태」 + brief `repoMap`(폴더·매니페스트·기존 테스트·README — map.mjs의 최소형). 특성화 대량 고정·관심 영역 지도·`kind: refactor`(동작 보존 증명)는 parcel-desk 첫 측정의 멈춘 자리에서.
+- **Q13. 레거시 팩 — 회사 투입의 전제.** **→ 입구 채용 2026-10-04(R&D 3라운드)**: adopt 팩(기존 코드의 첫 unit — 특성화·commands·rules, 소스 불변) + intake 「저장소 상태」 + brief `repoMap`(폴더·매니페스트·기존 테스트·README — map.mjs의 최소형). 특성화 대량 고정·관심 영역 지도·`kind: refactor`(동작 보존 증명)는 parcel-desk 첫 측정의 멈춘 자리에서. **→ 둘째 조각 2026-10-04(R&D 7라운드)**: `kind: refactor`(동작 보존 증명 — 핀은 base·head 모두 초록, redproof·ship·next·brief가 안다) + 드라이버 틈 수리(attack red 0 뒤 tree의 redproof·full). 남은 조각: 특성화 대량 고정 · 관심 영역 지도.
   v1에서 살아남을 자격이 있는 것(assess·parity — 대상이 사람 마음이 아니라 코드): 현행 동작의 characterization 테스트 = 수용 기준, redproof 그대로 작동. incremental intake(오프셋 재개)는 있음 — LACUNA 레거시 intake 팩 151KB가 반례 근거.
   검사: 기존 코드베이스 1개에서 boot 없이 첫 unit 출하.
 
@@ -111,3 +111,4 @@ L0 수리와 L1 진입 조건은 2026-09-29에 끝났다 — 상태 표·항목(
 - **채용(R&D 4라운드 2026-10-04)**: ship 재검증(`ship_reverify` 기본 true) · 가드 인라인 코드 쓰기 거부 · `conduct.mjs check`. Q8 검사의 리눅스 몫.
 - **채용(R&D 5라운드 2026-10-04)**: opencode 레인 패리티 — 가드 플러그인 실행 테스트 · task spawn_stop 팩 이름 · conductor task 허용 adopt · 팩 목록 하나(unit) · conduct spawnerGap · selftest L1 거부 1건. Q8 검사 완료, L3 게이트 후반.
 - **채용(R&D 6라운드 2026-10-04)**: 고아 팩(측정 → conduct 비동기 spawn · 잠금 child pid · 신호 전달) · 비밀 파일 읽기 거부(측정 → Bash 토큰·Read 매처·opencode read). 둘 다 「무인 안전벨트」(DEVICES 4.6)와 가드의 약속을 코드로.
+- **채용(R&D 7라운드 2026-10-04)**: kind refactor(Q13 둘째 조각 — 뒤집힌 red 증명 = 핀) · next의 attack 뒤 redproof·full 한 걸음(드라이버 틈) · verify.mjs quick|full [<slug>].

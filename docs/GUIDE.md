@@ -93,3 +93,13 @@ node .garagiste/scripts/conduct.mjs --max-usd 15 --pack-minutes 45   # 이 실�
 | L0 — git 훅 + 스크립트 + 원장 | 원장 없는 커밋은 게이트가, 약화된 테스트는 redproof가, 출하는 8조건이 막는다. **ship은 머지 직전 통합 tree에서 full·redproof·attack을 스스로 다시 돈다**(team.json `ship_reverify`, 기본 켬) | 위조한 PASS 줄은 게이트를 지나간다 — 원장은 증거이지 증명이 아니다. main에 닿는 길은 ship뿐이라 재검증이 마지막 벽 |
 | L1 — guard 훅·플러그인 | 규칙집·원장·배선 쓰기 거부(파일 도구·셸 리다이렉트·in-place verb·인라인 코드), 팩의 쓰기 경계, 파괴적 git, 게이트 우회 접두, 비밀 파일(.env·*.pem·*.key·credentials·id_rsa)은 읽기도(6라운드) | 정규식 — 최선 노력. 읽기는 막지 않는다(의도). OS 샌드박스는 백로그 후보 |
 | L2 — 팩 산문 | 할 일·하지 않는 것 | 조언 — 모델이 따를 때만 |
+
+## 10. unit의 정체(kind)와 증명 (2026-10-04 7라운드)
+| kind | 언제 | 증명(ship 조건 redproof) | 팩 |
+|---|---|---|---|
+| feature(기본) | 새 동작 | 인수 테스트가 base에서 red · head에서 green | spec → build → attack |
+| scaffold | 빈 저장소의 첫 unit(`boot`) | 러너 자신의 red(깨진 탐침이 exit≠0) | boot 하나 |
+| adopt | 기존 코드의 첫 unit | 특성화 테스트의 quick·full(소스 불변) | adopt 하나 |
+| **refactor** | 동작 그대로 구조만 | **핀**(현재 동작)이 base에서도 head에서도 green — base red면 feature다, head red면 동작이 바뀌었다 | spec(핀) → build(구조) → attack(바뀐 동작) |
+| system | 범위 끝의 이음새 공격 | 공격 발견 ≥1(red였던 공격 파일) | attack → (build) |
+`work.mjs add|new <slug> "<원문>" --kind refactor` — intake가 「동작 그대로 구조만」인 요청에 쓴다. 팩 산문은 kind를 모른다 — brief.mjs가 refactor 절을 코드로 넣는다.

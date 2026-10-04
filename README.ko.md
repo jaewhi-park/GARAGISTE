@@ -32,7 +32,7 @@ GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**
 검증 명령(`commands`: quick·full·test_file·run)은 첫 unit `boot`가 `work.mjs commands`로 채운다 — 사람이 채울 파일은 없다. 규칙: `quick`은 `tests/acceptance`·`tests/adversary`를 빼고(red 상태로 커밋되므로), `full`은 전부 포함한다.
 
 ## 입구 — 빈 폴더에서 범위까지
-설치는 명령 한 줄(`install.sh claude -Project <빈 폴더>`: git init · 팀 파일 · 첫 커밋). 그 뒤 사람이 채울 파일은 없다 — 첫 unit `boot`(kind scaffold)가 스택·검증 명령·스모크·규칙 파일을 채우고 ship한다. 기존 코드가 있는 저장소면 첫 unit은 `adopt`(kind adopt)다 — 현재 동작을 특성화 테스트로 굳히고 검증 명령·규칙 파일을 채우며 제품 코드는 바꾸지 않는다(intake가 「저장소 상태」로 가른다). 한 문장씩 말하지 않는다. 입력 단위는 대화 전체다.
+설치는 명령 한 줄(`install.sh claude -Project <빈 폴더>`: git init · 팀 파일 · 첫 커밋). 그 뒤 사람이 채울 파일은 없다 — 첫 unit `boot`(kind scaffold)가 스택·검증 명령·스모크·규칙 파일을 채우고 ship한다. 기존 코드가 있는 저장소면 첫 unit은 `adopt`(kind adopt)다 — 현재 동작을 특성화 테스트로 굳히고 검증 명령·규칙 파일을 채우며 제품 코드는 바꾸지 않는다(intake가 「저장소 상태」로 가른다). 한 문장씩 말하지 않는다. 입력 단위는 대화 전체다. 기존 코드엔 `adopt`(특성화)로 들어가고, 동작을 바꾸지 않는 구조 변경은 `--kind refactor`(핀 — base에서도 초록인 인수)로 증명한다.
 ```
 구상(대화) ─▶ work.mjs brief "<원문>" | --file PRD.md      원문 그대로 docs/BRIEF.md에 축적 (요약 금지)
 "개발해"   ─▶ brief.mjs intake → intake 팩 spawn          BACKLOG에 unit 줄: slug · 마일스톤 · needs · "원문 한 문장" · 인수 한 줄
