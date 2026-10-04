@@ -2,7 +2,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { collect, coverage } from './claims.mjs';
-import { appendLedger, ceoTouch, ctx, fail, git, isMain, listUnits, out, readJson, readLedger, readText, writeJson } from './lib.mjs';
+import { CONDUCT_LOCK, appendLedger, ceoTouch, ctx, fail, git, isMain, listUnits, out, pidAlive, readJson, readLedger, readText, writeJson } from './lib.mjs';
 
 export function firstLine({ run, unseen, unseenMax, unobservedOs, decisionsOpen, coveragePct, uncertain, repeatedFails = 0 }) {
   return `실행: ${run || '—'} · 안 본 것 ${unseen}/${unseenMax} · target-OS 미관측 ${unobservedOs} · 결정 대기 ${decisionsOpen} · 센서 커버리지 ${coveragePct}% · 불확실: ${uncertain || '없음'}${repeatedFails > 0 ? ` · 반복 FAIL ${repeatedFails}` : ''}`;
@@ -86,6 +86,8 @@ export function render(c) {
   parts.push('', '## 진행 중');
   const open = units.filter((u) => u.state !== 'shipped' && u.state !== 'dropped');
   parts.push(...(open.length ? open.map((u) => `- ${u.slug} (${u.state}${u.boundary.hit ? ', boundary' : ''}) — "${u.origin}"`) : ['- 없음']));
+  const lock = readJson(path.join(c.main, CONDUCT_LOCK), null); // conduct의 heartbeat — 돌아온 CEO가 「지금 무엇을 하는가」를 본다
+  if (lock && lock.pid && pidAlive(lock.pid)) parts.push(`- conduct 돌고 있음 — pid ${lock.pid} · ${[lock.step, lock.slug, lock.pack].filter(Boolean).join(' ')} · 걸음 ${lock.steps ?? 0} · $${lock.usd ?? 0} · 시작 ${lock.started} · 마지막 ${lock.at}`);
   parts.push('', `_생성: state.mjs ${new Date().toISOString()} · 주장 ${cov.total} · 손편집 없음_`, '');
   return { text: parts.join('\n'), line, stops: b.stops };
 }

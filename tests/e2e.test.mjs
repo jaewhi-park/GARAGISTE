@@ -1098,6 +1098,10 @@ test('사고 70: 기존 저장소에 설치 — 깨끗했으면 설치가 팀 �
   assert.equal(git(['log', '-1', '--format=%s'], repo).out.trim(), 'scaffold(team): GARAGISTE 증거 팀 설치 [claude, budget medium]');
   assert.equal(git(['rev-list', '--count', 'HEAD'], repo).out.trim(), '2');
   assert.match(git(['show', '--stat', '--format=', 'HEAD'], repo).out, /\.garagiste\/team\.json[\s\S]*\.githooks\/pre-commit[\s\S]*CLAUDE\.md/, '팀 파일만');
+  // L3 Q11(R&D 2라운드): 설치본의 판 — 어느 GARAGISTE 커밋의 team/인가
+  const ver = JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/VERSION'), 'utf8'));
+  assert.deepEqual(ver, { garagiste: git(['rev-parse', 'HEAD'], GARAGISTE).out.trim(), team_tree: git(['rev-parse', 'HEAD:team'], GARAGISTE).out.trim(), flavor: 'claude' }, '판 = GARAGISTE 커밋 · team/ tree · 하네스(날짜 없음 — 같은 판의 재설치가 diff를 만들지 않게)');
+  assert.equal(script('doctor', ['--version'], repo).out.trim(), `VERSION garagiste ${ver.garagiste} · team ${ver.team_tree} · claude`);
   // 더러운 저장소: 사람의 것과 섞이니 손대지 않는다
   write(repo, 'src/wip.js', '// 손으로 고치던 것\n');
   const re = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
@@ -1110,9 +1114,49 @@ test('사고 70: 기존 저장소에 설치 — 깨끗했으면 설치가 팀 �
   git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'docs: stale'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
   const up = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
   assert.equal(up.status, 0, up.out);
-  assert.match(up.out, /팀 파일 커밋\(갱신 — 기존 저장소, 생성물 차선\)/);
-  assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): GARAGISTE 증거 팀 갱신 /);
+  assert.match(up.out, /팀 파일 커밋\(갱신\(같은 판 [0-9a-f]{7}\) — 기존 저장소, 생성물 차선\)/);
+  assert.match(git(['log', '-1', '--format=%s'], repo).out, /^scaffold\(team\): GARAGISTE 증거 팀 갱신\(같은 판 [0-9a-f]{7}\) /, '같은 GARAGISTE 커밋의 재설치 — 판이 바뀌면 old→new sha7이 커밋 제목에');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/team.json'), 'utf8'), /"build": "sonnet"/, 'R15: 재설치가 편성을 지우지 않는다');
   const same = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'high', '-SkipSelftest'], repo);
   assert.equal(same.status, 0, same.out); assert.doesNotMatch(same.out, /팀 파일 커밋/, '바뀐 것이 없으면 커밋도 없다');
+});
+
+test('conduct 안전벨트(2라운드): 잠금 — 살아 있는 드라이버가 있으면 거부(exit 1), 죽은 pid의 잠금은 교체되고 끝나면 지워진다 · STATUS 「진행 중」이 살아 있는 conduct를 보인다', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const lockPath = path.join(repo, '.garagiste/session/conduct.json');
+  fs.mkdirSync(path.dirname(lockPath), { recursive: true });
+  fs.writeFileSync(lockPath, JSON.stringify({ pid: process.pid, started: '2026-10-04T00:00:00Z', at: '2026-10-04T00:01:00Z', step: 'spawn', slug: 'hello', pack: 'build', steps: 3, usd: 0.02 }));
+  const busy = conduct(repo, ['--once']);
+  assert.equal(busy.status, 1, busy.out);
+  assert.match(busy.out, /^FAIL conduct: 이미 돌고 있다 — pid \d+ · spawn hello build · 2026-10-04T00:01:00Z/m);
+  script('state', [], repo);
+  assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 진행 중\n[^\n]*\n- conduct 돌고 있음 — pid \d+ · spawn hello build · 걸음 3 · \$0\.02 · 시작 2026-10-04T00:00:00Z/, '돌아온 CEO가 「지금 무엇을 하는가」를 본다');
+  fs.writeFileSync(lockPath, JSON.stringify({ pid: 2147483000, started: 'x', at: 'y', step: 'run' })); // 죽은 pid
+  const once = conduct(repo, ['--once']);
+  assert.equal(once.status, 5, once.out);
+  assert.ok(!fs.existsSync(lockPath), '끝나면 잠금을 지운다');
+  script('state', [], repo);
+  assert.doesNotMatch(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /conduct 돌고 있음/);
+});
+test('conduct 안전벨트(2라운드): 팩 시간 상한 — 멈춘 팩은 SIGTERM으로 끊고 비정상 종료로 센다 · 비용 상한 — 누적 $가 상한이면 cap(exit 5)', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const hang = conduct(repo, ['--pack-minutes', '0.02'], { GARAGISTE_FAKE_MODE: 'hang' });
+  assert.equal(hang.status, 4, hang.out);
+  assert.match(hang.out, /팩 시간 상한 0\.02분 — 끊었다\(SIGTERM\)[\s\S]*STOP framework/, '끊긴 spec 뒤 redproof FAIL 되풀이로 멈춘다 — 밤새 걸리지 않는다');
+  const L = ledgerOf(repo);
+  assert.ok(L.some((e) => e.kind === 'spawn' && e.pack === 'spec' && /exit (null|1|143)/.test(e.note || '') ), '끊긴 spawn도 원장에 남는다: ' + JSON.stringify(L.filter((e) => e.kind === 'spawn')));
+  const logs = fs.readdirSync(path.join(repo, '.garagiste/session/logs')).filter((f) => f.startsWith('conduct-hello-spec-'));
+  assert.ok(logs.some((f) => JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/session/logs', f), 'utf8')).timed_out === true), '로그에 timed_out');
+  // 비용 상한: 새 unit에서 가짜 팩 $0.01씩 — 둘 뒤 $0.02 ≥ 0.015
+  assert.match(script('work', ['drop', 'hello', '시간 상한 시험 끝', '--forget'], repo).out, /^DROPPED hello/);
+  assert.match(script('work', ['new', 'hello', '이름을 주면 그 이름으로 인사한다'], repo).out, /^UNIT hello spec/);
+  const usd = conduct(repo, ['--max-usd', '0.015']);
+  assert.equal(usd.status, 5, usd.out);
+  assert.match(usd.out, /SPAWN hello spec[\s\S]*SPAWN hello build[\s\S]*STOP cap [^\n]*비용 상한 \$0\.015 — 이 실행 \$0\.02/);
+  assert.doesNotMatch(usd.out, /SPAWN hello attack/, '상한 뒤 팩을 띄우지 않는다');
+  const stops = ledgerOf(repo).filter((e) => e.kind === 'conduct' && e.event === 'stop');
+  assert.equal(stops[stops.length - 1].usd, 0.02, '멈춤 줄에 이 실행의 비용');
+  const again = conduct(repo);
+  assert.equal(again.status, 2, again.out);
+  assert.match(again.out, /SHIPPED hello/, '다시 돌리면 이어서 출하한다');
 });

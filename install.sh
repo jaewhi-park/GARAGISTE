@@ -38,6 +38,10 @@ run chmod +x "$ROOT/.githooks/pre-commit"
 # 인덱스에도 실행 비트를 — Windows에서 만든 저장소를 맥·리눅스가 받았을 때 훅이 무시되지 않게
 [ "$DRY" = 0 ] && git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1 && { git -C "$ROOT" add .githooks/pre-commit >/dev/null 2>&1; git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit >/dev/null 2>&1; }
 [ -f "$ROOT/.garagiste/HAZARDS.md" ] || run cp "$HERE/team/HAZARDS.md" "$ROOT/.garagiste/HAZARDS.md"
+# 설치본의 판(L3 Q11): 어느 GARAGISTE 커밋의 team/인가 — 날짜는 적지 않는다(같은 판의 재설치가 diff를 만들지 않게; 날짜는 커밋이 안다)
+PREV_SHA="$(node -e 'try{process.stdout.write(JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).garagiste||"")}catch{}' "$ROOT/.garagiste/VERSION" 2>/dev/null || true)"
+GSHA="$(git -C "$HERE" rev-parse HEAD 2>/dev/null || echo unknown)"; GTREE="$(git -C "$HERE" rev-parse HEAD:team 2>/dev/null || echo unknown)"
+[ "$DRY" = 1 ] || printf '{ "garagiste": "%s", "team_tree": "%s", "flavor": "%s" }\n' "$GSHA" "$GTREE" "$FLAVOR" > "$ROOT/.garagiste/VERSION"
 if [ ! -f "$ROOT/.garagiste/team.json" ]; then
   run cp "$HERE/team/team.json" "$ROOT/.garagiste/team.json"
   [ "$DRY" = 0 ] && node -e '
@@ -92,7 +96,7 @@ elif [ "$DRY" = 0 ] && [ "$PRE_HEAD" = 1 ] && [ -n "$(git -C "$ROOT" status --po
   if [ "$PRE_DIRTY" = 1 ]; then
     echo "  팀 파일은 커밋하지 않았다 — 설치 전에 미커밋 변경이 있었다. 정리한 뒤: git add -A && GARAGISTE_SHIP=1 GARAGISTE_WIP=1 git commit -m 'scaffold(team): GARAGISTE 증거 팀 설치' (규칙집·배선은 생성물 차선 — 첫 ship은 main이 깨끗해야 한다)"
   else
-    WHAT="설치"; [ "$PRE_INSTALLED" = 1 ] && WHAT="갱신"
+    WHAT="설치"; if [ "$PRE_INSTALLED" = 1 ]; then if [ -n "$PREV_SHA" ] && [ "$PREV_SHA" != "$GSHA" ]; then WHAT="갱신 ${PREV_SHA:0:7}→${GSHA:0:7}"; else WHAT="갱신(같은 판 ${GSHA:0:7})"; fi; fi
     git -C "$ROOT" add -A && git -C "$ROOT" update-index --chmod=+x .githooks/pre-commit
     if GARAGISTE_SHIP=1 GARAGISTE_WIP=1 git -C "$ROOT" -c user.name="${GIT_AUTHOR_NAME:-garagiste}" -c user.email="${GIT_AUTHOR_EMAIL:-garagiste@local}" commit -q -m "scaffold(team): GARAGISTE 증거 팀 $WHAT [$FLAVOR, budget $BUDGET]"; then echo "  팀 파일 커밋($WHAT — 기존 저장소, 생성물 차선)"; else echo "설치 FAIL — 팀 파일 커밋이 닫히지 않았다. 위 git 출력이 이유다." >&2; exit 1; fi
   fi

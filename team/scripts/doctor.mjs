@@ -62,8 +62,14 @@ export function diagnose(root, { nodeVersion = process.versions.node, now = Date
   else for (const line of hz.split('\n').filter((l) => l.startsWith('- '))) if (!/`[^`]+`/.test(line)) p.push(`HAZARDS 경로 없는 줄: ${line.slice(0, 40)}… → 경로 패턴을 붙이거나 지워라`);
   return p;
 }
+// 설치본의 판(L3 Q11) — install.sh가 .garagiste/VERSION에 적는다(garagiste sha · team/ tree · flavor). 2026-10-04 전 설치본엔 없다.
+export function versionLine(root) {
+  const v = readJson(path.join(root, '.garagiste', 'VERSION'), null);
+  return v && v.garagiste ? `VERSION garagiste ${v.garagiste} · team ${v.team_tree || '?'} · ${v.flavor || '?'}` : 'VERSION 없음 — 2026-10-04 전 설치본: install.sh를 다시 돌리면 적힌다(갱신 커밋)';
+}
 function main() {
   const root = process.env.CLAUDE_PROJECT_DIR || scriptRoot(import.meta.url); // cwd가 아니라 이 스크립트가 설치된 저장소
+  if (process.argv.includes('--version')) return out(versionLine(root));
   const p = process.argv.includes('--fresh') ? blocking(diagnose(root)) : diagnose(root);
   if (!p.length) return out(`OK doctor (${harnesses(root).join('+') || '하네스 없음'})`);
   out(`FAIL doctor ${p.length}\n${p.map((x) => `- ${x}`).join('\n')}`);

@@ -18,7 +18,8 @@ import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/
 import { acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { nextStep, render } from '../team/scripts/next.mjs';
-import { DEFAULTS as CONDUCT_DEFAULTS, EXIT, failKey, headlessEnv, holdCommand, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
+import { DEFAULTS as CONDUCT_DEFAULTS, EXIT, failKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
+import { versionLine } from '../team/scripts/doctor.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
 const team = JSON.parse(fs.readFileSync(new URL('../team/team.json', import.meta.url), 'utf8'));
@@ -1102,8 +1103,10 @@ test('work: 사고 66(L2 6판 결함 1 — Q1 「예」의 래퍼 둘이 어느 
 // conduct — Flow 4의 conductor를 모델 밖으로(R&D 2026-10-04): 한 줄을 읽고 그대로 실행하는 자리의 순수 함수들
 test('conduct: 인자 — 기본값·상한·spawner 템플릿·intake·모르는 인자는 FAIL 사유', () => {
   assert.deepEqual(conductArgs([]), { ...CONDUCT_DEFAULTS, once: false, intake: false });
-  const o = conductArgs(['intake', '--once', '--max-steps', '3', '--max-minutes', '90', '--turns', '50', '--spawner', 'node fake.mjs']);
-  assert.deepEqual(o, { maxSteps: 3, maxMinutes: 90, turns: 50, spawner: 'node fake.mjs', once: true, intake: true });
+  const o = conductArgs(['intake', '--once', '--max-steps', '3', '--max-minutes', '90', '--turns', '50', '--spawner', 'node fake.mjs', '--pack-minutes', '45', '--max-usd', '12.5']);
+  assert.deepEqual(o, { maxSteps: 3, maxMinutes: 90, turns: 50, spawner: 'node fake.mjs', packMinutes: 45, maxUsd: 12.5, once: true, intake: true });
+  assert.deepEqual([conductArgs([]).packMinutes, conductArgs([]).maxUsd], [null, null], 'null이면 team.json budgets(pack_minutes_max · run_usd_max)에서');
+  assert.match(conductArgs(['--max-usd', '-1']).error, /maxUsd/);
   assert.match(conductArgs(['--bogus']).error, /알 수 없는 인자 --bogus/);
   assert.match(conductArgs(['--max-steps', 'x']).error, /maxSteps/);
   assert.deepEqual(EXIT, { done: 0, fail: 1, ceo: 2, wait: 3, framework: 4, cap: 5 }, '멈춤이 종료 코드다 — 밖이 판단 없이 읽는다');
@@ -1112,7 +1115,8 @@ test('conduct: spawner — 기본은 claude -p <팩 경로> --agent <팩>(agents
   const d = spawnerCommand({ pack: 'build', slug: 'hello', packPath: '.garagiste/session/packs/hello-build-1.md', model: 'sonnet', turns: 200 });
   assert.deepEqual(d.argv, ['claude', '-p', '.garagiste/session/packs/hello-build-1.md', '--agent', 'build', '--output-format', 'json', '--permission-mode', 'acceptEdits', '--max-turns', '200']);
   const t = spawnerCommand({ template: 'node fake.mjs {pack} {slug} {path} {model} {turns}', pack: 'spec', slug: 'x', packPath: 'p.md', model: 'opus', turns: 7 });
-  assert.equal(t.shell, 'node fake.mjs spec x p.md opus 7');
+  assert.deepEqual(t.argv, ['node', 'fake.mjs', 'spec', 'x', 'p.md', 'opus', '7'], '셸 메타문자가 없는 템플릿은 argv로 — 시간 상한의 kill이 그 프로세스에 닿는다');
+  assert.equal(spawnerCommand({ template: 'opencode run --agent {pack} "$(cat {path})" | tee log', pack: 'build', slug: 'x', packPath: 'p.md', model: '', turns: 1 }).shell, 'opencode run --agent build "$(cat p.md)" | tee log', '메타문자가 있으면 셸');
 });
 test('conduct: 결과 읽기 — claude -p --output-format json의 토큰·분·비용·오류, JSON이 아니면 글만', () => {
   const r = parseResult(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, duration_ms: 90000, num_turns: 12, total_cost_usd: 0.42, usage: { input_tokens: 1000, output_tokens: 500, cache_creation_input_tokens: 200, cache_read_input_tokens: 300 }, result: '커밋 2\nverify full PASS' }));
@@ -1193,4 +1197,23 @@ test('doctor: 끊긴 worktree(prunable)를 한 줄로 말한다', () => {
   const probs = diagnose(d);
   assert.ok(probs.some((x) => /^worktree .*[\\/]\.worktrees[\\/]x 끊김\(prunable/.test(x) && x.includes('git worktree prune')), probs.join('\n'));
   assert.deepEqual(blocking(probs.filter((x) => x.includes('끊김'))), probs.filter((x) => x.includes('끊김')), '끊긴 worktree는 fresh가 아니다 — seed·ship을 막는다');
+});
+
+// conduct 2라운드(R&D 2026-10-04): 잠금은 살아 있는 pid만 막는다 · 설치본의 판
+test('conduct: 잠금은 살아 있는 pid만 막는다 — 죽은 pid의 잠금은 교체 대상, 잠금 없음은 자유', () => {
+  assert.equal(lockAlive(null), false);
+  assert.equal(lockAlive({ pid: 4242 }, { isAlive: () => true }), true);
+  assert.equal(lockAlive({ pid: 4242 }, { isAlive: () => false }), false, '죽은 pid');
+  assert.equal(lockAlive({ pid: process.pid }), true, '자기 pid는 살아 있다');
+  assert.equal(lockAlive({ pid: 2147483000 }), false, '있을 수 없는 pid');
+  assert.deepEqual(team.budgets.pack_minutes_max, 60); assert.equal(team.budgets.run_usd_max, 0, '비용 상한 기본은 끔');
+});
+test('doctor --version: VERSION이 있으면 판 한 줄, 없으면 재설치 안내 (L3 Q11)', () => {
+  const d = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-version-'));
+  assert.match(versionLine(d), /^VERSION 없음 — 2026-10-04 전 설치본/);
+  fs.mkdirSync(path.join(d, '.garagiste'));
+  fs.writeFileSync(path.join(d, '.garagiste', 'VERSION'), '{ "garagiste": "abc1234def", "team_tree": "9f9f9f9", "flavor": "claude" }\n');
+  assert.equal(versionLine(d), 'VERSION garagiste abc1234def · team 9f9f9f9 · claude');
+  assert.ok(decide(write('.garagiste/VERSION'), gctx(null)), '판 파일은 규칙집 — 설치기만 쓴다');
+  assert.ok(decide(bash('echo x > .garagiste/VERSION'), gctx(null)));
 });

@@ -15,6 +15,7 @@ const write = (rel, text) => { fs.mkdirSync(path.dirname(path.join(wt, rel)), { 
 const commit = (msg) => { git(['add', '-A']); const v = script('verify', ['quick']); const c = git(['commit', '-q', '-m', msg]); return `${v.stdout.trim().split('\n')[0]} · commit ${c.status}`; };
 const emit = (result, extra = {}) => process.stdout.write(JSON.stringify({ type: 'result', subtype: 'success', is_error: false, duration_ms: 3000, num_turns: 3, total_cost_usd: 0.01, usage: { input_tokens: tokens - 200, output_tokens: 200 }, result, ...extra }) + '\n');
 
+if (mode === 'hang') { setTimeout(() => { emit('늦게 끝났다'); process.exit(0); }, 20000); await new Promise(() => {}); } // 팩이 멈췄다 — conduct의 시간 상한이 끊는다
 if (mode === 'crash') { emit('팩이 죽었다', { is_error: true, subtype: 'error_during_execution' }); process.exit(1); }
 if (mode === 'idle') { emit(`${pack} ${slug}: 아무것도 하지 않았다`); process.exit(0); }
 const lines = [];
