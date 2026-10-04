@@ -493,11 +493,36 @@ function removeTry(c, slug) {
   if (git(['worktree', 'remove', '--force', dir], c.main).status) { fs.rmSync(dir, { recursive: true, force: true }); git(['worktree', 'prune'], c.main); }
   return true;
 }
+// 사고 78(19라운드 다섯째 날): CEO가 team.json의 기본 상한(unit_tokens_max)을 손으로 고쳐 커밋하자 게이트가 「보호 브랜치 직접 커밋」으로 막았고, 더러운 team.json은 ship을 막는다(GUIDE·팩 상한 안내가 「team.json으로 · CEO 커밋」이라 했다).
+// 팀 기본값도 budget이 받아 models·commands처럼 생성물 차선(GARAGISTE_SHIP·WIP)으로 커밋한다. 키는 team.json budgets의 것만, 값은 정수(K 허용 — *_usd_*는 0 이상의 수).
+export const TEAM_BUDGET = 'budgets.';
+export function parseBudgetValue(key, raw) {
+  const s = String(raw ?? '').trim().replace(/[,_]/g, '');
+  if (!s) return null;
+  if (/_usd_/.test(key)) { const n = Number(s); return Number.isFinite(n) && n >= 0 ? n : null; }
+  const n = Number(s.replace(/[kK]$/, '000'));
+  return Number.isInteger(n) && n >= 0 ? n : null;
+}
+function budgetTeam(c, key, raw) {
+  const teamPath = path.join(c.main, '.garagiste', 'team.json');
+  const t = readJson(teamPath, null) || c.team;
+  const budgets = t.budgets || {};
+  if (!(key in budgets)) fail(`FAIL ${TEAM_BUDGET}${key} — team.json budgets에 없는 키. 있는 것: ${Object.keys(budgets).join(' ')}`);
+  const n = parseBudgetValue(key, raw);
+  if (n === null) fail(`FAIL ${TEAM_BUDGET}${key} 값 ${raw} — ${/_usd_/.test(key) ? '0 이상의 수' : '정수(1500000 또는 1500K)'}`);
+  const prev = budgets[key];
+  t.budgets[key] = n; writeJson(teamPath, t);
+  const cm = git(['commit', '-q', '-m', `scaffold(team): ${TEAM_BUDGET}${key} ${prev} → ${n}`, '--', '.garagiste/team.json'], c.main, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' });
+  touchCeo(c.main);
+  appendLedger(c.main, c.team, { kind: 'budget', team: `${TEAM_BUDGET}${key}`, value: n, prev });
+  out(`PASS budget ${TEAM_BUDGET}${key} ${prev} → ${n}${cm.status ? ` · 커밋 실패: ${(cm.stderr || cm.stdout || '').split('\n')[0]}` : ' · scaffold(team) 커밋'}`);
+}
 // unit 토큰 상한(CEO 접점) — 예산 정지 「unit 토큰 ≥ 상한」의 답: 이 unit의 상한을 올린다(원장 budget). 팩이 자기 상한을 올리지 못한다(가드 CEO_CMDS).
 function budget(c, slug, tokens) {
   if (c.root !== c.main) fail('FAIL budget는 메인 저장소에서만 — 상한은 CEO 접점이다, 팩이 올리지 않는다');
+  if (String(slug || '').startsWith(TEAM_BUDGET)) return budgetTeam(c, slug.slice(TEAM_BUDGET.length), tokens); // 사고 78: 팀 기본값은 생성물 차선으로 커밋
   const n = Number(String(tokens ?? '').replace(/[,_]/g, '').replace(/[kK]$/, '000'));
-  if (!slug || !Number.isInteger(n) || n <= 0) fail('사용법: work.mjs budget <slug> <토큰 상한 — 예: 1500000 또는 1500K>');
+  if (!slug || !Number.isInteger(n) || n <= 0) fail('사용법: work.mjs budget <slug> <토큰 상한 — 예: 1500000 또는 1500K> | budgets.<키> <값>(팀 기본값 — team.json 손 편집·커밋은 게이트가 막는다, 사고 78)');
   const u = loadUnit(c.main, c.team, slug);
   if (u.state === 'shipped' || u.state === 'dropped') fail(`FAIL ${slug}은 ${u.state} — 상한은 진행 중 unit의 것`);
   const prev = u.tokens_max ?? c.team.budgets.unit_tokens_max ?? 0;
@@ -690,5 +715,5 @@ function main() {
   if (cmd === 'spawned') return spawned(c, pos[0], pos[1], flags);
   fail(USAGE);
 }
-const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt|refactor|pin] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · found <slug> "<이 diff 밖 결함 한 줄>" · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · pin <slug> · try <slug> · tried <slug> ok|fail ["<말>"] [--evidence <파일,…>] · budget <slug> <토큰 상한> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
+const USAGE = '사용법: work.mjs brief "<원문>"|--file <경로> · add <slug> "<원문>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"] [--kind scaffold|adopt|refactor|pin] [--replace] · scope <slug…>|--milestone M1|--range a..b [--no-needs] · seed · system · found <slug> "<이 diff 밖 결함 한 줄>" · new <slug> "<원문>" · ask <slug|intake> "<질문>" [--for a,b] [--hold] [--assumed "<지금 주장이 가정한 것>"] · needs <slug> <a,b|Q<n>|-> · decide <n> "<답>" · default <slug> "<정한 것>" · drop <slug> ["사유"] [--forget] · pin <slug> · try <slug> · tried <slug> ok|fail ["<말>"] [--evidence <파일,…>] · budget <slug> <토큰 상한>|budgets.<키> <값> · list · models [<tier>|<팩>=<모델>…] · commands quick=… full=… test_file=… run=… · rules project=… one_line=… · spawned <slug|intake> <팩 이름> [--tokens N --minutes M]';
 if (isMain(import.meta.url)) main();

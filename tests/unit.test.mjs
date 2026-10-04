@@ -27,7 +27,7 @@ import { killPlan, missingFlags, orphanOf, runChild, spawnOpts, spawnerGap, trus
 import { conductBusyLine, conductRunning, readLedger } from '../team/scripts/lib.mjs';
 import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
-import { FLAGS, KINDS, setupNoop } from '../team/scripts/work.mjs';
+import { FLAGS, KINDS, setupNoop, parseBudgetValue, TEAM_BUDGET } from '../team/scripts/work.mjs';
 import { PIN_NOTE, REFACTOR_NOTE } from '../team/scripts/brief.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
@@ -576,10 +576,10 @@ test('brief: 팩 상한 FAIL은 법만으로 넘을 때 난다 — 안내는 CEO
   assert.match(a, /그 unit만 세우고 다음 seed로[\s\S]*work\.mjs ask time-model "[^"]*pack_kb_max 18 이상[^"]*" --hold/, 'conductor 몫: 그 unit만 세운다(--hold — 예산 답은 re-spec이 아니다)');
   assert.doesNotMatch(a, /conductor가 할 일은 없다/);
   assert.match(a, /넘는 것은 법\(인수·규칙·결정·원문\)/, 'fit이 부대물을 다 줄인 뒤에만 FAIL이 난다');
-  assert.match(a, /pack_kb_max를 18 이상으로/, '필요한 상한을 숫자로 — 실측');
+  assert.match(a, /budget budgets\.pack_kb_max 18 /, '필요한 상한을 숫자로 — 실측');
   assert.match(a, /work\.mjs drop time-model/, 'unit 나누기는 명령이 있는 방향전환(CEO)으로');
   assert.doesNotMatch(a, /부대물이면/, '옛 둘째 갈래는 FAIL 시점에 참일 수 없었다');
-  assert.match(overflowAdvice({ bytes: 70 * 1024, capKb: 64, slug: 'boot', mult: 4 }), /pack_kb_max를 18 이상으로/, 'boot는 4× — 필요한 상한은 배수로 나눠 센다');
+  assert.match(overflowAdvice({ bytes: 70 * 1024, capKb: 64, slug: 'boot', mult: 4 }), /budget budgets\.pack_kb_max 18 /, 'boot는 4× — 필요한 상한은 배수로 나눠 센다');
   assert.ok(team.budgets.pack_kb_max >= 21, '기본 상한은 실측 이상 — 4차 time-model build 팩 전문 21KB(법만 17KB), 사고 8 선례대로 실측으로 올린다');
   assert.ok(team.budgets.pack_kb_max >= 31, '벤치 실측: build 팩 28KB(070f185 웹·Go 둘 다 CEO 결정 ①) · 31KB(cfbcf3a 웹 사슬 24→25→29→31) — 같은 결정이 벤치마다 CEO에게 갔다');
 });
@@ -987,6 +987,9 @@ test('system-attack(채용 2026-10-03): 범위가 끝나면 이음새 공격 한
   assert.match(all(found).cmd, /brief\.mjs build system-1$/, '발견은 build가 고친다');
   const fixed = [...found, { ts: T(5), kind: 'pack', slug: 'system-1', pack: 'build' }, { ts: T(6), kind: 'spawn', slug: 'system-1', pack: 'build' }, { ts: T(7), kind: 'attack', slug: 'system-1', total: 3, red: 0 }];
   assert.match(all(fixed, sys({ state: 'build' })).cmd, /ship\.mjs system-1$/, '고친 뒤 red 0이면 ship');
+  // 사고 80(19라운드 다섯째 날): build의 반려로 attack에게 돌아간 공격이 자기 테스트를 철회했다(파일 0) — red였던 적이 있어도 마지막 공격이 파일을 안 남겼으면 발견 0: drop(ship은 「adversary 테스트 0개」로 설 뿐이었다)
+  const retracted = [...found, { ts: T(5), kind: 'pack', slug: 'system-1', pack: 'build' }, { ts: T(6), kind: 'spawn', slug: 'system-1', pack: 'build' }, { ts: T(7), kind: 'spec_return', slug: 'system-1', from: 'build' }, { ts: T(8), kind: 'pack', slug: 'system-1', pack: 'attack' }, { ts: T(9), kind: 'spawn', slug: 'system-1', pack: 'attack' }, { ts: T(10), kind: 'attack', slug: 'system-1', total: 0, red: 0, files: [] }];
+  assert.match(all(retracted).cmd, /work\.mjs drop system-1 "system-attack 발견 0 — 공격 파일 0\(red였던 공격을 attack이 철회\)" --forget$/, '철회된 공격은 발견이 아니다 — drop');
   // ship: 시스템 공격의 red 증명은 「한 번이라도 red였던 공격 파일 ≥ 1」
   const x = { unit: sys({ state: 'build' }), slug: 'system-1', worktreeExists: true, clean: true, tree: 't', ledger: [{ kind: 'verify', mode: 'full', exit: 0, tree: 't' }, { kind: 'attack', slug: 'system-1', tree: 't', total: 3, red: 0 }], changed: [], runnerBlind: [], requireAttack: true, spikeText: '', lastSubject: 'fix(seam): x', stops: [], proseKb: 1, proseMax: 40, openQuestions: [] };
   assert.match(evaluateShip({ ...x, found: 0 }).find((k) => k.id === 'redproof').why, /결함을 찾지 못했다[\s\S]*drop system-1/);
@@ -1340,7 +1343,7 @@ test('팩 목록 하나: work·brief·checkpoint PACKS 동일 · 두 하네스 a
   const TEAM = fileURLToPath(new URL('../team/', import.meta.url));
   for (const p of P) for (const f of [`claude/agents/${p}.md`, `opencode/agents/${p}.md`, `packs/${p}.md`]) assert.ok(fs.existsSync(path.join(TEAM, f)), `${f} 없음`);
   // 측정이 넣은 agents 한 줄들(12·14라운드 — 무인 세션의 승인 거부 꼴): 셸은 cd && node만(worktree 팩 6) · 명령은 node로 시작하는 한 줄(7) — 산문 편집이 지우지 않게 잠근다
-  for (const p of P) { const t = fs.readFileSync(path.join(TEAM, `claude/agents/${p}.md`), 'utf8'); assert.match(t, /명령은 `node …`로 시작하는 \*\*한 줄\*\*로/, `${p}: 한 줄 명령(14라운드)`); assert.match(t, /한 줄에 명령 하나 — `;`·`\|`로 다른 명령을 잇지 않는다/, `${p}: 명령 하나(15라운드 — unwip; git … | head 거부 5건)`); assert.match(t, /`node -e`의 인라인 코드도 한 줄에 — 따옴표 안의 줄바꿈도 승인 요청이 된다/, `${p}: node -e 한 줄(18라운드 — 둘째·여섯째 run 각 1건)`); if (p !== 'intake') assert.match(t, /`cd <작업 디렉터리> && node …` 꼴만/, `${p}: cd && node(12라운드)`); }
+  for (const p of P) { const t = fs.readFileSync(path.join(TEAM, `claude/agents/${p}.md`), 'utf8'); assert.match(t, /명령은 `node …`로 시작하는 \*\*한 줄\*\*로/, `${p}: 한 줄 명령(14라운드)`); assert.match(t, /한 줄에 명령 하나 — `;`·`\|`로 다른 명령을 잇지 않는다/, `${p}: 명령 하나(15라운드 — unwip; git … | head 거부 5건)`); assert.match(t, /`node -e`의 인라인 코드도 한 줄에 — 따옴표 안의 줄바꿈도 승인 요청이 된다/, `${p}: node -e 한 줄(18라운드 — 둘째·여섯째 run 각 1건)`); assert.match(t, /파일 고치기는 Edit 도구로 — `cat > \/tmp\/x\.js <<'EOF'`처럼 작업 폴더 밖에 heredoc으로 쓰는 스크립트는 승인 거부된다/, `${p}: heredoc \/tmp 금지(19라운드 — 넷째·다섯째 날 build 각 1건)`); if (p !== 'intake') assert.match(t, /`cd <작업 디렉터리> && node …` 꼴만/, `${p}: cd && node(12라운드)`); }
   const conductor = fs.readFileSync(path.join(TEAM, 'opencode/agents/conductor.md'), 'utf8');
   const allow = [...conductor.matchAll(/^\s+"([a-z]+)":\s*allow\s*$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(allow, P, 'opencode conductor가 task로 띄울 수 있는 팩 = 팩 전부');
@@ -1515,4 +1518,36 @@ test('work(11라운드, Q10): models <프로파일 이름> — team.json profile
   assert.deepEqual(resolveModels(TIERS.medium, ['home'], profiles), TIERS.high);
   assert.deepEqual(resolveModels(TIERS.medium, ['low'], profiles), TIERS.low, 'tier는 그대로');
   assert.throws(() => resolveModels(TIERS.medium, ['office'], profiles), /low\|medium\|high\|company\|home/);
+});
+
+test('work(19라운드, 사고 78): budget budgets.<키> — 팀 기본값의 값 파싱: 토큰·KB·개수는 정수(K 허용), *_usd_*는 0 이상의 수 — 그 밖은 null(FAIL)', () => {
+  assert.equal(TEAM_BUDGET, 'budgets.');
+  assert.equal(parseBudgetValue('unit_tokens_max', '1500K'), 1500000);
+  assert.equal(parseBudgetValue('unit_tokens_max', '1,500,000'), 1500000);
+  assert.equal(parseBudgetValue('pack_kb_max', '40'), 40);
+  assert.equal(parseBudgetValue('run_usd_max', '2.5'), 2.5);
+  assert.equal(parseBudgetValue('pack_usd_max', '0'), 0);
+  assert.equal(parseBudgetValue('unseen_max', '2.5'), null, '개수는 정수');
+  assert.equal(parseBudgetValue('unit_tokens_max', 'x'), null);
+  assert.equal(parseBudgetValue('unit_tokens_max', ''), null);
+  assert.equal(parseBudgetValue('run_usd_max', '-1'), null);
+});
+
+test('next(19라운드, 사고 79): slug 없는 spawn_stop(훅)은 직전에 조립된 같은 팩의 주인에게만 — 세워 둔 X의 build 팩 뒤에 Y의 build가 돌아도 X의 build는 끝난 것이 아니다(다섯째 날: attack이 안 지은 tree를 공격했다)', () => {
+  const T = (m) => `2026-10-04T13:${String(m).padStart(2, '0')}:00.000Z`;
+  const X = { slug: 'x', kind: 'feature', state: 'build', created: T(0), questions: [], holds: [], needs: [], respec: [] };
+  const Y = { slug: 'y', kind: 'feature', state: 'shipped', created: T(1), shipped: T(9), questions: [], holds: [], needs: [], respec: [] };
+  const backlog = [{ slug: 'x', milestone: 'M5', needs: [], done: false }, { slug: 'y', milestone: 'M5', needs: [], done: false }];
+  const scope = { order: ['x', 'y'], requested: ['x', 'y'], required: [], missing: [], report_for: 'x,y' };
+  const step = (ledger) => nextStep({ units: [X, Y], ledger, decisionsText: '', scope, backlog, stops: [], wtOf: () => ({ exists: true, rebase: false, unmerged: [] }), packPath: (s, p) => `${s}-${p}.md` });
+  const L = [
+    { ts: T(1), kind: 'pack', slug: 'x', pack: 'spec' }, { ts: T(2), kind: 'spawn', slug: 'x', pack: 'spec' }, { ts: T(3), kind: 'redproof', slug: 'x', base_red: true, head_green: null },
+    { ts: T(4), kind: 'pack', slug: 'x', pack: 'build' }, // X의 build 팩 — 띄우기 전에 CEO가 X를 세웠다(ask --hold)
+    { ts: T(5), kind: 'pack', slug: 'y', pack: 'build' }, { ts: T(6), kind: 'spawn_stop', pack: 'build' }, { ts: T(7), kind: 'spawn', slug: 'y', pack: 'build' }, // Y의 build — 훅의 spawn_stop엔 slug가 없다
+  ];
+  const r = step(L);
+  assert.equal(r.kind, 'spawn', 'X의 build 팩은 아직 안 띄웠다 — Y의 spawn_stop은 Y의 것');
+  assert.equal(r.pack, 'build');
+  assert.match(step([...L, { ts: T(8), kind: 'spawn_stop', pack: 'build', slug: 'x' }]).cmd, /brief\.mjs attack x$/, 'slug가 붙은 spawn_stop(conduct)은 그대로 X의 것');
+  assert.match(step([...L, { ts: T(8), kind: 'pack', slug: 'x', pack: 'build' }, { ts: T(9), kind: 'spawn_stop', pack: 'build' }]).cmd, /brief\.mjs attack x$/, 'slug 없는 spawn_stop도 직전 build 팩이 X의 것이면 X의 것(훅의 기계 기록)');
 });
