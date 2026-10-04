@@ -1,4 +1,4 @@
-# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python · 14라운드 중간 크기 레거시 + conductor 턴 · 15라운드 대규모 레거시 138파일 + 비용 상한 실발동 · 16라운드 운영 둘째 날 — 갱신·재개·M2 · 17라운드 운영 셋째 날 — 후보 → unit · 이음새 둘째 바퀴 · 18라운드 운영 넷째 날 — unit 셋 · 질문 셋 · 움직인 main 위의 ship · 이음새 셋째 바퀴 · 19라운드 운영 다섯째 날 — 충돌 rebase · team.json의 손 · 사고 78·79·80 · 이음새 넷째 바퀴 철회 · 20라운드 운영 여섯째 날 — 예고된 상한은 오지 않았다(fit · 이유-차선) · 21라운드 운영 일곱째 날 — CEO try · 출하 18의 사고 81 · 토큰 상한 2.5M)
+# conduct 실전 run — 리눅스 · 진짜 claude 2.1.289 · 진짜 모델 (2026-10-04 R&D 12라운드 Node · 13라운드 Python · 14라운드 중간 크기 레거시 + conductor 턴 · 15라운드 대규모 레거시 138파일 + 비용 상한 실발동 · 16라운드 운영 둘째 날 — 갱신·재개·M2 · 17라운드 운영 셋째 날 — 후보 → unit · 이음새 둘째 바퀴 · 18라운드 운영 넷째 날 — unit 셋 · 질문 셋 · 움직인 main 위의 ship · 이음새 셋째 바퀴 · 19라운드 운영 다섯째 날 — 충돌 rebase · team.json의 손 · 사고 78·79·80 · 이음새 넷째 바퀴 철회 · 20라운드 운영 여섯째 날 — 예고된 상한은 오지 않았다(fit · 이유-차선) · 21라운드 운영 일곱째 날 — CEO try · 출하 18의 사고 81 · 토큰 상한 2.5M · 22라운드 모노레포 첫날 — 사고 0 · 링크 탐침)
 
 ## 왜
 1~11라운드의 드라이버(`conduct.mjs`)·헤드리스 spawner(`claude -p <팩> --agent <팩> …`)는 가짜 팩(`tests/fakes/pack.mjs`)과 `--help` 텍스트로만 검증됐다 — 9라운드(`--max-turns` 없음)·11라운드(Windows 셸 심)의 벽은 둘 다 **읽어서** 찾은 것이고, 실제 CLI가 실제로 어떻게 끝나는지(JSON 꼴 · 권한 · 모델 선택 · 훅)는 한 번도 보지 않았다. 12라운드는 그 자리를 **측정**으로 채운다: 정비 자리(리눅스 컨테이너)에 설치된 claude 2.1.289로 기존 코드가 있는 저장소에 설치 → intake → conduct 끝까지. 테스트는 그대로 모델 0 · 네트워크 0 — 이 문서는 측정 기록이다(HANDOFF 「장치는 사고·측정에서만」).
@@ -401,7 +401,34 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 63. **토큰 상한의 셋째 근거**: 1023K/1M · 1014K/1M · 1521K/1.5M — 상한을 올릴 때마다 다음 무거운 정상 unit이 조금 넘었다. 넘긴 셋은 전부 「재spec + 큰 공격」이고 진동은 사고 71 뒤로 없다 — 상한은 이제 진동 감지기가 아니라 비용 천장이다 → **기본 2.5M**(≈ unit 하나 $3). 진동이 다시 오면 그때의 모양(같은 팩 반복 횟수)으로 센다.
 64. 팩 크기: 이음새 attack 33.7KB(units 28.9 = +1.8KB/unit) · build 41.2KB(공격 8.0 + units 28.9) — 차선 둘 · 승인 거부 1(`sed -i` 카드 3 — 셈 넷째 1 · 다섯째 1 · 여섯째 2 · 일곱째 1) · 후보 하루 3(남은 4 — system-4-f1은 사흘째 둔 채) · 써볼 것 19.
 
-## 비용 합계 (열 run)
+## 열한째 run — 모노레포(stockroom · npm workspaces 3패키지 · 22라운드 2026-10-04) · 설치 → intake → scope → conduct 끝까지 · 멈춤은 설계된 셋 · 사고 0 · 탐침 하나가 예고를 남겼다
+질문 넷: (a) adopt가 패키지 셋(shared·api·cli)을 한 특성화로 받는가 — 명령 등록(workspaces의 `npm test --workspaces`)은 (b) worktree의 node_modules 링크가 workspace 패키지를 어디로 푸는가 (c) shared를 고치는 unit과 그것을 쓰는 api·cli unit이 한 범위에서 도는가 (d) 15라운드부터 「여러 패키지 미측정」이던 ③의 빈칸.
+
+베드: 새로 만든 `stockroom`(창고 품목) — 루트 `package.json` workspaces · `packages/shared`(돈 계산 · id · JSON 저장) · `packages/api`(HTTP, `@stockroom/shared` 의존) · `packages/cli`(같은 의존) · 패키지별 `node --test` · 기존 테스트 7(빨간 1: shared `round2(1.005)` 부동소수) · 파일 19 · `npm install`이 node_modules/@stockroom/* 링크를 만든다. 원문: 「품목에 qty(수량, 정수 ≥ 1)를 더한다 — API·CLI 둘 다. total은 price × qty(shared의 lineTotal). 기존 데이터는 qty 1.」
+
+| 시각(UTC) | 걸음 | 팩·모델 | 토큰 · 분 | $ | 결과 |
+|---|---|---|---|---|---|
+| 16:30:27 | `install.sh`(동결 25) → `conduct trust` → `check` → `brief` → **`conduct intake`** | opus | 59K · 0.5 | 0.150 | 팩 4KB · unit 4(adopt · shared-linetotal · api-qty · cli-qty — **패키지별로 하나씩**, needs adopt) · Q1(저장 형식) · Q2(API qty 생략 기본값) → STOP ceo(intake 끝) |
+| 16:31:28 | `decide 1·2` 「예」 → `scope --milestone M1` → `conduct`: adopt | sonnet | 411K · 1.4 | 0.304 | 팩 9.9KB · **특성화 20(CLI 9 · API 7 · shared 4)** — 루트 `tests/unit/characterize-*.test.js`가 패키지를 상대 경로로 부른다 · 명령 등록: 첫 시도 **「FAIL commands — 눈먼 명령 1」**(루트에 심은 깨진 파일을 안 돌리는 명령 — workspaces 꼴) → 둘째 시도 PASS: quick·full = **파일 목록**(특성화 3 + 패키지 테스트 3, 빨간 money.test.js 제외) · test_file `node --test {files}` · run `npm start` · setup `npm install` · 빨간 테스트는 **Q3**(고칠까?) + `defect:` → FOUND adopt-f1 → **STOP wait**(선행 adopt가 질문에) |
+| 16:34:23 | `decide 3` 「고친다 — 후보 adopt-f1로 다음 범위에」 → `conduct`: ship adopt → shared-linetotal spec → build → attack → ship | opus · sonnet · opus | 129K·1.0 / 146K·0.4 / 145K·0.9 | 0.263 / 0.107 / 0.272 | RED → `lineTotal({price,qty})` → 공격 5건 **red 0**(`taste:` 둘째 인자 무시) → **SHIPPED**(16:36:53) — 사람 센서 unit |
+| 16:36:53 | api-qty spec → build → attack → build → ship | opus · sonnet · opus · sonnet | 157K·1.2 / 272K·1.3 / 189K·1.0 / 163K·1.0 | 0.363 / 0.186 / 0.375 / 0.131 | RED 6 → qty 저장·검증(특성화 단언 3 고침) → 공격 5건 **red 3**(qty 1e308 → total null · 2^53+1이 조용히 바뀜 · 기존 `qty:null` 행) + `defect:` → FOUND api-qty-f1(바디 `null` → 500) → **SHIPPED**(16:42:01) |
+| 16:42:01 | cli-qty spec → build → attack → build → ship | opus · sonnet · opus · sonnet | 185K·1.1 / 314K·0.9 / 199K·0.9 / 180K·0.5 | 0.402 / 0.230 / 0.372 / 0.128 | RED → `item add <name> <price> [qty]` · list qty 열 → 공격 5건 **red 3**(400자리 qty · 2^53+1 · total 넘침) + `defect:` → FOUND cli-qty-f1(빈 price가 0) → **SHIPPED**(16:45:37) · 승인 거부 1(`cat > /tmp/x.txt <<'EOF'` — 모델이 heredoc을 시험) |
+| 16:45:37 | `work.mjs system` → system-1 attack(출하 4) → build → ship | opus · sonnet | 199K·1.5 / 165K·0.5 | 0.462 / 0.119 | 팩 14.2KB · 2건 **red 2**: **API가 이름 안의 탭·줄바꿈을 그대로 저장해 CLI `item list`의 행·열이 깨진다**(패키지 사이의 이음새) + `defect:` → FOUND system-1-f1(CLI는 공백 이름을 받는다) → list가 탭·줄바꿈을 공백으로 → **SHIPPED**(16:47:46) → **STOP ceo 「CEO 접점 없이 출하 5 ≥ 5」**(무인 출하 상한 — 14라운드 뒤 둘째 실발동: decide 3 뒤 다섯 unit이 사람 없이 출하됐다) |
+| 16:48:25 | CEO `try shared-linetotal` → 카드대로 → `tried ok --evidence` → `conduct` | — | — | — | 카드(`node -e` 한 줄 · 기대 `6 2.5 0.3`) 맞음 · 증거 1 → docs/units/…/evidence/ → REPORT(출하 4/4 · 이음새 1 · 후보 4) → **SCOPE DONE**(exit 0) |
+
+**탐침(측정) — worktree의 node_modules 링크**: 베드에 detached worktree를 열고 `linkDeps`처럼 `node_modules → <main>/node_modules`를 걸었다. `packages/api`에서 `require.resolve('@stockroom/shared')` = **main의 `packages/shared/lib/index.js`**(worktree의 것이 아니다 — npm의 workspace 링크 `../../packages/shared`가 main의 node_modules 자리에서 풀린다). worktree의 `packages/shared`에 `PROBE` 한 줄을 더해도 api가 본 값은 `undefined`. **오늘은 물리지 않았다** — 네 unit이 각자 자기 패키지만 고쳤다(shared → api → cli 순서 · 출하된 main의 shared를 다음 unit의 api가 봤다). **예고: shared와 그 소비자(api·cli)를 한 unit이 함께 고치는 날, 그 worktree의 테스트는 main의 shared를 돌려 red·green이 어긋난다.** 장치 후보(사고가 나면 그 자리에서): 소비자 패키지의 `packages/<pkg>/node_modules/<workspace 의존>`을 worktree의 자매 패키지로 거는 링크(Node는 가장 가까운 node_modules를 먼저 본다 — 바깥 의존은 그대로 main의 것).
+
+합계(모노레포 첫날): 팩 15 · 토큰 2.91M · **$3.86** · 팩 시간 14.1분 · 벽시계 18분(16:30 → 16:48) · 출하 5(adopt · unit 3 · 이음새 1) · 특성화 20 · 공격이 찍은 결함 7건(3+3+1) 전부 수리 · 새 후보 4(adopt-f1 — 빨간 기존 테스트의 진짜 결함 · api · cli · system) · 승인 거부 1 · 멈춤 3(intake · adopt 질문 · 무인 출하 5 — 전부 설계) · **프레임워크 FAIL 0 · 사고 0** · 사람 줄 8(설치·trust·brief · decide 3 · scope · try/tried) · unit ≈ $0.64(shared) · $1.06(api) · $1.13(cli) · adopt $0.30 · 이음새 $0.58.
+
+### 관찰 (22라운드)
+65. **모노레포에서 선다** — 설치부터 SCOPE DONE까지 18분 · $3.86 · 사고 0. intake가 패키지별로 unit을 갈라 shared → api → cli 순서를 냈고(의존 방향), adopt가 패키지 셋을 특성화 20으로 받았다(14라운드 중간 레거시 20 · 15라운드 138파일 88과 같은 꼴 — 표면 수에 비례).
+66. **명령 등록의 모노레포 꼴**: 눈먼 명령 탐침이 workspaces식 명령(루트에 심은 깨진 파일을 안 돈다)을 거부해 adopt가 **파일 목록**으로 등록했다 — 인수·공격은 루트 `tests/**` 글롭에 들어 안전하나, **패키지 안에 새로 생기는 테스트는 full이 모른다**(정적 목록). 둘째 근거가 오면 장치(패키지별 테스트 디렉터리를 full에 글롭으로).
+67. **worktree의 node_modules 링크는 main의 workspace 패키지를 가리킨다**(탐침) — 오늘은 unit마다 패키지가 하나여서 안 물렸다. 예고와 장치 후보는 위 탐침 절.
+68. **무인 출하 상한의 둘째 실발동**: decide 3 뒤 다섯 unit이 사람 없이 출하됐다(13분). 설계대로 섰고 CEO의 try 한 줄이 열었다 — 작은 모노레포의 하루는 상한 5가 곧 하루 분량이다.
+69. 이음새 공격의 첫 바퀴가 **패키지 사이**를 찍었다(API가 저장한 탭·줄바꿈이 CLI 표를 깨뜨린다) — 모노레포에서 「이음새」는 곧 패키지 경계다. 빨간 기존 테스트는 adopt가 Q3 + 후보(adopt-f1)로 두 길에 올렸다(16라운드 결함의 집이 adopt에도 산다).
+70. 승인 거부 1(`cat > /tmp/x.txt <<'EOF' … echo skip` — 모델이 heredoc 허용 여부를 시험했다; 셈 넷째 1 · 다섯째 1 · 여섯째 2 · 일곱째 1 · 모노레포 1).
+
+## 비용 합계 (열한 run)
 | 무엇 | $ |
 |---|---|
 | 12라운드 탐침 13 + run(Node, 팩 8) | 2.30 |
@@ -414,9 +441,11 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 | 19라운드 운영 다섯째 날(같은 베드 — 같은 줄을 고치는 두 unit · 충돌 rebase · team.json의 손 · 사고 78·79·80 · 이음새 철회, 팩 11) | 4.08 |
 | 20라운드 운영 여섯째 날(같은 베드 — 후보 둘 → unit · 출하 14의 이음새 · fit·이유-차선 · 멈춤 0, 팩 9) | 3.59 |
 | 21라운드 운영 일곱째 날(같은 베드 — CEO try · unit 4 · 출하 18의 이음새 사고 81 · 토큰 상한, 팩 19) | 6.45 |
-| **합계** | **39.40** — 충돌 rebase 풀기 ≈ $0.1(74K 토큰 · 0.2분) · unit 하나(spec·build·attack·수리) ≈ $0.6~1.1(재spec 하나 더하면 ≈ 1.7) · pin unit ≈ $0.9~1.1 · 이음새 공격 한 바퀴 ≈ $0.3~1.0(출하 4 → 10 — 팩 크기에 비례, 되풀이 제외) · adopt ≈ $0.14~0.31(파일 3 → 138 — 표면 수에 비례) · 사고 71의 되풀이 $2.87(수리됨 — 다음부턴 되풀이 2에서 선다, 사고 72의 토큰 상한이 먼저 서면 ≈ $1.3) |
+| 22라운드 모노레포 첫날(새 베드 stockroom — workspaces 3패키지 · 설치→intake→adopt→unit 3→이음새, 팩 15) | 3.86 |
+| **합계** | **43.26** — 충돌 rebase 풀기 ≈ $0.1(74K 토큰 · 0.2분) · unit 하나(spec·build·attack·수리) ≈ $0.6~1.1(재spec 하나 더하면 ≈ 1.7) · pin unit ≈ $0.9~1.1 · 이음새 공격 한 바퀴 ≈ $0.3~1.0(출하 4 → 10 — 팩 크기에 비례, 되풀이 제외) · adopt ≈ $0.14~0.31(파일 3 → 138 — 표면 수에 비례) · 사고 71의 되풀이 $2.87(수리됨 — 다음부턴 되풀이 2에서 선다, 사고 72의 토큰 상한이 먼저 서면 ≈ $1.3) |
 
-## 판정 (21라운드 갱신)
+## 판정 (22라운드 갱신)
+- **모노레포(22라운드)**: npm workspaces 3패키지(shared · api · cli)에서 설치 → intake → adopt(특성화 20) → unit 3 → 이음새 → SCOPE DONE까지 **18분 · $3.86 · 멈춤 3(전부 설계) · FAIL 0 · 사고 0**. ③의 「여러 패키지 미측정」은 닫혔다 — 단 **worktree의 node_modules 링크가 main의 workspace 패키지를 가리킨다**(탐침으로 확인): shared와 소비자를 한 unit이 함께 고치는 날 사고가 예고돼 있다(23라운드에서 일부러 만든다). 명령 등록은 파일 목록 꼴(패키지 안의 새 테스트는 full이 모른다).
 - **운영 일곱째 날(21라운드)**: 사람 센서 unit의 CEO try(`try` → 카드 → `tried --evidence`)가 돌고, 예고된 이음새 팩 상한(사고 81)이 unit 18에서 왔다 — 출하 unit 절도 법으로 닫았다. CEO unit 하나(/health)가 출하된 테스트 세 겹과 부딪혔고 길은 전부 있었다(revise · 실린 결정 · build). **팩 19 · $6.45 · 34분 · 출하 5 · 결함 19건 수리 · 멈춤 3 · FAIL 1 · 사고 1(예고된 것).** 토큰 상한은 셋째 근거로 2.5M. **운영 이레**: 사고가 난 날은 겹침·사람의 손·예고된 상한의 날이고, 순차의 날은 멈춤 0.
 - **운영 여섯째 날(20라운드)**: 예고된 이음새 팩 32KB 상한은 두 장치(fit의 부대물 포인터 · 사고 68의 자동 이유-차선 — 첫 실전)가 받아 멈춤 없이 지나갔다. 다섯째 날의 사고 셋을 닫은 판은 scope 한 줄 뒤 **16분 · $3.59 · 출하 3 · 결함 22건 수리 · 멈춤 0 · FAIL 0 · 사고 0**. 다음 예고는 unit 17~18의 attack 팩(장치 후보는 적어 두었다 — 사고가 나면 그 자리에서). **운영 엿새**: 사고가 난 날은 겹침·사람의 손이 있던 날(다섯째)이고, 순차의 날(셋째·여섯째)은 사람 줄 1~3으로 닫힌다.
 - **운영 다섯째 날(19라운드)**: 두 unit이 같은 줄을 고치는 날 — 충돌 rebase의 길(사고 26·58)이 사람 0으로 끝까지 섰다($0.09). 대신 겹침과 사람의 손이 사고 셋을 드러냈다(78 team.json 손 커밋 · 79 세워 둔 unit과 slug 없는 spawn_stop · 80 철회된 이음새 공격) — 전부 그날 코드로 닫고 갱신해 SCOPE DONE까지. **팩 11 · $4.08 · 20분 · 출하 2 · 결함 13건 수리 · 프레임워크 FAIL 2 · 사고 3.** 투입 판정은 그대로(①·③) — 단 **「한 범위에 unit 둘 이상 + 하루 사이의 CEO 질문」은 다섯째 날에야 처음 돌았다**; 순차 운전 나흘의 FAIL 0은 겹침을 안 본 숫자였다.
@@ -428,4 +457,4 @@ main의 끝: `f09746d invoice tool 0.3.1` → 설치 커밋 → 갱신 커밋 �
 - **대화형 conductor(CLAUDE.md Flow)**: Flow 2 한 턴이 배선(Agent 서브에이전트 · SubagentStop 훅 · spawned)을 전부 지났다. 단 서브에이전트가 허용된 명령을 `\`+줄바꿈으로 시작해 거부되자 conductor가 팩의 일을 대신했다 — 무인 세션에선 사람이 모르는 채 결과만 옳다. agents 한 줄이 꼴을 막지만, 「conductor가 팩의 일을 대신한다」는 둘째 근거가 오면 장치.
 - **상한 둘(15라운드 실측)**: 비용 상한(run)은 설계대로 선다 · 토큰 상한(unit)은 진동 안에서 안 섰다 → 걸음마다(사고 72). 둘이 다 선 뒤의 무인 운전 비용 꼴: unit당 $0.6~1.1 · 이음새 한 바퀴 ≤ 1M 토큰(≈ $1.3) 뒤 CEO.
 - **② UI 중심·DB·마이그레이션·멀티서비스**: 변화 없음 — 아직. **Windows**: CEO PC 대기.
-- 열 run이 못 본 것: 이음새 팩의 2배 벽(64KB ≈ unit 36 — CEO 결정 `budget budgets.pack_kb_max`) · 카드가 도는 자리(system-4-f1 — 사흘째 둔 채) · 충돌이 테스트 파일에 있을 때(`spec: 충돌 <파일>` 경로) · 진동(사고 71 뒤로 없다 — 다시 오면 같은 팩 반복 횟수로) · 모노레포 · opencode 레인 · Windows 끝까지(11라운드 뒤 재측정 없음) · 여드레 이상의 운영 · 후보가 쌓이는 속도(하루 3 · 거름 0~2) 대 CEO의 손 · 써볼 것 19의 사람 빚.
+- 열한 run이 못 본 것: **모노레포에서 shared와 소비자를 한 unit이 함께 고치는 날**(탐침이 예고 — 23라운드) · 패키지 안에 새로 생긴 테스트를 full이 모르는 날 · 이음새 팩의 2배 벽(64KB ≈ unit 36) · 카드가 도는 자리(erp-lite system-4-f1) · 충돌이 테스트 파일에 있을 때(`spec: 충돌 <파일>` 경로) · 진동(사고 71 뒤로 없다) · opencode 레인(CEO 환경) · Windows 끝까지(미룸) · 대화형 conductor의 하루(14라운드 뒤 한 턴도 없다) · 후보가 쌓이는 속도 대 CEO의 손 · 써볼 것(erp-lite 19 · stockroom 4)의 사람 빚.
