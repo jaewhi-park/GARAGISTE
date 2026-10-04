@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 import { scriptRoot } from './lib.mjs';
 
 const root = process.env.CLAUDE_PROJECT_DIR || scriptRoot(import.meta.url);
@@ -11,8 +12,8 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-selftest-'));
 const env = { ...process.env, GIT_AUTHOR_NAME: 'selftest', GIT_AUTHOR_EMAIL: 'selftest@local', GIT_COMMITTER_NAME: 'selftest', GIT_COMMITTER_EMAIL: 'selftest@local' };
 delete env.NODE_TEST_CONTEXT; delete env.NODE_OPTIONS;
 const steps = [];
-function run(name, cmd, args, cwd, extraEnv = {}) {
-  const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...env, ...extraEnv } });
+function run(name, cmd, args, cwd, extraEnv = {}, input) {
+  const r = spawnSync(cmd, args, { cwd, encoding: 'utf8', env: { ...env, ...extraEnv }, input });
   const out = ((r.stdout || '') + (r.stderr || '')).trim();
   return { name, status: r.status, out };
 }
@@ -50,7 +51,9 @@ step('work scope', () => script('work', ['scope', '--milestone', 'M1']), (r) => 
 step('work seed → boot worktree', () => script('work', ['seed']), (r) => /^UNIT boot boot/.test(r.out));
 const wt = path.join(tmp, '.worktrees', 'boot');
 // 드라이버까지 설치의 일부다(R&D 2026-10-04): next 한 걸음(brief boot)을 conduct가 그대로 실행하고 --once에서 멈춘다(exit 5) — 잠금·STATUS·원장 줄까지
-step('conduct --once (한 걸음: brief boot → STOP cap)', () => script('conduct', ['--once']), (r) => r.status === 5 && /^NEXT run .*brief\.mjs boot boot/m.test(r.out) && /STOP cap/.test(r.out) && !fs.existsSync(path.join(tmp, '.garagiste', 'session', 'conduct.json')));
+// opencode만 깔린 설치본엔 기본 spawner(claude -p --agent)가 서지 않아 conduct가 한 줄로 선다(5라운드) — selftest의 한 걸음은 spawn이 없으니 자리 채움 템플릿(돌면 exit 1 → 비정상 종료로 드러난다)
+const spawnerArgs = fs.existsSync(path.join(tmp, '.claude', 'settings.json')) ? [] : ['--spawner', 'node -e process.exit(1) {path}'];
+step('conduct --once (한 걸음: brief boot → STOP cap)', () => script('conduct', ['--once', ...spawnerArgs]), (r) => r.status === 5 && /^NEXT run .*brief\.mjs boot boot/m.test(r.out) && /STOP cap/.test(r.out) && !fs.existsSync(path.join(tmp, '.garagiste', 'session', 'conduct.json')));
 step('brief boot', () => script('brief', ['boot', 'boot']), (r) => /^PACK/.test(r.out));
 write('.worktrees/boot/src/cli.mjs', "process.stdout.write('hello\\n');\n");
 write('.worktrees/boot/tests/unit/smoke.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { spawnSync } from 'node:child_process';\ntest('entry starts', () => { assert.equal(spawnSync(process.execPath, ['src/cli.mjs'], { encoding: 'utf8' }).status, 0); });\n");
@@ -63,4 +66,14 @@ step('verify full (worktree)', () => script('verify', ['full'], wt), (r) => /^PA
 step('ship boot (8조건)', () => script('ship', ['boot']), (r) => /^SHIPPED boot/.test(r.out));
 step('main에 명령이 채워짐', () => ({ status: 0, out: fs.readFileSync(teamPath, 'utf8') }), (r) => /node --test tests\/unit\/smoke/.test(r.out));
 step('state', () => script('state', ['--brief']), (r) => /^실행:/.test(r.out));
+// 5라운드(2026-10-04, Q9 「opencode 환경에서 selftest」): L1 배선이 산다 — 거부 1건. 훅·플러그인은 조용히 죽고 doctor는 파일·경로만 본다 — 설치 때 실제로 한 번 거부시킨다.
+const ledgerTarget = path.join(tmp, '.garagiste', 'ledger', 'evidence.jsonl');
+if (fs.existsSync(path.join(tmp, '.claude', 'hooks', 'guard.mjs'))) step('guard 훅(claude)이 원장 쓰기를 거부', () => run('guard', process.execPath, [path.join(tmp, '.claude', 'hooks', 'guard.mjs')], tmp, { CLAUDE_PROJECT_DIR: tmp }, JSON.stringify({ tool_name: 'Write', tool_input: { file_path: ledgerTarget }, cwd: tmp })), (r) => r.status === 0 && /"permissionDecision":"deny"/.test(r.out));
+if (fs.existsSync(path.join(tmp, '.opencode', 'plugins', 'guard.ts'))) {
+  const [maj, min] = process.versions.node.split('.').map(Number);
+  if (maj > 22 || (maj === 22 && min >= 6)) {
+    const probe = `const { Guard } = await import(${JSON.stringify(pathToFileURL(path.join(tmp, '.opencode', 'plugins', 'guard.ts')).href)}); const h = await Guard({ directory: ${JSON.stringify(tmp)} }); try { await h['tool.execute.before']({ tool: 'write', sessionID: 's', callID: 'c' }, { args: { filePath: ${JSON.stringify(ledgerTarget)} } }); console.log('ALLOWED'); } catch (e) { console.log(e.message); }`;
+    step('guard 플러그인(opencode)이 원장 쓰기를 거부', () => run('guard.ts', process.execPath, ['--experimental-strip-types', '--input-type=module', '-e', probe], tmp), (r) => /\[guard\] /.test(r.out) && !/ALLOWED/.test(r.out));
+  } else process.stdout.write(`SKIP guard 플러그인(opencode) — node ${process.versions.node} < 22.6은 .ts를 못 돈다(플러그인은 opencode의 bun이 돈다)\n`);
+}
 process.stdout.write(`SELFTEST PASS ${steps.length}/${steps.length} · 임시 폴더: ${tmp}\n`);
