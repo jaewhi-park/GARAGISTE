@@ -1269,7 +1269,7 @@ test('budget: 진행 중 unit의 spawn 토큰 합이 상한이면 멈춤 — uni
   assert.equal(budgetStatus({ units: [{ ...units[0], tokens_max: 10000 }, units[1]], ledger: [spawn('add', 5000)], team: cap, ceoTouchTs: null }).stops.length, 0, 'unit의 상한(budget)이 team.json보다 먼저');
   assert.equal(budgetStatus({ units, ledger: [spawn('add', 5000000)], team: { ...team, budgets: { ...team.budgets, unit_tokens_max: 0 } }, ceoTouchTs: null }).stops.length, 0, '0이면 끈다');
   assert.equal(budgetStatus({ units, ledger: [spawn('add', 5000000)], team: { ...team, budgets: { ...team.budgets, unit_tokens_max: undefined } }, ceoTouchTs: null }).stops.length, 0, '옛 team.json(키 없음)도 끈 것');
-  assert.equal(team.budgets.unit_tokens_max, 1000000, '기본 1M — 6판 unit 최대 185K의 5배, 2판 진동(≈1.6M)은 잡힌다');
+  assert.equal(team.budgets.unit_tokens_max, 1500000, '기본 1.5M(18라운드 — 실전 여섯 run: 재spec 하나 + 큰 공격의 정상 unit이 1.01~1.02M(둘째·넷째 날), 진동(system-1)은 2.2M — 둘의 규칙으로 1M → 1.5M; 1M은 둘째 날 L2 6판 unit 최대 185K의 5배였다)');
   assert.match(decide(bash('node .garagiste/scripts/work.mjs budget add 2000000', `${root}/.worktrees/add`), gctx('build')), /budget\(토큰 상한\)/, '팩은 자기 상한을 올리지 못한다');
 });
 // doctor — 끊긴 worktree(2026-10-01 관찰: 폴더를 옮기면 verify가 FAIL 줄 대신 스택을 냈다)

@@ -41,7 +41,7 @@ export function budgetStatus({ units, ledger, team, ceoTouchTs }) {
   for (let i = shipped.length - 1; i >= 0 && shipped[i].origin_kind === 'team'; i--) trailing++;
   if (trailing >= team.budgets.no_ceo_units_max) stops.push(`팀이 스스로 뜬 unit 연속 ${trailing} ≥ ${team.budgets.no_ceo_units_max}`);
   // unit 토큰 상한(L2 2판 윈도우 1일차: attack↔build 진동이 같은 몫에 토큰 16배 · 6판 unit당 ≈140K): 진행 중 unit의 spawn 토큰 합이 상한이면 멈춘다 — 무인 폭주는 예산으로.
-  // 상한은 unit의 것(work.mjs budget — CEO 접점)이 team.json(unit_tokens_max)보다 먼저, 0이면 끈다. 토큰은 원장 spawn 줄(conduct의 실측 또는 conductor의 spawned 보고)만 센다.
+  // 상한은 unit의 것(work.mjs budget — CEO 접점)이 team.json(unit_tokens_max)보다 먼저, 0이면 끈다. 기본 1.5M(18라운드 — 실전: 재spec 하나 + 큰 공격의 정상 unit이 1.01~1.02M로 1M 상한에 두 번 섰다 · 진동은 2.2M). 토큰은 원장 spawn 줄(conduct의 실측 또는 conductor의 spawned 보고)만 센다.
   const tokenStops = []; // 사고 72(15라운드 넷째 run): unit별 토큰 정지 — next가 걸음마다 그 unit의 것만 본다(다른 정지는 seed·ship의 문)
   for (const u of units) {
     if (u.state === 'shipped' || u.state === 'dropped') continue;
