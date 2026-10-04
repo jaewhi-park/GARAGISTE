@@ -1297,7 +1297,7 @@ test('conduct check: 실전 전 preflight — claude CLI·작업 공간 신뢰·
   assert.equal(bare.status, 1, bare.out);
   assert.match(bare.out, /^FAIL conduct check 2\n- claude CLI 없음\(PATH\)[^\n]*\n- 작업 공간 신뢰 없음\([^\n]*\.claude\.json projects\[[^\n]*hasTrustDialogAccepted\)[^\n]*\n\(ok: doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · agents 7 · allow node\)/, bare.out);
   const fakeClaude = (flags) => fs.writeFileSync(path.join(bin, 'claude'), `#!/bin/sh\ncase "$1" in --version) echo "2.1.289 (Claude Code)";; --help) printf '%s\\n' ${flags.map((f) => `'  ${f}'`).join(' ')};; esac\n`);
-  const HELP = ['--agent <agent>  Agent for the current session', '--output-format <format>  (choices: "text", "json")', '--permission-mode <mode>  (choices: "acceptEdits", "plan")', '--max-budget-usd <amount>  Maximum dollar amount', '-p, --print  Print response and exit'];
+  const HELP = ['--agent <agent>  Agent for the current session', '--output-format <format>  (choices: "text", "json")', '--permission-mode <mode>  (choices: "acceptEdits", "plan")', '--permission-prompts <target>  (choices: "host", "none")', '--max-budget-usd <amount>  Maximum dollar amount', '-p, --print  Print response and exit'];
   fakeClaude(HELP); fs.chmodSync(path.join(bin, 'claude'), 0o755);
   fs.writeFileSync(path.join(home, '.claude.json'), JSON.stringify({ projects: { [repo]: { hasTrustDialogAccepted: false } } }));
   const untrusted = script('conduct', ['check'], repo, env);
@@ -1309,7 +1309,7 @@ test('conduct check: 실전 전 preflight — claude CLI·작업 공간 신뢰·
   // 9라운드 측정의 재현: 설치된 CLI에 깃발이 없으면(2.1.289의 --max-turns처럼) 첫 spawn 전에 선다
   fakeClaude(HELP.filter((f) => !f.startsWith('--agent')));
   const noAgent = script('conduct', ['check'], repo, env);
-  assert.equal(noAgent.status, 1); assert.match(noAgent.out, /^FAIL conduct check 1\n- claude에 없는 깃발: --agent — 기본 spawner\(-p --agent --output-format --permission-mode\)가 서지 않는다: GARAGISTE 갱신/);
+  assert.equal(noAgent.status, 1); assert.match(noAgent.out, /^FAIL conduct check 1\n- claude에 없는 깃발: --agent — 기본 spawner\(-p --agent --output-format --permission-mode --permission-prompts\)가 서지 않는다: GARAGISTE 갱신/);
   fakeClaude(HELP);
   const custom = script('conduct', ['check', '--spawner', 'node x.mjs'], repo, { HOME: home });
   assert.match(custom.out, /^PASS conduct check — doctor OK · VERSION [0-9a-f]{7} · 잠금 없음 · spawner 사용자 지정/, custom.out);
@@ -1486,4 +1486,31 @@ test('tried --evidence: 파일을 docs/units/<slug>/evidence/로 복사하고 do
   assert.deepEqual(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/hello.json'), 'utf8')).tried.evidence, tr.evidence);
   script('state', [], repo);
   assert.match(fs.readFileSync(path.join(repo, 'docs/STATUS.md'), 'utf8'), /## 사람 증거\n- hello: 2 — docs\/units\/hello\/evidence\//);
+});
+// 갱신 미리보기(10라운드 2026-10-04, Q11 「diff를 보이는 명시적 갱신」): 6~9라운드가 「install.sh 다시」를 요구했다 — 무엇이 바뀌는지 보여야 하고,
+// 배선 설정은 덮지 않되 다르면 알려야 한다(6라운드의 Read 매처가 옛 설치본에 닿지 않았다 — 설치는 settings.json을 보존한다).
+test('갱신 미리보기: 소스의 doctor.mjs --diff <설치본>이 바뀌는 파일·배선 설정 다름·설치본에만 있는 파일을 한 줄로(agents의 model: 차이는 조용) · install -DryRun·재설치가 그 줄을 보인다 · 다른 settings.json은 덮지 않고 settings.garagiste.json + 안내 · doctor가 Read 매처 없음을 짚되 막지 않는다', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const diff = () => run(process.execPath, [path.join(GARAGISTE, 'team/scripts/doctor.mjs'), '--diff', repo], repo).out.trim();
+  assert.match(diff(), /^UPGRADE 같은 판 — 비교 \d+ 파일 모두 같다\([0-9a-f]{7} → [0-9a-f]{7}\)$/, diff());
+  assert.match(script('doctor', ['--diff', repo], repo).out, /^FAIL doctor --diff는 GARAGISTE 소스의/, '설치본의 doctor는 옛것일 수 있다');
+  fs.appendFileSync(path.join(repo, '.garagiste/scripts/ship.mjs'), '\n// old\n');
+  fs.writeFileSync(path.join(repo, '.garagiste/packs/old.md'), '# 옛 팩\n');
+  assert.match(diff(), /^UPGRADE [0-9a-f]{7} → [0-9a-f]{7} — 바뀌는 파일 1 · 설치본에만 1\(지우지 않는다\): \.garagiste\/scripts\/ship\.mjs \?\.garagiste\/packs\/old\.md$/, diff());
+  // 배선 설정을 손으로 바꿨다(매처에서 Read를 뺐다) — 설치는 덮지 않고, doctor는 짚되 막지 않는다
+  const sp = path.join(repo, '.claude/settings.json'); const st = JSON.parse(fs.readFileSync(sp, 'utf8'));
+  st.permissions.allow.push('Bash(mycli:*)'); st.hooks.PreToolUse[0].matcher = 'Bash|PowerShell|Edit|Write|MultiEdit|NotebookEdit'; fs.writeFileSync(sp, JSON.stringify(st, null, 2) + '\n');
+  assert.match(script('doctor', [], repo).out, /^FAIL doctor \d+[\s\S]*- \.claude\/settings\.json PreToolUse 매처에 Read 없음/); // 첫 세션 전엔 alive 마커 줄도 함께 — 그건 --fresh가 거른다
+  assert.match(script('doctor', ['--fresh'], repo).out, /^OK doctor/, '매처 드리프트는 경고 — 설치·ship·conduct를 막지 않는다');
+  assert.match(diff(), /바뀌는 파일 1 · 배선 설정 다름 1\(덮지 않는다 — 병합\) · 설치본에만 1\(지우지 않는다\): \.garagiste\/scripts\/ship\.mjs !\.claude\/settings\.json \?\.garagiste\/packs\/old\.md$/, diff());
+  const dry = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-DryRun'], repo);
+  assert.match(dry.out, /UPGRADE [0-9a-f]{7} → [0-9a-f]{7} — 바뀌는 파일 1 · 배선 설정 다름 1/, dry.out);
+  assert.ok(/\/\/ old/.test(fs.readFileSync(path.join(repo, '.garagiste/scripts/ship.mjs'), 'utf8')), 'DryRun은 아무것도 바꾸지 않는다');
+  const up = run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-SkipSelftest'], repo);
+  assert.equal(up.status, 0, up.out);
+  assert.match(up.out, /UPGRADE [0-9a-f]{7} → [0-9a-f]{7} — 바뀌는 파일 1 · 배선 설정 다름 1[\s\S]*\.claude\/settings\.json이 team의 것과 다르다 → \.claude\/settings\.garagiste\.json에 두었다/, up.out);
+  assert.ok(!/\/\/ old/.test(fs.readFileSync(path.join(repo, '.garagiste/scripts/ship.mjs'), 'utf8')), '스크립트는 갱신됐다');
+  assert.ok(JSON.parse(fs.readFileSync(sp, 'utf8')).permissions.allow.includes('Bash(mycli:*)'), '사용자 설정은 그대로');
+  assert.ok(fs.existsSync(path.join(repo, '.claude/settings.garagiste.json')), 'team의 설정이 옆에');
+  assert.match(diff(), /바뀌는 파일 0 · 배선 설정 다름 1\(덮지 않는다 — 병합\) · 설치본에만 1/, '갱신 뒤엔 배선 설정과 옛 팩만 남는다');
 });

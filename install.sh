@@ -23,6 +23,8 @@ PRE_HEAD=0; PRE_DIRTY=0; PRE_INSTALLED=0
 if git -C "$ROOT" rev-parse --verify -q HEAD >/dev/null 2>&1; then PRE_HEAD=1; [ -n "$(git -C "$ROOT" status --porcelain)" ] && PRE_DIRTY=1; fi
 [ -f "$ROOT/.garagiste/team.json" ] && PRE_INSTALLED=1
 run() { if [ "$DRY" = 1 ]; then echo "  [dry] $*"; else "$@"; fi; }
+# 갱신 미리보기(Q11 — 10라운드): 이미 설치돼 있으면 복사 전에 무엇이 바뀌는지 한 줄 — 소스의 doctor가 센다(설치본의 doctor는 옛것일 수 있다). 배선 설정(settings.json·opencode.json)은 설치가 덮지 않는다.
+if [ "$PRE_INSTALLED" = 1 ]; then node "$HERE/team/scripts/doctor.mjs" --diff "$ROOT" 2>/dev/null | sed 's/^/  /' || true; fi
 case "$BUDGET" in
   low)    M_INTAKE=sonnet; M_SPEC=sonnet; M_BUILD=haiku;  M_ATTACK=sonnet; M_SPIKE=haiku;  M_BOOT=haiku;  M_ADOPT=haiku ;;
   high)   M_INTAKE=opus;   M_SPEC=opus;   M_BUILD=opus;   M_ATTACK=opus;   M_SPIKE=sonnet; M_BOOT=sonnet; M_ADOPT=sonnet ;;
@@ -60,9 +62,10 @@ if [ "$FLAVOR" = claude ]; then
   run cp "$HERE"/team/claude/hooks/*.mjs "$ROOT/.claude/hooks/"
   for a in "$HERE"/team/claude/agents/*.md; do if [ "$DRY" = 1 ]; then echo "  [dry] agent $(basename "$a")"; else sub "$a" "$ROOT/.claude/agents/$(basename "$a")"; fi; done
   if [ -f "$ROOT/.claude/settings.json" ]; then
-    if ! grep -q 'hooks/guard.mjs' "$ROOT/.claude/settings.json"; then
+    # 배선 설정은 덮지 않는다(사용자 병합 보호) — team의 것과 다르면 옆에 두고 알린다(10라운드: 6라운드의 Read 매처가 옛 설치본에 닿지 않았다)
+    if ! cmp -s "$HERE/team/claude/settings.json" "$ROOT/.claude/settings.json"; then
       run cp "$HERE/team/claude/settings.json" "$ROOT/.claude/settings.garagiste.json"
-      echo "  .claude/settings.json이 이미 있다 → team 설정을 .claude/settings.garagiste.json에 두었다. permissions.deny와 hooks를 합쳐라."
+      echo "  .claude/settings.json이 team의 것과 다르다 → .claude/settings.garagiste.json에 두었다. 매처·allow·deny를 비교해 합쳐라(doctor가 빠진 매처를 짚는다)."
     fi
   else run cp "$HERE/team/claude/settings.json" "$ROOT/.claude/settings.json"; fi
   RULES="$ROOT/CLAUDE.md"; TEMPLATE="$HERE/team/claude/CLAUDE.md.template"
@@ -71,9 +74,9 @@ else
   run cp "$HERE"/team/opencode/agents/*.md "$ROOT/.opencode/agents/"
   run cp "$HERE/team/opencode/plugins/guard.ts" "$ROOT/.opencode/plugins/guard.ts"
   if [ -f "$ROOT/opencode.json" ] || [ -f "$ROOT/opencode.jsonc" ]; then
-    if ! grep -q '"conductor"' "$ROOT/opencode.json" 2>/dev/null; then
+    if ! cmp -s "$HERE/team/opencode/opencode.json" "$ROOT/opencode.json" 2>/dev/null; then
       run cp "$HERE/team/opencode/opencode.json" "$ROOT/opencode.garagiste.json"
-      echo "  opencode.json이 이미 있다 → team 설정을 opencode.garagiste.json에 두었다. permission·default_agent·instructions를 합쳐라."
+      echo "  opencode.json이 team의 것과 다르다 → opencode.garagiste.json에 두었다. permission·default_agent·instructions를 비교해 합쳐라."
     fi
   else run cp "$HERE/team/opencode/opencode.json" "$ROOT/opencode.json"; fi
   echo "  opencode 모델: 기본 provider/model을 상속한다. 팩별로 바꾸려면 .opencode/agents/<pack>.md 앞머리에 model: <provider/model>"

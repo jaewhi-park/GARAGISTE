@@ -31,6 +31,8 @@ $h0 = Invoke-Git -C $Root rev-parse --verify -q HEAD
 if ($h0.Code -eq 0) { $PreHead = $true; $st0 = Invoke-Git -C $Root status --porcelain; if ($st0.Out.Trim()) { $PreDirty = $true } }
 function Short7([string]$s) { if ($s.Length -gt 7) { $s.Substring(0, 7) } else { $s } }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) { Write-Error "node가 없다 (20 이상)"; exit 1 }
+# 갱신 미리보기(Q11 — 10라운드): 이미 설치돼 있으면 복사 전에 무엇이 바뀌는지 한 줄 — 소스의 doctor가 센다. 배선 설정(settings.json·opencode.json)은 설치가 덮지 않는다.
+if ($PreInstalled) { $prevEA = $ErrorActionPreference; $ErrorActionPreference = "Continue"; & node "$Here\team\scripts\doctor.mjs" --diff $Root 2>&1 | ForEach-Object { "  $_" }; $ErrorActionPreference = $prevEA }
 function Run([scriptblock]$b, [string]$what) { if ($DryRun) { Write-Host "  [dry] $what" } else { & $b } }
 $tiers = @{ low = @{intake="sonnet";spec="sonnet";build="haiku";attack="sonnet";spike="haiku";boot="haiku";adopt="haiku"}; medium = @{intake="opus";spec="opus";build="sonnet";attack="opus";spike="sonnet";boot="sonnet";adopt="sonnet"}; high = @{intake="opus";spec="opus";build="opus";attack="opus";spike="sonnet";boot="sonnet";adopt="sonnet"} }
 if (-not $tiers.ContainsKey($Budget)) { $Budget = "medium" }; $M = $tiers[$Budget]
@@ -64,7 +66,8 @@ if ($Flavor -eq "claude") {
   foreach ($a in Get-ChildItem "$Here\team\claude\agents\*.md") { Run { Sub $a.FullName (Join-Path $Root ".claude\agents\$($a.Name)") } "agent $($a.Name)" }
   $settings = Join-Path $Root ".claude\settings.json"
   if (Test-Path $settings) {
-    if (-not (Select-String -Quiet -Path $settings -Pattern "hooks/guard.mjs")) { Run { Copy-Item "$Here\team\claude\settings.json" (Join-Path $Root ".claude\settings.garagiste.json") } "settings.garagiste.json"; Write-Host "  settings.json이 이미 있다 → .claude/settings.garagiste.json과 합쳐라" }
+    # 배선 설정은 덮지 않는다(사용자 병합 보호) — team의 것과 다르면 옆에 두고 알린다(10라운드)
+    if ((ReadText $settings) -ne (ReadText "$Here\team\claude\settings.json")) { Run { Copy-Item "$Here\team\claude\settings.json" (Join-Path $Root ".claude\settings.garagiste.json") } "settings.garagiste.json"; Write-Host "  .claude/settings.json이 team의 것과 다르다 → .claude/settings.garagiste.json에 두었다. 매처·allow·deny를 비교해 합쳐라(doctor가 빠진 매처를 짚는다)." }
   } else { Run { Copy-Item "$Here\team\claude\settings.json" $settings } "settings.json" }
   $Rules = Join-Path $Root "CLAUDE.md"; $Template = "$Here\team\claude\CLAUDE.md.template"
 } else {
@@ -73,7 +76,7 @@ if ($Flavor -eq "claude") {
   Run { Copy-Item "$Here\team\opencode\plugins\guard.ts" (Join-Path $Root ".opencode\plugins\guard.ts") -Force } "plugin"
   $cfg = Join-Path $Root "opencode.json"
   if ((Test-Path $cfg) -or (Test-Path (Join-Path $Root "opencode.jsonc"))) {
-    if (-not ((Test-Path $cfg) -and (Select-String -Quiet -Path $cfg -Pattern '"conductor"'))) { Run { Copy-Item "$Here\team\opencode\opencode.json" (Join-Path $Root "opencode.garagiste.json") } "opencode.garagiste.json"; Write-Host "  opencode.json이 이미 있다 → opencode.garagiste.json과 합쳐라" }
+    if (-not ((Test-Path $cfg) -and ((ReadText $cfg) -eq (ReadText "$Here\team\opencode\opencode.json")))) { Run { Copy-Item "$Here\team\opencode\opencode.json" (Join-Path $Root "opencode.garagiste.json") } "opencode.garagiste.json"; Write-Host "  opencode.json이 team의 것과 다르다 → opencode.garagiste.json에 두었다. permission·default_agent·instructions를 비교해 합쳐라." }
   } else { Run { Copy-Item "$Here\team\opencode\opencode.json" $cfg } "opencode.json" }
   Write-Host "  opencode 모델: 기본 provider/model을 상속한다. 팩별로 바꾸려면 .opencode/agents/<pack>.md 앞머리에 model:"
   $Rules = Join-Path $Root "AGENTS.md"; $Template = "$Here\team\opencode\AGENTS.md.template"
