@@ -489,21 +489,29 @@ test('팩 상한 이유-차선(측정 H3 · CEO 채용): 상한~2배는 --large 
   const acc = (kb) => write(path.join(repo, '.worktrees', 'loan-return'), 'tests/acceptance/loan-return.test.mjs', '// claim: an overdue return blocks new loans for as many days -- boundary\n'.repeat(Math.ceil((kb * 1024) / 72)));
   const packs = () => fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8').trim().split('\n').map((l) => JSON.parse(l)).filter((e) => e.kind === 'pack' && e.slug === 'loan-return');
   acc(36);
+  // 사고 68(L2 6판 세 라운드 — 상한 FAIL 7/7이 전부 테스트 몫): 인수·공격 테스트 몫의 초과는 이유를 묻지 않는다 — 자동 이유로 차선(원장 large에 「자동: …」)
+  const auto = script('brief', ['build', 'loan-return'], repo).out;
+  assert.match(auto, /^PACK \S+ [\d.]+KB [^\n]* · 이유-차선\(상한 32KB\): 자동: 인수 테스트 3[5-8]\.\dKB \+ 공격 테스트 0\.0KB — 그 밖 [\d.]+KB ≤ 32KB$/m, auto);
+  assert.match(packs().at(-1).large, /^자동: 인수 테스트/); assert.equal(packs().at(-1).cap_kb, 32);
+  // 산문 몫(spike 측정 파일)의 초과는 그대로 이유를 묻는다 — 상한~2배는 --large 한 줄, CEO가 아니다
+  acc(1);
+  const spikeFile = path.join(repo, '.worktrees', 'loan-return', 'docs/measurements/spike-loan-return.md');
+  write(path.join(repo, '.worktrees', 'loan-return'), 'docs/measurements/spike-loan-return.md', '| 측정 | 값 | 연체 경계가 줄마다 실렸다 |\n'.repeat(Math.ceil((36 * 1024) / 56)));
   const band = script('brief', ['build', 'loan-return'], repo).out;
-  assert.match(band, /^FAIL 팩 \d+KB > 32KB\n- 절별: [^\n]*acceptance/);
+  assert.match(band, /^FAIL 팩 \d+KB > 32KB\n- 절별: [^\n]*spike/);
   assert.match(band, /2배\(64KB\) 안이다 — CEO 결정이 아니다[\s\S]*node \.garagiste\/scripts\/brief\.mjs build loan-return --large "/, '같은 명령에 이유 한 줄');
   assert.doesNotMatch(band, /CEO 결정 ①|--hold/, '차선은 CEO 질문이 아니다');
   assert.match(script('brief', ['build', 'loan-return', '--large'], repo).out, /^FAIL --large에는 이유 한 줄/);
-  assert.equal(packs().length, 0, 'FAIL은 팩도 원장 줄도 남기지 않는다');
-  assert.match(script('brief', ['build', 'loan-return', '--large', '인수 36KB — 연체 경계가 줄마다 실렸다'], repo).out, /^PACK \S+ [\d.]+KB [^\n]* · 이유-차선\(상한 32KB\): 인수 36KB — 연체 경계가 줄마다 실렸다$/m);
+  assert.equal(packs().length, 1, 'FAIL은 팩도 원장 줄도 남기지 않는다(자동 차선의 팩 하나만)');
+  assert.match(script('brief', ['build', 'loan-return', '--large', '측정 36KB — 연체 경계가 줄마다 실렸다'], repo).out, /^PACK \S+ [\d.]+KB [^\n]* · 이유-차선\(상한 32KB\): 측정 36KB — 연체 경계가 줄마다 실렸다$/m);
   const lane = packs().at(-1);
-  assert.equal(lane.large, '인수 36KB — 연체 경계가 줄마다 실렸다'); assert.equal(lane.cap_kb, 32);
+  assert.equal(lane.large, '측정 36KB — 연체 경계가 줄마다 실렸다'); assert.equal(lane.cap_kb, 32);
   assert.ok(lane.bytes > 32 * 1024 && lane.bytes <= 64 * 1024, `원장의 크기는 차선 안 — ${lane.bytes}`);
-  acc(70);
+  acc(70); // 테스트 몫이라도 2배 벽은 자동으로 넘지 않는다 — CEO 결정
   const wall = script('brief', ['build', 'loan-return', '--large', '인수가 더 자랐다'], repo).out;
   assert.match(wall, /^FAIL 팩 \d+KB > 32KB의 2배\(64KB\) — 이유로는 넘지 못한다/);
   assert.match(wall, /CEO 결정 ①[\s\S]*CEO 결정 ②[\s\S]*work\.mjs ask loan-return "[^"]*" --hold/, '벽은 CEO 결정 — 그 unit만 세운다(사고 59)');
-  acc(1);
+  fs.rmSync(spikeFile); acc(1);
   assert.match(script('brief', ['build', 'loan-return', '--large', '습관'], repo).out, /^PACK [^\n]*--large 불필요/);
   assert.equal(packs().at(-1).large, undefined, '상한 안이면 원장에 이유를 남기지 않는다');
 });

@@ -97,6 +97,27 @@ export function decideLine(text, n, answer, date) {
   if (!re.test(text)) return null;
   return text.replace(re, (_, rest) => `- [x] Q${n}${rest} → ${answer} (${date})`);
 }
+// 사고 66(L2 6판 1라운드 — green 후 결함 1): intake의 Q1 「저장소에 `snap` 셸 래퍼와 `snap.cmd`를 둔다」에 CEO가 「예」했지만 그 산출물은 어느 unit의 인수에도 없었다
+// (boot의 인수는 「진입점이 뜨고 quick·full PASS」, 결정 스코프는 팩이 읽는 참고일 뿐) — CEO가 하루 뒤 카드에서 잡았다(boot-fix). 결정은 인수다:
+// decide의 답을 그 Q를 기다리는(needs) 첫 열린 unit — 없으면 질문을 올린 unit(ask <slug>) — 의 인수 끝에 「결정 Q<n> → 답: 질문」으로 잇는다. 다른 줄은 바이트 그대로.
+export function questionText(decisionsText, n) {
+  const m = new RegExp(`^- \\[[ x]\\] Q${n} \\(([^)]*)\\): (.*)$`, 'm').exec(decisionsText);
+  return m ? { who: m[1], text: m[2].replace(/ → .*? \(\d{4}-\d{2}-\d{2}\)$/, '') } : null;
+}
+export function acceptWithDecision(backlogText, n, answer, question, who) {
+  const open = parseBacklog(backlogText).filter((i) => !i.done);
+  const owner = open.find((i) => i.needs.includes(`Q${n}`)) || open.find((i) => i.slug === who);
+  if (!owner) return null;
+  const add = `결정 Q${n} → ${q(answer)}: ${q(question)}`;
+  const accept = !owner.accept || owner.accept === '-' ? add : `${owner.accept} · ${add}`;
+  const re = new RegExp(`^(- \\[ \\] ${owner.slug} · \\S+ · needs: \\S+ · "[^"]*" · 인수: )(.*?)((?: · kind: [a-z]+)?)$`, 'm');
+  if (!re.test(backlogText)) return null;
+  return { slug: owner.slug, accept, text: backlogText.replace(re, (_, head, _old, tail) => `${head}${accept}${tail}`) };
+}
+function syncUnitAccept(c, slug, accept) {
+  const u = readJson(unitFile(c.main, c.team, slug), null);
+  if (u && u.state !== 'shipped' && u.state !== 'dropped') { u.accept = accept; saveUnit(c.main, c.team, u); }
+}
 // 사고 23(3차 실기): intake가 Q 번호를 짐작해 한 칸 밀려 적었다 — needs의 Q<n>은 DECISIONS에 있는 번호(ask가 준 것)만
 export function unknownQuestions(needs, decisionsText) {
   const known = new Set([...String(decisionsText || '').matchAll(/^- \[[ x]\] (Q\d+)/gm)].map((m) => m[1]));
@@ -349,6 +370,10 @@ function decide(c, n, answer) {
     appendLedger(c.main, c.team, { kind: 'respec', slug, q: Number(n) });
     out(`RESPEC ${slug} — Q${n}의 답이 진행 중에 왔다: spec이 답을 red 수용 테스트로 박는다 → node .garagiste/scripts/brief.mjs spec ${slug} (build·attack·ship은 그 뒤에 열린다)`);
   }
+  // 사고 66: 결정은 인수다 — 그 Q를 기다리는 첫 열린 unit의 인수에 잇는다(spec이 red 수용 테스트로 박는다)
+  const qt = questionText(updated, Number(n));
+  const acc = qt && acceptWithDecision(readText(backlogPath(c)), Number(n), answer, qt.text, qt.who);
+  if (acc) { fs.writeFileSync(backlogPath(c), acc.text); syncUnitAccept(c, acc.slug, acc.accept); out(`ACCEPT ${acc.slug} — 결정 Q${n}이 인수에 실렸다(spec이 red 수용 테스트로)`); }
 }
 // 방향전환의 원자 연산 — 작업을 버리되 잃지 않는다: wip 커밋 → 브랜치를 dropped/로 개명 → worktree 제거. BACKLOG 줄은 열려 있어 seed가 새로 연다(--forget이면 닫는다).
 function drop(c, slug, reason = '', flags = {}) {

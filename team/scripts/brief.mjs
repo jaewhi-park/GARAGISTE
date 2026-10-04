@@ -63,6 +63,17 @@ export function packLane(bytes, capKb, large) {
   return large ? 'lane' : 'reason';
 }
 export const againCmd = (args) => args.map((a) => (/[\s"]/.test(a) ? JSON.stringify(a) : a)).join(' '); // 같은 명령 그대로(반려 줄 같은 인자는 따옴표째)
+// 사고 68(L2 6판 세 라운드): 팩 상한 FAIL 7/7이 전부 build 팩의 인수+공격 테스트 몫(34~52KB — 데몬 제품의 테스트는 CLI보다 크다)이라 매번 이유-차선으로 풀렸다 — 묻는 것이 한 턴 낭비.
+// 테스트 절(acceptance·adversary)은 build가 반드시 지는 법이니, 그것을 뺀 크기가 상한 안이면 이유를 묻지 않고 자동 이유로 차선(원장 large에 남는다). 산문·diff 몫의 초과와 2배 벽은 그대로.
+export function autoLane(sections, bytes, capKb) {
+  const cap = capKb * 1024;
+  if (bytes <= cap || bytes > 2 * cap) return '';
+  const size = (k) => sections.filter((s) => s.key === k).reduce((n, s) => n + Buffer.byteLength(s.text), 0);
+  const acc = size('acceptance'); const adv = size('adversary');
+  if (!(acc + adv) || bytes - acc - adv > cap) return '';
+  const kb = (n) => (Math.round(n / 102.4) / 10).toFixed(1);
+  return `자동: 인수 테스트 ${kb(acc)}KB + 공격 테스트 ${kb(adv)}KB — 그 밖 ${kb(bytes - acc - adv)}KB ≤ ${capKb}KB`;
+}
 export function laneAdvice({ capKb, again }) {
   return `- 상한의 2배(${2 * capKb}KB) 안이다 — CEO 결정이 아니다. 위 절별에서 무엇이 커졌는지 이유 한 줄과 함께 같은 명령을 다시: node .garagiste/scripts/brief.mjs ${again} --large "<이유 — 예: 공격 테스트 7개가 실렸다>" (원장에 남는다)`;
 }
@@ -267,7 +278,8 @@ function main() {
   if (pack === 'attack' && base && !system) sec('diff', 'diff (base..HEAD)', `\`\`\`diff\n${git(['diff', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`], wt).stdout}\n\`\`\``);
   const capKb = c.team.budgets.pack_kb_max * (pack === 'boot' ? 4 : 1); // boot는 intake처럼 BRIEF 전문을 진다
   const r = fit(sections, capKb * 1024);
-  const lane = packLane(r.bytes, capKb, large);
+  const reason = large || autoLane(sections, r.bytes, capKb); // 사고 68: 테스트 몫의 초과는 자동 이유
+  const lane = packLane(r.bytes, capKb, reason);
   if (lane === 'reason') fail(`FAIL 팩 ${Math.round(r.bytes / 1024)}KB > ${capKb}KB\n- 절별: ${packBreakdown(sections)}\n${laneAdvice({ capKb, again })}`);
   if (lane === 'wall') fail(`FAIL 팩 ${Math.round(r.bytes / 1024)}KB > ${capKb}KB의 2배(${2 * capKb}KB) — 이유로는 넘지 못한다\n- 절별: ${packBreakdown(sections)}\n${overflowAdvice({ bytes: r.bytes, capKb, slug, mult: pack === 'boot' ? 4 : 1 })}`);
   const dir = path.join(c.main, c.team.paths.packs); fs.mkdirSync(dir, { recursive: true });
@@ -280,8 +292,8 @@ function main() {
   if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned });
   if (revise) appendLedger(c.main, c.team, { kind: 'adversary_revise', slug, reason: revise });
   if (met) appendLedger(c.main, c.team, { kind: 'claims_met', slug, files: metRp.base_green, reason: met });
-  appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes, ...(lane === 'lane' ? { large, cap_kb: capKb } : {}) });
-  const note = lane === 'lane' ? ` · 이유-차선(상한 ${capKb}KB): ${large}` : large ? ' · --large 불필요(상한 안 — 원장에 남기지 않았다)' : '';
+  appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes, ...(lane === 'lane' ? { large: reason, cap_kb: capKb } : {}) });
+  const note = lane === 'lane' ? ` · 이유-차선(상한 ${capKb}KB): ${reason}` : large ? ' · --large 불필요(상한 안 — 원장에 남기지 않았다)' : '';
   out(`PACK ${path.relative(c.main, file).replace(/\\/g, '/')} ${Math.round(r.bytes / 1024 * 10) / 10}KB cwd=${unit.worktree} model=${c.team.models[pack]}${note}`);
 }
 if (isMain(import.meta.url)) main();

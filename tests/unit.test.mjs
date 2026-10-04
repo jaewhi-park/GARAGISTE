@@ -6,16 +6,16 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { decide, makeCtx, stripQuoted, worktreeFromCommand, writeTargets } from '../team/scripts/guard-rules.mjs';
+import { cdBase, decide, expandAssignments, makeCtx, stripQuoted, worktreeFromCommand, writeTargets } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
-import { blindFiles, gateDecision, logicLines, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
+import { blindFiles, gateDecision, gateFailLine, logicLines, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
-import { againCmd, attackRoundUsed, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
+import { againCmd, attackRoundUsed, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
-import { nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
+import { acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { nextStep, render } from '../team/scripts/next.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
@@ -1040,4 +1040,59 @@ test('work quotesBrief(사고 65): CEO의 말이 BRIEF에 그대로 있나 — �
   assert.equal(quotesBrief(brief, 'todo list 맨 아래에 남은 일 개수를 보여 준다'), false, 'BRIEF에 없는 말은 팀 발의');
   assert.equal(quotesBrief(brief, 'exit 0'), false, '짧은 조각은 우연이라 세지 않는다');
   assert.equal(quotesBrief('', 'todo search milk --all을 치면 → 아무 말 없이 exit 0으로 끝난다'), false);
+});
+
+// ── L2 6판(홀드아웃 snap) 뒤 수리 — 사고 66~69 ──
+test('guard: 사고 67(L2 6판 세 라운드 가드 거부 9/9) — `W=<경로>; … $W/…` 변수 경로와 줄 시작의 `cd $W`를 풀어 worktree 안 쓰기를 거부하지 않는다 · 풀 수 없는 변수($(mktemp -d))는 fail-closed', () => {
+  const wt = `${root}/.worktrees/hello`;
+  assert.equal(expandAssignments(`W=${wt}; mkdir -p $W/src && cat > $W/src/a.py`), `W=${wt}; mkdir -p ${wt}/src && cat > ${wt}/src/a.py`);
+  assert.equal(expandAssignments(`export W="${wt}"\ncat > \${W}/x`), `export W="${wt}"\ncat > ${wt}/x`, '큰따옴표 값·${W} 꼴');
+  assert.equal(expandAssignments('T=$(mktemp -d); cat > $T/x'), 'T=$(mktemp -d); cat > $T/x', '실행 결과인 값은 풀지 않는다');
+  assert.equal(cdBase(`W=${wt}; mkdir -p ${wt}/src\ncd ${wt}\ncat > pyproject.toml`, root), wt, '줄 시작의 cd도 뒤 상대 경로의 뿌리다');
+  assert.equal(cdBase(`cd ${wt} && cat > x`, root), wt, '첫 cd && 는 그대로');
+  assert.equal(decide(bash(`W=${wt}; mkdir -p $W/src && cat > $W/src/a.py <<'EOF'\nprint(1)\nEOF`), gctx('build')), null, 'build는 $W/src에 쓴다(6판 list-file·list-summary·restore의 꼴)');
+  assert.equal(decide(bash(`W=${wt}\nmkdir -p $W/docs/units/hello && cat > $W/docs/units/hello/try.md <<'EOF'\n# try\nEOF`), gctx('spec')), null, 'spec은 $W/docs/units에 쓴다(6판 status·restore-to의 꼴)');
+  assert.equal(decide(bash(`W=${wt}; mkdir -p $W/src/snap\ncd $W\ncat > pyproject.toml <<'E'\n[x]\nE`), gctx('boot')), null, 'boot: cd $W 뒤 상대 경로 pyproject.toml은 worktree의 것(6판 1라운드 첫 거부)');
+  assert.match(decide(bash(`W=${wt}; cat > $W/tests/acceptance/h.test.mjs <<'EOF'\nx\nEOF`), gctx('build')) || '', /build 팩은 tests\/acceptance/, '풀린 경로도 쓰기 경계는 그대로');
+  assert.match(decide(bash(`T=$(mktemp -d); cat > $T/x.txt <<'EOF'\nx\nEOF`), gctx('build')) || '', /worktree 밖/, '풀 수 없는 변수는 fail-closed(저장소 안으로 읽힌다)');
+  assert.match(decide(bash(`W=${root}/docs; cat > $W/x.md <<'EOF'\nx\nEOF`), gctx('build')) || '', /worktree 밖/, '변수가 worktree 밖 저장소를 가리키면 거부');
+});
+test('brief: 사고 68(L2 6판 팩 상한 FAIL 7/7이 build의 인수+공격 테스트 몫) — 테스트 절을 뺀 크기가 상한 안이면 이유를 묻지 않고 자동 이유-차선, 산문·diff 몫의 초과와 2배 벽은 그대로', () => {
+  const KB = 1024; const big = (n) => 'x'.repeat(n);
+  const sections = [{ key: 'unit', text: big(4 * KB) }, { key: 'acceptance', text: big(20 * KB) }, { key: 'adversary', text: big(12 * KB) }];
+  const auto = autoLane(sections, 36 * KB, 32);
+  assert.match(auto, /^자동: 인수 테스트 20\.0KB \+ 공격 테스트 12\.0KB — 그 밖 4\.0KB ≤ 32KB/);
+  assert.equal(packLane(36 * KB, 32, auto), 'lane', '자동 이유로 차선');
+  assert.equal(autoLane(sections, 30 * KB, 32), '', '상한 안이면 이유가 필요 없다');
+  assert.equal(autoLane([{ key: 'unit', text: big(36 * KB) }], 36 * KB, 32), '', '테스트가 아닌 몫의 초과는 자동이 아니다 — 이유를 묻는다');
+  assert.equal(autoLane([{ key: 'unit', text: big(33 * KB) }, { key: 'acceptance', text: big(2 * KB) }], 35 * KB, 32), '', '테스트를 빼도 상한을 넘으면 자동이 아니다');
+  assert.equal(autoLane([{ key: 'acceptance', text: big(70 * KB) }], 70 * KB, 32), '', '2배 벽은 자동으로 넘지 않는다 — CEO 결정');
+});
+test('verify: 사고 69(L2 6판 안내 없는 FAIL gate 줄 2) — FAIL gate 첫 줄에 첫 이유가 든다(원장 fail 줄은 첫 줄 300자만 남는다), 나머지 이유는 아래 줄', () => {
+  const l = gateFailLine(['원장에 이 tree(abc1234)의 quick PASS 없음 — node .garagiste/scripts/verify.mjs quick', '로직 변경에 테스트 파일이 없다 — red 테스트가 먼저다']);
+  assert.equal(l.split('\n')[0], 'FAIL gate — 원장에 이 tree(abc1234)의 quick PASS 없음 — node .garagiste/scripts/verify.mjs quick (+1)');
+  assert.deepEqual(l.split('\n').slice(1), ['- 원장에 이 tree(abc1234)의 quick PASS 없음 — node .garagiste/scripts/verify.mjs quick', '- 로직 변경에 테스트 파일이 없다 — red 테스트가 먼저다']);
+  assert.equal(gateFailLine(['x']), 'FAIL gate — x\n- x');
+});
+test('work: 사고 66(L2 6판 결함 1 — Q1 「예」의 래퍼 둘이 어느 unit에도 안 실림) — decide의 답은 그 Q를 기다리는 첫 열린 unit의 인수에 「결정 Q<n> → 답: 질문」으로 실린다', () => {
+  const dec = '## 정해 주세요\n- [x] Q1 (intake): 저장소에 `snap` 셸 래퍼와 `snap.cmd`를 둔다 — 예/아니오 → 예 (2026-10-03)\n- [ ] Q2 (net): 어디에?\n';
+  assert.deepEqual(questionText(dec, 1), { text: '저장소에 `snap` 셸 래퍼와 `snap.cmd`를 둔다 — 예/아니오', who: 'intake' });
+  assert.deepEqual(questionText(dec, 2), { text: '어디에?', who: 'net' }, '열린 줄도 읽는다');
+  assert.equal(questionText(dec, 3), null);
+  const bl = [backlogLine({ slug: 'boot', milestone: 'M1', needs: ['Q1'], origin: '백업 도구.', accept: '진입점이 뜨고 quick·full이 PASS', kind: 'scaffold' }),
+    backlogLine({ slug: 'start-stop', milestone: 'M1', needs: ['boot', 'Q1'], origin: '시작·멈춤', accept: '-' }),
+    '- [x] old · M1 · needs: Q1 · "닫힌 것" · 인수: y', backlogLine({ slug: 'net', milestone: 'M2', needs: [], origin: '밖으로', accept: '-' })].join('\n') + '\n';
+  const r = acceptWithDecision(bl, 1, '예', '저장소에 `snap` 셸 래퍼와 `snap.cmd`를 둔다 — 예/아니오', 'intake');
+  assert.equal(r.slug, 'boot', 'Q1을 기다리는 첫 열린 unit');
+  assert.equal(r.accept, '진입점이 뜨고 quick·full이 PASS · 결정 Q1 → 예: 저장소에 `snap` 셸 래퍼와 `snap.cmd`를 둔다 — 예/아니오');
+  const items = parseBacklog(r.text);
+  assert.equal(items.find((i) => i.slug === 'boot').accept, r.accept, 'BACKLOG 줄이 그대로 파싱된다');
+  assert.equal(items.find((i) => i.slug === 'boot').kind, 'scaffold', 'kind 꼬리는 그대로');
+  assert.equal(items.find((i) => i.slug === 'start-stop').accept, '-', '둘째 unit은 그대로 — 결정 스코프가 따로 준다');
+  assert.ok(r.text.includes('- [x] old · M1 · needs: Q1 · "닫힌 것" · 인수: y'), '닫힌 줄은 바이트 그대로');
+  const r2 = acceptWithDecision(bl, 2, '홈에', '어디에?', 'net');
+  assert.equal(r2.slug, 'net', 'needs에 없으면 질문을 올린 unit(ask <slug>)이 임자');
+  assert.equal(r2.accept, '결정 Q2 → 홈에: 어디에?', '인수 -는 결정으로 바뀐다');
+  assert.equal(acceptWithDecision(bl, 3, '예', '없는 질문', 'intake'), null, '기다리는 unit도 임자도 없으면 null');
+  assert.equal(acceptWithDecision(bl, 1, '예', '같은 질문', 'old').slug, 'boot', '질문을 올린 unit이 닫혔어도 needs의 첫 열린 unit이 임자');
 });
