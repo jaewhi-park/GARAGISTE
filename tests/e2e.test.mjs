@@ -1114,16 +1114,6 @@ test('conduct: system unit의 build가 spec: 반려를 남기면 반려는 공�
   assert.match(fs.readFileSync(path.join(repo, 'docs/DECISIONS.md'), 'utf8'), /- \[ \] Q1 \(system-1\): spec 반려 두 번째/);
 });
 
-test('conduct + 예산: unit 토큰 상한(L2 2판 윈도우 진동 16배의 장치) — 상한에 닿으면 다음 걸음에(진동 안에서도 — 사고 72) ceo로 멈추고, CEO의 work.mjs budget 뒤 다시 돌리면 출하한다', { timeout: 120000 }, (t) => {
-  const repo = conductRepo(t); if (!repo) return;
-  const teamPath = path.join(repo, '.garagiste', 'team.json');
-  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8')); team.budgets.unit_tokens_max = 3000; fs.writeFileSync(teamPath, JSON.stringify(team, null, 2) + '\n');
-  git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'docs: budget'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
-  const r = conduct(repo);
-  assert.equal(r.status, 2, r.out);
-  assert.match(r.out, /ATTACK hello red 1\/1[\s\S]*STOP ceo [^\n]*unit hello 토큰 4K ≥ 상한 3K — CEO 결정: node \.garagiste\/scripts\/work\.mjs budget hello[^\n]*hello는 attack 뒤에 서 있다\(상한은 걸음마다 — 진동 안에서도, 사고 72\)/, '세 팩 3600 토큰 — 공격 red 1인데 build를 띄우지 않고 선다(넷째 run: system-1이 진동으로 2.2M을 쓰는 동안 서지 않았다)');
-  assert.equal(ledgerOf(repo).filter((e) => e.kind === 'spawn').length, 3, '상한을 넘긴 팩 뒤의 걸음에서 선다');
-  assert.doesNotMatch(r.out, /SHIPPED/);
 // 16라운드(둘의 규칙 — 14라운드 관찰 14 · 15라운드 관찰 21): 공격이 이 diff 밖에서 찍은 결함은 글로만 남아 사라졌다 — defect: 줄 → work.mjs found → BACKLOG 후보(<slug>-f<n> · M? · needs <slug>)
 test('conduct: attack의 defect: 줄은 BACKLOG 후보가 된다(work.mjs found — 포장·중복은 하나로) — 출하는 그대로, CEO가 scope에 넣으면 팀 자발 unit으로 열린다', { timeout: 120000 }, (t) => {
   const repo = conductRepo(t); if (!repo) return;
@@ -1142,6 +1132,16 @@ test('conduct: attack의 defect: 줄은 BACKLOG 후보가 된다(work.mjs found 
   assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/hello-f1.json'), 'utf8')).origin_kind, 'seed', 'CEO가 scope에 넣어 열렸다 — 그 scope가 CEO 접점(seed 경유)');
 });
 
+test('conduct + 예산: unit 토큰 상한(L2 2판 윈도우 진동 16배의 장치) — 상한에 닿으면 다음 걸음에(진동 안에서도 — 사고 72) ceo로 멈추고, CEO의 work.mjs budget 뒤 다시 돌리면 출하한다', { timeout: 120000 }, (t) => {
+  const repo = conductRepo(t); if (!repo) return;
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8')); team.budgets.unit_tokens_max = 3000; fs.writeFileSync(teamPath, JSON.stringify(team, null, 2) + '\n');
+  git(['add', '-A'], repo); assert.equal(git(['commit', '-q', '-m', 'docs: budget'], repo, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' }).status, 0);
+  const r = conduct(repo);
+  assert.equal(r.status, 2, r.out);
+  assert.match(r.out, /ATTACK hello red 1\/1[\s\S]*STOP ceo [^\n]*unit hello 토큰 4K ≥ 상한 3K — CEO 결정: node \.garagiste\/scripts\/work\.mjs budget hello[^\n]*hello는 attack 뒤에 서 있다\(상한은 걸음마다 — 진동 안에서도, 사고 72\)/, '세 팩 3600 토큰 — 공격 red 1인데 build를 띄우지 않고 선다(넷째 run: system-1이 진동으로 2.2M을 쓰는 동안 서지 않았다)');
+  assert.equal(ledgerOf(repo).filter((e) => e.kind === 'spawn').length, 3, '상한을 넘긴 팩 뒤의 걸음에서 선다');
+  assert.doesNotMatch(r.out, /SHIPPED/);
   assert.match(script('work', ['budget', 'hello', '10K'], repo).out, /^PASS budget hello 토큰 상한 3000 → 10000/);
   assert.match(script('work', ['budget', 'hello', 'x'], repo).out, /^사용법: work\.mjs budget/);
   const again = conduct(repo);
