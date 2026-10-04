@@ -384,7 +384,9 @@ function decide(c, n, answer) {
   // 사고 66: 결정은 인수다 — 그 Q를 기다리는 첫 열린 unit의 인수에 잇는다(spec이 red 수용 테스트로 박는다)
   const qt = questionText(updated, Number(n));
   const acc = qt && acceptWithDecision(readText(backlogPath(c)), Number(n), answer, qt.text, qt.who);
-  if (acc) { fs.writeFileSync(backlogPath(c), acc.text); syncUnitAccept(c, acc.slug, acc.accept); out(`ACCEPT ${acc.slug} — 결정 Q${n}이 인수에 실렸다(spec이 red 수용 테스트로)`); }
+  if (acc) { // 14라운드(큰 레거시 run): adopt unit의 결정에도 「spec이 red 수용 테스트로」가 나왔다 — adopt·boot엔 spec이 없다(인수 줄에만 남고, 질문이 닫혔으면 ship이 간다)
+    const au = units.find((x) => x.slug === acc.slug); const noSpec = au && (au.kind === 'adopt' || au.kind === 'scaffold');
+    fs.writeFileSync(backlogPath(c), acc.text); syncUnitAccept(c, acc.slug, acc.accept); out(`ACCEPT ${acc.slug} — 결정 Q${n}이 인수에 실렸다${noSpec ? `(${au.kind} unit — spec 없음: 인수 줄에만 남고, 열린 질문이 닫혔으면 ship이 간다)` : '(spec이 red 수용 테스트로)'}`); }
 }
 // kind pin(R&D 13라운드 2026-10-04 — 백로그 「2순위: 이미 충족된 주장 박기」, 근거 셋: 필드 시험 2의 web persist·browser-check · 파이썬 no-network · 12라운드 실전 run의 discount-reject):
 // redproof 「base에서 green」의 유일한 길이 drop이라 주장 파일이 dropped 브랜치로 갔다 — main의 회귀 지킴을 잃는다. 둘째 길: 주장을 회귀 증거로 고정해 출하한다(핀 증명 재사용 · build 없음 · attack 한 바퀴).

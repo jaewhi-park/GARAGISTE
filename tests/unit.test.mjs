@@ -1312,6 +1312,8 @@ test('팩 목록 하나: work·brief·checkpoint PACKS 동일 · 두 하네스 a
   assert.deepEqual([...BRIEF_PACKS].sort(), P); assert.deepEqual([...CP_PACKS].sort(), P);
   const TEAM = fileURLToPath(new URL('../team/', import.meta.url));
   for (const p of P) for (const f of [`claude/agents/${p}.md`, `opencode/agents/${p}.md`, `packs/${p}.md`]) assert.ok(fs.existsSync(path.join(TEAM, f)), `${f} 없음`);
+  // 측정이 넣은 agents 한 줄들(12·14라운드 — 무인 세션의 승인 거부 꼴): 셸은 cd && node만(worktree 팩 6) · 명령은 node로 시작하는 한 줄(7) — 산문 편집이 지우지 않게 잠근다
+  for (const p of P) { const t = fs.readFileSync(path.join(TEAM, `claude/agents/${p}.md`), 'utf8'); assert.match(t, /명령은 `node …`로 시작하는 \*\*한 줄\*\*로/, `${p}: 한 줄 명령(14라운드)`); if (p !== 'intake') assert.match(t, /`cd <작업 디렉터리> && node …` 꼴만/, `${p}: cd && node(12라운드)`); }
   const conductor = fs.readFileSync(path.join(TEAM, 'opencode/agents/conductor.md'), 'utf8');
   const allow = [...conductor.matchAll(/^\s+"([a-z]+)":\s*allow\s*$/gm)].map((m) => m[1]).sort();
   assert.deepEqual(allow, P, 'opencode conductor가 task로 띄울 수 있는 팩 = 팩 전부');
