@@ -251,6 +251,10 @@ test('이름이 없으면 hello만 (끝 공백 없음)', () => { const r = spawn
   assert.match(script('ship', ['session'], repo).out, /- questions: .*Q3.*brief\.mjs spec session/);
   const rq = script('brief', ['spec', 'session'], repo);
   assert.match(fs.readFileSync(path.join(repo, rq.out.split(' ')[1]), 'utf8'), /## 재-spec — 진행 중에 온 답[\s\S]*Q3[\s\S]*30분/, 'spec 팩이 그 답을 이유로 받는다');
+  // 사고 83(24라운드 여덟째 날 · erp-lite): decide로만 온 답(RESPEC 길)이 인수(spec)엔 닿고 공격 테스트(attack)엔 실리지 않아 build가 두 번 반려 → 같은 결정을 Q11로 다시 물었다 — 재-spec의 spec 팩은 답한 질문의 닫힌 줄을 고쳐 쓰기 근거로 받고, 결정은 unit에 실려 attack까지 간다(--revise 없이)
+  assert.match(fs.readFileSync(path.join(repo, rq.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 인수 테스트\(출하된 unit의 것 포함\)\nCEO 결정\(그대로\): Q3 \(session\): 세션 만료는 30분인가\? → 30분/, '--revise 없는 재-spec도 답한 질문의 닫힌 줄을 고쳐 쓰기 근거로 받는다');
+  { const rv0 = JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/session.json'), 'utf8')).revise; assert.equal(rv0?.for, 'attack', '결정은 unit에 실려 attack까지 간다'); assert.equal(rv0?.decided, true, 'decide로 온 답이라는 표시'); }
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"acceptance_revise","slug":"session","reason":"Q3 \(session\): 세션 만료는 30분인가\? → 30분[^"]*","decided":true/, '원장에도 decided 표시');
   // 사고 24(4차 실기): 기존 코드 위의 re-spec — 새 주장은 head에서 red가 정상인데 redproof가 head green을 요구해 안내 없는 FAIL로 루프가 멈췄다
   write(swt, 'tests/acceptance/session-ttl.test.mjs', "import test from 'node:test'; import fs from 'node:fs'; test('만료 30분', () => { if (!fs.readFileSync('src/session.mjs', 'utf8').includes('ttl = 30')) throw new Error('red'); });\n");
   git(['add', '-A'], swt); script('verify', ['quick'], swt);
@@ -782,6 +786,85 @@ test('사고 26(L2 1일차): 두 unit이 같은 파일을 고치면 ship은 reba
   const shared = fs.readFileSync(path.join(repo, 'src/shared.mjs'), 'utf8');
   assert.ok(shared.includes('alpha') && shared.includes('beta'), 'main에 두 unit의 표시가 다 있다 — 통합 tree에서 두 인수가 다 green');
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"ship_conflict","slug":"beta"/);
+});
+
+// 사고 84(24라운드 여덟째 날 · erp-lite): ship의 rebase 충돌이 출하된 unit의 인수 테스트에 남았다 — build는 가드가 막아 `spec: 충돌 <파일>`로 넘겼는데 받을 길이 없었다(conduct는 반려로 읽어 둘째 반려 → hard 질문 · next는 build → ship만 알아 ship FAIL 되풀이)
+test('사고 84(24라운드): 충돌이 인수 테스트에 남으면 next가 spec을 띄우고(build가 아니라), 그 팩은 표시 풀기만 받으며, 상태·원장(반려)은 움직이지 않고, 풀리면 ship이 잇는다', { timeout: 180000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-conflict84-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'node --test "tests/unit/**/*.test.mjs"', full: 'node --test "tests/**/*.test.mjs"', test_file: 'node --test {file}', run: 'true' };
+  team.budgets = { ...team.budgets, no_ceo_units_max: 9, unseen_max: 9 }; // 세 unit이 CEO 접점 없이 출하된다 — 예산 정지는 이 시험의 대상이 아니다
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  git(['add', '-A'], repo); script('verify', ['quick'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  const open = (slug, src) => {
+    assert.match(script('work', ['new', slug, `${slug} 파일을 만든다`], repo).out, new RegExp(`^UNIT ${slug} spec`));
+    const wt = path.join(repo, '.worktrees', slug);
+    write(wt, `tests/acceptance/${slug}.test.mjs`, `import test from 'node:test'; import fs from 'node:fs';\ntest('${slug} 파일', () => { if (!fs.existsSync('${src}')) throw new Error('red'); });\n`);
+    git(['add', '-A'], wt); script('verify', ['quick'], wt);
+    assert.equal(git(['commit', '-q', '-m', `test(${slug}): red`], wt).status, 0);
+    return wt;
+  };
+  const build = (slug, wt, src) => {
+    write(wt, src, `export const mark = '${slug}';\n`);
+    write(wt, `tests/adversary/${slug}-1.test.mjs`, `import test from 'node:test'; import fs from 'node:fs';\ntest('비어 있지 않다', () => { if (!fs.readFileSync('${src}', 'utf8').trim()) throw new Error('empty'); });\n`);
+    git(['add', '-A'], wt); script('verify', ['quick'], wt);
+    assert.equal(git(['commit', '-q', '-m', `feat(${slug}): 파일\n\nUnit: ${slug}\nStep: 1`], wt).status, 0);
+    assert.match(script('redproof', [slug], wt).out, /^PASS redproof/);
+    assert.match(script('verify', ['attack', slug], wt).out, /red 0\/1/);
+    assert.match(script('verify', ['full'], wt).out, /^PASS verify:full/);
+  };
+  // alpha가 먼저 출하된다 — 그 인수 파일(tests/acceptance/alpha.test.mjs)이 main에 있다
+  const awt = open('alpha', 'src/alpha.mjs'); build('alpha', awt, 'src/alpha.mjs');
+  assert.match(script('ship', ['alpha'], repo).out, /^SHIPPED alpha/);
+  // beta·gamma는 같은 main에서 열려 둘 다 alpha의 인수 파일 끝에 한 줄을 더한다(CEO 결정의 고쳐 쓰기 꼴) — 코드는 서로 다른 파일
+  const revise = (slug, wt) => {
+    const f = path.join(wt, 'tests/acceptance/alpha.test.mjs');
+    fs.writeFileSync(f, fs.readFileSync(f, 'utf8') + `test('alpha는 ${slug} 파일도 본다', () => { if (!fs.existsSync('src/${slug}.mjs')) throw new Error('red'); });\n`);
+    git(['add', '-A'], wt); script('verify', ['quick'], wt); // 커밋 게이트: 원장 ↔ tree
+    assert.equal(git(['commit', '-q', '-m', `test(${slug}): alpha 인수 고쳐 쓰기`], wt).status, 0);
+  };
+  const bwt = open('beta', 'src/beta.mjs'); const gwt = open('gamma', 'src/gamma.mjs');
+  revise('beta', bwt); revise('gamma', gwt);
+  build('beta', bwt, 'src/beta.mjs'); build('gamma', gwt, 'src/gamma.mjs');
+  assert.match(script('ship', ['beta'], repo).out, /^SHIPPED beta/);
+  const s1 = script('ship', ['gamma'], repo);
+  assert.match(s1.out, /^FAIL ship: main과 충돌 — tests\/acceptance\/alpha\.test\.mjs\. rebase를 그 자리에 멈춰 두었다/, s1.out);
+  // 옛 길: next는 build만 알았다 — build는 가드에 막혀 `spec: 충돌`로 넘기고, 그 뒤 ship FAIL이 되풀이됐다. 이제: build 팩이 끝났고 남은 표시가 인수 테스트뿐이면 spec
+  assert.match(script('next', [], repo).out, /^NEXT run node \.garagiste\/scripts\/brief\.mjs build gamma — main과 충돌/, '첫 걸음은 그대로 build(코드가 섞여 있을 수 있다)');
+  const bp = script('brief', ['build', 'gamma'], repo);
+  assert.match(bp.out, /^PACK .*gamma-build-/, bp.out);
+  assert.match(fs.readFileSync(path.join(repo, bp.out.split(' ')[1]), 'utf8'), /## main과의 충돌[\s\S]*코드 파일만 풀고 git add, 마지막 줄에 `spec: 충돌 <파일>`을 쓰고 멈춘다: conductor가 그 테스트의 주인\(인수 spec · 공격 attack\)을 띄운다\(사고 84\)/, 'build 팩은 테스트 파일을 넘기라고 받는다');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/gamma.json'), 'utf8')).state, 'spec', '충돌을 푸는 팩은 상태를 바꾸지 않는다(잇는 것은 ship)');
+  assert.match(script('work', ['spawned', 'gamma', 'build', '--tokens', '1', '--minutes', '1'], repo).out, /^SPAWN gamma build/);
+  const n2 = script('next', [], repo).out;
+  assert.match(n2, /^NEXT run node \.garagiste\/scripts\/brief\.mjs spec gamma — 충돌이 인수 테스트에 남았다 — tests\/acceptance\/alpha\.test\.mjs: spec가 표시를 풀고 git add까지\(build는 가드가 막는다, 사고 84\)/, n2);
+  const sp = script('brief', ['spec', 'gamma'], repo);
+  assert.match(sp.out, /^PACK .*gamma-spec-/, sp.out);
+  const specPack = fs.readFileSync(path.join(repo, sp.out.split(' ')[1]), 'utf8');
+  assert.match(specPack, /## main과의 충돌 — ship이 rebase를 멈춘 자리\n충돌 파일: tests\/acceptance\/alpha\.test\.mjs[\s\S]*- 이 팩의 일은 표시 풀기뿐\(사고 84\): 네 경계의 테스트 파일\(인수 tests\/acceptance\)만[\s\S]*redproof·verify는 하지 않는다/, 'spec 팩은 표시 풀기만 받는다');
+  assert.doesNotMatch(specPack, /## 반려/, '넘김은 반려가 아니다');
+  assert.doesNotMatch(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"spec_return","slug":"gamma"/, '원장에 반려 줄이 없다');
+  assert.match(script('next', [], repo).out, /^NEXT spawn spec gamma /, '조립된 spec 팩을 띄운다');
+  // spec이 하는 일: 양쪽 기대가 다 살게 풀고 git add까지
+  const f = path.join(gwt, 'tests/acceptance/alpha.test.mjs');
+  const merged = fs.readFileSync(f, 'utf8').split('\n').filter((l) => !/^(<<<<<<<|=======|>>>>>>>)/.test(l)).join('\n');
+  fs.writeFileSync(f, merged); git(['add', 'tests/acceptance/alpha.test.mjs'], gwt);
+  assert.match(script('work', ['spawned', 'gamma', 'spec', '--tokens', '1', '--minutes', '1'], repo).out, /^SPAWN gamma spec/);
+  assert.match(script('next', [], repo).out, /^NEXT run node \.garagiste\/scripts\/ship\.mjs gamma — rebase 도중 — 충돌 표시는 다 풀렸다, ship이 잇는다/);
+  const s2 = script('ship', ['gamma'], repo);
+  assert.match(s2.out, /^SHIPPED gamma/, s2.out);
+  const acc = fs.readFileSync(path.join(repo, 'tests/acceptance/alpha.test.mjs'), 'utf8');
+  assert.ok(acc.includes('beta 파일도') && acc.includes('gamma 파일도'), 'main의 alpha 인수에 두 unit의 고쳐 쓰기가 다 있다 — 통합 tree에서 green');
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"ship_conflict","slug":"gamma","files":\["tests\/acceptance\/alpha\.test\.mjs"\]/);
 });
 
 test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents·guard 플러그인이 깔리고 selftest(플러그인 거부 1건까지)·doctor가 OK', { timeout: 120000 }, (t) => {

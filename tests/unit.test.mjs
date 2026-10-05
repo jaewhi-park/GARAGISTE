@@ -12,12 +12,12 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, gateDecision, gateFailLine, logicLines, probeCommand, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
-import { againCmd, attackRoundUsed, reviseDecided, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
+import { againCmd, attackRoundUsed, reviseDecided, respecRevise, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { candidateLines, firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { candidateSlug, acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
-import { nextStep, render } from '../team/scripts/next.mjs';
+import { conflictHandoff, conflictOwner, nextStep, render } from '../team/scripts/next.mjs';
 import { DEFAULTS as CONDUCT_DEFAULTS, defectLines, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
 import { versionLine } from '../team/scripts/doctor.mjs';
 import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
@@ -963,8 +963,39 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   assert.match(step([u({ state: 'build' })], conflict, rebase(['src/a.mjs'])).cmd, /brief\.mjs build add$/, '충돌 표시는 build가 푼다(사고 26)');
   assert.equal(step([u({ state: 'build' })], [...conflict, { ts: T(13), kind: 'pack', slug: 'add', pack: 'build' }], rebase(['src/a.mjs'])).kind, 'spawn');
   assert.match(step([u({ state: 'build' })], conflict, rebase([])).cmd, /ship\.mjs add$/, '다 풀렸으면 ship이 잇는다(사고 58)');
+  // 사고 84(24라운드 여덟째 날): 남은 표시가 인수·공격 테스트에만 있으면 그 테스트의 주인 팩이 푼다 — 인수 spec · 공격 attack(인수 먼저); build는 가드에 막힌다. 코드가 섞여 남았으면 build의 일(ship이 FAIL로 말한다)
+  const built = [...conflict, { ts: T(13), kind: 'pack', slug: 'add', pack: 'build' }, { ts: T(14), kind: 'spawn', slug: 'add', pack: 'build' }];
+  assert.match(step([u({ state: 'build' })], built, rebase(['src/a.mjs'])).cmd, /ship\.mjs add$/, '코드가 남았으면 build가 덜 풀었다 — ship이 말한다(기존)');
+  const accR = step([u({ state: 'build' })], built, rebase(['tests/acceptance/x.test.mjs']));
+  assert.match(accR.cmd, /brief\.mjs spec add$/, '인수 테스트의 표시는 spec이 푼다(사고 84)'); assert.match(accR.why, /인수 테스트에 남았다[^\n]*사고 84/);
+  assert.match(step([u({ state: 'build' })], built, rebase(['tests/adversary/x-1.test.mjs'])).cmd, /brief\.mjs attack add$/, '공격 테스트의 표시는 attack이');
+  assert.match(step([u({ state: 'build' })], built, rebase(['tests/adversary/x-1.test.mjs', 'tests/acceptance/x.test.mjs'])).cmd, /brief\.mjs spec add$/, '둘 다면 인수 먼저');
+  assert.match(step([u({ state: 'build' })], built, rebase(['tests/acceptance/x.test.mjs', 'src/a.mjs'])).cmd, /ship\.mjs add$/, '코드가 섞여 남았으면 build의 일');
+  const specP = [...built, { ts: T(15), kind: 'pack', slug: 'add', pack: 'spec' }];
+  assert.equal(step([u({ state: 'build' })], specP, rebase(['tests/acceptance/x.test.mjs'])).kind, 'spawn', '주인 팩이 조립됐으면 띄운다');
+  const specD = [...specP, { ts: T(16), kind: 'spawn', slug: 'add', pack: 'spec' }];
+  assert.match(step([u({ state: 'build' })], specD, rebase(['tests/acceptance/x.test.mjs'])).cmd, /ship\.mjs add$/, 'spec이 끝났으면 ship이 잇는다(남았으면 ship이 FAIL로 말한다)');
+  assert.match(step([u({ state: 'build' })], specD, rebase(['tests/adversary/x-1.test.mjs'])).cmd, /brief\.mjs attack add$/, '인수가 풀리고 공격이 남았으면 attack');
+  assert.match(step([u({ state: 'build' })], specD, rebase([])).cmd, /ship\.mjs add$/, '다 풀렸으면 ship');
   assert.match(step([u({ slug: 'boot', kind: 'scaffold', state: 'boot' })], [{ ts: T(1), kind: 'pack', slug: 'boot', pack: 'boot' }, { ts: T(2), kind: 'spawn', slug: 'boot', pack: 'boot' }]).cmd, /ship\.mjs boot$/, 'scaffold는 boot 팩 하나로 출하');
   assert.match(step([u({ slug: 'late', created: T(9) }), u({ state: 'build' })], L).cmd, /ship\.mjs add$/, '한 번에 하나 — 먼저 연 unit부터');
+});
+
+test('next(24라운드, 사고 84): conflictOwner·conflictHandoff — 테스트 파일만 남은 충돌의 주인(인수 spec · 공격 attack · 코드가 섞이면 없음) · build의 `spec: 충돌 <파일>`은 반려가 아니라 넘김', () => {
+  const P = { acceptance: 'tests/acceptance', adversary: 'tests/adversary' };
+  assert.equal(conflictOwner(['tests/acceptance/a.test.js'], P), 'spec');
+  assert.equal(conflictOwner(['tests/adversary/a-1.test.js'], P), 'attack');
+  assert.equal(conflictOwner(['tests/adversary/a-1.test.js', 'tests/acceptance/a.test.js'], P), 'spec', '인수 먼저');
+  assert.equal(conflictOwner(['src/x.js', 'tests/acceptance/a.test.js'], P), null, '코드가 섞여 남았으면 build의 일');
+  assert.equal(conflictOwner([], P), null);
+  assert.equal(conflictOwner(['tests/acceptance_old/a.js'], P), null, '경계는 디렉터리 — 접두가 아니다');
+  assert.equal(conflictOwner(['tests/acceptance/a.test.js']), 'spec', '기본 경로');
+  assert.equal(conflictHandoff('충돌 tests/acceptance/health-json.test.js tests/acceptance/http-error-json.test.js'), true);
+  assert.equal(conflictHandoff('  충돌 tests/adversary/x-1.test.js '), true);
+  assert.equal(conflictHandoff('충돌'), true);
+  assert.equal(conflictHandoff('충돌이 아니라 인수가 서로 어긋난다'), false, '낱말이 아니라 첫 토큰');
+  assert.equal(conflictHandoff('health-json-1 공격 테스트의 기대를 고쳐야 한다'), false);
+  assert.equal(conflictHandoff(''), false);
 });
 
 test('system-attack(채용 2026-10-03): 범위가 끝나면 이음새 공격 한 바퀴 — 발견은 red 테스트, 발견 0이면 drop(초록 테스트는 산출물이 아니다)', () => {
@@ -1447,6 +1478,16 @@ test('brief(18라운드): reviseDecided — 그 unit의 질문·hold에 CEO가 �
   assert.deepEqual(reviseDecided({ questions: [7, 8], holds: [5] }, d), ['- [x] Q7 (order-rm-json): 기존 기대를 JSON으로 고쳐도 되나 → 예', '- [x] Q5 (order-rm-json): hold 질문 → 거부한다']);
   assert.deepEqual(reviseDecided({ questions: [8] }, d), [], '열린 질문은 근거가 아니다');
   assert.deepEqual(reviseDecided({}, d), []);
+});
+// 사고 83(24라운드 여덟째 날): CEO가 decide로만 답하면(RESPEC 길) 답이 인수(spec)에는 닿고 공격 테스트(attack)에는 실리지 않았다 — 답한 질문의 닫힌 줄이 재-spec의 고쳐 쓰기 근거다(--revise 없이, unit.revise로 attack까지)
+test('brief(24라운드, 사고 83): respecRevise — 재-spec의 spec 팩에만, 답이 온 질문의 닫힌 줄을 고쳐 쓰기 근거로(다른 Q·--revise·다른 팩·재-spec 아님이면 빈 문자열)', () => {
+  const decided = ['- [x] Q10 (health-version): 출하된 기대를 version 키를 받도록 고칠까요? → 고쳐라', '- [x] Q3 (health-version): 옛 답 → 예'];
+  assert.equal(respecRevise({ pack: 'spec', revise: '', respec: [{ q: 10 }], decided }), 'Q10 (health-version): 출하된 기대를 version 키를 받도록 고칠까요? → 고쳐라');
+  assert.equal(respecRevise({ pack: 'spec', revise: '', respec: [{ q: 10 }, { q: 3 }], decided }), 'Q10 (health-version): 출하된 기대를 version 키를 받도록 고칠까요? → 고쳐라 / Q3 (health-version): 옛 답 → 예', '답이 온 Q 전부, 닫힌 줄 순서');
+  assert.equal(respecRevise({ pack: 'spec', revise: 'CEO 말', respec: [{ q: 10 }], decided }), '', '--revise가 있으면 그것이 근거다');
+  assert.equal(respecRevise({ pack: 'attack', revise: '', respec: [{ q: 10 }], decided }), '', 'attack은 unit에 실린 결정(carried)으로 받는다');
+  assert.equal(respecRevise({ pack: 'spec', revise: '', respec: [], decided }), '', '재-spec이 아니면 없다');
+  assert.equal(respecRevise({ pack: 'spec', revise: '', respec: [{ q: 11 }], decided }), '', '닫힌 줄이 없는 Q는 근거가 아니다');
 });
 test('work(17라운드): candidateSlug — 후보 이름은 뿌리 unit에 붙는다(후보에서 자란 unit의 후보도 <뿌리>-f<n>)', () => {
   const items = [{ slug: 'order-id-f1' }, { slug: 'order-id-monotonic' }, { slug: 'order-id-monotonic-f1' }];

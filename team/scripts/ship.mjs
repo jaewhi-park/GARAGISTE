@@ -165,7 +165,7 @@ function main() {
   let resumed = null;
   if (exists && rebaseInProgress(wt)) {
     const left = unmergedFiles(wt);
-    if (left.length) fail(`FAIL ship: ${c.team.protected_branch}과의 충돌이 아직 남았다 — ${left.join(' ')} → node .garagiste/scripts/brief.mjs ${pk} ${slug} → 표시를 풀고 git add까지 → ship 다시`);
+    if (left.length) fail(`FAIL ship: ${c.team.protected_branch}과의 충돌이 아직 남았다 — ${left.join(' ')} → node .garagiste/scripts/next.mjs(주인 팩 — 코드 build · 인수 spec · 공격 attack, 사고 84) → 표시를 풀고 git add까지 → ship 다시`);
     const origin = [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'ship_conflict' && e.slug === slug) || null;
     const cont = git(['rebase', '--continue'], wt, { GIT_EDITOR: 'true', GARAGISTE_WIP: '1' });
     if (cont.status && !resolveRebaseTeamJson(wt)) {
