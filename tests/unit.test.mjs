@@ -12,7 +12,7 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, commandFileTokens, discoverTestFiles, gateDecision, gateFailLine, logicLines, probeCommand, probeNames, PROBE_TEXT, skipList, uncoveredTests } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
-import { againCmd, attackRoundUsed, reviseDecided, respecRevise, originRevise, returnAnswered, RETURN_Q, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
+import { againCmd, attackRoundUsed, reviseDecided, respecRevise, originRevise, returnAnswered, returnHandoff, RETURN_Q, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { candidateLines, firstLine, budgetStatus, humanNeeded, reportText, repeatedFails , tryOrder } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, otherChanges, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { candidateSlug, acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
@@ -1559,6 +1559,14 @@ test('brief(26라운드, 사고 88): originRevise — 원문이 그 팩의 테�
   assert.deepEqual(originRevise({ pack: 'spec', origin: 'xtests/acceptance/a.test.js' }), [], '다른 폴더 이름의 접미는 아니다');
   assert.deepEqual(originRevise({ pack: 'spec', origin: '인수 spec/acc/a_test.py를 고친다', paths: { acceptance: 'spec/acc', adversary: 'spec/adv' } }), ['spec/acc/a_test.py'], 'team.paths를 따른다');
   assert.deepEqual(originRevise({ pack: 'spec', origin: '' }), []);
+});
+test('brief(26라운드, 사고 88 둘째 면): returnHandoff — 반려 줄이 원문이 가리키는 인수 파일을 말하면 넘김(반려로 세지 않는다), 아니면 반려', () => {
+  const files = ['tests/acceptance/cli-export.test.js'];
+  assert.equal(returnHandoff('tests/acceptance/cli-export.test.js의 5번이 NODE_TEST_CONTEXT를 지우지 않는다 — build가 쓸 수 없다', files), true);
+  assert.equal(returnHandoff('고칠 곳이 `tests/acceptance/cli-export.test.js` 하나뿐', files), true, '백틱 안의 경로도');
+  assert.equal(returnHandoff('인수 테스트가 서로 어긋난다 — 이름 없는 경우', files), false);
+  assert.equal(returnHandoff('tests/acceptance/other.test.js를 고쳐야 한다', files), false, '원문 밖의 인수 파일은 평소의 반려');
+  assert.equal(returnHandoff('아무 말', []), false);
 });
 test('brief(26라운드, 사고 88): returnAnswered — 닫힌 결정 줄에서 둘째 반려 질문(RETURN_Q)에 답한 Q 번호만(다른 질문·열린 줄은 아니다)', () => {
   const decided = [`- [x] Q9 (acc): ${RETURN_Q} → 예 — 그대로 (2026-10-05)`, '- [x] Q3 (acc): 저장 꼴은? → JSON (2026-10-05)', `- [x] Q11 (acc): ${RETURN_Q} → 예`];

@@ -63,6 +63,9 @@ export function originRevise({ pack, origin, paths = { acceptance: 'tests/accept
   return [...new Set([...String(origin || '').matchAll(re)].map((m) => m[1]))];
 }
 // 사고 88(둘째 면): 둘째 반려의 hard 질문에 CEO가 decide로 답해도 길이 없었다 — 같은 질문을 넷 물었다. 답한 뒤의 같은 반려는 팀 밖의 일(framework)이다, 다시 묻지 않는다.
+// 사고 88(둘째 면 · stage G): 고쳐 쓰기 unit의 attack이 그 파일(5번)의 결함을 찍자 build는 `spec: <파일>`로 넘겼고 둘째 넘김이 hard 질문 → 셋째가 framework가 됐다 —
+// 원문이 가리키는 파일을 build가 넘기는 것은 반려(주장 다툼)가 아니라 주인에게 넘김이다(사고 84의 충돌 넘김과 같은 꼴). 세지 않는다 — 끝은 attack이 물 것이 없을 때(red 0).
+export function returnHandoff(returned, originFiles = []) { const t = String(returned || ''); return originFiles.some((f) => t.includes(f)); }
 export const RETURN_Q = 'spec 반려 두 번째 — 두 줄은 이 FAIL 그대로';
 export function returnAnswered(decided = []) { return decided.filter((l) => l.includes(RETURN_Q)).map((l) => (/Q\d+/.exec(l) || [''])[0]).filter(Boolean); }
 export function attackRoundUsed(ledger, slug, since = '') {
@@ -245,7 +248,9 @@ function main() {
   const respec = unit.respec || [];
   const carried = !revise && pack === 'attack' && unit.revise?.for === 'attack' ? String(unit.revise.text) : '';
   const auto = respecRevise({ pack, revise, respec, decided: decidedQ }); // 사고 83: decide로만 온 답도 재-spec의 고쳐 쓰기 근거 — unit에 실려 attack까지
-  const originFiles = !revise && !carried && !auto ? originRevise({ pack, origin: unit.origin, paths: c.team.paths }) : []; // 사고 88: 원문이 이 팩의 테스트 파일을 가리킨다 — 그것이 고쳐 쓰기 결정
+  const originNamed = originRevise({ pack, origin: unit.origin, paths: c.team.paths }); // 사고 88: 원문이 이 팩의 테스트 파일을 가리킨다 — 그것이 고쳐 쓰기 결정
+  const originFiles = !revise && !carried && !auto ? originNamed : [];
+  const handoff = !!returned && pack === 'spec' && returnHandoff(returned, originNamed); // 사고 88 둘째 면: 그 파일을 build가 넘긴 것은 반려가 아니다
   const fromOrigin = originFiles.length ? String(unit.origin).trim() : '';
   const reviseText = revise || carried || auto || fromOrigin;
   const returns = reviseText ? readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created) : [];
@@ -323,8 +328,9 @@ function main() {
   }
   // 사고 33(필드 시험 1): build·attack의 `spec:` 줄(인수 테스트가 서로·원문과 어긋난다)을 받을 길이 없었다 — redproof는 build 재spawn만 말해 빈손 build가 반복됐다
   const returnedFrom = unit.state;
-  if (returned) {
-    const prior = readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created);
+  if (handoff) sec('return', `넘김 — ${returnedFrom} 팩이 남긴 줄: 원문이 가리키는 인수 파일(${originNamed.join(' ')})은 네 것이다 — 반려가 아니다(사고 88): 그 줄대로 고치고 끝은 node .garagiste/scripts/redproof.mjs ${slug}`, returned);
+  if (returned && !handoff) {
+    const prior = readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created && !e.handoff);
     const answered = prior.length ? returnAnswered(decidedQ) : [];
     if (answered.length) fail(`FAIL spec 반려가 세 번째 — CEO 답(${answered.join('·')}) 뒤에도 같은 반려(사고 88): decide로는 풀리지 않는다 — 팀 밖의 일(framework), 다시 묻지 않는다\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}\n- 길: 원문을 다시 쓴다(node .garagiste/scripts/work.mjs drop ${slug} "<사유>" --forget → 새 slug로 add — 닫힌 slug는 다시 열지 않는다) 또는 사람이 아래 길을 연다\n${revisePaths(slug)}`);
     if (prior.length) fail(`FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다: 두 줄을 CEO에게 그대로 보여 준다(hard 질문 — 그 unit만 멈춘다)\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}\n${revisePaths(slug)}\n- ${holdAsk(slug, RETURN_Q)}`);
@@ -402,7 +408,7 @@ function main() {
   if ((revise || auto || fromOrigin) && pack === 'spec') { unit.revise = { text: revise || auto || fromOrigin, at: stamp(), for: 'attack', ...(auto ? { decided: true } : {}), ...(fromOrigin ? { origin: true } : {}) }; reviseTouched = true; } // 결정은 unit에 실려 attack까지 간다(사고 75 · decide로만 온 답도, 사고 83)
   else if (carried) { delete unit.revise; reviseTouched = true; } // 둘이 받았다
   if (unit.state !== pack || consumed || reviseTouched) { unit.state = pack; saveUnit(c.main, c.team, unit); } // 충돌을 푸는 팩도 상태를 따른다 — 가드의 정본은 unit 상태다(사고 84 stage E: 상태를 두자 spec의 인수 쓰기를 build로 보고 거부했다) · 멈추기 전 상태는 ship_conflict 줄이 들고 ship이 되돌린다
-  if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned, ...(redirected ? { to: 'attack' } : {}) });
+  if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned, ...(redirected ? { to: 'attack' } : {}), ...(handoff ? { handoff: true } : {}) });
   if (reviseText) appendLedger(c.main, c.team, { kind: pack === 'spec' ? 'acceptance_revise' : 'adversary_revise', slug, reason: reviseText, ...(carried ? { carried: true } : {}), ...(auto ? { decided: true } : {}), ...(fromOrigin ? { origin: true } : {}) });
   if (met) appendLedger(c.main, c.team, { kind: 'claims_met', slug, files: metRp.base_green, reason: met });
   appendLedger(c.main, c.team, { kind: 'pack', slug, pack, model: c.team.models[pack], bytes: r.bytes, ...(lane === 'lane' ? { large: reason, cap_kb: capKb } : {}) });

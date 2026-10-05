@@ -915,6 +915,18 @@ test('사고 88(26라운드): 원문이 출하된 인수 파일을 가리키면 
   assert.equal(unit.revise?.origin, true, '결정은 unit에 실려 attack까지 간다(사고 75) — 근거는 원문');
   assert.equal(unit.revise?.text, origin);
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"acceptance_revise","slug":"acc","reason":"출하된 exp 인수 테스트[^\n]*"origin":true/);
+  // 사고 88 둘째 면(stage G): 고쳐 쓰기 unit의 build가 그 파일을 `spec:`으로 넘기는 것은 반려가 아니다 — 몇 번이 와도 hard 질문·framework가 아니라 spec의 일(끝은 attack red 0)
+  for (const i of [1, 2, 3]) {
+    const h = script('brief', ['spec', 'acc', '--return', `tests/acceptance/exp.test.mjs의 둘째 단언은 build가 쓸 수 없다(${i})`], repo);
+    assert.match(h.out, /^PACK .*acc-spec-/, h.out);
+    assert.match(fs.readFileSync(path.join(repo, h.out.split(' ')[1]), 'utf8'), /## 넘김 — spec 팩이 남긴 줄: 원문이 가리키는 인수 파일\(tests\/acceptance\/exp\.test\.mjs\)은 네 것이다 — 반려가 아니다\(사고 88\): 그 줄대로 고치고 끝은 node \.garagiste\/scripts\/redproof\.mjs acc\n[\s\S]*## 고쳐 쓰기/, '넘김 절 + 고쳐 쓰기 절');
+  }
+  assert.equal(ledgerOf(repo).filter((e) => e.kind === 'spec_return' && e.slug === 'acc' && e.handoff).length, 3, '넘김은 원장에 handoff로 남고 반려로 세지 않는다');
+  // 원문 밖의 반려는 평소대로: 첫째는 반려 절, 둘째는 CEO(사고 42)
+  const d1 = script('brief', ['spec', 'acc', '--return', '인수 테스트가 서로 어긋난다'], repo);
+  assert.match(d1.out, /^PACK/, d1.out);
+  assert.match(fs.readFileSync(path.join(repo, d1.out.split(' ')[1]), 'utf8'), /## 반려 — spec 팩이 남긴 줄 \(그 주장들이 서로·원문과 어긋나는지부터\)/);
+  assert.match(script('brief', ['spec', 'acc', '--return', '인수 테스트가 서로 어긋난다 — 다시'], repo).out, /^FAIL spec 반려가 두 번째/);
   // spec이 하는 일: 원문대로 exp 인수의 둘째 단언을 지우고, 자기 인수는 고쳐 쓴 파일의 새 꼴을 바깥에서 본다(base에서 red · head에서 green)
   const target = path.join(awt, 'tests/acceptance/exp.test.mjs');
   fs.writeFileSync(target, fs.readFileSync(target, 'utf8').replace(PIN, ''));
