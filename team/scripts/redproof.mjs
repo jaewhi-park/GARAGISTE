@@ -109,7 +109,10 @@ function main() {
   const files = acceptanceFiles(c.root, c.team, slug);
   if (!files.length) fail(`FAIL redproof ${slug}: ${c.team.paths.acceptance}/${slug}* 없음`);
   const base = mergeBase(c.root, c.team.protected_branch);
-  const others = base ? otherChanges(git(['diff', '--name-only', base], c.root).stdout.split('\n').filter(Boolean), files) : []; // 사고 88: 고쳐 쓴 남의 인수도 변경이다 — 작업 트리 기준(spec은 커밋 전에 redproof를 돈다: stage G 04:17 「base에서 green」 흔들림)
+  // 사고 88: 고쳐 쓴 남의 인수도 변경이다 — 커밋된 변경 + 인수 자리의 작업 트리 변경(spec은 커밋 전에 redproof를 돈다: stage G 04:17 「base에서 green」 흔들림). 소스·team.json의 미커밋 변경은 전처럼 세지 않는다(사고 44 e2e)
+  const committed = base ? git(['diff', '--name-only', `${base}..HEAD`], c.root).stdout.split('\n').filter(Boolean) : [];
+  const accWt = base ? git(['diff', '--name-only', base, '--', c.team.paths.acceptance], c.root).stdout.split('\n').filter(Boolean) : [];
+  const others = base ? otherChanges([...new Set([...committed, ...accWt])], files) : [];
   const codeChanged = others.length > 0;
   const revised = others.filter((f) => f.startsWith(`${c.team.paths.acceptance}/`));
   const tree = workTree(c.root);
