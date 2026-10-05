@@ -72,8 +72,9 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     if (!doneAfter('build', bp.ts)) return spawn('build', '충돌을 푸는 build');
     const owner = conflictOwner(wt.unmerged, paths); // 사고 84: 테스트 파일만 남았으면 주인 팩(인수 spec · 공격 attack)
     if (owner) {
-      const op = last(mine, (e) => e.kind === 'pack' && e.pack === owner && since(e, bp.ts));
-      if (!op) return brief(owner, `충돌이 ${owner === 'spec' ? '인수' : '공격'} 테스트에 남았다 — ${wt.unmerged.join(' ')}: ${owner}가 표시를 풀고 git add까지(build는 가드가 막는다, 사고 84)`);
+      const ops = mine.filter((e) => e.kind === 'pack' && e.pack === owner && since(e, bp.ts)); // 한 번 더까지 — 둘이 다 풀지 못했으면 ship이 FAIL로 말한다(되풀이 → 멈춤)
+      const op = ops[ops.length - 1];
+      if (!op || (ops.length < 2 && doneAfter(owner, op.ts))) return brief(owner, `충돌이 ${owner === 'spec' ? '인수' : '공격'} 테스트에 남았다 — ${wt.unmerged.join(' ')}: ${owner}가 표시를 풀고 git add까지(build는 가드가 막는다, 사고 84)${op ? ' — 한 번 더(앞 팩이 다 풀지 못했다)' : ''}`);
       if (!doneAfter(owner, op.ts)) return spawn(owner, `충돌(${owner === 'spec' ? '인수' : '공격'} 테스트)을 푸는 ${owner}`);
     }
     return run(`ship.mjs ${slug}`, 'build가 표시를 풀었다 — ship이 rebase를 잇는다');

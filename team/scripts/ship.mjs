@@ -171,9 +171,11 @@ function main() {
     if (cont.status && !resolveRebaseTeamJson(wt)) {
       const next = unmergedFiles(wt);
       if (!next.length) { git(['rebase', '--abort'], wt); fail(`FAIL ship: rebase를 잇지 못했다 — ${(cont.stderr || cont.stdout).split('\n')[0]}`); }
-      appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files: next, tree: origin?.tree || null, head: origin?.head || null });
+      appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files: next, tree: origin?.tree || null, head: origin?.head || null, ...(origin?.state ? { state: origin.state } : {}) });
       fail(conflictFail(c.team.protected_branch, next, slug, pk));
     }
+    // 사고 84: 충돌을 푼 팩(build·spec·attack)이 unit 상태를 제 것으로 돌려 놓았다(가드의 정본) — 이은 뒤엔 멈추기 전 상태로(이 뒤의 FAIL에서 next가 제 자리를 찾게)
+    if (origin?.state && unit.state !== origin.state) { unit.state = origin.state; saveUnit(c.main, c.team, unit); }
     resumed = origin;
   }
   // 사고 20(3차 실기): 사고 15가 spike 산출물의 커밋 경로를 없앴다 — 훅은 건너뛰고, 에이전트는 커밋 금지, conductor는 가드가 막는다.
@@ -227,7 +229,7 @@ function main() {
     const files = unmergedFiles(wt);
     // 필드 시험 1: 첫 줄만 내 파일 이름이 잘렸다 — git의 hint 줄만 빼고 전문
     if (!files.length) { git(['rebase', '--abort'], wt); fail(`FAIL ship: rebase 실패(되돌렸다 — worktree는 그대로) — ${(rb.stderr || rb.stdout).split('\n').filter((l) => l.trim() && !/^hint:/.test(l)).slice(0, 12).join('\n')}`); }
-    appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files, tree, head: resumed?.head || preHead });
+    appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files, tree, head: resumed?.head || preHead, state: resumed?.state || unit.state }); // state: 멈추기 전 unit 상태 — 충돌을 푸는 팩이 바꾸고 ship이 되돌린다(사고 84)
     fail(conflictFail(c.team.protected_branch, files, slug, pk));
   }
   const newTree = headTree(wt);

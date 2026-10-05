@@ -974,7 +974,10 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   const specP = [...built, { ts: T(15), kind: 'pack', slug: 'add', pack: 'spec' }];
   assert.equal(step([u({ state: 'build' })], specP, rebase(['tests/acceptance/x.test.mjs'])).kind, 'spawn', '주인 팩이 조립됐으면 띄운다');
   const specD = [...specP, { ts: T(16), kind: 'spawn', slug: 'add', pack: 'spec' }];
-  assert.match(step([u({ state: 'build' })], specD, rebase(['tests/acceptance/x.test.mjs'])).cmd, /ship\.mjs add$/, 'spec이 끝났으면 ship이 잇는다(남았으면 ship이 FAIL로 말한다)');
+  const again = step([u({ state: 'build' })], specD, rebase(['tests/acceptance/x.test.mjs']));
+  assert.match(again.cmd, /brief\.mjs spec add$/, 'spec이 끝났는데 남았으면 한 번 더'); assert.match(again.why, /한 번 더\(앞 팩이 다 풀지 못했다\)/);
+  const specD2 = [...specD, { ts: T(17), kind: 'pack', slug: 'add', pack: 'spec' }, { ts: T(18), kind: 'spawn', slug: 'add', pack: 'spec' }];
+  assert.match(step([u({ state: 'build' })], specD2, rebase(['tests/acceptance/x.test.mjs'])).cmd, /ship\.mjs add$/, '둘이 다 풀지 못했으면 ship이 FAIL로 말한다(되풀이 → 멈춤)');
   assert.match(step([u({ state: 'build' })], specD, rebase(['tests/adversary/x-1.test.mjs'])).cmd, /brief\.mjs attack add$/, '인수가 풀리고 공격이 남았으면 attack');
   assert.match(step([u({ state: 'build' })], specD, rebase([])).cmd, /ship\.mjs add$/, '다 풀렸으면 ship');
   assert.match(step([u({ slug: 'boot', kind: 'scaffold', state: 'boot' })], [{ ts: T(1), kind: 'pack', slug: 'boot', pack: 'boot' }, { ts: T(2), kind: 'spawn', slug: 'boot', pack: 'boot' }]).cmd, /ship\.mjs boot$/, 'scaffold는 boot 팩 하나로 출하');

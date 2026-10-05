@@ -383,7 +383,7 @@ function main() {
   let reviseTouched = false;
   if ((revise || auto) && pack === 'spec') { unit.revise = { text: revise || auto, at: stamp(), for: 'attack', ...(auto ? { decided: true } : {}) }; reviseTouched = true; } // 결정은 unit에 실려 attack까지 간다(사고 75 · decide로만 온 답도, 사고 83)
   else if (carried) { delete unit.revise; reviseTouched = true; } // 둘이 받았다
-  if (consumed || reviseTouched || (!conflicted.length && unit.state !== pack)) { if (!conflicted.length) unit.state = pack; saveUnit(c.main, c.team, unit); } // 사고 84: 충돌을 푸는 팩은 상태를 바꾸지 않는다(잇는 것은 ship)
+  if (unit.state !== pack || consumed || reviseTouched) { unit.state = pack; saveUnit(c.main, c.team, unit); } // 충돌을 푸는 팩도 상태를 따른다 — 가드의 정본은 unit 상태다(사고 84 stage E: 상태를 두자 spec의 인수 쓰기를 build로 보고 거부했다) · 멈추기 전 상태는 ship_conflict 줄이 들고 ship이 되돌린다
   if (returned) appendLedger(c.main, c.team, { kind: 'spec_return', slug, from: returnedFrom, reason: returned, ...(redirected ? { to: 'attack' } : {}) });
   if (reviseText) appendLedger(c.main, c.team, { kind: pack === 'spec' ? 'acceptance_revise' : 'adversary_revise', slug, reason: reviseText, ...(carried ? { carried: true } : {}), ...(auto ? { decided: true } : {}) });
   if (met) appendLedger(c.main, c.team, { kind: 'claims_met', slug, files: metRp.base_green, reason: met });

@@ -843,7 +843,7 @@ test('사고 84(24라운드): 충돌이 인수 테스트에 남으면 next가 sp
   const bp = script('brief', ['build', 'gamma'], repo);
   assert.match(bp.out, /^PACK .*gamma-build-/, bp.out);
   assert.match(fs.readFileSync(path.join(repo, bp.out.split(' ')[1]), 'utf8'), /## main과의 충돌[\s\S]*코드 파일만 풀고 git add, 마지막 줄에 `spec: 충돌 <파일>`을 쓰고 멈춘다: conductor가 그 테스트의 주인\(인수 spec · 공격 attack\)을 띄운다\(사고 84\)/, 'build 팩은 테스트 파일을 넘기라고 받는다');
-  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/gamma.json'), 'utf8')).state, 'spec', '충돌을 푸는 팩은 상태를 바꾸지 않는다(잇는 것은 ship)');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/gamma.json'), 'utf8')).state, 'build', '충돌을 푸는 팩도 상태를 따른다 — 가드의 정본은 unit 상태다(stage E: 상태를 두자 spec의 인수 쓰기가 거부됐다)');
   assert.match(script('work', ['spawned', 'gamma', 'build', '--tokens', '1', '--minutes', '1'], repo).out, /^SPAWN gamma build/);
   const n2 = script('next', [], repo).out;
   assert.match(n2, /^NEXT run node \.garagiste\/scripts\/brief\.mjs spec gamma — 충돌이 인수 테스트에 남았다 — tests\/acceptance\/alpha\.test\.mjs: spec가 표시를 풀고 git add까지\(build는 가드가 막는다, 사고 84\)/, n2);
@@ -852,6 +852,7 @@ test('사고 84(24라운드): 충돌이 인수 테스트에 남으면 next가 sp
   const specPack = fs.readFileSync(path.join(repo, sp.out.split(' ')[1]), 'utf8');
   assert.match(specPack, /## main과의 충돌 — ship이 rebase를 멈춘 자리\n충돌 파일: tests\/acceptance\/alpha\.test\.mjs[\s\S]*- 이 팩의 일은 표시 풀기뿐\(사고 84\): 네 경계의 테스트 파일\(인수 tests\/acceptance\)만[\s\S]*redproof·verify는 하지 않는다/, 'spec 팩은 표시 풀기만 받는다');
   assert.doesNotMatch(specPack, /## 반려/, '넘김은 반려가 아니다');
+  assert.equal(JSON.parse(fs.readFileSync(path.join(repo, '.garagiste/units/gamma.json'), 'utf8')).state, 'spec', 'spec 팩이 돌 동안 가드는 spec을 본다(tests/acceptance 쓰기 허용)');
   assert.doesNotMatch(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"spec_return","slug":"gamma"/, '원장에 반려 줄이 없다');
   assert.match(script('next', [], repo).out, /^NEXT spawn spec gamma /, '조립된 spec 팩을 띄운다');
   // spec이 하는 일: 양쪽 기대가 다 살게 풀고 git add까지
@@ -864,7 +865,7 @@ test('사고 84(24라운드): 충돌이 인수 테스트에 남으면 next가 sp
   assert.match(s2.out, /^SHIPPED gamma/, s2.out);
   const acc = fs.readFileSync(path.join(repo, 'tests/acceptance/alpha.test.mjs'), 'utf8');
   assert.ok(acc.includes('beta 파일도') && acc.includes('gamma 파일도'), 'main의 alpha 인수에 두 unit의 고쳐 쓰기가 다 있다 — 통합 tree에서 green');
-  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"ship_conflict","slug":"gamma","files":\["tests\/acceptance\/alpha\.test\.mjs"\]/);
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"ship_conflict","slug":"gamma","files":\["tests\/acceptance\/alpha\.test\.mjs"\][^\n]*"state":"spec"/, '멈추기 전 상태가 원장에 있다 — ship이 이은 뒤 되돌리는 근거');
 });
 
 test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents·guard 플러그인이 깔리고 selftest(플러그인 거부 1건까지)·doctor가 OK', { timeout: 120000 }, (t) => {
