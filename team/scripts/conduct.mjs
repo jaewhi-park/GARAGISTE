@@ -102,7 +102,7 @@ export function specReturn(text) {
   return null;
 }
 // 사고 76(16라운드 운영 둘째 날 stage C): 포장을 벗기자 build의 「`spec:` 줄 없음.」이 반려 「줄 없음.」으로 읽혀 가짜 둘째 반려 → hold가 났다 — 코드 토큰(`spec:`)으로 낱말을 가리킨 줄과 「없음」은 반려가 아니다.
-const NONE = /^(줄 )?(없음|없다|none|n\/a)[.。]?$/i;
+const NONE = /^(줄 )?(없음|없다|none|n\/a)(?=$|[\s.。,—:;)])/i; // 25라운드(둘째 근거): 「spec: 없음. 다만 …」 — 없음 뒤의 덧말은 반려가 아니다(첫 토큰이 없음·없다·none이면 없음)
 const mention = (line, word) => new RegExp('^[\\s*_>"\x27-]*`' + word + ':`').test(line);
 // 16라운드(둘의 규칙 — 14라운드 관찰 14 「공격이 diff 밖 결함을 글로만 남겼다」 · 15라운드 관찰 21 「intake가 진짜 결함을 unit이 아니라 질문으로 올렸다」): 팩이 남긴 `defect:` 줄은 BACKLOG 후보가 된다(work.mjs found). 마지막 열 줄 안, 포장은 spec:과 같이 벗긴다.
 export function defectLines(text) {
@@ -138,6 +138,8 @@ export function holdCommand(text) {
 // 사고 71(15라운드 넷째 run): 반려 전달(brief.mjs spec --return)이 FAIL이면(system unit — spec이 없다) 팩은 「빈손 + 반려」로 정당해 보여 진전 없음에도 되풀이에도 안 세어졌다 — build 30회·$2.87.
 // 그 FAIL은 run 걸음의 FAIL과 같은 열쇠(failKey)로 센다(되풀이 = 2). held는 CEO에게 간 것(열쇠 없음) · FAIL 줄 없는 비정상 종료도 열쇠 하나.
 export function handOffKey(rc) { return rc && rc.status && !rc.held ? (failKey(rc.text) || 'brief spec --return 비정상 종료(FAIL 줄 없음)') : null; }
+// 사고 88: 둘째 반려의 hard 질문에 CEO가 답한 뒤에도 같은 반려면 brief가 「세 번째」로 낸다 — 되풀이를 기다리지 않고 바로 framework(다시 물으면 같은 답이 넷째 질문을 낳는다)
+export const thirdReturn = (key) => /^FAIL spec 반려가 세 번째/.test(String(key || ''));
 // 잠금 = heartbeat: 한 저장소에 드라이버 하나(unit은 한 번에 하나 — 둘이면 같은 unit을 두 번 띄우거나 ship이 겹친다). 살아 있는 pid면 거부, 죽은 pid의 잠금은 그 자리에서 교체.
 export function lockAlive(lock, { isAlive = pidAlive } = {}) { return !!(lock && lock.pid && isAlive(lock.pid)); }
 function writeLock(main, started, data = {}) { writeJson(path.join(main, CONDUCT_LOCK), { pid: process.pid, started, at: new Date().toISOString(), ...data }); }
@@ -369,7 +371,7 @@ async function main() {
       USD += x.cost || 0;
       const after = fs.existsSync(wt) ? headSha(wt) : null;
       if (!x.ok) { const key = `spawn ${r.slug} ${r.pack}`; const n = (fails.get(key) || 0) + 1; fails.set(key, n); if (n >= 2) return stop(c, 'framework', `팩이 두 번 비정상 종료 — ${key}(exit ${x.status})${x.log ? ` · ${x.log}` : ''}`); }
-      else if (x.returnFail) { const n = (fails.get(x.returnFail) || 0) + 1; fails.set(x.returnFail, n); if (n >= 2) return stop(c, 'framework', `반려를 받을 길이 없다(사고 71) — 같은 FAIL 되풀이: ${x.returnFail}`); } // 반려 전달의 FAIL — run 걸음의 FAIL과 같은 열쇠·규칙
+      else if (x.returnFail) { if (thirdReturn(x.returnFail)) return stop(c, 'framework', `CEO 답 뒤에도 같은 반려(사고 88) — ${x.returnFail}`); const n = (fails.get(x.returnFail) || 0) + 1; fails.set(x.returnFail, n); if (n >= 2) return stop(c, 'framework', `반려를 받을 길이 없다(사고 71) — 같은 FAIL 되풀이: ${x.returnFail}`); } // 반려 전달의 FAIL — run 걸음의 FAIL과 같은 열쇠·규칙
       else if (!x.returned && noProgress(history, { slug: r.slug, pack: r.pack, before, after }) >= 2) return stop(c, 'framework', `${r.pack} 팩이 ${r.slug}에서 두 번 돌았는데 worktree가 그대로다(HEAD ${(after || '').slice(0, 7)}) — 팩 로그 ${x.log || '없음'}`);
     } else return stop(c, 'framework', `모르는 걸음 ${r.kind} — ${render(r)}`);
     if (o.once) return stop(c, 'cap', '--once');

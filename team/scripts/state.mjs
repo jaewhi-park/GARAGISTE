@@ -33,7 +33,7 @@ export function budgetStatus({ units, ledger, team, ceoTouchTs }) {
   const shipped = units.filter((u) => u.state === 'shipped').sort((a, b) => (a.shipped || '').localeCompare(b.shipped || ''));
   const untried = shipped.filter((u) => !u.tried);
   const unseen = untried.filter((u) => humanNeeded(u, ledger, team));
-  if (unseen.length >= team.budgets.unseen_max) stops.push(`미검수 ${unseen.length} ≥ ${team.budgets.unseen_max} — CEO가 써봐야 출하가 열린다${untried.length > unseen.length ? `(기계 증명 ${untried.length - unseen.length}은 세지 않았다)` : ''}`);
+  if (unseen.length >= team.budgets.unseen_max) stops.push(`미검수 ${unseen.length} ≥ ${team.budgets.unseen_max} — CEO가 써봐야 출하가 열린다${untried.length > unseen.length ? `(기계 증명 ${untried.length - unseen.length}은 세지 않았다)` : ''} — 세는 unit: ${unseen.map((u) => u.slug).join(' · ')}`); // 사고 86: 어느 unit을 써봐야 하는지 이름으로
   const since = ceoTouchTs || '';
   const unattended = ledger.filter((e) => e.kind === 'ship' && e.ts > since).length;
   if (unattended >= team.budgets.unattended_ship_max) stops.push(`CEO 접점 없이 출하 ${unattended} ≥ ${team.budgets.unattended_ship_max}`);
@@ -65,6 +65,12 @@ export function candidateLines({ ledger, backlogText, units }) {
   return out;
 }
 export function openQuestions(decisionsText) { return [...decisionsText.matchAll(/^- \[ \] Q\d+.*$/gm)].map((m) => m[0]); }
+// 사고 86(25라운드 아홉째 날 · erp-lite): 미검수 3/3에 CEO가 STATUS 「써볼 것」의 첫 unit(adopt — 기계 증명, 세지 않는 것)을 써봤는데 셈은 그대로 3이었다 —
+// 목록이 출하 순서라 세는 unit(health-pid·health-uptime·system-4-f4)은 ≤3 안에 보이지 않았다. 세는 unit이 먼저, 그 다음 기계 증명(마일스톤 끝에) — 정지 줄도 이름을 말한다(위).
+export function tryOrder(units, ledger, team) {
+  const untried = units.filter((u) => u.state === 'shipped' && !u.tried).sort((a, b) => (a.shipped || '').localeCompare(b.shipped || ''));
+  return [...untried.filter((u) => humanNeeded(u, ledger, team)), ...untried.filter((u) => !humanNeeded(u, ledger, team))];
+}
 export function render(c) {
   const units = listUnits(c.main, c.team);
   const ledger = readLedger(c.main, c.team);
@@ -73,7 +79,7 @@ export function render(c) {
   const b = budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) });
   const rf = repeatedFails(ledger, ceoTouch(c.main));
   const gd = ledger.filter((e) => e.kind === 'guard' && (e.ts || '') > (ceoTouch(c.main) || ''));
-  const shippedUnseen = units.filter((u) => u.state === 'shipped' && !u.tried).sort((a, b2) => (a.shipped || '').localeCompare(b2.shipped || ''));
+  const shippedUnseen = tryOrder(units, ledger, c.team); // 사고 86: 세는 unit 먼저
   const unobservedOs = shippedUnseen.filter((u) => u.sensor && u.sensor.includes('@') && u.sensor.startsWith('human')).length;
   const questions = openQuestions(readText(path.join(c.main, c.team.paths.decisions)));
   const uncertain = claims.find((x) => x.status === 'unsensed') || claims.find((x) => x.status === 'unknown');

@@ -2,10 +2,12 @@
 // L2 2판 윈도우(고칠 때마다 attack 팩을 새로 띄워 28·20바퀴)·3판(CEO의 「다 ok」를 Q10의 「예」로 · 부재 선언 뒤 루프 재개): 규율 이탈은 전부 Flow 4~7 산문의 빈칸에서 났다 — 빈칸을 코드로.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ceoTouch, ctx, fail, isMain, listUnits, out, readJson, readLedger, readText, rebaseInProgress, unmergedFiles, workTree, worktreeDir } from './lib.mjs';
+import { ceoTouch, ctx, fail, git, isMain, listUnits, mergeBase, out, readJson, readLedger, readText, rebaseInProgress, unmergedFiles, workTree, worktreeDir } from './lib.mjs';
 import { blocking, diagnose } from './doctor.mjs';
 import { budgetStatus } from './state.mjs';
 import { attackRoundUsed } from './brief.mjs';
+import { checkBoundary } from './boundary.mjs';
+import { spikeComplete } from './ship.mjs';
 import { parseBacklog, pickReady } from './work.mjs';
 
 const S = 'node .garagiste/scripts';
@@ -79,38 +81,18 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     }
     return run(`ship.mjs ${slug}`, 'build가 표시를 풀었다 — ship이 rebase를 잇는다');
   }
-  const st = u.state;
-  const P = packOf(st);
-  if (!P) return brief(st, `${slug}의 ${st} 팩이 아직 없다`);
-  const D = doneAfter(st, P.ts);
-  if (!D) return spawn(st, `${st} 팩이 조립됐다 — 띄운다`);
-  const specPack = packOf('spec');
-  if (st === 'boot') return run(`ship.mjs ${slug}`, 'boot이 끝났다 — scaffold는 boot 팩 하나로 출하');
-  if (st === 'adopt') return run(`ship.mjs ${slug}`, 'adopt가 끝났다 — 기존 코드의 첫 unit은 adopt 팩 하나로 출하(특성화 테스트의 quick·full)');
-  if (st === 'spike') return specPack ? run(`ship.mjs ${slug}`, '늦은 spike(출하 때 diff-HIT)가 끝났다 — ship 다시') : brief('spec', 'spike 측정이 끝났다 — 다음은 spec');
-  if (st === 'spec') {
-    const rp = last(mine, (e) => e.kind === 'redproof' && since(e, P.ts));
-    if (!rp) return run(`redproof.mjs ${slug}`, u.kind === 'refactor' ? 'spec이 끝났다 — PIN 증명(핀은 base에서 초록)' : 'spec이 끝났다 — RED 증명');
-    if (u.kind === 'refactor' || u.kind === 'pin') { // 동작 보존(7라운드)·이미 충족(13라운드): 핀이 base에서 초록이면 refactor는 build(구조만), pin은 attack(build 없음). re-spec 분기는 둘엔 없다(핀은 본래 충족이다)
-      if (rp.pin_base !== 'green') return run(`redproof.mjs ${slug}`, '마지막 redproof가 FAIL(핀이 base에서 red 또는 눈먼 test_file) — 그 줄의 안내대로(CEO 결정이면 ask --hold)');
-      if (u.kind === 'pin') return brief('attack', 'PIN — 이미 충족된 주장이 회귀 증거로 고정됐다(base에서 초록), build 없음 — attack이 그 주장이 깨지는 입력을 찾는다');
-      return brief('build', 'PIN — 현재 동작이 고정됐다, 구조만 바꾼다(동작 보존)');
-    }
-    if (!rp.base_red) return run(`redproof.mjs ${slug}`, '마지막 redproof가 FAIL(base에서 green 또는 눈먼 test_file) — 그 줄의 안내대로(CEO 결정이면 ask --hold)');
-    if (rp.head_green === true) return brief('attack', 're-spec: 기존 코드가 새 주장을 이미 만족한다 — build 불필요, attack은 새 바퀴');
-    return brief('build', 'RED — red를 green으로');
-  }
-  const A = last(mine, (e) => e.kind === 'attack' && since(e, P.ts)); // 이 팩 뒤의 공격 결과(팩 안의 에이전트가 남긴 것도)
-  // system-attack: 발견(한 번이라도 red였던 공격)이 없으면 초록 테스트뿐 — 산출물이 아니라 drop(탐색은 원장 attack 줄에 남는다)
-  const finish = () => {
-    if (A.red > 0) return brief('build', `공격 red ${A.red} — build 다시`);
-    // 사고 80(19라운드 다섯째 날): system-4의 첫 공격 red 3이 build의 반려(「카드끼리 어긋남」)로 attack에게 돌아가 철회됐다(파일 삭제 → total 0) — 「한 번이라도 red」만 보던 next는 ship을 냈고 ship은 「adversary 테스트 0개」로 두 번 서 framework 정지.
-    // 마지막 공격이 파일을 안 남겼으면 발견은 없다 — drop(철회도 원장 attack 줄에 남는다).
-    const everRed = mine.some((e) => e.kind === 'attack' && e.red > 0);
-    if (u.kind === 'system' && (A.total === 0 || !everRed)) return run(`work.mjs drop ${slug} "system-attack 발견 0 — 공격 파일 ${A.total}${everRed ? '(red였던 공격을 attack이 철회)' : ''}" --forget`, '발견 0 — 초록 테스트는 산출물이 아니다(탐색은 원장에 남는다)');
+  // 출하 직전의 검사 — 예산 정지 · 늦은 spike(사고 87) · 이 tree의 redproof·full(사고 85) · ship. finish(공격 red 0)와 늦은 spike 뒤(st === 'spike')가 같이 쓴다.
+  const shipChecks = () => {
     // 사고 64(L2 5판 리눅스 4라운드): red 0인데 예산 정지(미검수 3)면 ship이 budget 조건으로 거부한다 — 예산 정지의 ceo는 seed 자리에만 있어 next가 ship을 계속 냈고
     // conductor가 ship의 FAIL 줄을 읽어 스스로 멈췄다. ship 직전에도 같은 ceo — 그 unit은 red 0으로 서 있고 CEO가 써봐야 출하가 열린다.
     if (stops.length) return { kind: 'ceo', text: `STOP ${stops.join('; ')} — 예산 정지: ${slug}는 red 0으로 ship 직전에 서 있다 — CEO에게 docs/STATUS.md 「써볼 것」·「정해 주세요」` };
+    // 사고 87(25라운드 아홉째 날 · erp-lite system-4-f1): build가 카드의 데이터 폴더를 .gitignore에 더해 출하 때 diff-HIT(boundary) — ship은 「spike 필수 행 미완 → brief spike」로 FAIL했는데
+    // next는 ship만 되풀이해 framework 멈춤(늦은 spike의 길은 st === 'spike'에만 있었다). 늦은 spike는 ship 전에 next가 띄운다 — 측정이 차면(spikeDone) 이 tree의 증거를 다시 묶고 ship.
+    if (wt.diffHit?.hit && !wt.spikeDone && u.kind !== 'scaffold') {
+      const sp = packOf('spike');
+      if (!sp) return brief('spike', `출하 때 boundary HIT(${wt.diffHit.reasons.join(', ')}) — 늦은 spike: 측정(spike-${slug}.md의 필수 행)을 채운다(사고 87)`);
+      if (!doneAfter('spike', sp.ts)) return spawn('spike', '늦은 spike(출하 때 diff-HIT)');
+    }
     // 7라운드(refactor e2e가 드러냄): attack이 red 0으로 끝나면 공격 파일만 더해진 tree엔 redproof·full PASS가 없다 — ship이 「이전 tree의 것」·「full 없음」으로 서고 드라이버는 같은 FAIL 둘로 멈췄을 것(대화형 conductor는 FAIL 안내를 따랐다). 판단 없는 한 걸음씩.
     const tree = wt.tree || null; // computeNext의 wtOf가 센다 — nextStep은 조립된 입력만 받는다(판단 없음·순수)
     const proven = (e) => e.kind === 'redproof' && e.slug === slug && e.tree === tree && e.head_green === true && (u.kind === 'refactor' || u.kind === 'pin' ? e.refactor && e.pin_base === 'green' : e.base_red);
@@ -122,6 +104,45 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     if (tree && !ledger.some((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === tree)) return run(`verify.mjs full ${slug}`, 'red 0 — 이 tree의 full PASS가 원장에 없다(공격 파일만 더해진 tree): ship 조건');
     return run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
   };
+  const st = u.state;
+  const P = packOf(st);
+  if (!P) return brief(st, `${slug}의 ${st} 팩이 아직 없다`);
+  const D = doneAfter(st, P.ts);
+  if (!D) return spawn(st, `${st} 팩이 조립됐다 — 띄운다`);
+  const specPack = packOf('spec');
+  if (st === 'boot') return run(`ship.mjs ${slug}`, 'boot이 끝났다 — scaffold는 boot 팩 하나로 출하');
+  if (st === 'adopt') return run(`ship.mjs ${slug}`, 'adopt가 끝났다 — 기존 코드의 첫 unit은 adopt 팩 하나로 출하(특성화 테스트의 quick·full)');
+  if (st === 'spike') { // 처음 spike(원문 HIT) 뒤엔 spec · 늦은 spike(출하 때 diff-HIT, 사고 87) 뒤엔 측정 파일이 tree를 움직였다 — 이 tree의 증거를 다시 묶고 ship
+    if (!specPack && u.kind !== 'system') return brief('spec', 'spike 측정이 끝났다 — 다음은 spec');
+    return shipChecks();
+  }
+  if (st === 'spec') {
+    const rp = last(mine, (e) => e.kind === 'redproof' && since(e, P.ts));
+    if (!rp) return run(`redproof.mjs ${slug}`, u.kind === 'refactor' ? 'spec이 끝났다 — PIN 증명(핀은 base에서 초록)' : 'spec이 끝났다 — RED 증명');
+    if (u.kind === 'refactor' || u.kind === 'pin') { // 동작 보존(7라운드)·이미 충족(13라운드): 핀이 base에서 초록이면 refactor는 build(구조만), pin은 attack(build 없음). re-spec 분기는 둘엔 없다(핀은 본래 충족이다)
+      if (rp.pin_base !== 'green') return run(`redproof.mjs ${slug}`, '마지막 redproof가 FAIL(핀이 base에서 red 또는 눈먼 test_file) — 그 줄의 안내대로(CEO 결정이면 ask --hold)');
+      if (u.kind === 'pin') return brief('attack', 'PIN — 이미 충족된 주장이 회귀 증거로 고정됐다(base에서 초록), build 없음 — attack이 그 주장이 깨지는 입력을 찾는다');
+      return brief('build', 'PIN — 현재 동작이 고정됐다, 구조만 바꾼다(동작 보존)');
+    }
+    if (!rp.base_red) return run(`redproof.mjs ${slug}`, '마지막 redproof가 FAIL(base에서 green 또는 눈먼 test_file) — 그 줄의 안내대로(CEO 결정이면 ask --hold)');
+    if (rp.head_green !== true) return brief('build', 'RED — red를 green으로');
+    // 사고 88 셋째 면(26라운드 stage H·I): 넘김(build의 `spec: <원문의 인수 파일>`)을 받은 spec은 주장을 바꾸지 않았다 — 새 공격 바퀴가 아니다
+    // (바퀴마다 attack이 그 파일의 눈먼 곳을 하나씩 더 찍어 넘김 5 · 팩 11 · 4M 토큰 · 예산 정지 2). 기존 공격 테스트만 다시 → 아래 A·finish
+    const lastReturn = last(mine, (e) => e.kind === 'spec_return');
+    const returnPack = lastReturn ? mine.find((e) => e.kind === 'pack' && e.pack === 'spec' && since(e, lastReturn.ts)) : null; // 그 넘김을 받은 spec 팩(바로 뒤의 것)
+    const handoffSpec = !!(lastReturn?.handoff && returnPack && returnPack === P); // 마지막 spec 팩이 그것이면 — 그 뒤의 재-spec은 새 바퀴
+    if (!handoffSpec) return brief('attack', 're-spec: 기존 코드가 새 주장을 이미 만족한다 — build 불필요, attack은 새 바퀴');
+  }
+  const A = last(mine, (e) => e.kind === 'attack' && since(e, P.ts)); // 이 팩 뒤의 공격 결과(팩 안의 에이전트가 남긴 것도)
+  // system-attack: 발견(한 번이라도 red였던 공격)이 없으면 초록 테스트뿐 — 산출물이 아니라 drop(탐색은 원장 attack 줄에 남는다)
+  const finish = () => {
+    if (A.red > 0) return brief('build', `공격 red ${A.red} — build 다시`);
+    // 사고 80(19라운드 다섯째 날): system-4의 첫 공격 red 3이 build의 반려(「카드끼리 어긋남」)로 attack에게 돌아가 철회됐다(파일 삭제 → total 0) — 「한 번이라도 red」만 보던 next는 ship을 냈고 ship은 「adversary 테스트 0개」로 두 번 서 framework 정지.
+    // 마지막 공격이 파일을 안 남겼으면 발견은 없다 — drop(철회도 원장 attack 줄에 남는다).
+    const everRed = mine.some((e) => e.kind === 'attack' && e.red > 0);
+    if (u.kind === 'system' && (A.total === 0 || !everRed)) return run(`work.mjs drop ${slug} "system-attack 발견 0 — 공격 파일 ${A.total}${everRed ? '(red였던 공격을 attack이 철회)' : ''}" --forget`, '발견 0 — 초록 테스트는 산출물이 아니다(탐색은 원장에 남는다)');
+    return shipChecks();
+  };
   if (st === 'build') {
     if (!attackRoundUsed(ledger, slug, u.created)) return brief('attack', 'build가 끝났다 — spec 뒤 한 바퀴의 공격');
     if (!A) return run(`verify.mjs attack ${slug}`, 'build가 고쳤다 — 기존 공격 테스트만 다시(attack 팩은 spec 뒤 한 바퀴)');
@@ -129,6 +150,10 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   }
   if (st === 'attack') {
     if (!A) return run(`verify.mjs attack ${slug}`, 'attack이 끝났다 — red를 센다');
+    return finish();
+  }
+  if (st === 'spec') { // 넘김을 받은 spec(사고 88 셋째 면) — 위에서 내려온 길: 주장은 그대로, 기존 공격 테스트만 다시
+    if (!A) return run(`verify.mjs attack ${slug}`, '넘김을 받은 spec이 고쳤다 — 주장은 그대로: 기존 공격 테스트만 다시(새 바퀴가 아니다, 사고 88)');
     return finish();
   }
   return { kind: 'ceo', text: `${slug}의 상태 ${st}를 모른다 — node .garagiste/scripts/doctor.mjs` };
@@ -147,7 +172,7 @@ export function computeNext(c) {
     const f = fs.existsSync(packsDir) ? fs.readdirSync(packsDir).filter((x) => x.startsWith(`${slug}-${pack}-`) && x.endsWith('.md')).sort().pop() : null;
     return f ? path.relative(c.main, path.join(packsDir, f)).replace(/\\/g, '/') : `(팩 파일 없음 — ${S}/brief.mjs ${pack} ${slug})`;
   };
-  const wtOf = (u) => { const d = worktreeDir(c.main, c.team, u.slug); const exists = fs.existsSync(d); const rebase = exists && rebaseInProgress(d); return { exists, rebase, unmerged: rebase ? unmergedFiles(d) : [], tree: exists && !rebase ? workTree(d) : null }; };
+  const wtOf = (u) => { const d = worktreeDir(c.main, c.team, u.slug); const exists = fs.existsSync(d); const rebase = exists && rebaseInProgress(d); const base = exists && !rebase ? mergeBase(d, c.team.protected_branch) : null; const changed = base ? git(['diff', '--name-only', `${base}..HEAD`], d).stdout.split('\n').filter(Boolean) : []; const diffHit = checkBoundary(c.team, { files: changed }); const spikeDone = exists ? spikeComplete(readText(path.join(d, c.team.paths.measurements, `spike-${u.slug}.md`))) : false; return { exists, rebase, diffHit, spikeDone, unmerged: rebase ? unmergedFiles(d) : [], tree: exists && !rebase ? workTree(d) : null }; };
   const budget = budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) });
   return nextStep({
     units, ledger, decisionsText: readText(path.join(c.main, c.team.paths.decisions)), scope: readJson(path.join(c.main, '.garagiste', 'scope.json'), null),
