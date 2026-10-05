@@ -868,6 +868,53 @@ test('사고 84(24라운드): 충돌이 인수 테스트에 남으면 next가 sp
   assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"ship_conflict","slug":"gamma","files":\["tests\/acceptance\/alpha\.test\.mjs"\][^\n]*"state":"spec"/, '멈추기 전 상태가 원장에 있다 — ship이 이은 뒤 되돌리는 근거');
 });
 
+// 26라운드(둘의 규칙 — stockroom 모노레포): adopt가 full을 파일 목록으로 등록해 테스트 파일 하나를 뺐고(빨간 채 — CEO Q3) 고친 뒤에도 아무도 돌리지 않았다 · 뒤 unit이 패키지 안에 더한 테스트도 full은 몰랐다
+test('26라운드: 파일 목록 full이 저장소의 테스트 파일을 빠뜨리면 ship이 full 조건으로 막고 CEO 한 줄(commands full 넓히기)로 열린다 · verify full도 그 파일을 말한다', { timeout: 180000 }, (t) => {
+  if (!BASH) return t.skip(NO_BASH);
+  const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-uncovered-'));
+  git(['init', '-q', '-b', 'main'], repo);
+  write(repo, 'package.json', '{ "name": "p", "type": "module", "private": true }\n');
+  write(repo, 'tests/unit/smoke.test.mjs', "import test from 'node:test'; test('unit smoke', () => {});\n");
+  write(repo, 'lib/tests/extra.test.mjs', "import test from 'node:test'; test('lib extra', () => {});\n");
+  git(['add', '-A'], repo); git(['commit', '-q', '-m', 'init'], repo);
+  assert.equal(run(BASH, [path.join(GARAGISTE, 'install.sh'), 'claude', '-Project', repo, '-Budget', 'low', '-SkipSelftest'], repo).status, 0);
+  const teamPath = path.join(repo, '.garagiste', 'team.json');
+  const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
+  team.commands = { quick: 'node --test tests/unit/smoke.test.mjs', full: 'node --test tests/unit/smoke.test.mjs', test_file: 'node --test {file}', run: 'true' }; // 파일 목록 — lib/tests/extra.test.mjs를 빠뜨렸다(stockroom의 꼴)
+  fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  git(['add', '-A'], repo); script('verify', ['quick'], repo);
+  assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
+  assert.match(script('work', ['new', 'alpha', 'alpha 파일을 만든다'], repo).out, /^UNIT alpha spec/);
+  const wt = path.join(repo, '.worktrees', 'alpha');
+  write(wt, 'tests/acceptance/alpha.test.mjs', "import test from 'node:test'; import fs from 'node:fs';\ntest('alpha 파일', () => { if (!fs.existsSync('src/alpha.mjs')) throw new Error('red'); });\n");
+  git(['add', '-A'], wt); script('verify', ['quick'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'test(alpha): red'], wt).status, 0);
+  write(wt, 'src/alpha.mjs', "export const mark = 'alpha';\n");
+  write(wt, 'tests/adversary/alpha-1.test.mjs', "import test from 'node:test'; import fs from 'node:fs';\ntest('비어 있지 않다', () => { if (!fs.readFileSync('src/alpha.mjs', 'utf8').trim()) throw new Error('empty'); });\n");
+  git(['add', '-A'], wt); script('verify', ['quick'], wt);
+  assert.equal(git(['commit', '-q', '-m', 'feat(alpha): 파일\n\nUnit: alpha\nStep: 1'], wt).status, 0);
+  assert.match(script('redproof', ['alpha'], wt).out, /^PASS redproof/);
+  assert.match(script('verify', ['attack', 'alpha'], wt).out, /red 0\/1/);
+  const vf = script('verify', ['full'], wt).out;
+  assert.match(vf, /^PASS verify:full \S+ · full이 돌리지 않는 테스트 파일 1: lib\/tests\/extra\.test\.mjs/, 'verify full이 빠진 파일을 말한다(인수·공격 자리는 세지 않는다): ' + vf);
+  assert.match(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"verify","mode":"full"[^\n]*"uncovered":\["lib\/tests\/extra\.test\.mjs"\]/);
+  const s1 = script('ship', ['alpha'], repo);
+  assert.match(s1.out, /FAIL ship alpha 1\/8[\s\S]*- full: full이 돌리지 않는 테스트 파일 1: lib\/tests\/extra\.test\.mjs — 명령은 CEO 결정\(메인 루트\): GARAGISTE_ADMIN=1 node \.garagiste\/scripts\/work\.mjs commands full=/, JSON.stringify(s1.out.slice(0, 300)));
+  // 팩(adopt가 아닌 unit의 worktree)은 명령을 못 고친다 · adopt·boot의 등록도 빠뜨린 채로는 저장되지 않는다
+  assert.match(script('work', ['commands', 'full=node --test "tests/**/*.test.mjs" "lib/tests/*.test.mjs"'], wt).out, /^FAIL commands는 boot\(scaffold\)·adopt unit의 worktree 또는 GARAGISTE_ADMIN=1/);
+  // CEO 한 줄(메인 루트) — 글롭으로 넓힌다 → ship
+  const cm = script('work', ['commands', 'full=node --test "tests/**/*.test.mjs" "lib/tests/*.test.mjs"'], repo, { GARAGISTE_ADMIN: '1' });
+  assert.match(cm.out, /^COMMANDS .*full="node --test \\"tests\/\*\*\/\*\.test\.mjs\\" \\"lib\/tests\/\*\.test\.mjs\\""/, cm.out);
+  const s2 = script('ship', ['alpha'], repo);
+  assert.match(s2.out, /^SHIPPED alpha/, s2.out);
+  // skip의 길: 같은 꼴을 CEO가 「빨간 채 둔다」로 적으면 ship은 그 파일을 세지 않는다
+  const repo2 = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-unc2-'));
+  fs.cpSync(repo, repo2, { recursive: true });
+  script('work', ['commands', 'full=node --test tests/unit/smoke.test.mjs', 'skip=lib/tests/extra.test.mjs'], repo2, { GARAGISTE_ADMIN: '1' });
+  assert.match(script('verify', ['full'], repo2).out, /^PASS verify:full \S+$/m, 'skip에 적힌 파일은 세지 않는다');
+});
+
 test('opencode 하네스: 같은 정본(.garagiste) 위에 opencode.json·agents·guard 플러그인이 깔리고 selftest(플러그인 거부 1건까지)·doctor가 OK', { timeout: 120000 }, (t) => {
   if (!BASH) return t.skip(NO_BASH);
   const repo = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-oc-'));

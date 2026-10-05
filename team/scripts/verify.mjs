@@ -4,6 +4,7 @@ import path from 'node:path';
 import {
   acceptanceFiles, adversaryFiles, appendLedger, ctx, currentBranch, fail, fileCmd, git, headSha, indexTree, isMain, matchAny,
   linkDeps, listUnits, mergeBase, out, readLedger, shell, short, slugRoot, stamp, workTree,
+  globToRegex,
 } from './lib.mjs';
 
 export const LOGIC_EXCLUDE = ['tests/**', 'test/**', '**/*.test.*', '**/*.spec.*', '**/*.config.*', '**/tsconfig*.json', 'docs/**', '.garagiste/**', '.claude/**', '.opencode/**', 'opencode.json', 'fixtures/**', 'probes/**',
@@ -43,6 +44,37 @@ export function unitTestFiles(main, team, root) {
   for (const u of listUnits(main, team)) for (const f of [...acceptanceFiles(root, team, u.slug), ...adversaryFiles(root, team, u.slug)]) files.add(f);
   return [...files].sort();
 }
+// 26라운드(둘의 규칙 — stockroom 모노레포): adopt가 full을 파일 목록으로 등록하며 빨간 money.test.js를 뺐고(CEO Q3 「고친다」) adopt-f1이 고친 뒤에도 아무도 다시 넣지 않았다 ·
+// cli-export의 build가 packages/cli/tests/export.test.js를 더했는데 full은 몰랐다 — 명령이 파일·글롭을 이름으로 부르면 저장소의 테스트 파일과 맞춰 본다(이름을 안 부르는 명령 — npm test · pytest · go test ./... — 은 모른다 → null).
+const TEST_NAME = /(^|\/)(test[-_.][^/]+|[^/]+[-_.]test|[^/]+\.spec)\.(m?js|cjs|ts|tsx|py|go|rb|rs)$/;
+const SKIP_DIRS = new Set(['node_modules', '.git', '.garagiste', '.worktrees', 'dist', 'build', 'coverage', '.venv', 'venv', '__pycache__', 'target', 'vendor', '.try-data']);
+export function discoverTestFiles(root) {
+  const out = [];
+  const walk = (dir, rel) => { let ents = []; try { ents = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
+    for (const e of ents) { const r = rel ? `${rel}/${e.name}` : e.name; if (e.isDirectory()) { if (!SKIP_DIRS.has(e.name) && !e.name.startsWith('.')) walk(path.join(dir, e.name), r); } else if (TEST_NAME.test(r)) out.push(r); } };
+  walk(root, '');
+  return out.sort();
+}
+// 명령에서 파일·글롭·디렉터리 토큰만 — 깃발(-x)·환경(K=V)·프로그램 이름·go의 ./...은 아니다
+export function commandFileTokens(cmd, root = null) {
+  const toks = (String(cmd || '').match(/"[^"]*"|'[^']*'|\S+/g) || []).map((t) => t.replace(/^["']|["']$/g, ''));
+  const prog = (toks.find((t) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(t)) || '').replace(/^.*\//, '');
+  if (/^(npm|npx|yarn|pnpm|bun|make|just|task)$/.test(prog)) return []; // 스크립트 이름으로 부르는 명령 — 무엇을 돌리는지 여기선 모른다
+  const isDir = (t) => { if (!root || t === '.' || t.includes('/') || t.includes('*')) return false; try { return fs.statSync(path.join(root, t)).isDirectory(); } catch { return false; } };
+  const progAt = toks.findIndex((t) => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(t)); // 프로그램 이름은 디렉터리로 보지 않는다(go test — go/ 폴더가 있어도)
+  const code = /[\s()[\]{};'"$|&<>]/; // 코드·셸 구문(node -e "…" · $(…) · a|b)은 파일 토큰이 아니다 — R9 e2e의 sentinel 명령이 .garagiste/session/failflag를 파일로 보였다
+  return toks.map((t, i) => [t.replace(/^\.\//, ''), i]).filter(([t, i]) => !code.test(t) && (t.includes('/') || t.includes('*') || (i !== progAt && isDir(t))) && !t.startsWith('-') && !/^[A-Za-z_][A-Za-z0-9_]*=/.test(t) && !t.includes('...') && !/^[a-z]+:\/\//.test(t)).map(([t]) => t);
+}
+export function uncoveredTests({ root, cmd, skip = [], exclude = [] }) { // exclude: 인수·공격 자리 — full이 이름을 안 불러도 fullRun이 파일마다 따로 돈다(사고 44)
+  const toks = commandFileTokens(cmd, root);
+  if (!toks.length) return null; // 이름을 안 부르는 명령 — 덮는 범위를 모른다
+  const isDir = (t) => { try { return fs.statSync(path.join(root, t)).isDirectory(); } catch { return false; } };
+  const covers = toks.map((t) => t.replace(/\/$/, '')).map((t) => isDir(t) ? (f) => f === t || f.startsWith(`${t}/`) : t.includes('*') ? (f) => globToRegex(t).test(f) : (f) => f === t);
+  const skipSet = new Set(skip.map((s) => String(s).trim().replace(/^\.\//, '')).filter(Boolean));
+  const ex = exclude.map((d) => String(d).replace(/\/$/, '')).filter(Boolean);
+  return discoverTestFiles(root).filter((f) => !skipSet.has(f) && !ex.some((d) => f.startsWith(`${d}/`)) && !covers.some((c) => c(f)));
+}
+export const skipList = (v) => String(v || '').split(/[,\s]+/).map((s) => s.trim()).filter(Boolean);
 export function fullRun({ main, team, root, cmd, testFile }) {
   const r = shell(cmd, { cwd: root });
   let log = `$ ${cmd}\n${r.stdout}\n${r.stderr}`;
@@ -71,8 +103,10 @@ function runMode(mode, c) {
   const r = mode === 'full' ? fullRun({ main: c.main, team: c.team, root: c.root, cmd, testFile: c.team.commands.test_file }) : shell(cmd, { cwd: c.root });
   fs.writeFileSync(log, r.log ?? `$ ${cmd}\n${r.stdout}\n${r.stderr}`);
   const tree = workTree(c.root);
-  appendLedger(c.main, c.team, { kind: 'verify', mode, tree, head: headSha(c.root), exit: r.status, log: path.relative(c.main, log).replace(/\\/g, '/'), platform: process.platform, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.', ...(r.red?.length ? { red: r.red } : {}) }); // 원장 경로는 / — 팩의 「직전 verify」 매칭(where===unit.worktree)이 win32에서 어긋난다(사고 19 잔여)
-  if (r.status === 0) return out(`PASS verify:${mode} ${short(tree)}`);
+  const unc = mode === 'full' ? uncoveredTests({ root: c.root, cmd, skip: skipList(c.team.commands.skip), exclude: [c.team.paths.acceptance, c.team.paths.adversary] }) : null; // 26라운드: full이 돌리지 않는 테스트 파일 — ship이 막는다(명령은 CEO 결정)
+  appendLedger(c.main, c.team, { kind: 'verify', mode, tree, head: headSha(c.root), exit: r.status, log: path.relative(c.main, log).replace(/\\/g, '/'), platform: process.platform, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.', ...(r.red?.length ? { red: r.red } : {}), ...(unc?.length ? { uncovered: unc } : {}) });
+  const uncNote = unc?.length ? ` · full이 돌리지 않는 테스트 파일 ${unc.length}: ${unc.join(' ')}` : '';
+  if (r.status === 0) return out(`PASS verify:${mode} ${short(tree)}${uncNote}`);
   const tail = r.tail ?? (r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n');
   out(`FAIL verify:${mode} ${short(tree)} ${path.relative(c.main, log).replace(/\\/g, '/')}\n${tail}`);
   process.exit(1);

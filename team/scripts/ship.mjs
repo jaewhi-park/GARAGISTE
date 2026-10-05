@@ -6,7 +6,7 @@ import { parseTags } from './claims.mjs';
 import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
 import { budgetStatus, openQuestions, render } from './state.mjs';
-import { blindFiles, fullRun, probeNames } from './verify.mjs';
+import { blindFiles, fullRun, probeNames, skipList, uncoveredTests } from './verify.mjs';
 
 export const SPIKE_ROWS = ['wire', 'host', 'license', 'default', 'os'];
 // 사고 14·16(2차 실기): 괄호 부연 허용 + 내용은 「같은 줄」 또는 「더 깊은 들여쓰기의 다음 줄(하위 불릿)」 —
@@ -47,7 +47,10 @@ export function evaluateShip(x) {
   c.push({ id: 'unit', ok: !!x.unit && x.unit.state !== 'shipped' && x.worktreeExists && x.clean && !teamChanged, why: !x.unit ? 'unit 없음' : x.unit.state === 'shipped' ? '이미 출하' : !x.worktreeExists ? 'worktree 없음' : !x.clean ? '작업 트리가 깨끗하지 않다' : teamChanged ? 'team.json 변경은 boot(scaffold) unit만 — 검증 명령·예산은 CEO 결정' : '' });
   // platform은 원장에 기록만 한다 — 어디서 돌았든 이 tree의 full PASS가 증거다. 대상-OS 보증은 @sensor 태그·target-OS 미관측 카운트의 일(HAZARDS 14; 옛 machine_os 필터는 그 일을 못 하면서 win32의 정당한 증거를 거부했다 — 첫 Windows 실기 사고).
   const full = x.ledger.find((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === x.tree);
-  c.push({ id: 'full', ok: !!full, why: full ? '' : `이 tree(${short(x.tree)})의 verify full PASS 없음 — worktree에서 node .garagiste/scripts/verify.mjs full (마지막 커밋 뒤)` });
+  // 26라운드(둘의 규칙 — stockroom): 저장소의 테스트 파일인데 full(파일 목록)이 돌리지 않는 것 — 어제의 PASS는 그 파일을 보지 않았다. 명령은 CEO 결정(사고 34와 같은 자리)이라 ship이 CEO에게 한 줄.
+  const unc = x.uncovered || [];
+  const uncWhy = unc.length ? `full이 돌리지 않는 테스트 파일 ${unc.length}: ${unc.join(' ')} — 명령은 CEO 결정(메인 루트): GARAGISTE_ADMIN=1 node .garagiste/scripts/work.mjs commands full="<지금 full> <그 파일 또는 글롭>" · 빨간 채 두려면 commands skip="<파일,…>"` : '';
+  c.push({ id: 'full', ok: !!full && !unc.length, why: full && !unc.length ? '' : !full ? `이 tree(${short(x.tree)})의 verify full PASS 없음 — worktree에서 node .garagiste/scripts/verify.mjs full (마지막 커밋 뒤)` : uncWhy });
   // 사고 57(벤치 070f185 파이썬): scaffold의 redproof 자리는 러너 자신의 red 증명이다 — 인수·공격 자리의 slug 꼴(하이픈) 이름에 깨진 탐침을 두고 test_file이 exit≠0이어야 한다
   const blindRunner = scaffold ? (x.runnerBlind || []) : [];
   // system-attack(채용 2026-10-03): 이음새 공격 unit의 red 증명은 「공격이 결함을 찾았다」 — 이 생애에서 한 번이라도 red였던 공격 파일 ≥ 1(found). 발견 0이면 초록 테스트뿐이라 출하물이 아니다(drop).
@@ -204,7 +207,7 @@ function main() {
   const found = unit.kind === 'system' ? systemFound(ledger, slug, unit).length : 0; // 시스템 공격의 발견 — redproof.mjs의 system 분기와 같은 셈(사고 63)
   if (runnerBlind.length) appendLedger(c.main, c.team, { kind: 'runner_blind', slug, files: runnerBlind }); // boot 팩이 이 목록을 받는다
   const conds = evaluateShip({
-    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, runnerBlind, found,
+    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, runnerBlind, found, uncovered: exists ? (uncoveredTests({ root: wt, cmd: unit.kind === 'scaffold' || unit.kind === 'adopt' ? (readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.full || c.team.commands.full) : c.team.commands.full, skip: skipList(c.team.commands.skip), exclude: [c.team.paths.acceptance, c.team.paths.adversary] }) || []) : [], // 명령은 CEO의 것(main) — boot·adopt만 자기 worktree의 등록을 본다
     boundaryHit: !!unit.boundary?.hit || diffHit.hit, boundaryWhy: unit.boundary?.hit ? '원문' : diffHit.reasons.join(', '),
     requireAttack: c.team.require_attack !== false, spikeText: readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`)), measurements: c.team.paths.measurements,
     lastSubject: exists ? git(['log', '-1', '--format=%s'], wt).stdout : '', stops: b.stops, proseKb: proseKb(c.main), proseMax: c.team.budgets.prose_kb_max,

@@ -5,7 +5,7 @@ import { checkBoundary } from './boundary.mjs';
 import { blocking, diagnose } from './doctor.mjs';
 import { appendLedger, ceoTouch, ctx, fail, git, hasFileSlot, isMain, linkDeps, unlinkDeps, listUnits, loadUnit, out, readJson, readLedger, readText, saveUnit, shell, stamp, touchCeo, unitFile, worktreeDir, writeJson, conductBusyLine, conductRunning } from './lib.mjs';
 import { budgetStatus } from './state.mjs';
-import { probeCommand, probeNames } from './verify.mjs';
+import { probeCommand, probeNames, skipList, uncoveredTests } from './verify.mjs';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,40}$/;
 export const PACKS = ['intake', 'spec', 'build', 'attack', 'spike', 'boot', 'adopt'];
@@ -570,13 +570,15 @@ function commands(c, args) {
     if (!u || (u.kind !== 'scaffold' && u.kind !== 'adopt')) fail('FAIL commands는 boot(scaffold)·adopt unit의 worktree 또는 GARAGISTE_ADMIN=1(CEO)에서만 — 검증 명령의 변경은 CEO 결정이다');
   }
   for (const a of args) {
-    const m = /^(quick|full|test_file|run|setup)=([\s\S]*)$/.exec(a); // setup: 의존성 설치(사고 21 — ship이 의존성 출하의 머지 직후 main에서 돌린다)
-    if (!m) fail(`사용법: work.mjs commands quick="…" full="…" test_file="… {file}" run="…" setup="…" — 받은 값: ${a}`);
+    const m = /^(quick|full|test_file|run|setup|skip)=([\s\S]*)$/.exec(a); // setup: 의존성 설치(사고 21 — ship이 의존성 출하의 머지 직후 main에서 돌린다) // skip: full이 돌리지 않기로 CEO가 정한 테스트 파일(쉼표) — 26라운드
+    if (!m) fail(`사용법: work.mjs commands quick="…" full="…" test_file="… {file}" run="…" setup="…" skip="<full이 돌리지 않을 테스트 파일,…>" — 받은 값: ${a}`);
     if (m[1] === 'test_file' && !hasFileSlot(m[2])) fail('FAIL test_file에는 {file}(파일 하나) 또는 {files}(여러 파일을 한 번에) 자리표시자가 있어야 한다');
     t.commands[m[1]] = m[2];
   }
   if (!process.env.GARAGISTE_ADMIN) { const noop = setupNoop(t.commands.setup, c.root); if (noop) fail(`FAIL commands — ${noop}(저장하지 않았다)`); } // 13라운드(둘의 규칙): setup=true
   if (!process.env.GARAGISTE_ADMIN) { const blind = blindCommands(t.commands, c.team.paths, c.root); if (blind.length) fail(`FAIL commands — 눈먼 명령 ${blind.length}(저장하지 않았다)\n${blind.map((x) => `- ${x}`).join('\n')}`); } // CEO(ADMIN)의 손은 판단이다 — 탐침은 팩의 등록에만
+  // 26라운드(둘의 규칙): 파일 목록으로 등록한 full이 저장소의 테스트 파일을 빠뜨리면 그 파일은 영원히 돌지 않는다(stockroom money.test.js — 빨간 채 뺐다가 고친 뒤에도 · export.test.js) — 뺄 파일은 skip에 적어 CEO가 본다
+  if (!process.env.GARAGISTE_ADMIN && t.commands.full) { const unc = uncoveredTests({ root: c.root, cmd: t.commands.full, skip: skipList(t.commands.skip), exclude: [c.team.paths.acceptance, c.team.paths.adversary] }); if (unc?.length) fail(`FAIL commands — full이 돌리지 않는 테스트 파일 ${unc.length}(저장하지 않았다): ${unc.join(' ')}\n- 전부 돌리게 글롭으로 넓히거나(예: "packages/*/tests/*.test.js"), 빨간 채 둘 파일은 skip="<파일,…>"로 적어 CEO에게 묻는다(ask) — 빼놓고 말하지 않으면 고친 뒤에도 아무도 돌리지 않는다`); }
   writeJson(teamPath, t);
   appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' });
   // 사고 34(필드 시험 2): 메인 루트의 CEO 변경은 boot의 커밋이 없다 — models처럼 스스로 커밋하고(ship이 main dirt로 막히지 않게), 바뀐 설치 명령은 main에서 한 번 돌린다(다음 worktree가 그 의존성을 잇는다)

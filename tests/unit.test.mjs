@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { cdBase, decide, expandAssignments, expandTemp, inlineCodeWrite, isTempPath, makeCtx, stripQuoted, worktreeFromCommand, writeTargets } from '../team/scripts/guard-rules.mjs';
 import { checkpoint, spawnStop } from '../team/scripts/checkpoint.mjs';
 import { checkBoundary } from '../team/scripts/boundary.mjs';
-import { blindFiles, gateDecision, gateFailLine, logicLines, probeCommand, probeNames, PROBE_TEXT } from '../team/scripts/verify.mjs';
+import { blindFiles, commandFileTokens, discoverTestFiles, gateDecision, gateFailLine, logicLines, probeCommand, probeNames, PROBE_TEXT, skipList, uncoveredTests } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { againCmd, attackRoundUsed, reviseDecided, respecRevise, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
@@ -474,6 +474,34 @@ test('ship: wip HEAD의 안내는 unit 정체의 팩을 가리킨다 — boot(sc
   assert.match(why({ kind: 'scaffold', state: 'build', boundary: { hit: false } }), /boot를 다시 띄워/);
   assert.match(why({ state: 'build', boundary: { hit: false } }), /build를 다시 띄워/);
 });
+// 26라운드(둘의 규칙 — stockroom): adopt가 full을 파일 목록으로 등록해 빨간 money.test.js를 뺐고 고친 뒤에도 돌리지 않았다 · cli-export가 더한 패키지 테스트를 full이 몰랐다 — 이름을 부르는 명령은 저장소의 테스트 파일과 맞춰 본다
+test('verify(26라운드): discoverTestFiles·commandFileTokens·uncoveredTests — 파일 목록 full이 빠뜨린 테스트 파일 · 글롭·디렉터리는 덮는다 · 이름 없는 명령은 모른다(null) · skip·인수·공격 자리는 뺀다', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'garagiste-unc-'));
+  const put = (f) => { fs.mkdirSync(path.join(root, path.dirname(f)), { recursive: true }); fs.writeFileSync(path.join(root, f), ''); };
+  for (const f of ['tests/acceptance/a.test.js', 'tests/adversary/a-1.test.js', 'tests/unit/characterize.test.js', 'tests/harness/util.js', 'packages/api/tests/items.test.js', 'packages/shared/tests/money.test.js', 'packages/cli/tests/export.test.js', 'packages/cli/bin/cli.js', 'node_modules/x/y.test.js', 'lib/x.spec.ts', 'py/test_x.py', 'go/x_test.go', '.try-data/t.test.js']) put(f);
+  assert.deepEqual(discoverTestFiles(root), ['go/x_test.go', 'lib/x.spec.ts', 'packages/api/tests/items.test.js', 'packages/cli/tests/export.test.js', 'packages/shared/tests/money.test.js', 'py/test_x.py', 'tests/acceptance/a.test.js', 'tests/adversary/a-1.test.js', 'tests/unit/characterize.test.js'], '이름이 테스트 꼴인 파일만 — 도우미·node_modules·.try-data는 아니다');
+  assert.deepEqual(commandFileTokens('node --test "tests/**/*.test.js" packages/api/tests/items.test.js --test-reporter=tap K=1 ./lib/x.spec.ts'), ['tests/**/*.test.js', 'packages/api/tests/items.test.js', 'lib/x.spec.ts']);
+  assert.deepEqual(commandFileTokens('npm test --workspaces'), []); assert.deepEqual(commandFileTokens('go test ./...'), []); assert.deepEqual(commandFileTokens('pytest tests/'), ['tests/']);
+  assert.deepEqual(commandFileTokens(`node -e "process.exit(require('fs').existsSync('.garagiste/session/failflag')?1:0)"`), [], '코드 문자열 속 경로는 파일 토큰이 아니다(R9 e2e의 sentinel)'); assert.deepEqual(commandFileTokens('bash -c "node --test a/b.test.js | tail -n 3"'), [], '셸 구문도');
+  const ex = ['tests/acceptance', 'tests/adversary'];
+  const stock = 'node --test "tests/**/*.test.js" packages/api/tests/items.test.js packages/cli/tests/cli.test.js';
+  assert.deepEqual(uncoveredTests({ root, cmd: stock, exclude: ex }), ['go/x_test.go', 'lib/x.spec.ts', 'packages/cli/tests/export.test.js', 'packages/shared/tests/money.test.js', 'py/test_x.py'], 'stockroom의 꼴: 패키지 테스트 둘이 빠졌다(인수·공격 자리는 세지 않는다)');
+  assert.deepEqual(uncoveredTests({ root, cmd: stock + ' "packages/*/tests/*.test.js" "lib/*.spec.ts" py/ go/', exclude: ex }), [], '글롭·디렉터리(끝에 /)로 넓히면 없다 — 맨 낱말(py·go)은 프로그램 이름과 구별할 수 없어 세지 않는다');
+  assert.deepEqual(uncoveredTests({ root, cmd: stock, skip: ['packages/shared/tests/money.test.js', './lib/x.spec.ts', 'py/test_x.py', 'go/x_test.go'], exclude: ex }), ['packages/cli/tests/export.test.js'], 'skip은 CEO가 정한 빼기');
+  assert.equal(uncoveredTests({ root, cmd: 'npm test --workspaces', exclude: ex }), null, '이름을 안 부르는 명령은 덮는 범위를 모른다'); assert.equal(uncoveredTests({ root, cmd: 'go test ./...' }), null);
+  assert.deepEqual(uncoveredTests({ root, cmd: 'pytest tests', exclude: ex }), ['go/x_test.go', 'lib/x.spec.ts', 'packages/api/tests/items.test.js', 'packages/cli/tests/export.test.js', 'packages/shared/tests/money.test.js', 'py/test_x.py'], '디렉터리 토큰은 그 아래를 덮는다');
+  assert.deepEqual(skipList('a.js, b.js  c.js'), ['a.js', 'b.js', 'c.js']); assert.deepEqual(skipList(undefined), []);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+test('ship(26라운드): full 조건은 「이 tree의 PASS」에 더해 「full이 돌리지 않는 테스트 파일 없음」 — 있으면 CEO 결정(commands full 넓히기 · skip)을 한 줄로', () => {
+  const base = { unit: { kind: 'scaffold', state: 'boot', boundary: { hit: false } }, slug: 'boot', worktreeExists: true, clean: true, tree: 'T', ledger: [{ kind: 'verify', mode: 'full', exit: 0, tree: 'T' }], requireAttack: true, spikeText: '', lastSubject: 'feat: x', stops: [], proseKb: 1, proseMax: 40, openQuestions: [], runnerBlind: [] };
+  assert.equal(evaluateShip(base).filter((k) => !k.ok).length, 0);
+  const bad = evaluateShip({ ...base, uncovered: ['packages/shared/tests/money.test.js'] }).filter((k) => !k.ok);
+  assert.deepEqual(bad.map((k) => k.id), ['full'], '8조건 그대로 — full 조건 안에 든다');
+  assert.match(bad[0].why, /^full이 돌리지 않는 테스트 파일 1: packages\/shared\/tests\/money\.test\.js — 명령은 CEO 결정\(메인 루트\): GARAGISTE_ADMIN=1 node \.garagiste\/scripts\/work\.mjs commands full="<지금 full> <그 파일 또는 글롭>" · 빨간 채 두려면 commands skip=/);
+  assert.match(evaluateShip({ ...base, ledger: [], uncovered: ['x.test.js'] }).find((k) => k.id === 'full').why, /^이 tree\(T\)의 verify full PASS 없음/, 'PASS가 없으면 그 말이 먼저');
+});
+
 test('ship: 8조건 — 하나라도 빠지면 fail-closed', () => {
   const unit = { state: 'spec', boundary: { hit: false } };
   const ledger = [
