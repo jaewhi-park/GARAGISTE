@@ -2,10 +2,12 @@
 // L2 2판 윈도우(고칠 때마다 attack 팩을 새로 띄워 28·20바퀴)·3판(CEO의 「다 ok」를 Q10의 「예」로 · 부재 선언 뒤 루프 재개): 규율 이탈은 전부 Flow 4~7 산문의 빈칸에서 났다 — 빈칸을 코드로.
 import fs from 'node:fs';
 import path from 'node:path';
-import { ceoTouch, ctx, fail, isMain, listUnits, out, readJson, readLedger, readText, rebaseInProgress, unmergedFiles, workTree, worktreeDir } from './lib.mjs';
+import { ceoTouch, ctx, fail, git, isMain, listUnits, mergeBase, out, readJson, readLedger, readText, rebaseInProgress, unmergedFiles, workTree, worktreeDir } from './lib.mjs';
 import { blocking, diagnose } from './doctor.mjs';
 import { budgetStatus } from './state.mjs';
 import { attackRoundUsed } from './brief.mjs';
+import { checkBoundary } from './boundary.mjs';
+import { spikeComplete } from './ship.mjs';
 import { parseBacklog, pickReady } from './work.mjs';
 
 const S = 'node .garagiste/scripts';
@@ -79,6 +81,29 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     }
     return run(`ship.mjs ${slug}`, 'build가 표시를 풀었다 — ship이 rebase를 잇는다');
   }
+  // 출하 직전의 검사 — 예산 정지 · 늦은 spike(사고 87) · 이 tree의 redproof·full(사고 85) · ship. finish(공격 red 0)와 늦은 spike 뒤(st === 'spike')가 같이 쓴다.
+  const shipChecks = () => {
+    // 사고 64(L2 5판 리눅스 4라운드): red 0인데 예산 정지(미검수 3)면 ship이 budget 조건으로 거부한다 — 예산 정지의 ceo는 seed 자리에만 있어 next가 ship을 계속 냈고
+    // conductor가 ship의 FAIL 줄을 읽어 스스로 멈췄다. ship 직전에도 같은 ceo — 그 unit은 red 0으로 서 있고 CEO가 써봐야 출하가 열린다.
+    if (stops.length) return { kind: 'ceo', text: `STOP ${stops.join('; ')} — 예산 정지: ${slug}는 red 0으로 ship 직전에 서 있다 — CEO에게 docs/STATUS.md 「써볼 것」·「정해 주세요」` };
+    // 사고 87(25라운드 아홉째 날 · erp-lite system-4-f1): build가 카드의 데이터 폴더를 .gitignore에 더해 출하 때 diff-HIT(boundary) — ship은 「spike 필수 행 미완 → brief spike」로 FAIL했는데
+    // next는 ship만 되풀이해 framework 멈춤(늦은 spike의 길은 st === 'spike'에만 있었다). 늦은 spike는 ship 전에 next가 띄운다 — 측정이 차면(spikeDone) 이 tree의 증거를 다시 묶고 ship.
+    if (wt.diffHit?.hit && !wt.spikeDone && u.kind !== 'scaffold') {
+      const sp = packOf('spike');
+      if (!sp) return brief('spike', `출하 때 boundary HIT(${wt.diffHit.reasons.join(', ')}) — 늦은 spike: 측정(spike-${slug}.md의 필수 행)을 채운다(사고 87)`);
+      if (!doneAfter('spike', sp.ts)) return spawn('spike', '늦은 spike(출하 때 diff-HIT)');
+    }
+    // 7라운드(refactor e2e가 드러냄): attack이 red 0으로 끝나면 공격 파일만 더해진 tree엔 redproof·full PASS가 없다 — ship이 「이전 tree의 것」·「full 없음」으로 서고 드라이버는 같은 FAIL 둘로 멈췄을 것(대화형 conductor는 FAIL 안내를 따랐다). 판단 없는 한 걸음씩.
+    const tree = wt.tree || null; // computeNext의 wtOf가 센다 — nextStep은 조립된 입력만 받는다(판단 없음·순수)
+    const proven = (e) => e.kind === 'redproof' && e.slug === slug && e.tree === tree && e.head_green === true && (u.kind === 'refactor' || u.kind === 'pin' ? e.refactor && e.pin_base === 'green' : e.base_red);
+    if (tree && u.kind !== 'system' && !ledger.some(proven)) return run(`redproof.mjs ${slug}`, 'red 0 — 공격 파일이 더해져 tree가 움직였다: 이 tree의 redproof(ship 조건은 tree 단위)');
+    // 사고 85(24라운드 여덟째 날 · erp-lite): ship이 main을 합친 뒤 통합 tree의 full이 FAIL(두 unit이 고친 공격 테스트가 자동 머지로 어긋남)인데 next는 「이 tree의 full PASS가 원장에 없다 → verify full」만 20번 되풀이했다(85초씩 · FAIL 줄이 로그 경로(시각)를 품어 되풀이 감지도 비껴갔다).
+    // 이 tree의 마지막 full이 FAIL이면 build의 일이다 — 경계 밖 테스트(인수·공격)면 build가 spec: 줄로 넘긴다(가드가 막는다). 같은 tree에 두 번 돌면 진전 없음으로 멈춘다.
+    const lastFull = tree ? last(ledger, (e) => e.kind === 'verify' && e.mode === 'full' && e.tree === tree) : null;
+    if (lastFull && lastFull.exit !== 0) return brief('build', `이 tree의 full FAIL${lastFull.red?.length ? ` — ${lastFull.red.join(' ')}` : ''}: build가 고친다(main을 합친 뒤·공격 파일이 더해진 뒤 red — 경계 밖 테스트면 spec: 줄로, 사고 85)`);
+    if (tree && !ledger.some((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === tree)) return run(`verify.mjs full ${slug}`, 'red 0 — 이 tree의 full PASS가 원장에 없다(공격 파일만 더해진 tree): ship 조건');
+    return run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
+  };
   const st = u.state;
   const P = packOf(st);
   if (!P) return brief(st, `${slug}의 ${st} 팩이 아직 없다`);
@@ -87,7 +112,10 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   const specPack = packOf('spec');
   if (st === 'boot') return run(`ship.mjs ${slug}`, 'boot이 끝났다 — scaffold는 boot 팩 하나로 출하');
   if (st === 'adopt') return run(`ship.mjs ${slug}`, 'adopt가 끝났다 — 기존 코드의 첫 unit은 adopt 팩 하나로 출하(특성화 테스트의 quick·full)');
-  if (st === 'spike') return specPack ? run(`ship.mjs ${slug}`, '늦은 spike(출하 때 diff-HIT)가 끝났다 — ship 다시') : brief('spec', 'spike 측정이 끝났다 — 다음은 spec');
+  if (st === 'spike') { // 처음 spike(원문 HIT) 뒤엔 spec · 늦은 spike(출하 때 diff-HIT, 사고 87) 뒤엔 측정 파일이 tree를 움직였다 — 이 tree의 증거를 다시 묶고 ship
+    if (!specPack && u.kind !== 'system') return brief('spec', 'spike 측정이 끝났다 — 다음은 spec');
+    return shipChecks();
+  }
   if (st === 'spec') {
     const rp = last(mine, (e) => e.kind === 'redproof' && since(e, P.ts));
     if (!rp) return run(`redproof.mjs ${slug}`, u.kind === 'refactor' ? 'spec이 끝났다 — PIN 증명(핀은 base에서 초록)' : 'spec이 끝났다 — RED 증명');
@@ -108,19 +136,7 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     // 마지막 공격이 파일을 안 남겼으면 발견은 없다 — drop(철회도 원장 attack 줄에 남는다).
     const everRed = mine.some((e) => e.kind === 'attack' && e.red > 0);
     if (u.kind === 'system' && (A.total === 0 || !everRed)) return run(`work.mjs drop ${slug} "system-attack 발견 0 — 공격 파일 ${A.total}${everRed ? '(red였던 공격을 attack이 철회)' : ''}" --forget`, '발견 0 — 초록 테스트는 산출물이 아니다(탐색은 원장에 남는다)');
-    // 사고 64(L2 5판 리눅스 4라운드): red 0인데 예산 정지(미검수 3)면 ship이 budget 조건으로 거부한다 — 예산 정지의 ceo는 seed 자리에만 있어 next가 ship을 계속 냈고
-    // conductor가 ship의 FAIL 줄을 읽어 스스로 멈췄다. ship 직전에도 같은 ceo — 그 unit은 red 0으로 서 있고 CEO가 써봐야 출하가 열린다.
-    if (stops.length) return { kind: 'ceo', text: `STOP ${stops.join('; ')} — 예산 정지: ${slug}는 red 0으로 ship 직전에 서 있다 — CEO에게 docs/STATUS.md 「써볼 것」·「정해 주세요」` };
-    // 7라운드(refactor e2e가 드러냄): attack이 red 0으로 끝나면 공격 파일만 더해진 tree엔 redproof·full PASS가 없다 — ship이 「이전 tree의 것」·「full 없음」으로 서고 드라이버는 같은 FAIL 둘로 멈췄을 것(대화형 conductor는 FAIL 안내를 따랐다). 판단 없는 한 걸음씩.
-    const tree = wt.tree || null; // computeNext의 wtOf가 센다 — nextStep은 조립된 입력만 받는다(판단 없음·순수)
-    const proven = (e) => e.kind === 'redproof' && e.slug === slug && e.tree === tree && e.head_green === true && (u.kind === 'refactor' || u.kind === 'pin' ? e.refactor && e.pin_base === 'green' : e.base_red);
-    if (tree && u.kind !== 'system' && !ledger.some(proven)) return run(`redproof.mjs ${slug}`, 'red 0 — 공격 파일이 더해져 tree가 움직였다: 이 tree의 redproof(ship 조건은 tree 단위)');
-    // 사고 85(24라운드 여덟째 날 · erp-lite): ship이 main을 합친 뒤 통합 tree의 full이 FAIL(두 unit이 고친 공격 테스트가 자동 머지로 어긋남)인데 next는 「이 tree의 full PASS가 원장에 없다 → verify full」만 20번 되풀이했다(85초씩 · FAIL 줄이 로그 경로(시각)를 품어 되풀이 감지도 비껴갔다).
-    // 이 tree의 마지막 full이 FAIL이면 build의 일이다 — 경계 밖 테스트(인수·공격)면 build가 spec: 줄로 넘긴다(가드가 막는다). 같은 tree에 두 번 돌면 진전 없음으로 멈춘다.
-    const lastFull = tree ? last(ledger, (e) => e.kind === 'verify' && e.mode === 'full' && e.tree === tree) : null;
-    if (lastFull && lastFull.exit !== 0) return brief('build', `이 tree의 full FAIL${lastFull.red?.length ? ` — ${lastFull.red.join(' ')}` : ''}: build가 고친다(main을 합친 뒤·공격 파일이 더해진 뒤 red — 경계 밖 테스트면 spec: 줄로, 사고 85)`);
-    if (tree && !ledger.some((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === tree)) return run(`verify.mjs full ${slug}`, 'red 0 — 이 tree의 full PASS가 원장에 없다(공격 파일만 더해진 tree): ship 조건');
-    return run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
+    return shipChecks();
   };
   if (st === 'build') {
     if (!attackRoundUsed(ledger, slug, u.created)) return brief('attack', 'build가 끝났다 — spec 뒤 한 바퀴의 공격');
@@ -147,7 +163,7 @@ export function computeNext(c) {
     const f = fs.existsSync(packsDir) ? fs.readdirSync(packsDir).filter((x) => x.startsWith(`${slug}-${pack}-`) && x.endsWith('.md')).sort().pop() : null;
     return f ? path.relative(c.main, path.join(packsDir, f)).replace(/\\/g, '/') : `(팩 파일 없음 — ${S}/brief.mjs ${pack} ${slug})`;
   };
-  const wtOf = (u) => { const d = worktreeDir(c.main, c.team, u.slug); const exists = fs.existsSync(d); const rebase = exists && rebaseInProgress(d); return { exists, rebase, unmerged: rebase ? unmergedFiles(d) : [], tree: exists && !rebase ? workTree(d) : null }; };
+  const wtOf = (u) => { const d = worktreeDir(c.main, c.team, u.slug); const exists = fs.existsSync(d); const rebase = exists && rebaseInProgress(d); const base = exists && !rebase ? mergeBase(d, c.team.protected_branch) : null; const changed = base ? git(['diff', '--name-only', `${base}..HEAD`], d).stdout.split('\n').filter(Boolean) : []; const diffHit = checkBoundary(c.team, { files: changed }); const spikeDone = exists ? spikeComplete(readText(path.join(d, c.team.paths.measurements, `spike-${u.slug}.md`))) : false; return { exists, rebase, diffHit, spikeDone, unmerged: rebase ? unmergedFiles(d) : [], tree: exists && !rebase ? workTree(d) : null }; };
   const budget = budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) });
   return nextStep({
     units, ledger, decisionsText: readText(path.join(c.main, c.team.paths.decisions)), scope: readJson(path.join(c.main, '.garagiste', 'scope.json'), null),

@@ -13,7 +13,7 @@ import { blindFiles, gateDecision, gateFailLine, logicLines, probeCommand, probe
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
 import { againCmd, attackRoundUsed, reviseDecided, respecRevise, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
-import { candidateLines, firstLine, budgetStatus, humanNeeded, reportText, repeatedFails } from '../team/scripts/state.mjs';
+import { candidateLines, firstLine, budgetStatus, humanNeeded, reportText, repeatedFails , tryOrder } from '../team/scripts/state.mjs';
 import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { candidateSlug, acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
@@ -638,15 +638,23 @@ test('brief: HAZARDS는 경로가 맞는 줄만 팩에 들어간다', () => {
 });
 test('state: 첫 줄 형식과 무인 정지 예산', () => {
   assert.equal(firstLine({ run: 'npm run dev', unseen: 1, unseenMax: 3, unobservedOs: 0, decisionsOpen: 2, coveragePct: 80, uncertain: '' }), '실행: npm run dev · 안 본 것 1/3 · target-OS 미관측 0 · 결정 대기 2 · 센서 커버리지 80% · 불확실: 없음');
-  const shipped = (n, ok) => ({ state: 'shipped', shipped: `2026-09-2${n}`, tried: null, origin_kind: ok });
+  const shipped = (n, ok) => ({ slug: `u${n}`, state: 'shipped', shipped: `2026-09-2${n}`, tried: null, origin_kind: ok });
   const units = [shipped(1, 'ceo'), shipped(2, 'ceo'), shipped(3, 'ceo')];
   const b = budgetStatus({ units, ledger: [], team, ceoTouchTs: null });
-  assert.equal(b.unseen, 3); assert.match(b.stops.join(), /미검수 3/);
+  assert.equal(b.unseen, 3); assert.match(b.stops.join(), /미검수 3 ≥ 3 — CEO가 써봐야 출하가 열린다 — 세는 unit: u1 · u2 · u3$/, '사고 86: 정지 줄이 세는 unit의 이름을 말한다');
   const ledger = Array.from({ length: 5 }, (_, i) => ({ kind: 'ship', ts: `2026-09-2${i}T00:00:00Z` }));
   assert.match(budgetStatus({ units: [], ledger, team, ceoTouchTs: '2026-09-19T00:00:00Z' }).stops.join(), /CEO 접점 없이 출하 5/);
   assert.equal(budgetStatus({ units: [], ledger, team, ceoTouchTs: '2026-09-25T00:00:00Z' }).stops.length, 0);
   assert.match(budgetStatus({ units: [shipped(1, 'team'), shipped(2, 'team')], ledger: [], team, ceoTouchTs: null }).stops.join(), /스스로 뜬 unit 연속 2/);
 });
+// 사고 86(25라운드): 「써볼 것」은 출하 순서가 아니라 세는 unit(사람 센서·선발견 0) 먼저 — CEO가 세지 않는 unit을 써봐도 미검수는 줄지 않았다
+test('state(25라운드, 사고 86): tryOrder — 미검수에 세는 unit이 먼저(그 안은 출하 순서), 기계 증명은 뒤에', () => {
+  const L = [{ kind: 'attack', slug: 'b', ts: '2026-09-22T01:00:00Z', red: 1, files: ['tests/adversary/b-1.test.mjs'] }];
+  const U = [{ slug: 'a', state: 'shipped', shipped: '2026-09-21', created: '2026-09-20' }, { slug: 'b', state: 'shipped', shipped: '2026-09-22', created: '2026-09-20' }, { slug: 'c', state: 'shipped', shipped: '2026-09-23', created: '2026-09-20' }, { slug: 'd', state: 'shipped', shipped: '2026-09-24', tried: { ok: true } }, { slug: 'e', state: 'build' }];
+  assert.deepEqual(tryOrder(U, L, team).map((u) => u.slug), ['a', 'c', 'b'], '선발견 0인 a·c가 먼저, 기계 증명 b는 뒤 · 써본 d·진행 중 e는 없다');
+  assert.deepEqual(tryOrder(U, L, { budgets: { ...team.budgets, unseen_machine_exempt: false } }).map((u) => u.slug), ['a', 'b', 'c'], '전부 세면 출하 순서');
+});
+
 test('redproof: base에서 하나라도 green이면 테스트가 아니다', () => {
   assert.equal(verdict([{ exit: 1 }, { exit: 1 }], [{ exit: 0 }, { exit: 0 }]).ok, true);
   assert.equal(verdict([{ exit: 1 }, { exit: 0 }], [{ exit: 0 }, { exit: 0 }]).ok, false);
@@ -967,6 +975,17 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   const spike = [{ ts: T(1), kind: 'pack', slug: 'net', pack: 'spike' }, { ts: T(2), kind: 'spawn', slug: 'net', pack: 'spike' }];
   assert.match(step([u({ slug: 'net', state: 'spike' })], spike).cmd, /brief\.mjs spec net$/, 'boundary HIT unit: spike 뒤 spec');
   assert.match(step([u({ slug: 'net', state: 'spike' })], [{ ts: T(0), kind: 'pack', slug: 'net', pack: 'spec' }, ...spike]).cmd, /ship\.mjs net$/, '출하 때 diff-HIT로 늦게 잰 spike 뒤엔 ship 다시');
+  // 사고 87(25라운드 아홉째 날): 출하 때 diff-HIT(.gitignore)인데 측정이 없으면 ship이 FAIL만 되풀이했다 — 늦은 spike는 next가 ship 전에 띄우고, 측정이 차면 이 tree의 증거를 다시 묶고 ship
+  const hitWt = (spikeDone, tree = null) => ({ wtOf: () => ({ exists: true, rebase: false, unmerged: [], tree, diffHit: { hit: true, reasons: ['file .gitignore'] }, spikeDone }) });
+  const l87 = step([u({ state: 'build' })], L, hitWt(false));
+  assert.match(l87.cmd, /brief\.mjs spike add$/, '출하 직전 diff-HIT · 측정 없음 → 늦은 spike(사고 87)'); assert.match(l87.why, /boundary HIT\(file \.gitignore\)[^\n]*사고 87/);
+  assert.equal(step([u({ state: 'build' })], [...L, { ts: T(12), kind: 'pack', slug: 'add', pack: 'spike' }], hitWt(false)).kind, 'spawn', '늦은 spike 팩이 조립됐으면 띄운다');
+  assert.match(step([u({ state: 'build' })], L, hitWt(true)).cmd, /ship\.mjs add$/, '측정이 차 있으면 ship');
+  const lateDone = [...L, { ts: T(12), kind: 'pack', slug: 'add', pack: 'spike' }, { ts: T(13), kind: 'spawn', slug: 'add', pack: 'spike' }];
+  assert.match(step([u({ state: 'spike' })], lateDone, hitWt(true, 'T1')).cmd, /redproof\.mjs add$/, '늦은 spike 뒤엔 측정 파일이 tree를 움직였다 — 이 tree의 redproof부터(ship은 tree 단위)');
+  assert.match(step([u({ state: 'spike' })], [...lateDone, { ts: T(14), kind: 'redproof', slug: 'add', tree: 'T1', base_red: true, head_green: true }, { ts: T(15), kind: 'verify', mode: 'full', tree: 'T1', exit: 0 }], hitWt(true, 'T1')).cmd, /ship\.mjs add$/, '증거가 이 tree의 것이면 ship');
+  assert.match(step([u({ state: 'spike' })], lateDone, hitWt(false)).cmd, /ship\.mjs add$/, '팩이 돌았는데 측정이 안 찼으면 ship이 FAIL로 말한다(되풀이 → 멈춤)');
+  assert.match(step([u({ slug: 'sys', kind: 'system', state: 'spike' })], [{ ts: T(1), kind: 'pack', slug: 'sys', pack: 'spike' }, { ts: T(2), kind: 'spawn', slug: 'sys', pack: 'spike' }], hitWt(true)).cmd, /ship\.mjs sys$/, 'system unit의 늦은 spike 뒤엔 spec이 아니라 ship');
   const conflict = [...L, { ts: T(12), kind: 'ship_conflict', slug: 'add', files: ['src/a.mjs'] }];
   const rebase = (unmerged) => ({ wtOf: () => ({ exists: true, rebase: true, unmerged }) });
   assert.match(step([u({ state: 'build' })], conflict, rebase(['src/a.mjs'])).cmd, /brief\.mjs build add$/, '충돌 표시는 build가 푼다(사고 26)');
@@ -1249,6 +1268,11 @@ test('conduct: 반려 줄·FAIL 열쇠·hold 안내·진전 없음', () => {
   assert.equal(specReturn('- spec: try 카드의 기대가 기본 data와 모순됩니다.'), 'try 카드의 기대가 기본 data와 모순됩니다.');
   assert.equal(specReturn('**spec:** 인수가 서로 어긋난다'), '인수가 서로 어긋난다');
   assert.equal(specReturn('> spec: 인용 줄'), '인용 줄');
+  // 25라운드(둘의 규칙 — 사고 76의 둘째 근거): 「spec: 없음. 다만 위 세 공격 테스트의 허용 키를 넓히는 일이 attack에 남아 있다」가 반려로 읽혀 spec 팩이 하나 돌았다
+  assert.equal(specReturn('커밋 1개.\nspec: 없음. 다만 위 세 공격 테스트의 /health 허용 키를 넓히는 일이 attack 팩에 남아 있다.'), null, '없음 뒤의 덧말은 반려가 아니다');
+  assert.equal(specReturn('spec: 없다 — attack이 고친다'), null);
+  assert.equal(specReturn('spec: none (attack handles it)'), null);
+  assert.equal(specReturn('spec: 없다고 할 수 없다 — 인수가 어긋난다'), '없다고 할 수 없다 — 인수가 어긋난다', '없다로 시작하는 말은 다르다');
   assert.equal(specReturn('spec: 끝에 코드 `x`'), '끝에 코드 `x`', '감싸지 않은 줄의 꼬리는 그대로');
   assert.equal(specReturn('respec: 아니다'), null, '다른 낱말의 꼬리는 아니다');
   // 사고 76(16라운드 stage C): build가 「`spec:` 줄 없음.」이라 쓴 것이 반려 「줄 없음.」으로 읽혀 가짜 둘째 반려 → hold — 코드 토큰으로 낱말을 가리킨 줄과 「없음」은 반려가 아니다(실제 줄)

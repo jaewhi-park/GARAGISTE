@@ -102,7 +102,7 @@ export function specReturn(text) {
   return null;
 }
 // 사고 76(16라운드 운영 둘째 날 stage C): 포장을 벗기자 build의 「`spec:` 줄 없음.」이 반려 「줄 없음.」으로 읽혀 가짜 둘째 반려 → hold가 났다 — 코드 토큰(`spec:`)으로 낱말을 가리킨 줄과 「없음」은 반려가 아니다.
-const NONE = /^(줄 )?(없음|없다|none|n\/a)[.。]?$/i;
+const NONE = /^(줄 )?(없음|없다|none|n\/a)(?=$|[\s.。,—:;)])/i; // 25라운드(둘째 근거): 「spec: 없음. 다만 …」 — 없음 뒤의 덧말은 반려가 아니다(첫 토큰이 없음·없다·none이면 없음)
 const mention = (line, word) => new RegExp('^[\\s*_>"\x27-]*`' + word + ':`').test(line);
 // 16라운드(둘의 규칙 — 14라운드 관찰 14 「공격이 diff 밖 결함을 글로만 남겼다」 · 15라운드 관찰 21 「intake가 진짜 결함을 unit이 아니라 질문으로 올렸다」): 팩이 남긴 `defect:` 줄은 BACKLOG 후보가 된다(work.mjs found). 마지막 열 줄 안, 포장은 spec:과 같이 벗긴다.
 export function defectLines(text) {
