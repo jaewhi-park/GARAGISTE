@@ -341,6 +341,7 @@ function main() {
     sec('revise', '고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트', [
       `CEO 결정(그대로): ${reviseText}${carried ? ' (spec 팩이 같은 결정으로 기존 인수를 고쳤다 — 이어서)' : ''}`,
       '충돌의 근거(반려 줄 · CEO가 답한 질문):', ...reviseWhy, '',
+      ...((carried && unit.revise?.origin) || fromOrigin ? ['- 고쳐 쓰기 unit(원문이 그 파일을 가리킨다 — 사고 88): 공격의 대상은 결정이 바꾼 것(지운 단언이 사라졌나 · 바뀐 기대가 새 동작을 말하나 · 나머지 주장이 약해지지 않았나)이다 — 그 파일의 다른 테스트의 눈먼 곳은 결정 밖: 빨간 테스트가 아니라 `defect:` 줄(이 diff 밖 — BACKLOG 후보)로 남긴다.'] : []),
       '- 이 결정이 가리키는 기존 tests/adversary 파일(출하된 unit의 것 포함)만, 결정의 범위만큼 고친다 — 지우지 않는다, 결함을 잡는 나머지 단언은 그대로 둔다.',
       `- 고친 파일을 이 worktree에서 돌려 green인지 본 뒤 평소의 공격(${slug}-<n>)을 잇는다. 끝은 verify.mjs attack ${slug}.`,
     ].join('\n'));

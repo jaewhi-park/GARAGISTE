@@ -125,8 +125,13 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
       return brief('build', 'PIN — 현재 동작이 고정됐다, 구조만 바꾼다(동작 보존)');
     }
     if (!rp.base_red) return run(`redproof.mjs ${slug}`, '마지막 redproof가 FAIL(base에서 green 또는 눈먼 test_file) — 그 줄의 안내대로(CEO 결정이면 ask --hold)');
-    if (rp.head_green === true) return brief('attack', 're-spec: 기존 코드가 새 주장을 이미 만족한다 — build 불필요, attack은 새 바퀴');
-    return brief('build', 'RED — red를 green으로');
+    if (rp.head_green !== true) return brief('build', 'RED — red를 green으로');
+    // 사고 88 셋째 면(26라운드 stage H·I): 넘김(build의 `spec: <원문의 인수 파일>`)을 받은 spec은 주장을 바꾸지 않았다 — 새 공격 바퀴가 아니다
+    // (바퀴마다 attack이 그 파일의 눈먼 곳을 하나씩 더 찍어 넘김 5 · 팩 11 · 4M 토큰 · 예산 정지 2). 기존 공격 테스트만 다시 → 아래 A·finish
+    const lastReturn = last(mine, (e) => e.kind === 'spec_return');
+    const returnPack = lastReturn ? mine.find((e) => e.kind === 'pack' && e.pack === 'spec' && since(e, lastReturn.ts)) : null; // 그 넘김을 받은 spec 팩(바로 뒤의 것)
+    const handoffSpec = !!(lastReturn?.handoff && returnPack && returnPack === P); // 마지막 spec 팩이 그것이면 — 그 뒤의 재-spec은 새 바퀴
+    if (!handoffSpec) return brief('attack', 're-spec: 기존 코드가 새 주장을 이미 만족한다 — build 불필요, attack은 새 바퀴');
   }
   const A = last(mine, (e) => e.kind === 'attack' && since(e, P.ts)); // 이 팩 뒤의 공격 결과(팩 안의 에이전트가 남긴 것도)
   // system-attack: 발견(한 번이라도 red였던 공격)이 없으면 초록 테스트뿐 — 산출물이 아니라 drop(탐색은 원장 attack 줄에 남는다)
@@ -145,6 +150,10 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
   }
   if (st === 'attack') {
     if (!A) return run(`verify.mjs attack ${slug}`, 'attack이 끝났다 — red를 센다');
+    return finish();
+  }
+  if (st === 'spec') { // 넘김을 받은 spec(사고 88 셋째 면) — 위에서 내려온 길: 주장은 그대로, 기존 공격 테스트만 다시
+    if (!A) return run(`verify.mjs attack ${slug}`, '넘김을 받은 spec이 고쳤다 — 주장은 그대로: 기존 공격 테스트만 다시(새 바퀴가 아니다, 사고 88)');
     return finish();
   }
   return { kind: 'ceo', text: `${slug}의 상태 ${st}를 모른다 — node .garagiste/scripts/doctor.mjs` };

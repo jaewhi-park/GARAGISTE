@@ -939,11 +939,24 @@ test('사고 88(26라운드): 원문이 출하된 인수 파일을 가리키면 
   assert.match(script('next', [], repo).out, /^NEXT run node \.garagiste\/scripts\/brief\.mjs attack acc — re-spec: 기존 코드가 새 주장을 이미 만족한다 — build 불필요, attack은 새 바퀴/);
   const ap = script('brief', ['attack', 'acc'], repo);
   assert.match(ap.out, /^PACK .*acc-attack-/, ap.out);
-  assert.match(fs.readFileSync(path.join(repo, ap.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트\nCEO 결정\(그대로\): 출하된 exp 인수 테스트[^\n]*\(spec 팩이 같은 결정으로 기존 인수를 고쳤다 — 이어서\)/, '같은 결정이 attack 팩에 실린다');
-  write(awt, 'tests/adversary/acc-1.test.mjs', "import test from 'node:test'; import fs from 'node:fs';\ntest('exp 인수는 여전히 exp 파일을 본다', () => { if (!fs.readFileSync('tests/acceptance/exp.test.mjs', 'utf8').includes('exp 파일')) throw new Error('weakened'); });\n");
+  assert.match(fs.readFileSync(path.join(repo, ap.out.split(' ')[1]), 'utf8'), /## 고쳐 쓰기 — CEO가 고치라 한 기존 공격 테스트\nCEO 결정\(그대로\): 출하된 exp 인수 테스트[^\n]*\(spec 팩이 같은 결정으로 기존 인수를 고쳤다 — 이어서\)[\s\S]*- 고쳐 쓰기 unit\(원문이 그 파일을 가리킨다 — 사고 88\): 공격의 대상은 결정이 바꾼 것[^\n]*\`defect:\` 줄/, '같은 결정이 attack 팩에 실린다 · 공격의 대상은 결정이 바꾼 것(그 파일의 다른 눈먼 곳은 defect: 줄)');
+  // 사고 88 셋째 면(stage H·I): 공격이 그 파일에서 red를 찍고 build가 넘기면 spec이 고친다 — 그 뒤는 새 바퀴가 아니라 기존 공격 테스트만 다시(바퀴마다 눈먼 곳 하나씩 → 4M 토큰·예산 정지 2)
+  write(awt, 'tests/adversary/acc-1.test.mjs', "import test from 'node:test'; import fs from 'node:fs';\ntest('exp 인수는 여전히 exp 파일을 본다 — 그리고 STRICT 표식', () => { const s = fs.readFileSync('tests/acceptance/exp.test.mjs', 'utf8'); if (!s.includes('exp 파일') || !s.includes('// STRICT')) throw new Error('weakened'); });\n");
   commit(awt, 'test(acc): adversary');
-  assert.match(script('verify', ['attack', 'acc'], awt).out, /red 0\/1/);
+  assert.match(script('verify', ['attack', 'acc'], awt).out, /red 1\/1/);
   assert.match(script('work', ['spawned', 'acc', 'attack', '--tokens', '1', '--minutes', '1'], repo).out, /^SPAWN acc attack/);
+  assert.match(script('next', [], repo).out, /^NEXT run node \.garagiste\/scripts\/brief\.mjs build acc — 공격 red 1 — build 다시/);
+  assert.match(script('brief', ['build', 'acc'], repo).out, /^PACK .*acc-build-/);
+  assert.match(script('work', ['spawned', 'acc', 'build', '--tokens', '1', '--minutes', '1'], repo).out, /^SPAWN acc build/);
+  const hb = script('brief', ['spec', 'acc', '--return', "tests/acceptance/exp.test.mjs에 '// STRICT' 표식 줄이 필요하다 — build가 쓸 수 없다"], repo);
+  assert.match(hb.out, /^PACK .*acc-spec-/, hb.out);
+  assert.match(fs.readFileSync(path.join(repo, hb.out.split(' ')[1]), 'utf8'), /## 넘김 — build 팩이 남긴 줄: 원문이 가리키는 인수 파일\(tests\/acceptance\/exp\.test\.mjs\)은 네 것이다 — 반려가 아니다\(사고 88\)/);
+  fs.appendFileSync(target, '// STRICT\n'); commit(awt, 'test(acc): exp 인수에 STRICT 표식(넘김)');
+  assert.match(script('redproof', ['acc'], awt).out, /^PASS redproof acc base_red head_green — 고쳐 쓴 인수/);
+  assert.match(script('work', ['spawned', 'acc', 'spec', '--tokens', '1', '--minutes', '1'], repo).out, /^SPAWN acc spec/);
+  const nh = script('next', [], repo).out;
+  assert.match(nh, /^NEXT run node \.garagiste\/scripts\/verify\.mjs attack acc — 넘김을 받은 spec이 고쳤다 — 주장은 그대로: 기존 공격 테스트만 다시\(새 바퀴가 아니다, 사고 88\)/, `옛 길: brief attack(새 바퀴) — ${nh}`);
+  assert.match(script('verify', ['attack', 'acc'], awt).out, /red 0\/1/);
   // red 0 → 이 tree의 redproof(공격 파일이 더해졌다) → full → ship — build 팩은 한 번도 없다
   const steps = [];
   for (let i = 0; i < 6; i++) {
@@ -955,13 +968,16 @@ test('사고 88(26라운드): 원문이 출하된 인수 파일을 가리키면 
     const r = script(m[1], m[2].split(' ').filter(Boolean), awt);
     assert.match(r.out, /^PASS/, `${n}\n${r.out}`);
   }
-  assert.ok(steps.some((s) => /redproof\.mjs acc/.test(s)) && steps.some((s) => /verify\.mjs full acc/.test(s)) && /ship\.mjs acc/.test(steps[steps.length - 1]), steps.join('\n'));
+  assert.ok(steps.some((s) => /verify\.mjs full acc/.test(s)) && /ship\.mjs acc/.test(steps[steps.length - 1]), `redproof는 넘김 뒤 spec이 이미 이 tree에서 돌렸다 — full → ship: ${steps.join(' | ')}`);
   assert.ok(!steps.some((s) => /brief\.mjs build/.test(s)), `build 팩 없음 — ${steps.join('\n')}`);
   const s = script('ship', ['acc'], repo);
   assert.match(s.out, /^SHIPPED acc/, s.out);
   const main = fs.readFileSync(path.join(repo, 'tests/acceptance/exp.test.mjs'), 'utf8');
   assert.ok(!main.includes('src/other.mjs가 없다') && main.includes('exp 파일'), 'main의 exp 인수에서 둘째 단언만 사라졌다');
-  assert.doesNotMatch(fs.readFileSync(path.join(repo, '.garagiste/ledger/evidence.jsonl'), 'utf8'), /"kind":"(spec_return|pack)","slug":"acc"[^\n]*"(from|pack)":"build"/, '반려도 build 팩도 없었다');
+  const led = ledgerOf(repo).filter((e) => e.slug === 'acc');
+  assert.equal(led.filter((e) => e.kind === 'pack' && e.pack === 'build').length, 1, 'build 팩은 넘김 한 번(고칠 제품 코드는 없었다)');
+  assert.deepEqual([led.filter((e) => e.kind === 'spec_return' && e.handoff).length, led.filter((e) => e.kind === 'spec_return' && !e.handoff).length], [4, 1], '넘김 4(세지 않는다) · 반려 1');
+  assert.equal(led.filter((e) => e.kind === 'pack' && e.pack === 'attack').length, 1, 'attack 팩은 한 바퀴 — 넘김 뒤엔 verify attack만');
 });
 
 // 26라운드(둘의 규칙 — stockroom 모노레포): adopt가 full을 파일 목록으로 등록해 테스트 파일 하나를 뺐고(빨간 채 — CEO Q3) 고친 뒤에도 아무도 돌리지 않았다 · 뒤 unit이 패키지 안에 더한 테스트도 full은 몰랐다

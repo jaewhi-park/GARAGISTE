@@ -1040,6 +1040,24 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   assert.match(step([u({ slug: 'late', created: T(9) }), u({ state: 'build' })], L).cmd, /ship\.mjs add$/, '한 번에 하나 — 먼저 연 unit부터');
 });
 
+test('next(26라운드, 사고 88 셋째 면): 넘김을 받은 spec 뒤엔 새 공격 바퀴가 아니라 기존 공격 테스트만 다시(verify attack) → red 0이면 ship · red면 build · 평소의 재-spec(반려·--revise)은 그대로 새 바퀴', () => {
+  const T = (m) => `2026-10-05T04:${String(m).padStart(2, '0')}:00.000Z`;
+  const u = (over) => ({ slug: 'acc', kind: 'feature', state: 'spec', created: T(0), questions: [], holds: [], needs: [], respec: [], ...over });
+  const step = (ledger, over = {}) => nextStep({ units: [u()], ledger, decisionsText: '', scope: { slugs: ['acc'] }, backlog: [], stops: [], wtOf: () => ({ exists: true, rebase: false, unmerged: [] }), packPath: (s, p) => `.garagiste/session/packs/${s}-${p}-x.md`, ...over });
+  const pass = (m) => ({ ts: T(m), kind: 'redproof', slug: 'acc', base_red: true, head_green: true });
+  const spec = (m) => [{ ts: T(m), kind: 'pack', slug: 'acc', pack: 'spec' }, { ts: T(m + 1), kind: 'spawn', slug: 'acc', pack: 'spec' }];
+  assert.match(step([...spec(1), pass(3)]).cmd, /brief\.mjs attack acc$/, '첫 spec 뒤 PASS(고쳐 쓰기 unit) → attack 한 바퀴');
+  const handoff = [...spec(1), pass(3), { ts: T(4), kind: 'spec_return', slug: 'acc', from: 'build', reason: 'tests/acceptance/exp.test.mjs의 5번', handoff: true }, ...spec(4), pass(6)];
+  const h = step(handoff);
+  assert.match(h.cmd, /verify\.mjs attack acc$/, '넘김을 받은 spec 뒤엔 새 바퀴가 아니다'); assert.match(h.why, /넘김을 받은 spec이 고쳤다[^\n]*사고 88/);
+  assert.match(step([...handoff, { ts: T(7), kind: 'attack', slug: 'acc', red: 0, total: 2 }]).cmd, /ship\.mjs acc$/, '기존 공격이 green이면 ship');
+  assert.match(step([...handoff, { ts: T(7), kind: 'attack', slug: 'acc', red: 1, total: 2 }]).cmd, /brief\.mjs build acc$/, 'red면 build(다시 넘기면 spec — 끝은 기존 공격이 green일 때)');
+  const dispute = [...spec(1), pass(3), { ts: T(4), kind: 'spec_return', slug: 'acc', from: 'build', reason: '인수 테스트가 서로 어긋난다' }, ...spec(4), pass(6)];
+  assert.match(step(dispute).cmd, /brief\.mjs attack acc$/, '반려(주장 다툼)를 받은 spec 뒤엔 평소대로 새 바퀴');
+  const respecLater = [...handoff, ...spec(8), pass(10)];
+  assert.match(step(respecLater).cmd, /brief\.mjs attack acc$/, '넘김 뒤에 다른 spec 팩(재-spec)이 왔으면 그건 새 바퀴');
+});
+
 test('next(24라운드, 사고 84): conflictOwner·conflictHandoff — 테스트 파일만 남은 충돌의 주인(인수 spec · 공격 attack · 코드가 섞이면 없음) · build의 `spec: 충돌 <파일>`은 반려가 아니라 넘김', () => {
   const P = { acceptance: 'tests/acceptance', adversary: 'tests/adversary' };
   assert.equal(conflictOwner(['tests/acceptance/a.test.js'], P), 'spec');
