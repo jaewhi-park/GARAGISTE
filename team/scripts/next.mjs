@@ -115,6 +115,10 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     const tree = wt.tree || null; // computeNext의 wtOf가 센다 — nextStep은 조립된 입력만 받는다(판단 없음·순수)
     const proven = (e) => e.kind === 'redproof' && e.slug === slug && e.tree === tree && e.head_green === true && (u.kind === 'refactor' || u.kind === 'pin' ? e.refactor && e.pin_base === 'green' : e.base_red);
     if (tree && u.kind !== 'system' && !ledger.some(proven)) return run(`redproof.mjs ${slug}`, 'red 0 — 공격 파일이 더해져 tree가 움직였다: 이 tree의 redproof(ship 조건은 tree 단위)');
+    // 사고 85(24라운드 여덟째 날 · erp-lite): ship이 main을 합친 뒤 통합 tree의 full이 FAIL(두 unit이 고친 공격 테스트가 자동 머지로 어긋남)인데 next는 「이 tree의 full PASS가 원장에 없다 → verify full」만 20번 되풀이했다(85초씩 · FAIL 줄이 로그 경로(시각)를 품어 되풀이 감지도 비껴갔다).
+    // 이 tree의 마지막 full이 FAIL이면 build의 일이다 — 경계 밖 테스트(인수·공격)면 build가 spec: 줄로 넘긴다(가드가 막는다). 같은 tree에 두 번 돌면 진전 없음으로 멈춘다.
+    const lastFull = tree ? last(ledger, (e) => e.kind === 'verify' && e.mode === 'full' && e.tree === tree) : null;
+    if (lastFull && lastFull.exit !== 0) return brief('build', `이 tree의 full FAIL${lastFull.red?.length ? ` — ${lastFull.red.join(' ')}` : ''}: build가 고친다(main을 합친 뒤·공격 파일이 더해진 뒤 red — 경계 밖 테스트면 spec: 줄로, 사고 85)`);
     if (tree && !ledger.some((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === tree)) return run(`verify.mjs full ${slug}`, 'red 0 — 이 tree의 full PASS가 원장에 없다(공격 파일만 더해진 tree): ship 조건');
     return run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
   };

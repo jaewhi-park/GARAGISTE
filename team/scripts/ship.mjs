@@ -242,7 +242,7 @@ function main() {
     const fullCmd = wtCmds.full || c.team.commands.full;
     if (!fullCmd) fail('FAIL ship: 통합 tree 재검증 불가 — commands.full 비어 있음');
     const r = fullRun({ main: c.main, team: c.team, root: wt, cmd: fullCmd, testFile: wtCmds.test_file || c.team.commands.test_file }); // 사고 44: 통합 tree의 full도 「전부」
-    appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true, reverify: newTree === tree });
+    appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true, reverify: newTree === tree, ...(r.red?.length ? { red: r.red } : {}) });
     if (r.status) fail(`FAIL ship: 통합 tree에서 full FAIL — ${newTree !== tree ? 'main이 움직였다, build 재spawn' : '원장의 PASS 줄과 다르다(원장은 증거이지 증명이 아니다 — 환경이 다르거나 줄이 위조됐다): build 재spawn, 되풀이면 정비 채널'}\n${r.tail}`);
     // 사고 22(3차 실기): full만 재기록하면 롤백 뒤 재-ship이 「redproof·attack이 이전 tree」 핑퐁에 빠지고,
     // 새 base 위 공격 회귀는 머지 전 검사를 빠져나간다 — 세 증거 전부를 새 tree에 다시 묶는다(순수 기계 일).

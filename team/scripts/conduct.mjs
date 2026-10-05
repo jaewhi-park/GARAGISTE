@@ -118,7 +118,9 @@ export function defectLines(text) {
 export function failKey(output) {
   const lines = String(output || '').split('\n').filter((l) => l.trim());
   const i = lines.findIndex((l) => /^FAIL /.test(l));
-  return i < 0 ? null : lines.slice(i, i + 2).join(' | ').slice(0, 160);
+  // 사고 85: verify의 FAIL 줄은 로그 경로(시각)를 품어 같은 FAIL이 매번 다른 열쇠였다(verify full 20번) — 경로·시각은 열쇠가 아니다
+  const norm = (l) => l.replace(/\S*\/logs\/\S+/g, '<log>').replace(/\d{4}-\d{2}-\d{2}T[\d:.-]+Z?/g, '<ts>');
+  return i < 0 ? null : lines.slice(i, i + 2).map(norm).join(' | ').slice(0, 160);
 }
 // 진전 없는 팩: 같은 unit·같은 팩이 worktree HEAD를 바꾸지 못한 채 거듭 돌면 멈춘다(한 번은 우연, 두 번은 패턴). spike는 커밋하지 않는 팩이라 세지 않는다.
 export function noProgress(history, { slug, pack, before, after }) {

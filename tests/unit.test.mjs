@@ -940,6 +940,15 @@ test('next: Flow 4의 다음 한 걸음은 산문이 아니라 산수 — spec�
   assert.match(step([u({ state: 'build' })], L).cmd, /verify\.mjs attack add$/, '고친 뒤엔 attack 팩을 새로 띄우지 않고 기존 공격 테스트만(한 바퀴)');
   push({ ts: T(11), kind: 'attack', slug: 'add', total: 2, red: 0 });
   assert.match(step([u({ state: 'build' })], L).cmd, /ship\.mjs add$/, 'red 0이면 ship');
+  // 사고 85(24라운드 여덟째 날): 이 tree의 마지막 full이 FAIL이면 verify full을 되풀이하지 않고 build — 경계 밖 테스트면 build가 spec: 줄로 넘긴다
+  const treed = { wtOf: () => ({ exists: true, rebase: false, unmerged: [], tree: 'T1' }) };
+  const provenT1 = { ts: T(12), kind: 'redproof', slug: 'add', tree: 'T1', base_red: true, head_green: true };
+  assert.match(step([u({ state: 'build' })], [...L, provenT1], treed).cmd, /verify\.mjs full add$/, 'tree의 full 기록이 없으면 센다');
+  const fullFail = { ts: T(13), kind: 'verify', mode: 'full', tree: 'T1', exit: 1, red: ['tests/adversary/x-1.test.mjs'] };
+  const b85 = step([u({ state: 'build' })], [...L, provenT1, fullFail], treed);
+  assert.match(b85.cmd, /brief\.mjs build add$/, '이 tree의 full FAIL은 build의 일(사고 85)'); assert.match(b85.why, /full FAIL — tests\/adversary\/x-1\.test\.mjs[^\n]*사고 85/);
+  assert.match(step([u({ state: 'build' })], [...L, provenT1, fullFail, { ts: T(14), kind: 'verify', mode: 'full', tree: 'T1', exit: 0 }], treed).cmd, /ship\.mjs add$/, '뒤에 PASS가 있으면 ship');
+  assert.match(step([u({ state: 'build' })], [...L, provenT1, fullFail, { ts: T(14), kind: 'verify', mode: 'full', tree: 'T2', exit: 0 }], treed).cmd, /brief\.mjs build add$/, '다른 tree의 PASS는 이 tree의 것이 아니다');
   // 사고 64(L2 5판 리눅스 4라운드): 미검수 3이면 ship은 budget으로 거부한다 — next가 ship을 계속 내지 않고 ship 직전에서 ceo
   const blocked = step([u({ state: 'build' })], L, { stops: ['미검수 3 ≥ 3 — CEO가 써봐야 출하가 열린다'] });
   assert.equal(blocked.kind, 'ceo');
@@ -1252,6 +1261,10 @@ test('conduct: 반려 줄·FAIL 열쇠·hold 안내·진전 없음', () => {
   assert.deepEqual(defectLines('spec: 반려만'), []);
   assert.equal(failKey('PASS gate\nFAIL ship hello 1/8\n- attack: 기록 없음\n- x'), 'FAIL ship hello 1/8 | - attack: 기록 없음', 'ship은 둘째 줄(조건)이 열쇠를 가른다');
   assert.equal(failKey('ATTACK hello red 1/1'), null, 'FAIL 줄이 없으면 열쇠 없음 — 되풀이로 세지 않는다');
+  // 사고 85: 로그 경로(시각)가 열쇠를 갈라 같은 FAIL이 되풀이로 안 세졌다(verify full 20번) — 경로·시각은 열쇠가 아니다
+  assert.equal(failKey('FAIL verify:full cb52ff6 .garagiste/session/logs/verify-full-2026-10-05T00-59-55-130Z.log\n# fail 2'), failKey('FAIL verify:full cb52ff6 .garagiste/session/logs/verify-full-2026-10-05T01-01-23-365Z.log\n# fail 2'), '로그 경로가 달라도 같은 열쇠');
+  assert.equal(failKey('FAIL verify:full cb52ff6 .garagiste/session/logs/verify-full-2026-10-05T00-59-55-130Z.log\n# fail 2'), 'FAIL verify:full cb52ff6 <log> | # fail 2');
+  assert.equal(failKey('FAIL x 2026-10-05T00:59:55.130Z 뒤\n- y'), 'FAIL x <ts> 뒤 | - y', '시각도 열쇠가 아니다');
   // 사고 71(15라운드 넷째 run): 반려 전달의 FAIL은 run 걸음의 FAIL과 같은 열쇠 — 실제 줄(system-1 build 30회가 전부 이 FAIL)
   const sysFail = 'FAIL 시스템 공격 unit은 attack·build 팩만 — system-1은 spec·spike 없이 공격부터(발견이 곧 red 주장)';
   assert.equal(handOffKey({ status: 1, held: false, text: sysFail }), sysFail);
