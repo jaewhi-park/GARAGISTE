@@ -12,13 +12,13 @@ import { checkBoundary } from '../team/scripts/boundary.mjs';
 import { blindFiles, commandFileTokens, discoverTestFiles, gateDecision, gateFailLine, logicLines, probeCommand, probeNames, PROBE_TEXT, skipList, uncoveredTests } from '../team/scripts/verify.mjs';
 import { parseTags, pickNext, coverage } from '../team/scripts/claims.mjs';
 import { attackCell, evaluateShip, evidenceCommitMessage, mergeTeamJson, setupGap, spikeComplete, spikeOnlyFiles } from '../team/scripts/ship.mjs';
-import { againCmd, attackRoundUsed, reviseDecided, respecRevise, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
+import { againCmd, attackRoundUsed, reviseDecided, respecRevise, originRevise, returnAnswered, RETURN_Q, autoLane, closedDecisions, fit, fence, laneAdvice, matchHazards, overflowAdvice, packBreakdown, packLane, scopedDecisions, tailSections } from '../team/scripts/brief.mjs';
 import { candidateLines, firstLine, budgetStatus, humanNeeded, reportText, repeatedFails , tryOrder } from '../team/scripts/state.mjs';
-import { baseGreenAdvice, blindAdvice, outcome, verdict } from '../team/scripts/redproof.mjs';
+import { baseGreenAdvice, blindAdvice, otherChanges, outcome, verdict } from '../team/scripts/redproof.mjs';
 import { candidateSlug, acceptWithDecision, questionText, nextQuestionNumber, decideLine, parseBacklog, backlogLine, closure, pickReady, resolveModels, setFrontmatterModel, TIERS, unknownQuestions, setNeeds, respecTargets, seedGate, listLines, parseArgs, keepsAssumption } from '../team/scripts/work.mjs';
 import { blocking, diagnose } from '../team/scripts/doctor.mjs';
 import { conflictHandoff, conflictOwner, nextStep, render } from '../team/scripts/next.mjs';
-import { DEFAULTS as CONDUCT_DEFAULTS, defectLines, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine } from '../team/scripts/conduct.mjs';
+import { DEFAULTS as CONDUCT_DEFAULTS, defectLines, EXIT, failKey, handOffKey, headlessEnv, holdCommand, lockAlive, noProgress, parseArgs as conductArgs, parseResult, spawnerCommand, specReturn, stopLine, thirdReturn } from '../team/scripts/conduct.mjs';
 import { versionLine } from '../team/scripts/doctor.mjs';
 import { PACKS as WORK_PACKS } from '../team/scripts/work.mjs';
 import { PACKS as BRIEF_PACKS } from '../team/scripts/brief.mjs';
@@ -1548,6 +1548,38 @@ test('brief(18라운드): reviseDecided — 그 unit의 질문·hold에 CEO가 �
   assert.deepEqual(reviseDecided({}, d), []);
 });
 // 사고 83(24라운드 여덟째 날): CEO가 decide로만 답하면(RESPEC 길) 답이 인수(spec)에는 닿고 공격 테스트(attack)에는 실리지 않았다 — 답한 질문의 닫힌 줄이 재-spec의 고쳐 쓰기 근거다(--revise 없이, unit.revise로 attack까지)
+// 사고 88(26라운드 모노레포 셋째 날 · stockroom): CEO가 출하된 인수 파일 하나를 고치라고 unit을 열었다 — build는 가드에 막혀 반려, spec(--return)은 기각, 둘째 반려의 hard 질문에 decide 「예」는 길이 없어 같은 FAIL·같은 질문 ×4($1.4)
+test('brief(26라운드, 사고 88): originRevise — 원문이 그 팩의 테스트 폴더 아래 파일을 가리키면 그 파일들(중복 없이): spec은 인수·attack은 공격 폴더만, 폴더만 말하면 없음, team.paths를 따른다, 다른 팩은 없음', () => {
+  const origin = "출하된 cli-export 인수 테스트(tests/acceptance/cli-export.test.js)의 6번 'API·shared는 바꾸지 않는다' 단언을 지운다 — tests/acceptance/cli-export.test.js는 CSV 출력만 단언한다. 제품 코드는 바꾸지 않는다.";
+  assert.deepEqual(originRevise({ pack: 'spec', origin }), ['tests/acceptance/cli-export.test.js'], '괄호 안·문장 끝의 경로, 중복은 하나');
+  assert.deepEqual(originRevise({ pack: 'attack', origin }), [], 'attack 팩엔 공격 폴더의 파일만');
+  assert.deepEqual(originRevise({ pack: 'attack', origin: '공격 tests/adversary/cli-export-2.test.js의 셋째 단언을 지운다' }), ['tests/adversary/cli-export-2.test.js']);
+  assert.deepEqual(originRevise({ pack: 'build', origin }), [], 'build·다른 팩은 없음');
+  assert.deepEqual(originRevise({ pack: 'spec', origin: 'tests/acceptance/ 폴더의 테스트를 다시 본다' }), [], '폴더만 말한 것은 고쳐 쓰기가 아니다');
+  assert.deepEqual(originRevise({ pack: 'spec', origin: 'xtests/acceptance/a.test.js' }), [], '다른 폴더 이름의 접미는 아니다');
+  assert.deepEqual(originRevise({ pack: 'spec', origin: '인수 spec/acc/a_test.py를 고친다', paths: { acceptance: 'spec/acc', adversary: 'spec/adv' } }), ['spec/acc/a_test.py'], 'team.paths를 따른다');
+  assert.deepEqual(originRevise({ pack: 'spec', origin: '' }), []);
+});
+test('brief(26라운드, 사고 88): returnAnswered — 닫힌 결정 줄에서 둘째 반려 질문(RETURN_Q)에 답한 Q 번호만(다른 질문·열린 줄은 아니다)', () => {
+  const decided = [`- [x] Q9 (acc): ${RETURN_Q} → 예 — 그대로 (2026-10-05)`, '- [x] Q3 (acc): 저장 꼴은? → JSON (2026-10-05)', `- [x] Q11 (acc): ${RETURN_Q} → 예`];
+  assert.deepEqual(returnAnswered(decided), ['Q9', 'Q11']);
+  assert.deepEqual(returnAnswered([]), []);
+  assert.deepEqual(returnAnswered(['- [x] Q3 (acc): 다른 질문 → 예']), []);
+});
+test('redproof(26라운드, 사고 88): otherChanges — 자기 인수 파일과 docs를 뺀 변경: 고쳐 쓴 남의 인수·소스·공격 파일은 변경이다(「지금 자리에서 red면 충분」은 자기 인수만 바뀐 tree의 지름길)', () => {
+  const own = ['tests/acceptance/acc.test.js'];
+  assert.deepEqual(otherChanges(['tests/acceptance/acc.test.js', 'docs/units/acc/surface.md'], own), [], '자기 인수·docs만 바뀐 tree — base와 같다');
+  assert.deepEqual(otherChanges(['tests/acceptance/acc.test.js', 'tests/acceptance/cli-export.test.js', 'docs/x.md'], own), ['tests/acceptance/cli-export.test.js'], '고쳐 쓴 남의 인수는 변경이다 — base worktree와 비교한다');
+  assert.deepEqual(otherChanges(['src/a.js', 'tests/adversary/acc-1.test.js'], own), ['src/a.js', 'tests/adversary/acc-1.test.js']);
+  assert.deepEqual(otherChanges([], own), []);
+  assert.deepEqual(otherChanges(['documentation/a.md', 'docs/a.md'], [], 'documentation'), ['docs/a.md'], 'docs 폴더 이름은 인자');
+});
+test('conduct(26라운드, 사고 88): thirdReturn — brief의 「세 번째」 FAIL 열쇠만 참(둘째 반려 hold·다른 FAIL·빈 값은 거짓) → conduct는 되풀이를 기다리지 않고 framework로 멈춘다', () => {
+  assert.equal(thirdReturn(failKey('FAIL spec 반려가 세 번째 — CEO 답(Q9) 뒤에도 같은 반려(사고 88): decide로는 풀리지 않는다\n- 전: a\n- 이번: b')), true);
+  assert.equal(thirdReturn(failKey('FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다\n- 전: a')), false);
+  assert.equal(thirdReturn('FAIL brief: worktree 없음'), false);
+  assert.equal(thirdReturn(null), false);
+});
 test('brief(24라운드, 사고 83): respecRevise — 재-spec의 spec 팩에만, 답이 온 질문의 닫힌 줄을 고쳐 쓰기 근거로(다른 Q·--revise·다른 팩·재-spec 아님이면 빈 문자열)', () => {
   const decided = ['- [x] Q10 (health-version): 출하된 기대를 version 키를 받도록 고칠까요? → 고쳐라', '- [x] Q3 (health-version): 옛 답 → 예'];
   assert.equal(respecRevise({ pack: 'spec', revise: '', respec: [{ q: 10 }], decided }), 'Q10 (health-version): 출하된 기대를 version 키를 받도록 고칠까요? → 고쳐라');

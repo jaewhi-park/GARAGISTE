@@ -36,6 +36,12 @@ export function outcome({ base_red, head_green, state }) {
 // kind refactor(R&D 7라운드 2026-10-04, 백로그 Q13 「동작 보존 증명」): 새 동작이 없다 — 인수 테스트는 현재 동작의 핀이라 red 증명이 뒤집힌다.
 // 핀은 base(main)에서도 head에서도 초록이어야 한다(pin_base=green · head_green). base에서 빨간 핀은 현재 동작이 아니다(새 주장 → feature unit),
 // head에서 빨간 핀은 동작이 바뀐 것(refactor가 아니다 → build가 되돌린다). 눈먼 test_file(사고 57)은 핀에서 더 위험하다 — 초록이 기본값이라 — 같은 탐침으로 본다.
+// 사고 88(26라운드 · stockroom cli-export-acc): spec이 출하된 인수 파일을 고쳐 썼으면(원문의 고쳐 쓰기) head는 base가 아니다 — 「지금 자리에서 red면 충분」은 자기 인수만 바뀐 tree의 지름길이다.
+// 자기 인수 파일과 docs를 뺀 변경이 하나라도 있으면 base worktree와 비교한다(고쳐 쓴 인수가 base에서 red·head에서 green = 고쳐 쓰기의 증명).
+export function otherChanges(changed = [], own = [], docs = 'docs') {
+  const mine = new Set(own);
+  return changed.filter((f) => !mine.has(f) && !f.startsWith(`${docs}/`));
+}
 export function pinVerdict(baseRes, headRes) {
   const pin_base = baseRes.length > 0 && baseRes.every((r) => r.exit === 0) ? 'green' : 'red';
   const head_green = headRes === null ? null : headRes.length > 0 && headRes.every((r) => r.exit === 0);
@@ -103,7 +109,9 @@ function main() {
   const files = acceptanceFiles(c.root, c.team, slug);
   if (!files.length) fail(`FAIL redproof ${slug}: ${c.team.paths.acceptance}/${slug}* 없음`);
   const base = mergeBase(c.root, c.team.protected_branch);
-  const codeChanged = base ? git(['diff', '--name-only', `${base}..HEAD`, '--', '.', `:!${c.team.paths.acceptance}`, ':!docs'], c.root).stdout.trim() !== '' : false;
+  const others = base ? otherChanges(git(['diff', '--name-only', `${base}..HEAD`], c.root).stdout.split('\n').filter(Boolean), files) : []; // 사고 88: 고쳐 쓴 남의 인수도 변경이다
+  const codeChanged = others.length > 0;
+  const revised = others.filter((f) => f.startsWith(`${c.team.paths.acceptance}/`));
   const tree = workTree(c.root);
   if (!base || !codeChanged) {
     // 아직 제품 코드가 없다: 지금 자리에서 red면 충분하다
@@ -136,7 +144,7 @@ function main() {
   const state = readJson(unitFile(c.main, c.team, slug), null)?.state;
   const o = outcome({ ...v, state });
   const redAtHead = headRes.filter((r) => r.exit !== 0).map((r) => r.file);
-  if (o === 'PASS') return out(`PASS redproof ${slug} base_red head_green${state === 'spec' ? ' — 기존 코드가 새 주장을 이미 만족한다(re-spec): build 불필요, attack·ship은 새 tree에서 다시' : ''}`);
+  if (o === 'PASS') return out(`PASS redproof ${slug} base_red head_green${state === 'spec' ? (revised.length ? ` — 고쳐 쓴 인수(${revised.join(' ')})가 새 주장을 만족한다(고쳐 쓰기 unit, 사고 88): build 불필요, 다음은 attack` : ' — 기존 코드가 새 주장을 이미 만족한다(re-spec): build 불필요, attack·ship은 새 tree에서 다시') : ''}`);
   if (o === 'RED') return out(`RED ${slug} ${redAtHead.length}/${files.length} — 기존 코드 위의 새 주장(re-spec): 다음은 build → node .garagiste/scripts/brief.mjs build ${slug}`);
   if (!v.base_red) fail(baseGreenAdvice(slug, ...split(baseRes)));
   fail(`FAIL redproof ${slug} base_red=true head_green=false — head에서 red: ${redAtHead.join(' ')} → build가 덜 끝났다: node .garagiste/scripts/brief.mjs build ${slug} 뒤 재spawn (build가 spec: 줄을 남겼으면 그 줄로: node .garagiste/scripts/brief.mjs spec ${slug} --return "<그 줄>")`);

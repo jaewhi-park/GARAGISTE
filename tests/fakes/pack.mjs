@@ -46,7 +46,8 @@ if (refactor && pack === 'spec') {
   lines.push(commit(`test(${slug}): red 주장`), script('redproof', [slug]).stdout.trim(), '쓴 파일 3 · 주장 1 · human 0 · 질문 0');
 } else if (pack === 'build') {
   const adversary = fs.existsSync(path.join(wt, 'tests', 'adversary', `${slug}-1.test.mjs`));
-  if (mode === 'return' && (!adversary || unit?.kind === 'system')) { emit(`커밋 0 · verify full 안 돌림\nspec: ${unit?.kind === 'system' ? '공격 카드가 서로 어긋난다 — 같은 입력에 기대가 둘(사고 71)' : '인수 테스트가 서로 어긋난다 — 이름 없는 경우의 출력이 정해지지 않았다'}`); process.exit(0); }
+  // return-always(사고 88): CEO 답 뒤에도 같은 반려 — build가 언제나 반려한다
+  if ((mode === 'return' && (!adversary || unit?.kind === 'system')) || mode === 'return-always') { emit(`커밋 0 · verify full 안 돌림\nspec: ${unit?.kind === 'system' ? '공격 카드가 서로 어긋난다 — 같은 입력에 기대가 둘(사고 71)' : '인수 테스트가 서로 어긋난다 — 이름 없는 경우의 출력이 정해지지 않았다'}`); process.exit(0); }
   write('src/cli.mjs', adversary ? "const n = process.argv[2]; process.stdout.write(n ? `hello ${n}\\n` : 'hello\\n');\n" : "process.stdout.write(`hello ${process.argv[2] ?? ''}\\n`);\n");
   lines.push(commit(`${adversary ? 'fix' : 'feat'}(${slug}): ${adversary ? '이름 없을 때' : '인사'}\n\nUnit: ${slug}\nStep: ${adversary ? 2 : 1}\nProven: hello Ada`));
   if (adversary) lines.push(script('verify', ['attack', slug]).stdout.trim());
