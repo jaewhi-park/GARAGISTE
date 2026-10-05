@@ -615,6 +615,8 @@ test('사고 49~52(홀드아웃 — Go CLI): --로 시작하는 원문 · BACKLO
   const d0 = script('work', ['drop', 'json-out', '잘못 쓴 줄'], repo);
   assert.match(d0.out, /^FAIL json-out은 unit이 없는 BACKLOG 줄이다 — 닫으려면 --forget[\s\S]*고치려면 work\.mjs add json-out[\s\S]*--replace/, d0.out); oneLine(d0);
   assert.match(script('work', ['drop', 'json-out', '범위 밖', '--forget'], repo).out, /^DROPPED json-out — 범위 밖 · BACKLOG 줄 닫음/);
+  // 사고 88(26라운드 stage F): 닫힌 slug의 add는 「BACKLOG에 있음 → drop --forget」(방금 한 일)이 아니라 새 slug의 길을 말한다
+  assert.match(script('work', ['add', 'json-out', 'JSON 출력을 다시'], repo).out, /^FAIL json-out은 닫힌 줄\(drop --forget·출하\) — 새 일은 새 slug다: work\.mjs add json-out-2 "<원문>"/);
   assert.match(read('docs/BACKLOG.md'), /- \[x\] json-out · /);
   const none = script('work', ['drop', 'ghost', 'x', '--forget'], repo);
   assert.match(none.out, /^FAIL unit도 BACKLOG 줄도 없음: ghost/); oneLine(none);
@@ -1300,7 +1302,7 @@ test('사고 88(26라운드): 둘째 반려의 hard 질문에 CEO가 decide로 �
   assert.match(script('work', ['decide', '1', '예 — 그대로'], repo).out, /^PASS decide Q1/);
   const r2 = conduct(repo, [], { GARAGISTE_FAKE_MODE: 'return-always' });
   assert.equal(r2.status, 4, r2.out);
-  assert.match(r2.out, /spec: 인수 테스트가 서로 어긋난다[^\n]*\n\s+FAIL spec 반려가 세 번째 — CEO 답\(Q1\) 뒤에도 같은 반려\(사고 88\): decide로는 풀리지 않는다 — 팀 밖의 일\(framework\), 다시 묻지 않는다\n\s+- 전: [^\n]+\n\s+- 이번: [^\n]+\n\s+- 길: 원문을 다시 쓴다\(node \.garagiste\/scripts\/work\.mjs drop hello "<사유>" --forget → add\)[\s\S]*STOP framework [^\n]*CEO 답 뒤에도 같은 반려\(사고 88\) — FAIL spec 반려가 세 번째/, r2.out);
+  assert.match(r2.out, /spec: 인수 테스트가 서로 어긋난다[^\n]*\n\s+FAIL spec 반려가 세 번째 — CEO 답\(Q1\) 뒤에도 같은 반려\(사고 88\): decide로는 풀리지 않는다 — 팀 밖의 일\(framework\), 다시 묻지 않는다\n\s+- 전: [^\n]+\n\s+- 이번: [^\n]+\n\s+- 길: 원문을 다시 쓴다\(node \.garagiste\/scripts\/work\.mjs drop hello "<사유>" --forget → 새 slug로 add — 닫힌 slug는 다시 열지 않는다\)[\s\S]*STOP framework [^\n]*CEO 답 뒤에도 같은 반려\(사고 88\) — FAIL spec 반려가 세 번째/, r2.out);
   assert.equal(ledgerOf(repo).filter((e) => e.kind === 'spawn').map((e) => e.pack).join(','), 'spec,build,spec,build,attack,build', '둘째 run은 attack → build(반려) 한 번 — 넷째 질문 대신 멈춤');
   assert.doesNotMatch(r2.out, /ask hello .* --hold|Q2 queued/, '넷째 질문이 없다');
   assert.doesNotMatch(fs.readFileSync(path.join(repo, 'docs/DECISIONS.md'), 'utf8'), /- \[ \] Q2/);

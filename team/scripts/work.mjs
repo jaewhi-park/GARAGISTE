@@ -173,9 +173,10 @@ function add(c, slug, origin, flags) {
   if (!origin) fail('FAIL 원문이 없다: work.mjs add <slug> "<원문 한 문장>" [--milestone M1] [--needs a,b] [--accept "<한 줄>"]');
   const prev = parseBacklog(readBacklog(c)).find((i) => i.slug === slug);
   // 사고 50(홀드아웃): 잘못 쓴 BACKLOG 줄을 고칠 길이 없었다 — add는 중복을 거부했고 drop은 unit을 요구했다. 열린 unit이 없는 열린 줄은 제자리에서 바꾼다
+  // 사고 88(26라운드 stage F): drop --forget 뒤 같은 slug의 add가 「BACKLOG에 있음 → 지우려면 drop --forget」으로 막혔다 — 방금 한 일을 다시 가리키는 안내. 닫힌 줄은 역사다: 새 slug의 길을 말한다
+  if (prev?.done) fail(`FAIL ${slug}은 닫힌 줄(drop --forget·출하) — 새 일은 새 slug다: work.mjs add ${slug}-2 "<원문>" [--milestone …] [--needs …]`);
   if (prev && !flags.replace) fail(`FAIL BACKLOG에 있음: ${slug} — 고치려면 같은 명령에 --replace(열린 unit이 없는 열린 줄만), 지우려면 work.mjs drop ${slug} "<사유>" --forget`);
   if (flags.replace && !prev) fail(`FAIL --replace는 BACKLOG에 있는 줄만: ${slug}`);
-  if (prev?.done) fail(`FAIL ${slug}은 닫힌 줄 — 새 일은 새 slug다`);
   const live = readJson(unitFile(c.main, c.team, slug), null);
   if (prev && live && live.state !== 'dropped') fail(`FAIL ${slug}은 unit이 열려 있다 — 진행 중 unit의 수용은 re-spec: work.mjs brief "<CEO 말>" → brief.mjs spec ${slug}`);
   const needs = (flags.needs || '-') === '-' ? [] : flags.needs.split(',').map((s) => s.trim()).filter(Boolean);

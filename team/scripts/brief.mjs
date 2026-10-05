@@ -326,7 +326,7 @@ function main() {
   if (returned) {
     const prior = readLedger(c.main, c.team).filter((e) => e.kind === 'spec_return' && e.slug === slug && e.ts >= unit.created);
     const answered = prior.length ? returnAnswered(decidedQ) : [];
-    if (answered.length) fail(`FAIL spec 반려가 세 번째 — CEO 답(${answered.join('·')}) 뒤에도 같은 반려(사고 88): decide로는 풀리지 않는다 — 팀 밖의 일(framework), 다시 묻지 않는다\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}\n- 길: 원문을 다시 쓴다(node .garagiste/scripts/work.mjs drop ${slug} "<사유>" --forget → add) 또는 사람이 아래 길을 연다\n${revisePaths(slug)}`);
+    if (answered.length) fail(`FAIL spec 반려가 세 번째 — CEO 답(${answered.join('·')}) 뒤에도 같은 반려(사고 88): decide로는 풀리지 않는다 — 팀 밖의 일(framework), 다시 묻지 않는다\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}\n- 길: 원문을 다시 쓴다(node .garagiste/scripts/work.mjs drop ${slug} "<사유>" --forget → 새 slug로 add — 닫힌 slug는 다시 열지 않는다) 또는 사람이 아래 길을 연다\n${revisePaths(slug)}`);
     if (prior.length) fail(`FAIL spec 반려가 두 번째 — 팀 안에서 풀리지 않았다: 두 줄을 CEO에게 그대로 보여 준다(hard 질문 — 그 unit만 멈춘다)\n- 전: ${prior[prior.length - 1].reason}\n- 이번: ${returned}\n${revisePaths(slug)}\n- ${holdAsk(slug, RETURN_Q)}`);
     sec('return', redirected ? `반려 — ${returnedFrom} 팩이 남긴 줄 (system unit엔 spec이 없다: 공격 카드가 곧 주장 — 서로·기본 data와 어긋나는 카드의 기대를 바로잡는다, 결함을 잡는 단언은 그대로 · 끝은 verify.mjs attack ${slug})` : `반려 — ${returnedFrom} 팩이 남긴 줄 (그 주장들이 서로·원문과 어긋나는지부터)`, returned);
   }
