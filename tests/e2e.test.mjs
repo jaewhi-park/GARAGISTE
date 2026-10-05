@@ -996,7 +996,7 @@ test('26라운드: 파일 목록 full이 저장소의 테스트 파일을 빠뜨
   const team = JSON.parse(fs.readFileSync(teamPath, 'utf8'));
   team.commands = { quick: 'node --test tests/unit/smoke.test.mjs', full: 'node --test tests/unit/smoke.test.mjs', test_file: 'node --test {file}', run: 'true' }; // 파일 목록 — lib/tests/extra.test.mjs를 빠뜨렸다(stockroom의 꼴)
   fs.writeFileSync(teamPath, JSON.stringify(team, null, 2));
-  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n');
+  fs.writeFileSync(path.join(repo, 'CLAUDE.md'), '# p\n\n## Commands\n- quick: node --test tests/unit/smoke.test.mjs\n- full: node --test tests/unit/smoke.test.mjs     (전부)\n- run: true\n'); // 27라운드: 규칙 파일의 Commands 줄은 team.json의 거울
   git(['add', '-A'], repo); script('verify', ['quick'], repo);
   assert.equal(git(['commit', '-q', '-m', 'scaffold: team'], repo, { GARAGISTE_SHIP: '1' }).status, 0);
   assert.match(script('work', ['new', 'alpha', 'alpha 파일을 만든다'], repo).out, /^UNIT alpha spec/);
@@ -1021,6 +1021,9 @@ test('26라운드: 파일 목록 full이 저장소의 테스트 파일을 빠뜨
   // CEO 한 줄(메인 루트) — 글롭으로 넓힌다 → ship
   const cm = script('work', ['commands', 'full=node --test "tests/**/*.test.mjs" "lib/tests/*.test.mjs"'], repo, { GARAGISTE_ADMIN: '1' });
   assert.match(cm.out, /^COMMANDS .*full="node --test \\"tests\/\*\*\/\*\.test\.mjs\\" \\"lib\/tests\/\*\.test\.mjs\\""/, cm.out);
+  assert.match(fs.readFileSync(path.join(repo, 'CLAUDE.md'), 'utf8'), /^- full: node --test "tests\/\*\*\/\*\.test\.mjs" "lib\/tests\/\*\.test\.mjs"     \(전부\)$/m, 'CEO의 commands full=이 규칙 파일의 Commands 줄도 갱신한다(27라운드 — stockroom attack이 찍은 드리프트)');
+  assert.equal(git(['status', '--porcelain', 'CLAUDE.md'], repo).out.trim(), '', '규칙 파일 갱신은 team.json과 같은 scaffold(team) 커밋에 실린다');
+  assert.match(cm.out, /CLAUDE\.md Commands 줄 갱신/);
   const s2 = script('ship', ['alpha'], repo);
   assert.match(s2.out, /^SHIPPED alpha/, s2.out);
   // skip의 길: 같은 꼴을 CEO가 「빨간 채 둔다」로 적으면 ship은 그 파일을 세지 않는다

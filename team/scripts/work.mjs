@@ -559,6 +559,25 @@ export function blindCommands(cmds, paths, dir) {
   if (cmds.quick) { const r = probeCommand(cmds.quick, names, dir); if (r.before === 0 && r.after !== 0) probs.push(`quick이 ${paths.acceptance}·${paths.adversary}의 파일을 돈다 — 깨진 탐침에 red: quick="${cmds.quick}". 그 자리는 red로 커밋되는 자리라 게이트의 quick이 막힌다 → quick은 tests/unit(과 초록인 기존 테스트)만`); }
   return probs;
 }
+// 27라운드(stockroom cli-export-trim5의 attack이 찍은 결함 — 후보 cli-export-trim5-f1): CEO의 `commands full=<글롭>`은 team.json만 바꿨고 규칙 파일(CLAUDE.md·AGENTS.md)의 Commands 줄은 boot가 채운 옛 파일 목록 그대로였다.
+// 규칙 파일의 `- quick:|full:|test one file:|run:` 줄은 team.json의 거울이다 — commands가 바뀌면 같은 줄을 다시 쓴다(꼬리 주석은 그대로).
+export function syncRulesCommands(text, commands = {}) {
+  const labels = { quick: '- quick: ', full: '- full: ', test_file: '- test one file: ', run: '- run: ' };
+  let changed = 0; let inCommands = false;
+  const lines = String(text || '').split('\n').map((l) => {
+    if (/^## /.test(l)) inCommands = /^## Commands\b/.test(l); // 「## Commands」 절 안의 줄만 — Flow 절의 비슷한 줄은 규칙 산문이다
+    if (!inCommands) return l;
+    for (const [k, label] of Object.entries(labels)) {
+      if (!commands[k] || !l.startsWith(label)) continue;
+      const tail = /(\s{2,}\([^()]*\))$/.exec(l); // 「   (전부)」 같은 꼬리 주석
+      const next = `${label}${commands[k]}${tail ? tail[1] : ''}`;
+      if (next !== l) changed++;
+      return next;
+    }
+    return l;
+  });
+  return { text: lines.join('\n'), changed };
+}
 function commands(c, args) {
   const teamPath = path.join(c.root, '.garagiste', 'team.json');
   const t = readJson(teamPath, null);
@@ -581,12 +600,15 @@ function commands(c, args) {
   // 26라운드(둘의 규칙): 파일 목록으로 등록한 full이 저장소의 테스트 파일을 빠뜨리면 그 파일은 영원히 돌지 않는다(stockroom money.test.js — 빨간 채 뺐다가 고친 뒤에도 · export.test.js) — 뺄 파일은 skip에 적어 CEO가 본다
   if (!process.env.GARAGISTE_ADMIN && t.commands.full) { const unc = uncoveredTests({ root: c.root, cmd: t.commands.full, skip: skipList(t.commands.skip), exclude: [c.team.paths.acceptance, c.team.paths.adversary, c.team.paths.hostile] }); if (unc?.length) fail(`FAIL commands — full이 돌리지 않는 테스트 파일 ${unc.length}(저장하지 않았다): ${unc.join(' ')}\n- 전부 돌리게 글롭으로 넓히거나(예: "packages/*/tests/*.test.js"), 빨간 채 둘 파일은 skip="<파일,…>"로 적어 CEO에게 묻는다(ask) — 빼놓고 말하지 않으면 고친 뒤에도 아무도 돌리지 않는다`); }
   writeJson(teamPath, t);
-  appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' });
+  const rulesFile = ['CLAUDE.md', 'AGENTS.md'].map((f) => path.join(c.root, f)).find((f) => fs.existsSync(f)); // 27라운드: 규칙 파일의 Commands 줄은 team.json의 거울
+  const synced = rulesFile ? syncRulesCommands(readText(rulesFile), t.commands) : { changed: 0 };
+  if (synced.changed) fs.writeFileSync(rulesFile, synced.text);
+  appendLedger(c.main, c.team, { kind: 'commands', commands: t.commands, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.', ...(synced.changed ? { rules: path.basename(rulesFile) } : {}) });
   // 사고 34(필드 시험 2): 메인 루트의 CEO 변경은 boot의 커밋이 없다 — models처럼 스스로 커밋하고(ship이 main dirt로 막히지 않게), 바뀐 설치 명령은 main에서 한 번 돌린다(다음 worktree가 그 의존성을 잇는다)
   let tail = '';
   if (c.root === c.main) {
-    const cm = git(['commit', '-q', '-m', `scaffold(team): commands ${args.map((a) => a.split('=')[0]).join(' ')}`, '--', '.garagiste/team.json'], c.main, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' });
-    if (!cm.status) tail += ' · scaffold(team) 커밋';
+    const cm = git(['commit', '-q', '-m', `scaffold(team): commands ${args.map((a) => a.split('=')[0]).join(' ')}`, '--', '.garagiste/team.json', ...(synced.changed ? [path.basename(rulesFile)] : [])], c.main, { GARAGISTE_SHIP: '1', GARAGISTE_WIP: '1' });
+    if (!cm.status) tail += ` · scaffold(team) 커밋${synced.changed ? ` · ${path.basename(rulesFile)} Commands 줄 갱신` : ''}`;
     if (args.some((a) => a.startsWith('setup=')) && t.commands.setup) tail += ` · setup을 main에서 돌렸다 exit=${shell(t.commands.setup, { cwd: c.main }).status}`;
   }
   out(`COMMANDS ${Object.entries(t.commands).map(([k, v]) => `${k}=${JSON.stringify(v)}`).join(' ')}${tail}`);
