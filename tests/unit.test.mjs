@@ -565,6 +565,12 @@ test('ship: spike는 필수 행 다섯이 전부 있어야 끝난 것이다', ()
 test('ship: 사고 41(필드 벤치 2 웹) — 증거 파일만 든 wip HEAD는 ship이 정식 메시지로 승격한다: attack이 red 0의 공격 파일을 더하고 끝나면 커밋할 주체가 없어 「HEAD가 wip」가 반복됐다', () => {
   assert.equal(evidenceCommitMessage(['tests/adversary/serve-list-13.test.mjs'], team.paths, 'serve-list'), 'test(serve-list): attack 산출물');
   assert.equal(evidenceCommitMessage(['tests/adversary/a-1.test.mjs', 'fixtures/hostile/big.json'], team.paths, 'a'), 'test(a): attack 산출물');
+  // 사고 88 넷째 면: 마지막 팩이 spec이면(넘김을 받은 고쳐 쓰기 unit) 인수·이 unit의 docs도 승격 — spec이 아니면 그대로 null(build의 일)
+  assert.equal(evidenceCommitMessage(['tests/acceptance/cli-export.test.js', 'tests/acceptance/acc2.test.js', 'docs/units/acc2/surface.md'], team.paths, 'acc2', { spec: true }), 'test(acc2): spec 산출물(고쳐 쓴 인수)');
+  assert.equal(evidenceCommitMessage(['tests/acceptance/cli-export.test.js', 'docs/units/acc2/surface.md'], team.paths, 'acc2'), null, 'spec이 마지막 팩이 아니면 인수 wip은 build의 일');
+  assert.equal(evidenceCommitMessage(['tests/acceptance/x.test.js', 'src/a.js'], team.paths, 'acc2', { spec: true }), null, '소스가 섞이면 승격하지 않는다');
+  assert.equal(evidenceCommitMessage(['tests/acceptance/x.test.js', 'docs/units/other/surface.md'], team.paths, 'acc2', { spec: true }), null, '다른 unit의 docs는 아니다');
+  assert.equal(evidenceCommitMessage(['tests/adversary/acc2-1.test.js'], team.paths, 'acc2', { spec: true }), 'test(acc2): attack 산출물', '증거 파일만이면 평소 메시지');
   assert.equal(evidenceCommitMessage(['docs/measurements/spike-x.md'], team.paths, 'x'), 'docs(spike): x 측정', '사고 16의 승격 그대로');
   assert.equal(evidenceCommitMessage(['docs/measurements/spike-x.md', 'tests/adversary/x-1.py'], team.paths, 'x'), 'test(x): attack 산출물');
   assert.equal(evidenceCommitMessage(['tests/adversary/a-1.test.mjs', 'src/a.mjs'], team.paths, 'a'), null, '제품 코드가 섞이면 승격하지 않는다 — build의 일');

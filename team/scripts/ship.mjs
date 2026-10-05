@@ -33,12 +33,17 @@ export function spikeComplete(text) {
 export function spikeOnlyFiles(files, measurements) { return files.length > 0 && files.every((f) => f.replace(/\\/g, '/').startsWith(`${measurements}/spike-`)); }
 // 사고 41(필드 벤치 2 웹): 마지막 attack이 red 0의 공격 파일만 더하고 끝나면 체크포인트가 wip로 덮는다 — build는 고칠 것이 없고 그 파일을 커밋할 주체가 없어
 // 「HEAD가 wip — build를 다시 띄워」가 반복됐다. 증거 파일(spike 측정·공격 테스트·적대 fixture)만 든 wip HEAD는 사고 16처럼 승격한다(메시지만, tree 불변 → 증거 유효).
-export function evidenceCommitMessage(files, paths, slug) {
+// 사고 88 넷째 면(26라운드 stage J): 고쳐 쓰기 unit은 build 커밋이 없다 — 넘김을 받은 spec이 고친 인수·docs가 wip HEAD로 남아 ship 「HEAD가 wip — build를 다시」가 되풀이됐다(next는 red 0이라 build를 띄우지 않는다).
+// 마지막 팩이 spec이면 spec의 산출물(인수 · 이 unit의 docs)도 증거 파일이다 — 같은 승격(메시지만, tree 불변).
+export function evidenceCommitMessage(files, paths, slug, { spec = false } = {}) {
   const fs_ = files.map((f) => f.replace(/\\/g, '/'));
   if (spikeOnlyFiles(fs_, paths.measurements)) return `docs(spike): ${slug} 측정`;
   const under = (f, dir) => !!dir && f.startsWith(`${dir}/`);
-  const ok = fs_.length > 0 && fs_.every((f) => under(f, paths.adversary) || under(f, paths.hostile) || f.startsWith(`${paths.measurements}/spike-`));
-  return ok ? `test(${slug}): attack 산출물` : null;
+  const evidence = (f) => under(f, paths.adversary) || under(f, paths.hostile) || f.startsWith(`${paths.measurements}/spike-`);
+  const specOut = (f) => under(f, paths.acceptance) || under(f, `${paths.units_docs || 'docs/units'}/${slug}`);
+  if (fs_.length > 0 && fs_.every(evidence)) return `test(${slug}): attack 산출물`;
+  if (spec && fs_.length > 0 && fs_.every((f) => evidence(f) || specOut(f))) return `test(${slug}): spec 산출물(고쳐 쓴 인수)`;
+  return null;
 }
 export function evaluateShip(x) {
   const c = [];
@@ -200,14 +205,14 @@ function main() {
   // 사고 16·41: 늦은 spike·마지막 attack 뒤 증거 파일만 남으면 build는 할 일이 없어 wip로 끝난다 — 그 wip HEAD는 정식 메시지로 승격(amend는 메시지만, tree 불변 → full·redproof·attack 증거 그대로 유효)
   if (exists && /^wip:/.test(git(['log', '-1', '--format=%s'], wt).stdout)) {
     const headFiles = git(['show', '--name-only', '--format='], wt).stdout.split('\n').filter(Boolean);
-    const promoted = evidenceCommitMessage(headFiles, c.team.paths, slug);
+    const promoted = evidenceCommitMessage(headFiles, c.team.paths, slug, { spec: unit.state === 'spec' }); // 사고 88: 넘김을 받은 spec의 wip도 승격
     if (promoted) git(['commit', '--amend', '-q', '-m', promoted], wt, { GARAGISTE_WIP: '1' });
   }
   const runnerBlind = (unit.kind === 'scaffold' || unit.kind === 'adopt') && exists ? runnerProbe(c, wt) : [];
   const found = unit.kind === 'system' ? systemFound(ledger, slug, unit).length : 0; // 시스템 공격의 발견 — redproof.mjs의 system 분기와 같은 셈(사고 63)
   if (runnerBlind.length) appendLedger(c.main, c.team, { kind: 'runner_blind', slug, files: runnerBlind }); // boot 팩이 이 목록을 받는다
   const conds = evaluateShip({
-    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, runnerBlind, found, uncovered: exists ? (uncoveredTests({ root: wt, cmd: unit.kind === 'scaffold' || unit.kind === 'adopt' ? (readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.full || c.team.commands.full) : c.team.commands.full, skip: skipList(c.team.commands.skip), exclude: [c.team.paths.acceptance, c.team.paths.adversary] }) || []) : [], // 명령은 CEO의 것(main) — boot·adopt만 자기 worktree의 등록을 본다
+    unit, slug, worktreeExists: exists, clean: exists && isClean(wt), tree, ledger, changed, runnerBlind, found, uncovered: exists ? (uncoveredTests({ root: wt, cmd: unit.kind === 'scaffold' || unit.kind === 'adopt' ? (readJson(path.join(wt, '.garagiste', 'team.json'), null)?.commands?.full || c.team.commands.full) : c.team.commands.full, skip: skipList(c.team.commands.skip), exclude: [c.team.paths.acceptance, c.team.paths.adversary, c.team.paths.hostile] }) || []) : [], // hostile 픽스처(공격의 미끼 파일)는 돌릴 테스트가 아니다(사고 88 stage J) // 명령은 CEO의 것(main) — boot·adopt만 자기 worktree의 등록을 본다
     boundaryHit: !!unit.boundary?.hit || diffHit.hit, boundaryWhy: unit.boundary?.hit ? '원문' : diffHit.reasons.join(', '),
     requireAttack: c.team.require_attack !== false, spikeText: readText(path.join(wt, c.team.paths.measurements, `spike-${slug}.md`)), measurements: c.team.paths.measurements,
     lastSubject: exists ? git(['log', '-1', '--format=%s'], wt).stdout : '', stops: b.stops, proseKb: proseKb(c.main), proseMax: c.team.budgets.prose_kb_max,

@@ -103,7 +103,7 @@ function runMode(mode, c) {
   const r = mode === 'full' ? fullRun({ main: c.main, team: c.team, root: c.root, cmd, testFile: c.team.commands.test_file }) : shell(cmd, { cwd: c.root });
   fs.writeFileSync(log, r.log ?? `$ ${cmd}\n${r.stdout}\n${r.stderr}`);
   const tree = workTree(c.root);
-  const unc = mode === 'full' ? uncoveredTests({ root: c.root, cmd, skip: skipList(c.team.commands.skip), exclude: [c.team.paths.acceptance, c.team.paths.adversary] }) : null; // 26라운드: full이 돌리지 않는 테스트 파일 — ship이 막는다(명령은 CEO 결정)
+  const unc = mode === 'full' ? uncoveredTests({ root: c.root, cmd, skip: skipList(c.team.commands.skip), exclude: [c.team.paths.acceptance, c.team.paths.adversary, c.team.paths.hostile] }) : null; // 26라운드: full이 돌리지 않는 테스트 파일 — ship이 막는다(명령은 CEO 결정)
   appendLedger(c.main, c.team, { kind: 'verify', mode, tree, head: headSha(c.root), exit: r.status, log: path.relative(c.main, log).replace(/\\/g, '/'), platform: process.platform, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.', ...(r.red?.length ? { red: r.red } : {}), ...(unc?.length ? { uncovered: unc } : {}) });
   const uncNote = unc?.length ? ` · full이 돌리지 않는 테스트 파일 ${unc.length}: ${unc.join(' ')}` : '';
   if (r.status === 0) return out(`PASS verify:${mode} ${short(tree)}${uncNote}`);

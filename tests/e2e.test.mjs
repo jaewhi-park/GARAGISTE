@@ -951,7 +951,8 @@ test('사고 88(26라운드): 원문이 출하된 인수 파일을 가리키면 
   const hb = script('brief', ['spec', 'acc', '--return', "tests/acceptance/exp.test.mjs에 '// STRICT' 표식 줄이 필요하다 — build가 쓸 수 없다"], repo);
   assert.match(hb.out, /^PACK .*acc-spec-/, hb.out);
   assert.match(fs.readFileSync(path.join(repo, hb.out.split(' ')[1]), 'utf8'), /## 넘김 — build 팩이 남긴 줄: 원문이 가리키는 인수 파일\(tests\/acceptance\/exp\.test\.mjs\)은 네 것이다 — 반려가 아니다\(사고 88\)/);
-  fs.appendFileSync(target, '// STRICT\n'); commit(awt, 'test(acc): exp 인수에 STRICT 표식(넘김)');
+  fs.appendFileSync(target, '// STRICT\n'); write(awt, 'docs/units/acc/surface.md', 'exp 인수 파일 — 둘째 단언 없음 · STRICT 표식\n');
+  git(['add', '-A'], awt); assert.equal(git(['commit', '-q', '-m', 'wip: acc checkpoint'], awt, { GARAGISTE_WIP: '1' }).status, 0); // 넷째 면(stage J): 팩은 wip로 끝났다(체크포인트) — build 커밋이 없는 unit
   assert.match(script('redproof', ['acc'], awt).out, /^PASS redproof acc base_red head_green — 고쳐 쓴 인수/);
   assert.match(script('work', ['spawned', 'acc', 'spec', '--tokens', '1', '--minutes', '1'], repo).out, /^SPAWN acc spec/);
   const nh = script('next', [], repo).out;
@@ -973,7 +974,8 @@ test('사고 88(26라운드): 원문이 출하된 인수 파일을 가리키면 
   const s = script('ship', ['acc'], repo);
   assert.match(s.out, /^SHIPPED acc/, s.out);
   const main = fs.readFileSync(path.join(repo, 'tests/acceptance/exp.test.mjs'), 'utf8');
-  assert.ok(!main.includes('src/other.mjs가 없다') && main.includes('exp 파일'), 'main의 exp 인수에서 둘째 단언만 사라졌다');
+  assert.ok(!main.includes('src/other.mjs가 없다') && main.includes('exp 파일') && main.includes('// STRICT'), 'main의 exp 인수에서 둘째 단언만 사라졌다(+ 넘김의 STRICT)');
+  assert.match(git(['log', '--format=%s', '-6'], repo).out, /test\(acc\): spec 산출물\(고쳐 쓴 인수\)/, '넘김을 받은 spec의 wip HEAD가 승격됐다(사고 88 넷째 면) — 옛 길: 「HEAD가 wip — build를 다시」 되풀이');
   const led = ledgerOf(repo).filter((e) => e.slug === 'acc');
   assert.equal(led.filter((e) => e.kind === 'pack' && e.pack === 'build').length, 1, 'build 팩은 넘김 한 번(고칠 제품 코드는 없었다)');
   assert.deepEqual([led.filter((e) => e.kind === 'spec_return' && e.handoff).length, led.filter((e) => e.kind === 'spec_return' && !e.handoff).length], [4, 1], '넘김 4(세지 않는다) · 반려 1');
@@ -1004,6 +1006,7 @@ test('26라운드: 파일 목록 full이 저장소의 테스트 파일을 빠뜨
   assert.equal(git(['commit', '-q', '-m', 'test(alpha): red'], wt).status, 0);
   write(wt, 'src/alpha.mjs', "export const mark = 'alpha';\n");
   write(wt, 'tests/adversary/alpha-1.test.mjs', "import test from 'node:test'; import fs from 'node:fs';\ntest('비어 있지 않다', () => { if (!fs.readFileSync('src/alpha.mjs', 'utf8').trim()) throw new Error('empty'); });\n");
+  write(wt, 'fixtures/hostile/alpha/failing-alpha.test.mjs', "import test from 'node:test'; test('미끼 — 언제나 red', () => { throw new Error('bait'); });\n"); // 사고 88 stage J: 공격의 미끼 파일(테스트 이름 꼴)은 돌릴 테스트가 아니다
   git(['add', '-A'], wt); script('verify', ['quick'], wt);
   assert.equal(git(['commit', '-q', '-m', 'feat(alpha): 파일\n\nUnit: alpha\nStep: 1'], wt).status, 0);
   assert.match(script('redproof', ['alpha'], wt).out, /^PASS redproof/);
