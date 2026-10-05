@@ -27,7 +27,7 @@ import { killPlan, missingFlags, orphanOf, runChild, spawnOpts, spawnerGap, trus
 import { conductBusyLine, conductRunning, readLedger } from '../team/scripts/lib.mjs';
 import { secretTargets } from '../team/scripts/guard-rules.mjs';
 import { pinRedAdvice, pinVerdict } from '../team/scripts/redproof.mjs';
-import { FLAGS, KINDS, setupNoop, parseBudgetValue, TEAM_BUDGET } from '../team/scripts/work.mjs';
+import { FLAGS, KINDS, setupNoop, parseBudgetValue, TEAM_BUDGET, syncRulesCommands } from '../team/scripts/work.mjs';
 import { PIN_NOTE, REFACTOR_NOTE } from '../team/scripts/brief.mjs';
 import { acceptanceFiles, adversaryFiles, dirtyFiles, fileCmd, hasFileSlot, shell, globToRegex, indexTree, parseLocalEnv, depDirs, linkDeps, unlinkDeps, workspacePackages, quarantineStray, readJson, loadTeam, scriptRoot, strayPaths, workTree } from '../team/scripts/lib.mjs';
 
@@ -1573,6 +1573,20 @@ test('brief(18라운드): reviseDecided — 그 unit의 질문·hold에 CEO가 �
 });
 // 사고 83(24라운드 여덟째 날): CEO가 decide로만 답하면(RESPEC 길) 답이 인수(spec)에는 닿고 공격 테스트(attack)에는 실리지 않았다 — 답한 질문의 닫힌 줄이 재-spec의 고쳐 쓰기 근거다(--revise 없이, unit.revise로 attack까지)
 // 사고 88(26라운드 모노레포 셋째 날 · stockroom): CEO가 출하된 인수 파일 하나를 고치라고 unit을 열었다 — build는 가드에 막혀 반려, spec(--return)은 기각, 둘째 반려의 hard 질문에 decide 「예」는 길이 없어 같은 FAIL·같은 질문 ×4($1.4)
+test('work(27라운드): syncRulesCommands — 규칙 파일의 Commands 줄은 team.json의 거울: 바뀐 명령만 같은 줄에, 꼬리 주석(전부 …)은 그대로, 다른 줄·없는 키는 건드리지 않는다', () => {
+  const text = '# p\n\n## Commands\n- quick: node --test tests/unit/a.test.js   (tests/acceptance·tests/adversary 제외 — red로 커밋되므로)\n- full: node --test a.test.js b.test.js     (전부)\n- test one file: node --test {files}\n- run: npm start\n\n## Flow\n- full: 이 줄은 Commands가 아니다\n';
+  const r = syncRulesCommands(text, { full: 'node --test "tests/**/*.test.js" "packages/*/tests/*.test.js"', run: 'npm start' });
+  assert.equal(r.changed, 1, 'full만 바뀌었다(run은 같다)');
+  assert.match(r.text, /^- full: node --test "tests\/\*\*\/\*\.test\.js" "packages\/\*\/tests\/\*\.test\.js"     \(전부\)$/m, '명령은 새 것, 꼬리 주석은 그대로');
+  assert.match(r.text, /^- quick: node --test tests\/unit\/a\.test\.js   \(tests\/acceptance/m, '안 바꾼 키는 그대로');
+  assert.ok(r.text.includes('- full: 이 줄은 Commands가 아니다'), 'Flow 절의 비슷한 줄은 규칙 산문 — 「## Commands」 절 안의 줄만 바꾼다');
+  assert.equal(syncRulesCommands(text, { full: 'node --test a.test.js b.test.js' }).changed, 0, '같은 명령이면 0');
+  assert.equal(syncRulesCommands('# p\n', { full: 'x' }).changed, 0, 'Commands 줄이 없으면 0');
+  const tf = syncRulesCommands('## Commands\n- test one file: node --test {file}\n', { test_file: 'node --test {files}' });
+  assert.equal(tf.text.trim(), '## Commands\n- test one file: node --test {files}');
+  assert.equal(syncRulesCommands('- test one file: node --test {file}\n', { test_file: 'node --test {files}' }).changed, 0, '「## Commands」 절 밖의 줄은 건드리지 않는다');
+});
+
 test('brief(26라운드, 사고 88): originRevise — 원문이 그 팩의 테스트 폴더 아래 파일을 가리키면 그 파일들(중복 없이): spec은 인수·attack은 공격 폴더만, 폴더만 말하면 없음, team.paths를 따른다, 다른 팩은 없음', () => {
   const origin = "출하된 cli-export 인수 테스트(tests/acceptance/cli-export.test.js)의 6번 'API·shared는 바꾸지 않는다' 단언을 지운다 — tests/acceptance/cli-export.test.js는 CSV 출력만 단언한다. 제품 코드는 바꾸지 않는다.";
   assert.deepEqual(originRevise({ pack: 'spec', origin }), ['tests/acceptance/cli-export.test.js'], '괄호 안·문장 끝의 경로, 중복은 하나');
