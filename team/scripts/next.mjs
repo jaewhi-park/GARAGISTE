@@ -14,7 +14,15 @@ const since = (e, ts) => (e.ts || '') >= (ts || '');
 
 // 팩의 생애는 셋으로 센다: 조립(원장 pack) → 띄움(conductor의 spawned 또는 훅의 spawn_stop — 둘 중 먼저 온 것) → 증거(redproof·attack 줄이 팩 뒤에 있는가).
 // 증거는 팩 조립 시각 뒤면 된다 — 팩 안의 에이전트가 스스로 남긴 redproof·verify attack을 다시 돌리지 않는다.
-export function nextStep({ units, ledger, decisionsText = '', scope = null, backlog = [], stops = [], tokenStops = [], systemAttack = false, wtOf = () => ({}), packPath = () => '<PACK 경로>' }) {
+// 사고 84(24라운드 여덟째 날 · erp-lite): ship의 rebase 충돌이 인수 테스트 둘에 남았다 — build는 가드가 막아(tests/acceptance·adversary 쓰기 거부) 코드만 풀고 `spec: 충돌 <파일>`로 넘겼는데(brief의 충돌 절이 그렇게 시킨다)
+// 그 줄을 받을 길이 없었다: conduct는 반려로 읽어 brief spec --return(둘째 반려 → hard 질문 Q13), next의 rebase 분기는 build → ship만 알아 ship FAIL 「충돌이 아직 남았다」가 되풀이됐다. 남은 표시가 테스트 파일에만 있으면 그 테스트의 주인 팩이 푼다 — 인수는 spec, 공격은 attack(인수 먼저); 코드가 섞여 남았으면 build의 일(ship이 FAIL로 말한다).
+export function conflictOwner(files = [], paths = { acceptance: 'tests/acceptance', adversary: 'tests/adversary' }) {
+  const under = (f, d) => f.startsWith(`${d}/`);
+  if (!files.length || !files.every((f) => under(f, paths.acceptance) || under(f, paths.adversary))) return null;
+  return files.some((f) => under(f, paths.acceptance)) ? 'spec' : 'attack';
+}
+export const conflictHandoff = (text) => /^충돌(\s|$)/.test(String(text || '').trim()); // build의 `spec: 충돌 <파일>`은 반려가 아니라 넘김 — conduct가 brief spec --return으로 읽지 않는다
+export function nextStep({ units, ledger, decisionsText = '', scope = null, backlog = [], stops = [], tokenStops = [], systemAttack = false, wtOf = () => ({}), packPath = () => '<PACK 경로>', paths = { acceptance: 'tests/acceptance', adversary: 'tests/adversary' } }) {
   const open = new Set([...String(decisionsText).matchAll(/^- \[ \] Q(\d+)/gm)].map((m) => Number(m[1])));
   const run = (cmd, why) => ({ kind: 'run', cmd: `${S}/${cmd}`, why });
   const parked = (u) => [...(u.questions || []), ...(u.holds || [])].some((n) => open.has(Number(n))) || (u.needs || []).some((n) => /^Q\d+$/.test(n) && open.has(Number(n.slice(1))));
@@ -62,6 +70,13 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     const bp = last(mine, (e) => e.kind === 'pack' && e.pack === 'build' && since(e, conflictAt));
     if (!bp) return brief('build', `main과 충돌 — ${wt.unmerged.join(' ')}: build가 표시를 풀고 git add까지`);
     if (!doneAfter('build', bp.ts)) return spawn('build', '충돌을 푸는 build');
+    const owner = conflictOwner(wt.unmerged, paths); // 사고 84: 테스트 파일만 남았으면 주인 팩(인수 spec · 공격 attack)
+    if (owner) {
+      const ops = mine.filter((e) => e.kind === 'pack' && e.pack === owner && since(e, bp.ts)); // 한 번 더까지 — 둘이 다 풀지 못했으면 ship이 FAIL로 말한다(되풀이 → 멈춤)
+      const op = ops[ops.length - 1];
+      if (!op || (ops.length < 2 && doneAfter(owner, op.ts))) return brief(owner, `충돌이 ${owner === 'spec' ? '인수' : '공격'} 테스트에 남았다 — ${wt.unmerged.join(' ')}: ${owner}가 표시를 풀고 git add까지(build는 가드가 막는다, 사고 84)${op ? ' — 한 번 더(앞 팩이 다 풀지 못했다)' : ''}`);
+      if (!doneAfter(owner, op.ts)) return spawn(owner, `충돌(${owner === 'spec' ? '인수' : '공격'} 테스트)을 푸는 ${owner}`);
+    }
     return run(`ship.mjs ${slug}`, 'build가 표시를 풀었다 — ship이 rebase를 잇는다');
   }
   const st = u.state;
@@ -100,6 +115,10 @@ export function nextStep({ units, ledger, decisionsText = '', scope = null, back
     const tree = wt.tree || null; // computeNext의 wtOf가 센다 — nextStep은 조립된 입력만 받는다(판단 없음·순수)
     const proven = (e) => e.kind === 'redproof' && e.slug === slug && e.tree === tree && e.head_green === true && (u.kind === 'refactor' || u.kind === 'pin' ? e.refactor && e.pin_base === 'green' : e.base_red);
     if (tree && u.kind !== 'system' && !ledger.some(proven)) return run(`redproof.mjs ${slug}`, 'red 0 — 공격 파일이 더해져 tree가 움직였다: 이 tree의 redproof(ship 조건은 tree 단위)');
+    // 사고 85(24라운드 여덟째 날 · erp-lite): ship이 main을 합친 뒤 통합 tree의 full이 FAIL(두 unit이 고친 공격 테스트가 자동 머지로 어긋남)인데 next는 「이 tree의 full PASS가 원장에 없다 → verify full」만 20번 되풀이했다(85초씩 · FAIL 줄이 로그 경로(시각)를 품어 되풀이 감지도 비껴갔다).
+    // 이 tree의 마지막 full이 FAIL이면 build의 일이다 — 경계 밖 테스트(인수·공격)면 build가 spec: 줄로 넘긴다(가드가 막는다). 같은 tree에 두 번 돌면 진전 없음으로 멈춘다.
+    const lastFull = tree ? last(ledger, (e) => e.kind === 'verify' && e.mode === 'full' && e.tree === tree) : null;
+    if (lastFull && lastFull.exit !== 0) return brief('build', `이 tree의 full FAIL${lastFull.red?.length ? ` — ${lastFull.red.join(' ')}` : ''}: build가 고친다(main을 합친 뒤·공격 파일이 더해진 뒤 red — 경계 밖 테스트면 spec: 줄로, 사고 85)`);
     if (tree && !ledger.some((e) => e.kind === 'verify' && e.mode === 'full' && e.exit === 0 && e.tree === tree)) return run(`verify.mjs full ${slug}`, 'red 0 — 이 tree의 full PASS가 원장에 없다(공격 파일만 더해진 tree): ship 조건');
     return run(`ship.mjs ${slug}`, 'red 0 — 8조건 출하');
   };
@@ -132,7 +151,7 @@ export function computeNext(c) {
   const budget = budgetStatus({ units, ledger, team: c.team, ceoTouchTs: ceoTouch(c.main) });
   return nextStep({
     units, ledger, decisionsText: readText(path.join(c.main, c.team.paths.decisions)), scope: readJson(path.join(c.main, '.garagiste', 'scope.json'), null),
-    backlog: parseBacklog(readText(path.join(c.main, c.team.paths.backlog))), stops: budget.stops, tokenStops: budget.tokenStops, systemAttack: c.team.system_attack !== false, wtOf, packPath,
+    backlog: parseBacklog(readText(path.join(c.main, c.team.paths.backlog))), stops: budget.stops, tokenStops: budget.tokenStops, systemAttack: c.team.system_attack !== false, wtOf, packPath, paths: c.team.paths,
   });
 }
 // 설치가 병들었으면 한 걸음도 내지 않는다 — conduct도 같은 검사를 먼저 한다

@@ -6,8 +6,8 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
-import { appendLedger, CONDUCT_LOCK, ctx, fail, headSha, isMain, out, pidAlive, readJson, shell, stamp, worktreeDir, writeJson } from './lib.mjs';
-import { computeNext, doctorGate, render } from './next.mjs';
+import { appendLedger, CONDUCT_LOCK, ctx, fail, headSha, isMain, out, pidAlive, readJson, rebaseInProgress, shell, stamp, worktreeDir, writeJson } from './lib.mjs';
+import { computeNext, conflictHandoff, doctorGate, render } from './next.mjs';
 import { blocking, diagnose, harnesses, versionLine } from './doctor.mjs';
 import { spawnStop } from './checkpoint.mjs';
 
@@ -118,7 +118,9 @@ export function defectLines(text) {
 export function failKey(output) {
   const lines = String(output || '').split('\n').filter((l) => l.trim());
   const i = lines.findIndex((l) => /^FAIL /.test(l));
-  return i < 0 ? null : lines.slice(i, i + 2).join(' | ').slice(0, 160);
+  // 사고 85: verify의 FAIL 줄은 로그 경로(시각)를 품어 같은 FAIL이 매번 다른 열쇠였다(verify full 20번) — 경로·시각은 열쇠가 아니다
+  const norm = (l) => l.replace(/\S*\/logs\/\S+/g, '<log>').replace(/\d{4}-\d{2}-\d{2}T[\d:.-]+Z?/g, '<ts>');
+  return i < 0 ? null : lines.slice(i, i + 2).map(norm).join(' | ').slice(0, 160);
 }
 // 진전 없는 팩: 같은 unit·같은 팩이 worktree HEAD를 바꾸지 못한 채 거듭 돌면 멈춘다(한 번은 우연, 두 번은 패턴). spike는 커밋하지 않는 팩이라 세지 않는다.
 export function noProgress(history, { slug, pack, before, after }) {
@@ -288,7 +290,8 @@ export async function spawnPack(c, { pack, slug, path: packPath }, o, { spawner 
   let held = false; let returnFail = null;
   if (!ok) out(timedOut ? `  팩 시간 상한 ${o.packMinutes}분 — 끊었다(SIGTERM)${log ? ` · ${log}` : ''}` : `  팩 종료 비정상 — exit ${status}${p.reason ? ` · ${p.reason}` : p.isError ? ' · is_error' : ''}${r.error ? ` · ${r.error}` : ''}${log ? ` · ${log}` : ''}`);
   else {
-    if (returned) { const rc = runCmd(c, `${S}/brief.mjs spec ${slug} --return ${q(returned)}`); held = rc.held; returnFail = handOffKey(rc); } // system unit이면 brief가 attack 팩으로 돌린다(사고 71)
+    // 사고 84: rebase 도중 build의 `spec: 충돌 <파일>`은 반려가 아니라 넘김 — next가 남은 파일의 주인 팩(인수 spec · 공격 attack)을 띄운다(반려로 읽으면 둘째 반려 → hard 질문이 됐다)
+    if (returned && !(conflictHandoff(returned) && rebaseInProgress(worktreeDir(c.main, c.team, slug)))) { const rc = runCmd(c, `${S}/brief.mjs spec ${slug} --return ${q(returned)}`); held = rc.held; returnFail = handOffKey(rc); } // system unit이면 brief가 attack 팩으로 돌린다(사고 71)
     for (const d of defects) runCmd(c, `${S}/work.mjs found ${slug} ${q(d)}`); // 후보 등록의 FAIL은 되풀이로 세지 않는다 — 팩은 끝났고 다음 걸음은 next가 낸다
   }
   return { ok, text: p.text, tokens: p.tokens, minutes: p.minutes ?? wall, cost: Number(p.cost) || 0, status, log, returned: !!returned, held, returnFail, timedOut };

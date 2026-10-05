@@ -59,7 +59,7 @@ export function fullRun({ main, team, root, cmd, testFile }) {
     for (const f of g) if (run1([f])) reds.push(f);
   }
   const note = reds.length ? `인수·공격 파일 red ${reds.length}/${files.length}: ${reds.join(' ')}` : '';
-  return { status: r.status || (reds.length ? 1 : 0), log, tail: [(r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n'), note].filter(Boolean).join('\n') };
+  return { status: r.status || (reds.length ? 1 : 0), log, red: reds, tail: [(r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n'), note].filter(Boolean).join('\n') }; // red: 파일 단위 판정의 red 목록 — next가 full FAIL의 자리를 말한다(사고 85)
 }
 
 function runMode(mode, c) {
@@ -71,7 +71,7 @@ function runMode(mode, c) {
   const r = mode === 'full' ? fullRun({ main: c.main, team: c.team, root: c.root, cmd, testFile: c.team.commands.test_file }) : shell(cmd, { cwd: c.root });
   fs.writeFileSync(log, r.log ?? `$ ${cmd}\n${r.stdout}\n${r.stderr}`);
   const tree = workTree(c.root);
-  appendLedger(c.main, c.team, { kind: 'verify', mode, tree, head: headSha(c.root), exit: r.status, log: path.relative(c.main, log).replace(/\\/g, '/'), platform: process.platform, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.' }); // 원장 경로는 / — 팩의 「직전 verify」 매칭(where===unit.worktree)이 win32에서 어긋난다(사고 19 잔여)
+  appendLedger(c.main, c.team, { kind: 'verify', mode, tree, head: headSha(c.root), exit: r.status, log: path.relative(c.main, log).replace(/\\/g, '/'), platform: process.platform, where: path.relative(c.main, c.root).replace(/\\/g, '/') || '.', ...(r.red?.length ? { red: r.red } : {}) }); // 원장 경로는 / — 팩의 「직전 verify」 매칭(where===unit.worktree)이 win32에서 어긋난다(사고 19 잔여)
   if (r.status === 0) return out(`PASS verify:${mode} ${short(tree)}`);
   const tail = r.tail ?? (r.stdout + '\n' + r.stderr).trim().split('\n').slice(-3).join('\n');
   out(`FAIL verify:${mode} ${short(tree)} ${path.relative(c.main, log).replace(/\\/g, '/')}\n${tail}`);

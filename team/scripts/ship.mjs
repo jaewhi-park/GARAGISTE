@@ -165,15 +165,17 @@ function main() {
   let resumed = null;
   if (exists && rebaseInProgress(wt)) {
     const left = unmergedFiles(wt);
-    if (left.length) fail(`FAIL ship: ${c.team.protected_branch}과의 충돌이 아직 남았다 — ${left.join(' ')} → node .garagiste/scripts/brief.mjs ${pk} ${slug} → 표시를 풀고 git add까지 → ship 다시`);
+    if (left.length) fail(`FAIL ship: ${c.team.protected_branch}과의 충돌이 아직 남았다 — ${left.join(' ')} → node .garagiste/scripts/next.mjs(주인 팩 — 코드 build · 인수 spec · 공격 attack, 사고 84) → 표시를 풀고 git add까지 → ship 다시`);
     const origin = [...readLedger(c.main, c.team)].reverse().find((e) => e.kind === 'ship_conflict' && e.slug === slug) || null;
     const cont = git(['rebase', '--continue'], wt, { GIT_EDITOR: 'true', GARAGISTE_WIP: '1' });
     if (cont.status && !resolveRebaseTeamJson(wt)) {
       const next = unmergedFiles(wt);
       if (!next.length) { git(['rebase', '--abort'], wt); fail(`FAIL ship: rebase를 잇지 못했다 — ${(cont.stderr || cont.stdout).split('\n')[0]}`); }
-      appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files: next, tree: origin?.tree || null, head: origin?.head || null });
+      appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files: next, tree: origin?.tree || null, head: origin?.head || null, ...(origin?.state ? { state: origin.state } : {}) });
       fail(conflictFail(c.team.protected_branch, next, slug, pk));
     }
+    // 사고 84: 충돌을 푼 팩(build·spec·attack)이 unit 상태를 제 것으로 돌려 놓았다(가드의 정본) — 이은 뒤엔 멈추기 전 상태로(이 뒤의 FAIL에서 next가 제 자리를 찾게)
+    if (origin?.state && unit.state !== origin.state) { unit.state = origin.state; saveUnit(c.main, c.team, unit); }
     resumed = origin;
   }
   // 사고 20(3차 실기): 사고 15가 spike 산출물의 커밋 경로를 없앴다 — 훅은 건너뛰고, 에이전트는 커밋 금지, conductor는 가드가 막는다.
@@ -227,7 +229,7 @@ function main() {
     const files = unmergedFiles(wt);
     // 필드 시험 1: 첫 줄만 내 파일 이름이 잘렸다 — git의 hint 줄만 빼고 전문
     if (!files.length) { git(['rebase', '--abort'], wt); fail(`FAIL ship: rebase 실패(되돌렸다 — worktree는 그대로) — ${(rb.stderr || rb.stdout).split('\n').filter((l) => l.trim() && !/^hint:/.test(l)).slice(0, 12).join('\n')}`); }
-    appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files, tree, head: resumed?.head || preHead });
+    appendLedger(c.main, c.team, { kind: 'ship_conflict', slug, files, tree, head: resumed?.head || preHead, state: resumed?.state || unit.state }); // state: 멈추기 전 unit 상태 — 충돌을 푸는 팩이 바꾸고 ship이 되돌린다(사고 84)
     fail(conflictFail(c.team.protected_branch, files, slug, pk));
   }
   const newTree = headTree(wt);
@@ -240,7 +242,7 @@ function main() {
     const fullCmd = wtCmds.full || c.team.commands.full;
     if (!fullCmd) fail('FAIL ship: 통합 tree 재검증 불가 — commands.full 비어 있음');
     const r = fullRun({ main: c.main, team: c.team, root: wt, cmd: fullCmd, testFile: wtCmds.test_file || c.team.commands.test_file }); // 사고 44: 통합 tree의 full도 「전부」
-    appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true, reverify: newTree === tree });
+    appendLedger(c.main, c.team, { kind: 'verify', mode: 'full', tree: newTree, head: headSha(wt), exit: r.status, platform: process.platform, where: unit.worktree, integration: true, reverify: newTree === tree, ...(r.red?.length ? { red: r.red } : {}) });
     if (r.status) fail(`FAIL ship: 통합 tree에서 full FAIL — ${newTree !== tree ? 'main이 움직였다, build 재spawn' : '원장의 PASS 줄과 다르다(원장은 증거이지 증명이 아니다 — 환경이 다르거나 줄이 위조됐다): build 재spawn, 되풀이면 정비 채널'}\n${r.tail}`);
     // 사고 22(3차 실기): full만 재기록하면 롤백 뒤 재-ship이 「redproof·attack이 이전 tree」 핑퐁에 빠지고,
     // 새 base 위 공격 회귀는 머지 전 검사를 빠져나간다 — 세 증거 전부를 새 tree에 다시 묶는다(순수 기계 일).
