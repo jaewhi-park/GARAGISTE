@@ -366,6 +366,9 @@ test('kit: AGENTS.md 템플릿의 줄은 숫자 상한을 에이전트에게 주
   assert.ok(!/세 번|3번|three/.test(t), '재시도 횟수 없음');
   assert.ok(!/다음 달/.test(t), '관찰할 수 없는 기준 없음');
   assert.ok(t.includes('끝의 기준이 하나인 조각'), '큰 요청은 조각으로');
+  assert.ok(t.includes('한 줄로 적히지 않는 사실은 docs에'), '지도의 넘침은 docs로');
+  const sk = fs.readFileSync(path.join(KIT, 'skills', 'kit-init', 'SKILL.md'), 'utf8');
+  assert.ok(sk.includes('한 줄로 적히지 않는 사실은 ARCHITECTURE.md에'), 'kit-init도 같은 기준');
 });
 
 // ── 전역: 한 기계에 한 번
