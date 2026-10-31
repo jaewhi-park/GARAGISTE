@@ -13,7 +13,7 @@ v2(`team/`)는 팀을 만들고 통제했다. kit은 팀을 만들지 않는다.
 | `scripts/check.json` | 이 저장소의 층별 명령과 테스트 패턴. 처음엔 비어 있고 에이전트나 사람이 채운다(`FAIL quick kit/check.json layers.quick 비어 있음`이 그 신호) |
 | `scripts/flaky.txt` | 격리된 불안정 테스트. 셈에서 빠지고 `격리 n`으로 보인다. 사람이 관리한다 |
 | `claude/` | `CLAUDE.md`(`@AGENTS.md`) · `settings.json`(kit 스크립트 실행 허용 두 줄). 훅 없음, 커스텀 에이전트 없음 — built-in Explore · plan mode · /code-review를 그대로 쓴다 |
-| `opencode/agents/` | `build`(primary — 위임 기준 다섯 줄) · `explore`(읽기 전용 · 고정 반환 형식) · `review`(읽기 전용 · diff와 요청과 끝의 기준만 받음). Claude Code가 하네스 안에서 주는 것을 opencode에선 여기서 준다 |
+| `opencode/agents/` | `build`(primary — 위임 기준 다섯 줄, task는 explore · review만) · `review`(읽기 전용 · diff와 요청과 끝의 기준만 받음). 탐색은 opencode built-in `explore`(읽기 전용)를 쓰고 반환 형식은 build가 질문에 적는다 — 하네스가 이미 주는 것은 다시 만들지 않는다. frontmatter는 `permission`(`tools`는 deprecated), 폴더는 `.opencode/agents/` — opencode 문서(2026-10-31, docs 원본 dev 브랜치)로 확인 |
 | `install.mjs` | 설치기. 두 OS 공통 |
 
 ## 설치
@@ -21,7 +21,7 @@ v2(`team/`)는 팀을 만들고 통제했다. kit은 팀을 만들지 않는다.
 node <GARAGISTE>/kit/install.mjs claude   --project <repo>
 node <GARAGISTE>/kit/install.mjs opencode --project <repo>
 ```
-스크립트와 opencode 에이전트는 덮고, AGENTS.md · check.json · flaky.txt · CLAUDE.md · settings는 있으면 둔다(settings는 `permissions.allow`만 합친다). git에는 손대지 않는다. `--dry`로 계획만 본다. 설치 뒤 할 일은 둘 — AGENTS.md의 지도와 `kit/check.json`의 명령을 채우는 것이고, 세션을 열고 에이전트에게 시켜도 된다.
+스크립트와 opencode 에이전트는 덮고, AGENTS.md · check.json · flaky.txt · CLAUDE.md · settings는 있으면 둔다(settings는 `permissions.allow`만 합친다). git에는 손대지 않는다. `--dry`로 계획만 본다. opencode는 AGENTS.md가 있으면 CLAUDE.md를 읽지 않으므로 두 하네스 파일이 한 저장소에 있어도 부딪히지 않는다. 설치 뒤 할 일은 둘 — AGENTS.md의 지도와 `kit/check.json`의 명령을 채우는 것이고, 세션을 열고 에이전트에게 시켜도 된다.
 
 한 프로젝트에 v2(`.garagiste/`)와 kit을 섞어 설치하지 않는다.
 

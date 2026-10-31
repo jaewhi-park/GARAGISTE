@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const FLAVORS = ['claude', 'opencode'];
-export const OPENCODE_AGENTS = ['build', 'explore', 'review'];
+export const OPENCODE_AGENTS = ['build', 'review']; // explore는 opencode built-in(읽기 전용)을 쓴다 — 다시 만들지 않는다
 
 export function parseArgs(argv) {
   const [flavor, ...rest] = argv;

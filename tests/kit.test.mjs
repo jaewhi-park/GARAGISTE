@@ -250,7 +250,7 @@ test('install: 계획 — 소유 파일은 write · 첫 설치 파일은 keep ·
   assert.deepEqual(merged.permissions.deny, ['Read(./.env)']);
   assert.equal(again.find((a) => a.rel === '.gitignore').text, '\nkit/log/\n');
   const oc = installPlan('opencode', { present: () => null, src, project: 'demo' });
-  assert.deepEqual(oc.filter((a) => a.rel.startsWith('.opencode/')).map((a) => a.rel), ['.opencode/agents/build.md', '.opencode/agents/explore.md', '.opencode/agents/review.md']);
+  assert.deepEqual(oc.filter((a) => a.rel.startsWith('.opencode/')).map((a) => a.rel), ['.opencode/agents/build.md', '.opencode/agents/review.md'], 'explore는 built-in을 쓴다');
   assert.ok(!oc.some((a) => a.rel === 'CLAUDE.md' || a.rel === '.claude/settings.json'));
   assert.match(summary('claude', '/p', again), /^INSTALLED kit claude → \/p — 썼다 5 · 두었다 2\n- CLAUDE\.md가 이미 있다/);
 });
@@ -334,7 +334,7 @@ test('e2e: claude 설치 → module PASS → 빈 명령 FAIL → 실패 줄(이�
   assert.equal(read(repo, 'kit/check.mjs'), fs.readFileSync(path.join(KIT, 'scripts', 'check.mjs'), 'utf8'));
   assert.equal(read(repo, '.gitignore').match(/kit\/log\//g).length, 1);
 });
-test('e2e: opencode 설치 — 에이전트 셋 · 읽기 전용 앞머리 · --dry는 쓰지 않는다 · CLAUDE.md가 있으면 note', { timeout: 30000 }, () => {
+test('e2e: opencode 설치 — 에이전트 둘(explore는 built-in) · 읽기 전용 앞머리 · --dry는 쓰지 않는다 · CLAUDE.md가 있으면 note', { timeout: 30000 }, () => {
   const repo = tmp('opencode');
   write(repo, 'CLAUDE.md', '# existing rules\n');
   const dry = install('opencode', repo, ['--dry']);
@@ -343,11 +343,13 @@ test('e2e: opencode 설치 — 에이전트 셋 · 읽기 전용 앞머리 · --
   assert.ok(!fs.existsSync(path.join(repo, 'kit')) && !fs.existsSync(path.join(repo, 'AGENTS.md')), 'dry는 쓰지 않는다');
   const inst = install('opencode', repo);
   assert.equal(inst.status, 0, inst.out);
-  for (const a of ['build', 'explore', 'review']) assert.ok(fs.existsSync(path.join(repo, '.opencode', 'agents', `${a}.md`)), a);
-  assert.match(read(repo, '.opencode/agents/build.md'), /^mode: primary$/m);
-  assert.match(read(repo, '.opencode/agents/explore.md'), /^mode: subagent$/m);
-  assert.match(read(repo, '.opencode/agents/explore.md'), /^  edit: deny$/m);
-  assert.match(read(repo, '.opencode/agents/review.md'), /^  bash: deny$/m);
+  for (const a of ['build', 'review']) assert.ok(fs.existsSync(path.join(repo, '.opencode', 'agents', `${a}.md`)), a);
+  assert.ok(!fs.existsSync(path.join(repo, '.opencode', 'agents', 'explore.md')), 'explore는 built-in을 가리지 않는다');
+  const build = read(repo, '.opencode/agents/build.md');
+  assert.match(build, /^mode: primary$/m); assert.match(build, /^    explore: allow$/m); assert.match(build, /^    review: allow$/m); assert.match(build, /^    "\*": deny$/m);
+  const review = read(repo, '.opencode/agents/review.md');
+  assert.match(review, /^mode: subagent$/m); assert.match(review, /^  edit: deny$/m); assert.match(review, /^  bash: deny$/m);
+  assert.ok(!/^tools:/m.test(build + review), 'tools는 deprecated — permission만');
   assert.ok(!fs.existsSync(path.join(repo, '.claude')), 'opencode 판은 .claude를 만들지 않는다');
   assert.equal(read(repo, 'CLAUDE.md'), '# existing rules\n');
   assert.ok(!inst.out.includes('CLAUDE.md'), 'opencode 판은 CLAUDE.md를 보지 않는다');
