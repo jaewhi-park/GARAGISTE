@@ -1,23 +1,29 @@
 // install — kit을 프로젝트에 놓는다. 소유 파일(스크립트 · opencode 에이전트)은 덮고, 처음 한 번 쓰는 파일(AGENTS.md · check.json · flaky.txt · CLAUDE.md · settings)은 있으면 둔다.
 // settings는 permissions.allow만 합친다. git에는 손대지 않는다. 두 OS에서 같은 node 한 줄.
 // 사용: node <GARAGISTE>/kit/install.mjs <claude|opencode> --project <repo> [--dry]
+//       node <GARAGISTE>/kit/install.mjs global [--home <dir>] [--dry]   ← 한 기계에 한 번: 일하는 방식 + kit-init 스킬
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const FLAVORS = ['claude', 'opencode'];
 export const OPENCODE_AGENTS = ['build', 'review']; // explore는 opencode built-in(읽기 전용)을 쓴다 — 다시 만들지 않는다
+export const GLOBAL_MARK = '<!-- kit:global -->';
+const USAGE = '사용법: node kit/install.mjs <claude|opencode> --project <repo> [--dry] | node kit/install.mjs global [--home <dir>] [--dry]';
 
 export function parseArgs(argv) {
   const [flavor, ...rest] = argv;
-  if (!flavor || ['-h', '--help', 'help'].includes(flavor)) return { error: '사용법: node kit/install.mjs <claude|opencode> --project <repo> [--dry]' };
-  if (!FLAVORS.includes(flavor)) return { error: `하네스: ${FLAVORS.join(' 또는 ')} (받은 값: ${flavor})` };
-  let project = null; let dry = false;
+  if (!flavor || ['-h', '--help', 'help'].includes(flavor)) return { error: USAGE };
+  if (flavor !== 'global' && !FLAVORS.includes(flavor)) return { error: `하네스: ${FLAVORS.join(' 또는 ')} 또는 global (받은 값: ${flavor})` };
+  let project = null; let home = null; let dry = false;
   for (let i = 0; i < rest.length; i++) {
     if (rest[i] === '--project' || rest[i] === '-Project') project = rest[++i];
+    else if (rest[i] === '--home') home = rest[++i];
     else if (rest[i] === '--dry') dry = true;
     else return { error: `모르는 인자: ${rest[i]}` };
   }
+  if (flavor === 'global') return { flavor, home, dry };
   if (!project) return { error: '--project <repo>가 필요하다' };
   return { flavor, project, dry };
 }
@@ -60,27 +66,60 @@ export function plan(flavor, { present, src, project }) {
   else acts.push({ rel: '.gitignore', op: 'append', text: (gi.endsWith('\n') || !gi ? '' : '\n') + 'kit/log/\n' });
   return acts;
 }
-export function summary(flavor, project, acts) {
+// 전역 계획 — 한 기계에 한 번. 경로는 홈 기준.
+//   ~/.claude/CLAUDE.md            일하는 방식(마커 블록). 없으면 쓰고, 마커가 없으면 덧붙이고, 있으면 둔다. Claude Code와 opencode가 같이 읽는다.
+//   ~/.config/opencode/AGENTS.md   이 파일이 있으면 opencode는 ~/.claude/CLAUDE.md를 읽지 않으므로 거기에도 같은 블록을.
+//   ~/.claude/skills/kit-init/     첫 분석 스킬. 두 하네스가 같은 자리를 읽는다. 소유 파일 — 덮는다.
+//   ~/.config/opencode/commands/   opencode의 /kit-init. .config/opencode가 있을 때만.
+export function planGlobal({ present, src, hasDir }) {
+  const acts = [];
+  const block = src('global/CLAUDE.md');
+  const styleAt = (rel, onlyIfPresent) => {
+    const cur = present(rel);
+    if (cur == null) { if (!onlyIfPresent) acts.push({ rel, op: 'write', text: block }); return; }
+    if (cur.includes(GLOBAL_MARK)) acts.push({ rel, op: 'keep' });
+    else acts.push({ rel, op: 'append', text: (cur.endsWith('\n') || !cur ? '\n' : '\n\n') + block });
+  };
+  styleAt('.claude/CLAUDE.md', false);
+  styleAt('.config/opencode/AGENTS.md', true);
+  acts.push({ rel: '.claude/skills/kit-init/SKILL.md', op: 'write', text: src('skills/kit-init/SKILL.md') });
+  if (hasDir('.config/opencode')) acts.push({ rel: '.config/opencode/commands/kit-init.md', op: 'write', text: src('opencode/commands/kit-init.md') });
+  return acts;
+}
+export function summary(flavor, target, acts) {
   const n = (op) => acts.filter((a) => a.op === op).length;
-  const head = `INSTALLED kit ${flavor} → ${project} — 썼다 ${n('write') + n('merge') + n('append')} · 두었다 ${n('keep')}`;
+  const head = `INSTALLED kit ${flavor} → ${target} — 썼다 ${n('write') + n('merge') + n('append')} · 두었다 ${n('keep')}`;
   return [head, ...acts.filter((a) => a.op === 'note').map((a) => `- ${a.text}`)].join('\n');
+}
+function apply(base, acts, dry) {
+  for (const act of acts) {
+    if (dry) { process.stdout.write(`  [dry] ${act.op} ${act.rel}\n`); continue; }
+    const p = path.join(base, act.rel);
+    if (act.op === 'write' || act.op === 'merge') { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, act.text); }
+    else if (act.op === 'append') fs.appendFileSync(p, act.text);
+  }
 }
 function main() {
   const a = parseArgs(process.argv.slice(2));
   if (a.error) { process.stdout.write(`FAIL install ${a.error}\n`); process.exit(1); }
   const kit = path.dirname(fileURLToPath(import.meta.url));
+  const src = (name) => fs.readFileSync(path.join(kit, name), 'utf8');
+  if (a.flavor === 'global') {
+    const home = path.resolve(a.home || os.homedir());
+    const present = (rel) => { const p = path.join(home, rel); return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null; };
+    const hasDir = (rel) => { try { return fs.statSync(path.join(home, rel)).isDirectory(); } catch { return false; } };
+    const acts = planGlobal({ present, src, hasDir });
+    apply(home, acts, a.dry);
+    process.stdout.write(summary('global', home, acts) + '\n');
+    if (!a.dry) process.stdout.write('다음: 저장소마다 `node kit/install.mjs <claude|opencode> --project <repo>`를 한 번, 그 저장소의 첫 세션에서 `/kit-init`.\n');
+    return;
+  }
   const project = path.resolve(a.project);
   fs.mkdirSync(project, { recursive: true });
   const present = (rel) => { const p = path.join(project, rel); return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null; };
-  const src = (name) => fs.readFileSync(path.join(kit, name), 'utf8');
   const acts = plan(a.flavor, { present, src, project: path.basename(project) });
-  for (const act of acts) {
-    if (a.dry) { process.stdout.write(`  [dry] ${act.op} ${act.rel}\n`); continue; }
-    const p = path.join(project, act.rel);
-    if (act.op === 'write' || act.op === 'merge') { fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, act.text); }
-    else if (act.op === 'append') fs.appendFileSync(p, act.text);
-  }
+  apply(project, acts, a.dry);
   process.stdout.write(summary(a.flavor, project, acts) + '\n');
-  if (!a.dry) process.stdout.write('다음: AGENTS.md의 지도와 kit/check.json의 층별 명령을 채운다 — 세션을 열고 「kit/check.json을 채워」라고 해도 된다.\n');
+  if (!a.dry) process.stdout.write('다음: 이 저장소의 첫 세션에서 `/kit-init`(전역 설치가 있을 때) — 또는 「kit/check.json을 채우고 지도를 써 줘」.\n');
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

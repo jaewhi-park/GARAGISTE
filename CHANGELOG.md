@@ -11,7 +11,8 @@ v2의 팀을 잇지 않는 새 판. 팀을 만들지 않고, 하네스 하나가
 - `kit/scripts/tests-for.mjs`: 변경 파일 → 테스트 파일(패턴 대입 · 디스크 확인 · 매핑 없음은 stderr · 인자 없으면 작업 트리 변경). `kit/scripts/check.mjs`: quick · module · full을 돌리고 `PASS <층>` 또는 `FAIL <층> <테스트> 기대= 실제= at file:line log=` 한 줄 — node:test(TAP · spec) · jest · vitest · pytest · go test의 실패 꼴을 읽고 모르는 꼴은 종료 코드로. module에 매핑이 없으면 full로 내려가며 그 사실을 줄에 적는다. `flaky.txt`(사람 관리)의 테스트는 셈에서 빼고 `격리 n`으로 표시. 빈 명령은 `FAIL <층> kit/check.json layers.<층> 비어 있음`.
 - 배선: Claude Code는 `CLAUDE.md`=`@AGENTS.md` + settings allow 두 줄(훅 0 · 커스텀 에이전트 0 — built-in Explore · plan mode · /code-review를 쓴다). opencode는 `.opencode/agents/` build(primary · 위임 기준 다섯 줄 · task는 explore · review만) · review(읽기 전용 · diff와 요청과 끝의 기준만) — 탐색은 opencode built-in explore(읽기 전용). opencode 문서(docs 원본 dev 브랜치)로 확인: 폴더 `.opencode/agents/` · `tools` deprecated → `permission` · AGENTS.md가 있으면 CLAUDE.md는 읽지 않음.
 - `kit/install.mjs`(node, 두 OS 공통): 소유 파일(스크립트 · 에이전트)은 덮고 첫 설치 파일(AGENTS.md · check.json · flaky.txt · CLAUDE.md · settings)은 두며 settings는 allow만 합친다. git에 손대지 않는다. `--dry`.
-- `tests/kit.test.mjs` 18건: 순수 함수(매핑 · 다섯 러너의 실패 파싱 · 격리 · 결과 줄 · 설치 계획 · allow 병합) + 임시 저장소에서 설치 → check PASS / 빈 명령 FAIL / 실패 줄 / full 내려가기 / 격리 / 재설치 보존, opencode 설치 · --dry.
+- 세 층의 원클릭(같은 날 후속, CEO 「매번 TDD로 일해라 · 쪼개라를 치는 게 더미하다」): `install.mjs global`이 홈에 일하는 방식 블록(`kit/global/CLAUDE.md` — `~/.claude/CLAUDE.md`를 두 하네스가 읽는다, 마커로 한 번만 덧붙임)과 첫 분석 스킬 `kit-init`(`~/.claude/skills/` — check.json → docs/ARCHITECTURE.md → 지도, 사용자가 부를 때만)과 opencode 명령 `/kit-init`을 놓는다. 템플릿 작업 방식에 「큰 요청은 끝의 기준이 하나인 조각으로」한 줄. opencode 문서로 확인: 스킬 경로는 `~/.claude/skills/*/SKILL.md`를 opencode도 읽고, `~/.config/opencode/AGENTS.md`가 있으면 `~/.claude/CLAUDE.md`는 읽지 않는다.
+- `tests/kit.test.mjs` 20건: 순수 함수(매핑 · 다섯 러너의 실패 파싱 · 격리 · 결과 줄 · 설치 계획 · allow 병합) + 임시 저장소에서 설치 → check PASS / 빈 명령 FAIL / 실패 줄 / full 내려가기 / 격리 / 재설치 보존, opencode 설치 · --dry.
 
 ## v2 — 2026-09-29 · 증거 팀 (unreleased)
 

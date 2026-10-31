@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { candidates, isTestFile, parsePorcelain, slots, testsFor } from '../kit/scripts/tests-for.mjs';
 import { discount, firstFrame, layerCommand, parseFailures, parseFlaky, plan as checkPlan, resultLine } from '../kit/scripts/check.mjs';
-import { mergeAllow, parseArgs, plan as installPlan, summary } from '../kit/install.mjs';
+import { GLOBAL_MARK, mergeAllow, parseArgs, plan as installPlan, planGlobal, summary } from '../kit/install.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const KIT = path.resolve(HERE, '..', 'kit');
@@ -263,6 +263,8 @@ test('install: mergeAllow · parseArgs', () => {
   assert.match(parseArgs(['cursor', '--project', '/p']).error, /하네스/);
   assert.match(parseArgs(['claude']).error, /--project/);
   assert.match(parseArgs([]).error, /사용법/);
+  assert.deepEqual(parseArgs(['global']), { flavor: 'global', home: null, dry: false });
+  assert.deepEqual(parseArgs(['global', '--home', '/h', '--dry']), { flavor: 'global', home: '/h', dry: true });
 });
 
 // ── 임시 저장소에서 끝까지
@@ -363,4 +365,45 @@ test('kit: AGENTS.md 템플릿의 줄은 숫자 상한을 에이전트에게 주
   assert.ok(!/\d+\s*KB/.test(t), '지도 크기 상한 없음');
   assert.ok(!/세 번|3번|three/.test(t), '재시도 횟수 없음');
   assert.ok(!/다음 달/.test(t), '관찰할 수 없는 기준 없음');
+  assert.ok(t.includes('끝의 기준이 하나인 조각'), '큰 요청은 조각으로');
+});
+
+// ── 전역: 한 기계에 한 번
+test('install: planGlobal — CLAUDE.md 없으면 write · 마커 없으면 append · 있으면 keep · opencode 전역 AGENTS.md는 있을 때만 · 스킬은 덮고 commands는 .config/opencode가 있을 때만', () => {
+  const src = (name) => fs.readFileSync(path.join(KIT, name), 'utf8');
+  const ops = (acts) => Object.fromEntries(acts.map((a) => [a.rel, a.op]));
+  const fresh = planGlobal({ present: () => null, src, hasDir: () => false });
+  assert.deepEqual(ops(fresh), { '.claude/CLAUDE.md': 'write', '.claude/skills/kit-init/SKILL.md': 'write' });
+  assert.ok(fresh[0].text.startsWith(GLOBAL_MARK));
+  const have = { '.claude/CLAUDE.md': '# mine\n- 내 규칙\n', '.config/opencode/AGENTS.md': '# oc' };
+  const again = planGlobal({ present: (rel) => have[rel] ?? null, src, hasDir: (rel) => rel === '.config/opencode' });
+  assert.deepEqual(ops(again), { '.claude/CLAUDE.md': 'append', '.config/opencode/AGENTS.md': 'append', '.claude/skills/kit-init/SKILL.md': 'write', '.config/opencode/commands/kit-init.md': 'write' });
+  assert.ok(again[0].text.startsWith('\n' + GLOBAL_MARK), '줄바꿈으로 끝나면 빈 줄 하나');
+  assert.ok(again[1].text.startsWith('\n\n' + GLOBAL_MARK), '줄바꿈 없이 끝나면 둘');
+  const marked = { '.claude/CLAUDE.md': `# mine\n${GLOBAL_MARK}\n...\n` };
+  const third = planGlobal({ present: (rel) => marked[rel] ?? null, src, hasDir: () => false });
+  assert.deepEqual(ops(third), { '.claude/CLAUDE.md': 'keep', '.claude/skills/kit-init/SKILL.md': 'write' });
+});
+test('e2e: global 설치 — 홈에 방식 블록과 스킬 · 기존 CLAUDE.md엔 한 번만 덧붙인다 · 스킬 frontmatter는 두 하네스 규칙에 맞는다', { timeout: 30000 }, () => {
+  const home = tmp('home');
+  write(home, '.claude/CLAUDE.md', '# 내 전역 규칙\n');
+  fs.mkdirSync(path.join(home, '.config', 'opencode'), { recursive: true });
+  const g = (extra = []) => run([path.join(KIT, 'install.mjs'), 'global', '--home', home, ...extra], home);
+  const dry = g(['--dry']);
+  assert.equal(dry.status, 0, dry.out);
+  assert.ok(!fs.existsSync(path.join(home, '.claude', 'skills')), 'dry는 쓰지 않는다');
+  const one = g();
+  assert.equal(one.status, 0, one.out);
+  assert.match(one.out, /^INSTALLED kit global → .* — 썼다 3 · 두었다 0$/m);
+  const cl = read(home, '.claude/CLAUDE.md');
+  assert.ok(cl.startsWith('# 내 전역 규칙\n\n' + GLOBAL_MARK), cl);
+  assert.equal(cl.split(GLOBAL_MARK).length - 1, 1);
+  const skill = read(home, '.claude/skills/kit-init/SKILL.md');
+  assert.match(skill, /^---\nname: kit-init\ndescription: .+\n/);
+  assert.match(skill, /^disable-model-invocation: true$/m);
+  assert.ok(/^[a-z0-9]+(-[a-z0-9]+)*$/.test('kit-init'));
+  assert.match(read(home, '.config/opencode/commands/kit-init.md'), /^agent: build$/m);
+  const two = g();
+  assert.match(two.out, /썼다 2 · 두었다 1/);
+  assert.equal(read(home, '.claude/CLAUDE.md').split(GLOBAL_MARK).length - 1, 1, '두 번째 설치는 덧붙이지 않는다');
 });
