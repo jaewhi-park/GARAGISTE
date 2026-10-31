@@ -8,6 +8,9 @@ GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on 
 - **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all eight conditions hold.
 - **The human gives one sentence, yes/no, and "tried it".** The first line of STATUS is all they read each day.
 
+## v3 — kit (2026-10-31)
+v2 built a team and controlled it. **kit** builds no team: it adds to one harness (Claude Code or opencode) only the facts and tools the harness cannot know by itself — a thin `AGENTS.md` map, `kit/check.mjs` (one-line test results, raw output to a log), `kit/tests-for.mjs` (changed files → tests), a human-managed flaky list, and for opencode three agents (build · explore · review). No hooks, no state machine, no ledger. `node kit/install.mjs <claude|opencode> --project <repo>` — see [kit/README.md](kit/README.md) and the 2026-10-31 entry in `docs/DECISIONS.md`. Do not install v2 and kit into the same project. The rest of this README is v2.
+
 ## There are agents — there are no personas
 The seven packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
 

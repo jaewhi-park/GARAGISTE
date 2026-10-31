@@ -2,6 +2,17 @@
 
 v2엔 릴리스 태그가 없다. 설치본의 판은 `.garagiste/VERSION`(2026-10-04부터 — garagiste 커밋 sha · team/ tree · flavor, `doctor.mjs --version`)이고, 그 전 설치본의 정체는 설치한 GARAGISTE 커밋의 `team/` 사본이다. 프로젝트 쪽 기준선은 규칙집 tree — `git rev-parse HEAD:.garagiste`(시험 등록·반영 블록이 이 값으로 대조한다)다. `install.sh <flavor> -Project <repo>`를 다시 돌리면 scripts·packs·훅·agents·pre-commit은 덮고, team.json(편성·commands)·HAZARDS(제품 오버레이)·규칙 파일(CLAUDE.md/AGENTS.md)·settings는 남긴다 — 그 뒤 doctor·selftest가 PASS여야 설치다. 업그레이드를 diff가 보이는 unit으로 하는 것은 백로그 L3 Q11의 남은 몫이다(판 기록은 2026-10-04 2라운드). 아래 절은 최근 것부터 — 수리는 사고 번호로, 채용은 CEO의 말로.
 
+## v3 — 2026-10-31 · 키트 (unreleased, `kit/`)
+
+v2의 팀을 잇지 않는 새 판. 팀을 만들지 않고, 하네스 하나가 저장소에서 덜 헤매고 덜 거짓말하게 하는 사실과 도구만 둔다 — `AGENTS.md` 템플릿 · `kit/check.mjs` · `kit/tests-for.mjs` · `kit/flaky.txt` · opencode 에이전트 셋. `team/`(v2)은 그대로 두고 두 판을 같은 프로젝트에 섞어 설치하지 않는다. 근거는 docs/DECISIONS.md 2026-10-31, 설명은 kit/README.md.
+
+### Added — 2026-10-31 v3 키트(CEO 「GARAGISTE에 이걸로 새 판 만들어보자」 — 정비 세션의 설계 대화에서)
+- `kit/AGENTS.md.template`: 지도(코드에 없는 사실만) · 검사 · 요청 양식(무엇을 · 아는 위치 · 끝의 기준) · 작업 방식 여섯 줄 · 지도 유지 두 줄. 모든 줄은 세 필터(에이전트가 지금 관찰 가능 · 하네스가 말하지 않음 · 맞춰야 하는 숫자 없음)를 지난 것만 — 지도 크기 상한 · 재시도 횟수 · 「다음 달에도 참인가」는 떨어졌다.
+- `kit/scripts/tests-for.mjs`: 변경 파일 → 테스트 파일(패턴 대입 · 디스크 확인 · 매핑 없음은 stderr · 인자 없으면 작업 트리 변경). `kit/scripts/check.mjs`: quick · module · full을 돌리고 `PASS <층>` 또는 `FAIL <층> <테스트> 기대= 실제= at file:line log=` 한 줄 — node:test(TAP · spec) · jest · vitest · pytest · go test의 실패 꼴을 읽고 모르는 꼴은 종료 코드로. module에 매핑이 없으면 full로 내려가며 그 사실을 줄에 적는다. `flaky.txt`(사람 관리)의 테스트는 셈에서 빼고 `격리 n`으로 표시. 빈 명령은 `FAIL <층> kit/check.json layers.<층> 비어 있음`.
+- 배선: Claude Code는 `CLAUDE.md`=`@AGENTS.md` + settings allow 두 줄(훅 0 · 커스텀 에이전트 0 — built-in Explore · plan mode · /code-review를 쓴다). opencode는 `.opencode/agents/` build(primary · 위임 기준 다섯 줄) · explore(읽기 전용 · 고정 반환 형식) · review(읽기 전용 · diff와 요청과 끝의 기준만).
+- `kit/install.mjs`(node, 두 OS 공통): 소유 파일(스크립트 · 에이전트)은 덮고 첫 설치 파일(AGENTS.md · check.json · flaky.txt · CLAUDE.md · settings)은 두며 settings는 allow만 합친다. git에 손대지 않는다. `--dry`.
+- `tests/kit.test.mjs` 18건: 순수 함수(매핑 · 다섯 러너의 실패 파싱 · 격리 · 결과 줄 · 설치 계획 · allow 병합) + 임시 저장소에서 설치 → check PASS / 빈 명령 FAIL / 실패 줄 / full 내려가기 / 격리 / 재설치 보존, opencode 설치 · --dry.
+
 ## v2 — 2026-09-29 · 증거 팀 (unreleased)
 
 v1의 역할극(agents 7 · skills 31 · hooks 4 · opencode 플레이버)을 잇지 않는 재시작. `team/`이 새 정본이고 `install.sh <claude|opencode>`가 정본을 `.garagiste/`로, 배선을 `.claude/` 또는 `opencode.json`+`.opencode/`로 설치한다. v1 트리는 2026-09-29 삭제(be39c4a, CEO 결정) — 이력은 main의 `0fdfa28` 이전에 있고 백업 브랜치 `v1`이 그 지점을 가리킨다.
