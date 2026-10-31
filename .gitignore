@@ -1,9 +1,9 @@
-# Local state created when running Claude Code / opencode inside this repo
-# (the template folders claude/.claude/ and opencode/ are tracked; only root-level local files are ignored)
+# 이 저장소 안에서 Claude Code / opencode를 돌릴 때 생기는 로컬 상태
 /.claude/settings.local.json
 /.claude/worktrees/
 /.claude/agent-memory-local/
 /.opencode/
+/kit/log/
 
 # OS / editor
 .DS_Store

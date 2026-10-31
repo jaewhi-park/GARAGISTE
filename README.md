@@ -1,92 +1,25 @@
-# GARAGISTE — the evidence team
+# GARAGISTE — kit
 
-> Coding is making claims true. Claims are tests, probes and invariants; the team is a scheduler over that graph; the human supplies direction, reality and accountability — and keeps the windows.
+A small kit that makes one coding-agent harness (Claude Code or opencode) work better in your repositories, without building a team around it. It adds only what the harness cannot know by itself: a thin `AGENTS.md` map of facts, a three-field request habit, a one-line check report, and your personal working style installed once per machine. No hooks, no state machine, no ledger, no personas.
 
-GARAGISTE v2 is an **AI-native development team that runs on Claude Code and on opencode**. No roles imitate a human company (planner, critic, reviewer). There are seven packs that hand off only through files (boot · adopt · intake · spec · build · attack · spike), fifteen judgment-free scripts, a boundary hook or plugin, and a ledger.
+Instructions only by default. Two scripts (`check`, `tests-for`: one-line test results with raw output in a log, changed files → tests) are kept for the day an incident asks for them (`--with-scripts`).
 
-- **Nothing unexecuted is believed.** The spec is a red acceptance test, approval is an exit code, the output of review is a failing test.
-- **Machines close every loop.** The commit gate matches the ledger against the tree; `ship` touches main only when all eight conditions hold.
-- **The human gives one sentence, yes/no, and "tried it".** The first line of STATUS is all they read each day.
-
-## v3 — kit (2026-10-31)
-v2 built a team and controlled it. **kit** builds no team: it adds to one harness (Claude Code or opencode) only the facts and tools the harness cannot know by itself — a thin `AGENTS.md` map with check commands and a one-line-report rule, a one-line `CLAUDE.md`, and for opencode two agents (build · review; exploration uses opencode's built-in read-only `explore`). Instructions only by default; `--with-scripts` adds `kit/check.mjs` (one-line test results, raw output to a log), `kit/tests-for.mjs` (changed files → tests) and a human-managed flaky list when an incident asks for them. `global` installs your personal working style and the `/kit-init` first-analysis skill once per machine. No hooks, no state machine, no ledger. `node kit/install.mjs <claude|opencode> --project <repo>` — see [kit/README.md](kit/README.md) and the 2026-10-31 entry in `docs/DECISIONS.md`. Do not install v2 and kit into the same project. The rest of this README is v2.
-
-## There are agents — there are no personas
-The seven packs are the agents. Each is defined by a ten-line spawn config (`.claude/agents/<pack>.md` or `.opencode/agents/<pack>.md`) and a write boundary. The prompt is one line, the pack file's path; the pack file is the whole spawn. The model comes from the budget (`-Budget`). Nowhere does it say "you are a senior engineer".
-
-## Install
+## Install — three layers
 ```
-./install.sh claude   -Project <repo> [-Budget low|medium|high]    # Claude Code
-./install.sh opencode -Project <repo> [-Budget low|medium|high]    # opencode
-.\install.ps1 claude|opencode -Project <repo>                       # Windows PowerShell
+node <GARAGISTE>/kit/install.mjs global                       # once per machine: working style + the /kit-init skill
+node <GARAGISTE>/kit/install.mjs claude   --project <repo>    # once per repository: AGENTS.md · CLAUDE.md(@AGENTS.md) · .gitignore
+node <GARAGISTE>/kit/install.mjs opencode --project <repo>    #                      AGENTS.md · .opencode/agents/{build,review}.md · .gitignore
 ```
-The team's canon is harness-neutral in `<repo>/.garagiste/` (scripts · packs · HAZARDS · team.json · ledger · unit state); only the wiring differs:
+Then, in that repository's first session, `/kit-init`: it fills the check commands, writes `docs/ARCHITECTURE.md`, and moves into the map only what almost every request needs. After that, each request is three fields: what, where you know it lives, and what "done" looks like.
 
-| | Claude Code | opencode |
-|---|---|---|
-| rules file | `CLAUDE.md` (20 lines) | `AGENTS.md` (20 lines) |
-| boundary | `.claude/hooks/guard.mjs` (PreToolUse) | `.opencode/plugins/guard.ts` (tool.execute.before) |
-| the rules themselves | both call `.garagiste/scripts/guard-rules.mjs` | |
-| spawn configs | `.claude/agents/{boot,adopt,intake,spec,build,attack,spike}.md` | `.opencode/agents/{conductor,boot,adopt,intake,spec,build,attack,spike}.md` |
-| wip of a dead agent | SubagentStop hook → `checkpoint.mjs` | plugin after `task` → `checkpoint.mjs` |
-| conductor | the main session (CLAUDE.md Flow) | the `conductor` primary agent (no edit permission) |
-| models | budget → `model:` in the agent files | inherits the default provider/model; per-pack `model:` by hand |
+## Read
+- [kit/README.md](kit/README.md) — every file and its job, the three filters every instruction line passes, what is deliberately absent, when to turn the scripts on (Korean)
+- [docs/DECISIONS.md](docs/DECISIONS.md) — the reasoning, newest entries dated 2026-10-31 (Korean)
 
-The verification commands (`commands`: quick · full · test_file · run) are written by the first unit, `boot`, through `work.mjs commands` — there is no file for the human to fill. The rule: `quick` must exclude `tests/acceptance` and `tests/adversary` (they are committed red by design); `full` includes everything.
-
-## The entrance — from an empty folder to scope
-Install is one command (`install.sh claude -Project <empty dir>`: git init, team files, first commit). After that there is no file for the human to fill in: the first unit, `boot` (kind scaffold), picks the stack, writes the verification commands, the smoke test and the rules file, and ships. You do not speak one sentence at a time; the unit of input is the whole conversation. If the repository already has code, the first unit is `adopt` (kind adopt): it pins the current behaviour with characterization tests, registers the verify commands and the rule file, and never touches product code (intake tells boot from adopt by the repo state the script measures). Existing code is entered through `adopt` (characterization tests); a structure-only change is proven with `--kind refactor` (pins — acceptance tests green on base too).
+## Verify
 ```
-conversation ─▶ work.mjs brief "<verbatim>" | --file PRD.md   accumulated verbatim in docs/BRIEF.md (no summarising)
-"build it"   ─▶ brief.mjs intake → intake pack spawn           BACKLOG lines: slug · milestone · needs · "one sentence" · one acceptance line
-                                                               hard-to-reverse choices become yes/no cards (work.mjs ask intake) → needs: Q<n>
-scope        ─▶ work.mjs scope login share | --milestone M1 | --range a..b
-                SCOPE requested 2 · prerequisites 2 · missing 0   ← the counter-proposal: the closure over `needs`, computed
-                - prerequisites: db (needed by session) · session (needed by login)
-                - order: db → session → login → share
-loop         ─▶ work.mjs seed → UNIT | WAIT <slug> needs … | SCOPE DONE
-               (unattended: conduct.mjs runs this loop until a stop — no conductor session, the exit code is the stop)
-```
-`needs` is not a human-team convention; it is an edge in the claim graph. "This needs that first" is the output of `closure()`, not a meeting, and the CEO either accepts (`seed`) or drops the prerequisites (`--no-needs`, recorded in the ledger).
-
-## Life of a unit
-```
-CEO sentence ─▶ work.mjs new <slug> "<verbatim>"      (boundary HIT → spike pack first)
-             ─▶ brief.mjs spec  → red acceptance tests · try.md · surface.md → redproof.mjs = RED
-             ─▶ brief.mjs build → red→green, verify quick per commit, the gate checks the ledger
-             ─▶ brief.mjs attack → failing tests in tests/adversary → build respawn → red 0
-             ─▶ ship.mjs <slug> → 8 conditions → ff merge to main · LEDGER row · STATUS
-CEO "tried it" ─▶ work.mjs tried <slug> ok|fail
-```
-Agents receive one pack file and never talk to each other. Build has never met attack — it only meets failing test files.
-
-## Scripts (zero judgment)
-| script | does |
-|---|---|
-| `next` | the loop's next step, one line: run · spawn · ceo · wait · done — the conductor follows this line only (seed → spec → redproof → build → attack → ship; re-spec, late spike, conflict, one unit at a time) |
-| `conduct` | runs Flow 4 as a script — executes next's line verbatim (run = that command; spawn = the pack as a headless `claude -p --agent <pack>` session), records spawned (measured tokens · minutes · cost) · spawn_stop · checkpoint per pack, forwards `spec:` returns, parks a unit via `ask --hold` when a FAIL asks for a CEO decision. The stops are exit codes (0 done · 2 ceo · 3 wait · 4 framework FAIL · 5 cap) · safety belts (per-pack time cap · run cost cap · lock/heartbeat) · `check` (preflight before a real run) · `trust` (turns on workspace trust for headless packs — measured: an untrusted folder drops the allow list) · `intake` · other harnesses via `--spawner`. Four real runs measured 2026-10-04 (Linux, real claude 2.1.289 — Node 3 files · Python · Node 19 files · Node 138-file legacy: install → intake → ship → seam attack, $1.7–6.6 per run — `docs/measurements/CONDUCT-FIRST-RUN.md`) |
-| `work` | entrance and unit lifecycle: brief · add · scope (closure over needs) · seed · system (seam attack at the end of a scope) · new · ask (`--assumed`) · decide · default · tried · list · models (one place) · spawned (ledger) |
-| `brief` | pack assembly ≤8 KB (intake 32 KB) — verbatim text fenced as data, HAZARDS matched by path, resume section, worktree marker |
-| `verify` | quick · full · red · attack · **gate** (ledger↔tree per commit, test floor, 300 logic lines) |
-| `redproof` | proves acceptance tests are red on base and green on head |
-| `boundary` | dependency · workflow · IPC · permission · egress keywords → spike required |
-| `ship` | 8 fail-closed conditions → re-runs full · redproof · attack itself on the integrated tree, then ff merge · docs/LEDGER.md · STATUS (rolls the merge back if main quick fails) |
-| `claims` | the claim graph: true · false · unsensed · unknown, sensor coverage, next |
-| `state` | generates docs/STATUS.md (first line is everything) · unattended stop budgets · `report`: one page at SCOPE DONE (built · proven · decided · unseen · to try) |
-| `doctor` | differential diagnosis — detects the harness, says what died and what to fix |
-| `guard-rules` · `checkpoint` | the boundary rules and wip checkpoint both harnesses share |
-
-## Documents
-- [docs/GUIDE.md](docs/GUIDE.md) — run it on your own machine: clone, install, session, what the CEO says and sees, verdict line, model assignment, troubleshooting (Korean)
-- [docs/PRINCIPLES.md](docs/PRINCIPLES.md) — four sentences, eight tenets, the human's windows (Korean)
-- [docs/BIRTH.md](docs/BIRTH.md) — the zero-base birth protocol and the verdict line after the first 3 units (Korean)
-- [docs/catalogue/](docs/catalogue/) — candidate devices (the v2 design), the v1 measurements, discussion additions. **Not a plan**: a device is built only when an incident in the ledger asks for it
-
-## Verify this repository
-```
-node --test tests/unit.test.mjs   # pure-function tests
-node --test tests/e2e.test.mjs    # birth test (claude) + ship atomicity + opencode install: empty repo → shipped unit, zero model calls, zero network
+node --test tests/kit.test.mjs
 ```
 
-## v1
-v1 (the role-play: 7 agents, 31 skills, the opencode flavor) was deleted on 2026-09-29. Its history is on main before `0fdfa28`; the measured diagnosis stays in docs/catalogue/V1-ANALYSIS.md.
+## History
+v2, the "evidence team" (seven packs, hooks and a plugin, a ledger, a conductor, a commit gate), lived in `team/` from 2026-09-29 to 2026-10-31 and is kept whole on branch `v2`. v1 is on branch `v1`. v3 inherits no file from either; why is in `docs/DECISIONS.md` under 2026-10-31.
