@@ -8,7 +8,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { candidates, isTestFile, parsePorcelain, slots, testsFor } from '../kit/scripts/tests-for.mjs';
 import { discount, firstFrame, layerCommand, parseFailures, parseFlaky, plan as checkPlan, resultLine } from '../kit/scripts/check.mjs';
-import { GLOBAL_MARK, mergeAllow, parseArgs, plan as installPlan, planGlobal, summary } from '../kit/install.mjs';
+import { GLOBAL_MARK, mergeAllow, parseArgs, plan as installPlan, planGlobal, renderTemplate, summary } from '../kit/install.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const KIT = path.resolve(HERE, '..', 'kit');
@@ -236,12 +236,17 @@ test('check: 결과 줄 — PASS · 전부 격리면 PASS 격리 n · FAIL 필�
 // ── install: 계획
 test('install: 계획 — 소유 파일은 write · 첫 설치 파일은 keep · CLAUDE.md에 @AGENTS.md 없으면 note · settings는 allow만 합침 · gitignore append', () => {
   const src = (name) => fs.readFileSync(path.join(KIT, name), 'utf8');
-  const fresh = installPlan('claude', { present: () => null, src, project: 'demo' });
+  const plain = installPlan('claude', { present: () => null, src, project: 'demo' });
+  assert.deepEqual(Object.fromEntries(plain.map((a) => [a.rel, a.op])), { 'AGENTS.md': 'write', 'CLAUDE.md': 'write', '.gitignore': 'write' }, '기본은 지침만 — 스크립트도 settings도 없다');
+  const plainAgents = plain.find((a) => a.rel === 'AGENTS.md').text;
+  assert.ok(plainAgents.includes('`<명령 {files}>`') && !plainAgents.includes('check.mjs') && !plainAgents.includes('<!-- kit:checks'), plainAgents);
+  const fresh = installPlan('claude', { present: () => null, src, project: 'demo', scripts: true });
   const ops = Object.fromEntries(fresh.map((a) => [a.rel, a.op]));
   assert.deepEqual(ops, { 'kit/check.mjs': 'write', 'kit/tests-for.mjs': 'write', 'kit/check.json': 'write', 'kit/flaky.txt': 'write', 'AGENTS.md': 'write', 'CLAUDE.md': 'write', '.claude/settings.json': 'write', '.gitignore': 'write' });
   assert.match(fresh.find((a) => a.rel === 'AGENTS.md').text, /^# demo\n/);
+  assert.ok(fresh.find((a) => a.rel === 'AGENTS.md').text.includes('node kit/check.mjs'), '스크립트 판의 검사 절');
   const have = { 'AGENTS.md': '# mine', 'kit/check.json': '{}', 'CLAUDE.md': '# rules\n', '.claude/settings.json': '{"permissions":{"allow":["Bash(npm test:*)"],"deny":["Read(./.env)"]}}', '.gitignore': 'node_modules/' };
-  const again = installPlan('claude', { present: (rel) => have[rel] ?? null, src, project: 'demo' });
+  const again = installPlan('claude', { present: (rel) => have[rel] ?? null, src, project: 'demo', scripts: true });
   const ops2 = Object.fromEntries(again.map((a) => [a.rel, a.op]));
   assert.equal(ops2['AGENTS.md'], 'keep'); assert.equal(ops2['kit/check.json'], 'keep'); assert.equal(ops2['kit/check.mjs'], 'write');
   assert.equal(ops2['CLAUDE.md'], 'note'); assert.equal(ops2['.claude/settings.json'], 'merge'); assert.equal(ops2['.gitignore'], 'append');
@@ -259,7 +264,8 @@ test('install: mergeAllow · parseArgs', () => {
   assert.equal(mergeAllow({ permissions: { allow: ['b', 'a'] } }, ours), null);
   assert.deepEqual(mergeAllow({}, ours).permissions.allow, ['a', 'b']);
   assert.deepEqual(mergeAllow({ permissions: { allow: ['x'], defaultMode: 'plan' } }, ours).permissions, { allow: ['x', 'a', 'b'], defaultMode: 'plan' });
-  assert.deepEqual(parseArgs(['claude', '--project', '/p', '--dry']), { flavor: 'claude', project: '/p', dry: true });
+  assert.deepEqual(parseArgs(['claude', '--project', '/p', '--dry']), { flavor: 'claude', project: '/p', dry: true, scripts: false });
+  assert.equal(parseArgs(['opencode', '--project', '/p', '--with-scripts']).scripts, true);
   assert.match(parseArgs(['cursor', '--project', '/p']).error, /하네스/);
   assert.match(parseArgs(['claude']).error, /--project/);
   assert.match(parseArgs([]).error, /사용법/);
@@ -274,9 +280,9 @@ test('e2e: claude 설치 → module PASS → 빈 명령 FAIL → 실패 줄(이�
   write(repo, 'src/sum.mjs', 'export const sum = (a, b) => a + b;\n');
   write(repo, 'tests/sum.test.mjs', "import test from 'node:test'; import assert from 'node:assert/strict'; import { sum } from '../src/sum.mjs';\ntest('sum adds', () => { assert.equal(sum(1, 1), 2); });\n");
   write(repo, '.claude/settings.json', '{ "permissions": { "allow": ["Bash(npm test:*)"] } }\n');
-  const inst = install('claude', repo);
+  const inst = install('claude', repo, ['--with-scripts']);
   assert.equal(inst.status, 0, inst.out + inst.err);
-  assert.match(inst.out, /^INSTALLED kit claude → .* — 썼다 8 · 두었다 0$/m);
+  assert.match(inst.out, /^INSTALLED kit claude\+scripts → .* — 썼다 8 · 두었다 0$/m);
   for (const f of ['kit/check.mjs', 'kit/tests-for.mjs', 'kit/check.json', 'kit/flaky.txt', 'AGENTS.md', 'CLAUDE.md', '.gitignore']) assert.ok(fs.existsSync(path.join(repo, f)), f);
   assert.equal(read(repo, 'CLAUDE.md'), '@AGENTS.md\n');
   assert.match(read(repo, 'AGENTS.md'), new RegExp(`^# ${path.basename(repo)}\\n`));
@@ -328,7 +334,7 @@ test('e2e: claude 설치 → module PASS → 빈 명령 FAIL → 실패 줄(이�
   // 재설치 — 사람이 고친 AGENTS.md · check.json · flaky.txt는 그대로, 스크립트는 덮는다
   write(repo, 'AGENTS.md', '# demo\n## 지도\n- core: 합계.\n');
   fs.writeFileSync(path.join(repo, 'kit', 'check.mjs'), '// 낡은 판\n');
-  const re = install('claude', repo);
+  const re = install('claude', repo, ['--with-scripts']);
   assert.equal(re.status, 0, re.out);
   assert.match(re.out, /썼다 2 · 두었다 6/);
   assert.equal(read(repo, 'AGENTS.md'), '# demo\n## 지도\n- core: 합계.\n');
@@ -347,6 +353,8 @@ test('e2e: opencode 설치 — 에이전트 둘(explore는 built-in) · 읽기 �
   assert.equal(inst.status, 0, inst.out);
   for (const a of ['build', 'review']) assert.ok(fs.existsSync(path.join(repo, '.opencode', 'agents', `${a}.md`)), a);
   assert.ok(!fs.existsSync(path.join(repo, '.opencode', 'agents', 'explore.md')), 'explore는 built-in을 가리지 않는다');
+  assert.ok(!fs.existsSync(path.join(repo, 'kit')), '기본 설치는 스크립트를 놓지 않는다');
+  assert.ok(read(repo, 'AGENTS.md').includes('`<명령>`') && !read(repo, 'AGENTS.md').includes('check.mjs'), '지침 판 검사 절');
   const build = read(repo, '.opencode/agents/build.md');
   assert.match(build, /^mode: primary$/m); assert.match(build, /^    explore: allow$/m); assert.match(build, /^    review: allow$/m); assert.match(build, /^    "\*": deny$/m);
   const review = read(repo, '.opencode/agents/review.md');
@@ -359,9 +367,18 @@ test('e2e: opencode 설치 — 에이전트 둘(explore는 built-in) · 읽기 �
   assert.match(cl.out, /- CLAUDE\.md가 이미 있다 — 한 줄 `@AGENTS\.md`를 더해/);
   assert.equal(read(repo, 'CLAUDE.md'), '# existing rules\n');
 });
-test('kit: AGENTS.md 템플릿의 줄은 숫자 상한을 에이전트에게 주지 않는다 · 검사 절이 스크립트 셋을 가리킨다', () => {
-  const t = fs.readFileSync(path.join(KIT, 'AGENTS.md.template'), 'utf8');
-  for (const must of ['node kit/tests-for.mjs', 'node kit/check.mjs', 'kit/check.json', 'kit/flaky.txt', '## 지도', '## 요청', '## 작업 방식', '## 지도 유지']) assert.ok(t.includes(must), must);
+test('kit: AGENTS.md 템플릿 — 두 판으로 렌더되고 마커가 남지 않는다 · 숫자 상한을 에이전트에게 주지 않는다', () => {
+  const raw = fs.readFileSync(path.join(KIT, 'AGENTS.md.template'), 'utf8');
+  const plain = renderTemplate(raw, { project: 'p' });
+  const withScripts = renderTemplate(raw, { project: 'p', scripts: true });
+  for (const must of ['`<명령>`', '`<명령 {files}>`', '(없음)', 'kit/log/']) assert.ok(plain.includes(must), must);
+  for (const must of ['node kit/tests-for.mjs', 'node kit/check.mjs', 'kit/check.json', 'kit/flaky.txt']) assert.ok(withScripts.includes(must), must);
+  assert.ok(!plain.includes('check.mjs') && !withScripts.includes('<명령 {files}>'));
+  assert.equal((plain.match(/^## 검사$/gm) || []).length, 1); assert.equal((withScripts.match(/^## 검사$/gm) || []).length, 1);
+  assert.ok(!/<!-- \/?kit:checks/.test(plain) && !/<!-- \/?kit:checks/.test(withScripts), '마커 없음');
+  assert.ok(plain.startsWith('# p\n') && withScripts.startsWith('# p\n'));
+  const t = plain;
+  for (const must of ['## 지도', '## 검사', '## 요청', '## 작업 방식', '## 지도 유지', '가장 좁은 검사(검사 절의 module)']) assert.ok(t.includes(must), must);
   assert.ok(!/\d+\s*KB/.test(t), '지도 크기 상한 없음');
   assert.ok(!/세 번|3번|three/.test(t), '재시도 횟수 없음');
   assert.ok(!/다음 달/.test(t), '관찰할 수 없는 기준 없음');
@@ -409,4 +426,15 @@ test('e2e: global 설치 — 홈에 방식 블록과 스킬 · 기존 CLAUDE.md�
   const two = g();
   assert.match(two.out, /썼다 2 · 두었다 1/);
   assert.equal(read(home, '.claude/CLAUDE.md').split(GLOBAL_MARK).length - 1, 1, '두 번째 설치는 덧붙이지 않는다');
+});
+
+test('e2e: 기본 설치(지침만) — 파일 셋 · kit/ 없음 · .claude 없음 · 검사 절은 슬롯', { timeout: 30000 }, () => {
+  const repo = tmp('plain');
+  const inst = install('claude', repo);
+  assert.equal(inst.status, 0, inst.out + inst.err);
+  assert.match(inst.out, /^INSTALLED kit claude → .* — 썼다 3 · 두었다 0$/m);
+  assert.deepEqual(fs.readdirSync(repo).sort(), ['.gitignore', 'AGENTS.md', 'CLAUDE.md']);
+  const a = read(repo, 'AGENTS.md');
+  assert.ok(a.includes('- quick(타입체크 · lint): `<명령>`') && !a.includes('kit/check.mjs'));
+  assert.equal(read(repo, 'CLAUDE.md'), '@AGENTS.md\n');
 });

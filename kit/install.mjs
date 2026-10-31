@@ -1,6 +1,7 @@
-// install — kit을 프로젝트에 놓는다. 소유 파일(스크립트 · opencode 에이전트)은 덮고, 처음 한 번 쓰는 파일(AGENTS.md · check.json · flaky.txt · CLAUDE.md · settings)은 있으면 둔다.
+// install — kit을 프로젝트에 놓는다. 기본은 지침만(AGENTS.md · 규칙 파일 한 줄 · opencode 에이전트). --with-scripts면 check · tests-for · check.json · flaky.txt와 settings allow도.
+// 소유 파일(스크립트 · opencode 에이전트)은 덮고, 처음 한 번 쓰는 파일(AGENTS.md · check.json · flaky.txt · CLAUDE.md · settings)은 있으면 둔다.
 // settings는 permissions.allow만 합친다. git에는 손대지 않는다. 두 OS에서 같은 node 한 줄.
-// 사용: node <GARAGISTE>/kit/install.mjs <claude|opencode> --project <repo> [--dry]
+// 사용: node <GARAGISTE>/kit/install.mjs <claude|opencode> --project <repo> [--with-scripts] [--dry]
 //       node <GARAGISTE>/kit/install.mjs global [--home <dir>] [--dry]   ← 한 기계에 한 번: 일하는 방식 + kit-init 스킬
 import fs from 'node:fs';
 import os from 'node:os';
@@ -10,22 +11,30 @@ import { fileURLToPath } from 'node:url';
 export const FLAVORS = ['claude', 'opencode'];
 export const OPENCODE_AGENTS = ['build', 'review']; // explore는 opencode built-in(읽기 전용)을 쓴다 — 다시 만들지 않는다
 export const GLOBAL_MARK = '<!-- kit:global -->';
-const USAGE = '사용법: node kit/install.mjs <claude|opencode> --project <repo> [--dry] | node kit/install.mjs global [--home <dir>] [--dry]';
+const USAGE = '사용법: node kit/install.mjs <claude|opencode> --project <repo> [--with-scripts] [--dry] | node kit/install.mjs global [--home <dir>] [--dry]';
 
 export function parseArgs(argv) {
   const [flavor, ...rest] = argv;
   if (!flavor || ['-h', '--help', 'help'].includes(flavor)) return { error: USAGE };
   if (flavor !== 'global' && !FLAVORS.includes(flavor)) return { error: `하네스: ${FLAVORS.join(' 또는 ')} 또는 global (받은 값: ${flavor})` };
-  let project = null; let home = null; let dry = false;
+  let project = null; let home = null; let dry = false; let scripts = false;
   for (let i = 0; i < rest.length; i++) {
     if (rest[i] === '--project' || rest[i] === '-Project') project = rest[++i];
     else if (rest[i] === '--home') home = rest[++i];
     else if (rest[i] === '--dry') dry = true;
+    else if (rest[i] === '--with-scripts') scripts = true;
     else return { error: `모르는 인자: ${rest[i]}` };
   }
   if (flavor === 'global') return { flavor, home, dry };
   if (!project) return { error: '--project <repo>가 필요하다' };
-  return { flavor, project, dry };
+  return { flavor, project, dry, scripts };
+}
+// 템플릿의 검사 절은 두 판이 마커 블록으로 들어 있다 — 고른 판만 남기고 마커를 벗긴다.
+export function renderTemplate(text, { project, scripts = false }) {
+  const keep = scripts ? 'scripts' : 'instructions'; const drop = scripts ? 'instructions' : 'scripts';
+  let out = text.replace(new RegExp(`<!-- kit:checks:${drop} -->[\\s\\S]*?<!-- /kit:checks:${drop} -->\\n?`), '');
+  out = out.replace(`<!-- kit:checks:${keep} -->\n`, '').replace(`<!-- /kit:checks:${keep} -->\n`, '');
+  return out.replaceAll('{{PROJECT}}', project);
 }
 // allow만 합친다 — 있는 것은 그대로, 없는 줄만 뒤에. 바뀐 게 없으면 null.
 export function mergeAllow(existing, ours) {
@@ -35,27 +44,31 @@ export function mergeAllow(existing, ours) {
   return { ...existing, permissions: { ...(existing.permissions || {}), allow: [...have, ...add] } };
 }
 // 설치 계획 — 순수. present(rel)은 대상의 현재 내용(없으면 null), src(name)는 kit 소스의 내용.
-export function plan(flavor, { present, src, project }) {
+export function plan(flavor, { present, src, project, scripts = false }) {
   const acts = [];
   const put = (rel, text) => acts.push({ rel, op: 'write', text });
   const first = (rel, text) => acts.push({ rel, op: present(rel) == null ? 'write' : 'keep', text });
-  put('kit/check.mjs', src('scripts/check.mjs'));
-  put('kit/tests-for.mjs', src('scripts/tests-for.mjs'));
-  first('kit/check.json', src('scripts/check.json'));
-  first('kit/flaky.txt', src('scripts/flaky.txt'));
-  first('AGENTS.md', src('AGENTS.md.template').replaceAll('{{PROJECT}}', project));
+  if (scripts) {
+    put('kit/check.mjs', src('scripts/check.mjs'));
+    put('kit/tests-for.mjs', src('scripts/tests-for.mjs'));
+    first('kit/check.json', src('scripts/check.json'));
+    first('kit/flaky.txt', src('scripts/flaky.txt'));
+  }
+  first('AGENTS.md', renderTemplate(src('AGENTS.md.template'), { project, scripts }));
   if (flavor === 'claude') {
     const cur = present('CLAUDE.md');
     if (cur == null) put('CLAUDE.md', src('claude/CLAUDE.md'));
     else if (/^\s*@AGENTS\.md\s*$/m.test(cur)) acts.push({ rel: 'CLAUDE.md', op: 'keep' });
     else acts.push({ rel: 'CLAUDE.md', op: 'note', text: 'CLAUDE.md가 이미 있다 — 한 줄 `@AGENTS.md`를 더해 AGENTS.md를 읽게 하라' });
-    const ours = JSON.parse(src('claude/settings.json'));
-    const curS = present('.claude/settings.json');
-    if (curS == null) put('.claude/settings.json', JSON.stringify(ours, null, 2) + '\n');
-    else {
-      let ex = null; try { ex = JSON.parse(curS.replace(/^﻿/, '')); } catch { ex = null; }
-      if (!ex || typeof ex !== 'object') acts.push({ rel: '.claude/settings.json', op: 'note', text: '.claude/settings.json이 JSON이 아니다 — permissions.allow에 kit 두 줄을 손으로 더하라' });
-      else { const merged = mergeAllow(ex, ours); acts.push(merged ? { rel: '.claude/settings.json', op: 'merge', text: JSON.stringify(merged, null, 2) + '\n' } : { rel: '.claude/settings.json', op: 'keep' }); }
+    if (scripts) { // allow 두 줄은 스크립트를 쓸 때만 뜻이 있다
+      const ours = JSON.parse(src('claude/settings.json'));
+      const curS = present('.claude/settings.json');
+      if (curS == null) put('.claude/settings.json', JSON.stringify(ours, null, 2) + '\n');
+      else {
+        let ex = null; try { ex = JSON.parse(curS.replace(/^﻿/, '')); } catch { ex = null; }
+        if (!ex || typeof ex !== 'object') acts.push({ rel: '.claude/settings.json', op: 'note', text: '.claude/settings.json이 JSON이 아니다 — permissions.allow에 kit 두 줄을 손으로 더하라' });
+        else { const merged = mergeAllow(ex, ours); acts.push(merged ? { rel: '.claude/settings.json', op: 'merge', text: JSON.stringify(merged, null, 2) + '\n' } : { rel: '.claude/settings.json', op: 'keep' }); }
+      }
     }
   } else {
     for (const a of OPENCODE_AGENTS) put(`.opencode/agents/${a}.md`, src(`opencode/agents/${a}.md`));
@@ -117,9 +130,9 @@ function main() {
   const project = path.resolve(a.project);
   fs.mkdirSync(project, { recursive: true });
   const present = (rel) => { const p = path.join(project, rel); return fs.existsSync(p) ? fs.readFileSync(p, 'utf8') : null; };
-  const acts = plan(a.flavor, { present, src, project: path.basename(project) });
+  const acts = plan(a.flavor, { present, src, project: path.basename(project), scripts: a.scripts });
   apply(project, acts, a.dry);
-  process.stdout.write(summary(a.flavor, project, acts) + '\n');
-  if (!a.dry) process.stdout.write('다음: 이 저장소의 첫 세션에서 `/kit-init`(전역 설치가 있을 때) — 또는 「kit/check.json을 채우고 지도를 써 줘」.\n');
+  process.stdout.write(summary(a.flavor + (a.scripts ? '+scripts' : ''), project, acts) + '\n');
+  if (!a.dry) process.stdout.write('다음: 이 저장소의 첫 세션에서 `/kit-init`(전역 설치가 있을 때) — 또는 「AGENTS.md 검사 절의 명령을 채우고 지도를 써 줘」.\n');
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

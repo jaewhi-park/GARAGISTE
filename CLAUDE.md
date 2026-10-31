@@ -10,7 +10,7 @@
 - full: `node --test "tests/*.test.mjs"`
 - test one file: `node --test tests/<name>.test.mjs`
 - kit(v3)만: `node --test tests/kit.test.mjs`
-- install into a project: `./install.sh <claude|opencode> -Project <repo> [-Budget low|medium|high]` (v2) · `node kit/install.mjs global` + `node kit/install.mjs <claude|opencode> --project <repo>` (v3)
+- install into a project: `./install.sh <claude|opencode> -Project <repo> [-Budget low|medium|high]` (v2) · `node kit/install.mjs global` + `node kit/install.mjs <claude|opencode> --project <repo> [--with-scripts]` (v3 — 기본은 지침만)
 
 ## Conventions
 - 스크립트는 `team/scripts/*.mjs`(v2) · `kit/scripts/*.mjs`(v3)(하네스 중립), 의존성 0, `export function` + `isMain` 가드로 순수 함수를 테스트한다; 하네스 배선은 `team/claude/`(settings·hooks·agents)와 `team/opencode/`(opencode.json·agents·plugins) — 규칙은 배선에 두지 않고 `guard-rules.mjs` 하나에 둔다

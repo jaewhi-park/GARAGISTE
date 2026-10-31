@@ -9,7 +9,7 @@ GARAGISTE v2는 **Claude Code와 opencode 위에서 도는 AI-native 개발팀**
 - **사람은 한 마디 · 예/아니오 · 「써봤다」.** STATUS 첫 줄이 매일 보는 전부다.
 
 ## v3 — kit (2026-10-31)
-v2는 팀을 만들고 통제했다. **kit**은 팀을 만들지 않는다. 하네스 하나(Claude Code 또는 opencode)에 하네스가 스스로 알 수 없는 사실과 도구만 더한다 — 얇은 `AGENTS.md` 지도, `kit/check.mjs`(검사 결과 한 줄 · 원본은 로그로), `kit/tests-for.mjs`(변경 파일 → 테스트), 사람이 관리하는 flaky 목록, opencode엔 에이전트 둘(build · review — 탐색은 opencode built-in `explore`). 훅 없음, 상태 기계 없음, 원장 없음. `node kit/install.mjs <claude|opencode> --project <repo>` — [kit/README.md](kit/README.md)와 `docs/DECISIONS.md`의 2026-10-31 항목. v2와 kit을 한 프로젝트에 섞어 설치하지 않는다. 이 아래는 v2다.
+v2는 팀을 만들고 통제했다. **kit**은 팀을 만들지 않는다. 하네스 하나(Claude Code 또는 opencode)에 하네스가 스스로 알 수 없는 사실과 도구만 더한다 — 검사 명령과 한 줄 보고 규칙이 든 얇은 `AGENTS.md` 지도, 한 줄짜리 `CLAUDE.md`, opencode엔 에이전트 둘(build · review — 탐색은 opencode built-in `explore`). 기본은 지침만이고, 사고가 나면 `--with-scripts`로 `kit/check.mjs`(검사 결과 한 줄 · 원본은 로그로) · `kit/tests-for.mjs`(변경 파일 → 테스트) · 사람이 관리하는 flaky 목록을 더한다. `global`은 한 기계에 한 번 일하는 방식과 `/kit-init` 첫 분석 스킬을 놓는다. 훅 없음, 상태 기계 없음, 원장 없음. `node kit/install.mjs <claude|opencode> --project <repo>` — [kit/README.md](kit/README.md)와 `docs/DECISIONS.md`의 2026-10-31 항목. v2와 kit을 한 프로젝트에 섞어 설치하지 않는다. 이 아래는 v2다.
 
 ## 에이전트는 있다 — 페르소나가 없을 뿐
 팩 일곱(boot·adopt·intake·spec·build·attack·spike)이 에이전트다. 각 팩은 spawn 설정 한 장(`.claude/agents/<pack>.md` 또는 `.opencode/agents/<pack>.md`, 10줄)과 쓰기 경계로만 정의된다. 프롬프트는 팩 파일 경로 한 줄이고, 팩 파일이 그 spawn의 전부다. 모델은 예산(`-Budget`)이 정한다. "너는 시니어 엔지니어다" 같은 문장은 어디에도 없다.
